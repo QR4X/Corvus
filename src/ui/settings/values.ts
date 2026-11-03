@@ -34,6 +34,7 @@ const BOOL_KEYS = [
   "hapticsEnabled",
   "ragStreamShards",
   "instagramReelsEnabled",
+  "keepAwakeWhileWriting",
 ] as const;
 
 /** Menus e campos de texto — sempre string do lado do controle. */
@@ -93,6 +94,8 @@ export function readControl(s: AxxaSettings, key: ControlKey): boolean | string 
       return s.agentWeb !== false;
     case "instagramReelsEnabled":
       return s.instagramReelsEnabled !== false;
+    case "keepAwakeWhileWriting":
+      return s.keepAwakeWhileWriting !== false;
     case "travarNoLimite":
       return s.travarNoLimite === true;
     case "language":

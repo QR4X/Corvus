@@ -61,6 +61,7 @@ import { esquecerPedidos } from "./editor/ponte";
 import { LOCALES, resolverIdioma } from "./i18n";
 import { definirIdiomaDaInterface, tr } from "./i18n/tr";
 import { openOrCreateAgentMd } from "./core/agentMd";
+import { acompanharEscrita } from "./core/wakeLock";
 
 /** Resultado do último teste de credencial de um provider. */
 export interface ProviderStatus {
@@ -246,6 +247,8 @@ export interface AxxaSettings {
   // ---- Mobile
   /** Tela cheia no mobile: esconde o chrome da gaveta e a navbar global. */
   mobileFullscreen: boolean;
+  /** A tela fica acesa enquanto a IA escreve (Screen Wake Lock), como um vídeo. */
+  keepAwakeWhileWriting: boolean;
 }
 
 const DEFAULT_SETTINGS: AxxaSettings = {
@@ -359,6 +362,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   tavilyApiKey: "",
   instagramReelsEnabled: true,
   mobileFullscreen: false,
+  // Acesa enquanto escreve por padrão: é o que a pessoa espera quando pede
+  // uma resposta. Quem não quer desliga nas settings mobile.
+  keepAwakeWhileWriting: true,
 };
 
 export default class AxxaPlugin extends Plugin {
@@ -1276,6 +1282,13 @@ export default class AxxaPlugin extends Plugin {
     // A navbar do celular já existe a esta altura (o Obsidian a cria antes dos
     // plugins), e a classe que ela liga tem de estar lá antes da view pintar.
     this.observarNavbar();
+
+    // A tela fica acesa enquanto a IA escreve (setting mobile) — como um vídeo
+    // do YouTube. Escuta o store (início/fim do turno) e o toggle (mudança no
+    // meio do turno). Sem suporte do navegador, vira no-op.
+    const vigiaEscrita = acompanharEscrita(() => this.settings.keepAwakeWhileWriting);
+    this.register(() => vigiaEscrita.dispose());
+    this.register(this.onSettingsChange(() => vigiaEscrita.recheck()));
 
     // ── CARGA: o que pode chegar depois ─────────────────────────────────
     // `onLayoutReady` dispara quando a interface do Obsidian já está de pé.

@@ -976,6 +976,14 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   if (ui.isMobile) {
     group({ tab: "mobile" }, {}, [
       toggle(
+        tr("Keep screen on while writing"),
+        tr(
+          "Keeps the screen awake while the AI is writing a reply, like a video. It may sleep again as soon as the reply is done."
+        ),
+        "keepAwakeWhileWriting",
+        { aliases: ["wake lock", "screen on", "stay awake", "tela acesa", "não apagar"] }
+      ),
+      toggle(
         tr("Fullscreen"),
         tr(
           "Fullscreen hides the drawer chrome and the global navbar while AXXA is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck."
