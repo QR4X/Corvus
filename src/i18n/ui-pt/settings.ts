@@ -183,6 +183,9 @@ export const PT_SETTINGS: Record<string, string> = {
     "Deixa o agente buscar na web e abrir páginas públicas quando a tarefa precisar. No Ask e no Vault, cada pedido mostra antes o endereço ou a busca; endereços locais são sempre recusados.",
   "For web search, from tavily.com › API keys: 1,000 free searches a month, no card needed. Without it the agent can still open pages. Stored in the OS keychain (not in data.json).":
     "Pra busca na web, em tavily.com › API keys: 1.000 buscas grátis por mês, sem cartão. Sem ela, o agente ainda abre páginas. Guardada no chaveiro do sistema (não no data.json).",
+  "Keep screen on while writing": "Manter a tela acesa enquanto a IA escreve",
+  "Keeps the screen awake while the AI is writing a reply, like a video. It may sleep again as soon as the reply is done.":
+    "Mantém a tela acesa enquanto a IA escreve a resposta, como num vídeo. Ela pode apagar de novo assim que a resposta terminar.",
   Fullscreen: "Tela cheia",
   "Fullscreen hides the drawer chrome and the global navbar while AXXA is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck.":
     "A tela cheia esconde a moldura da barra lateral e a barra de navegação global enquanto a AXXA é a aba ativa. As conversas já ligam sozinhas; esta chave só muda as outras telas. O botão de menu fica, então você nunca fica preso.",

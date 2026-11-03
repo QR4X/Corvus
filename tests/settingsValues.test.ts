@@ -107,9 +107,11 @@ describe("conversões", () => {
     const s = fakeSettings({ language: "" });
     delete (s as Partial<AxxaSettings>).hapticsEnabled;
     delete (s as Partial<AxxaSettings>).mobileFullscreen;
+    delete (s as Partial<AxxaSettings>).keepAwakeWhileWriting;
     delete (s as Partial<AxxaSettings>).openaiDataSharing;
     expect(readControl(s, "hapticsEnabled")).toBe(true);
     expect(readControl(s, "mobileFullscreen")).toBe(false);
+    expect(readControl(s, "keepAwakeWhileWriting")).toBe(true);
     expect(readControl(s, "openaiDataSharing")).toBe(false);
     expect(readControl(s, "language")).toBe("en-us");
   });
