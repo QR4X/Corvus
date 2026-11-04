@@ -3301,12 +3301,38 @@ body.theme-dark {
   gap: var(--axxa-2);
 }
 
+/* A imagem é um BOTÃO: mostra a miniatura inteira (sem cortar) e o toque abre o
+   tamanho real. Sem padding e com `line-height: 0` porque o app.css do Obsidian
+   estiliza todo `button` com folga própria — que empurrava a bolha. */
+.axxa-root .axxa-msg-attachment-img-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  cursor: pointer;
+  border-radius: var(--axxa-r-md);
+  overflow: hidden;
+  height: auto;
+  min-height: 0;
+  box-shadow: none;
+}
+
 .axxa-root .axxa-msg-attachment-img {
   display: block;
-  max-width: 180px;
-  max-height: 160px;
+  max-width: min(240px, 100%);
+  max-height: 200px;
+  width: auto;
+  height: auto;
   border-radius: var(--axxa-r-md);
-  object-fit: cover;
+}
+
+/* Modal do tamanho real: a imagem cabe na tela sem estourar. */
+.axxa-image-modal .axxa-image-modal-img {
+  display: block;
+  max-width: 100%;
+  max-height: 82vh;
+  margin: 0 auto;
+  border-radius: 8px;
 }
 
 .axxa-root .axxa-msg-error .axxa-msg-text {

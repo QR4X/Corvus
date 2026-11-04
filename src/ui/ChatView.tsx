@@ -51,6 +51,7 @@ import { agentActivitySpec } from "../core/helpers";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
+import { ImageModal } from "./ImageModal";
 import { useVoice } from "./useVoice";
 import { speak, stopSpeaking } from "./readAloud";
 import { commit, screen, warn } from "./haptics";
@@ -548,31 +549,37 @@ export function ChatView({
       reavaliar();
     };
 
+    // `capture: true` de propósito: se um filho (a imagem do anexo, ou um
+    // handler do Obsidian nela) parar a propagação, o listener de bolha nunca
+    // dispara — e sem o gesto armado a tela volta a colar no fim sozinha, o
+    // bug de "não dá pra subir". Em captura, o gesto é registrado ANTES de
+    // qualquer filho ver o evento.
+    const captura = { passive: true, capture: true } as const;
     el.addEventListener("scroll", aoRolar, { passive: true });
-    el.addEventListener("touchstart", comecarGesto, { passive: true });
-    el.addEventListener("touchend", terminarGesto, { passive: true });
-    el.addEventListener("touchcancel", terminarGesto, { passive: true });
-    el.addEventListener("wheel", comecarGesto, { passive: true });
-    el.addEventListener("wheel", terminarGesto, { passive: true });
+    el.addEventListener("touchstart", comecarGesto, captura);
+    el.addEventListener("touchend", terminarGesto, captura);
+    el.addEventListener("touchcancel", terminarGesto, captura);
+    el.addEventListener("wheel", comecarGesto, captura);
+    el.addEventListener("wheel", terminarGesto, captura);
     const mouseDown = (e: PointerEvent) => {
       if (e.pointerType !== "touch") comecarGesto();
     };
     const mouseUp = (e: PointerEvent) => {
       if (e.pointerType !== "touch") terminarGesto();
     };
-    el.addEventListener("pointerdown", mouseDown);
+    el.addEventListener("pointerdown", mouseDown, captura);
     window.addEventListener("pointerup", mouseUp);
 
     return () => {
       obs.disconnect();
       window.clearTimeout(assentar);
       el.removeEventListener("scroll", aoRolar);
-      el.removeEventListener("touchstart", comecarGesto);
-      el.removeEventListener("touchend", terminarGesto);
-      el.removeEventListener("touchcancel", terminarGesto);
-      el.removeEventListener("wheel", comecarGesto);
-      el.removeEventListener("wheel", terminarGesto);
-      el.removeEventListener("pointerdown", mouseDown);
+      el.removeEventListener("touchstart", comecarGesto, captura);
+      el.removeEventListener("touchend", terminarGesto, captura);
+      el.removeEventListener("touchcancel", terminarGesto, captura);
+      el.removeEventListener("wheel", comecarGesto, captura);
+      el.removeEventListener("wheel", terminarGesto, captura);
+      el.removeEventListener("pointerdown", mouseDown, captura);
       window.removeEventListener("pointerup", mouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a intenção é rodar SÓ quando a conversa troca; incluir o resto das deps reabriria a rolagem a cada token que chega.
@@ -2396,12 +2403,21 @@ const MessageRow = memo(function MessageRow({
               {msg.attachments.map((a, i) => {
                 const thumb = attachmentThumb(a);
                 return thumb.kind === "image" ? (
-                  <img
+                  <button
                     key={i}
-                    className="axxa-msg-attachment-img"
-                    src={thumb.url}
-                    alt=""
-                  />
+                    type="button"
+                    className="axxa-msg-attachment-img-btn"
+                    aria-label={attachmentLabel(a)}
+                    onClick={() =>
+                      new ImageModal(plugin.app, thumb.url, attachmentLabel(a)).open()
+                    }
+                  >
+                    <img
+                      className="axxa-msg-attachment-img"
+                      src={thumb.url}
+                      alt=""
+                    />
+                  </button>
                 ) : (
                   <span className="axxa-pill-chip" key={i}>
                     <span className="axxa-pill-chip-emoji" aria-hidden="true">
