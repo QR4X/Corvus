@@ -43,6 +43,10 @@ export interface ToolContext {
   app: App;
   /** Índice vetorial RAG — null se ainda não foi indexado. */
   vectorIndex: VectorIndex | null;
+  /** Pastas do PRÓPRIO app (chatsPath, ragIndexPath) quando NÃO são ocultas —
+   *  o agente não pode tocar nelas nem quando visíveis (histórico de conversa,
+   *  índice RAG). Guardadas aqui por caminho configurado, não por literal. */
+  appDataPaths?: readonly string[];
   /** Credenciais pra busca semântica (embedQuery / hybridSearch). */
   embed: {
     openaiApiKey: string;

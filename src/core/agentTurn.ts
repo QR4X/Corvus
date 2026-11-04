@@ -492,6 +492,7 @@ export async function runAgentTurn(
               {
                 app: plugin.app,
                 vectorIndex: plugin.vectorIndex,
+                appDataPaths: [plugin.settings.chatsPath, plugin.settings.ragIndexPath],
                 embed: {
                   openaiApiKey: plugin.settings.openaiApiKey,
                   openrouterApiKey: plugin.settings.openrouterApiKey,

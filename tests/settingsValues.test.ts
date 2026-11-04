@@ -21,7 +21,7 @@ function fakeSettings(over: Partial<AxxaSettings> = {}): AxxaSettings {
     openaiApiKey: "sk-segredo",
     elevenApiKey: "el-segredo",
     openaiTier: 1,
-    chatsPath: ".axxa/chats",
+    chatsPath: "axxa/chats",
     skillsPath: "axxa-ai/skills",
     language: "en-us",
     voiceEnabled: true,

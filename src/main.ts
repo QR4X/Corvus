@@ -4,7 +4,7 @@
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { settingsReadLooksBroken } from "./core/settingsGuard";
-import { AXXA_HIDDEN, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
+import { AXXA_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
 import { getProvider } from "./providers";
 import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
 import { FONTE_DO_HOVER } from "./ui/linksDaResposta";
@@ -341,11 +341,10 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   // Quem instala agora começa no idioma do Obsidian; quem já tinha o
   // data.json fica com o que estava gravado.
   language: "auto",
-  // Dado do app vai pra pasta OCULTA (ver core/vaultPaths.ts): o Obsidian
-  // ignora pasta com ponto, então conversa some da busca, do explorador e do
-  // grafo. Skills NÃO vão: skill é nota que a pessoa escreve, e escondida ela
-  // não abre pra ser editada.
-  chatsPath: `${AXXA_HIDDEN}/chats`,
+  // Conversas vão pra pasta VISÍVEL (ver core/vaultPaths.ts): file-sync
+  // (Google Drive, Obsidian Sync…) copiam ela entre aparelhos. Só o índice do
+  // RAG continua oculto — é cache, se refaz com o rerun.
+  chatsPath: CHATS_FOLDER,
   skillsPath: "axxa-ai/skills",
   projects: [],
   ragIndexPath: `${AXXA_HIDDEN}/index`,
@@ -1688,7 +1687,12 @@ export default class AxxaPlugin extends Plugin {
   }
 
   /**
-   * Leva o que o app criou pra dentro da pasta oculta, UMA vez.
+   * Move o dado do app pra onde ele deve morar hoje, UMA vez.
+   *
+   * Conversas (que nasceram no legado `axxa-ai/chats` ou no default oculto
+   * `.axxa/chats`) passam pra pasta VISÍVEL — é o que um file-sync de arquivos
+   * copia entre aparelhos. O índice do RAG faz o caminho inverso (pra oculta):
+   * cache, se refaz.
    *
    * Move de verdade — copia, confere e só então apaga a origem. O contrário
    * (apagar antes) transforma qualquer falha de escrita em conversa perdida,
@@ -1703,9 +1707,7 @@ export default class AxxaPlugin extends Plugin {
     let mudou = false;
     for (const mv of HIDDEN_MOVES) {
       const atual =
-        mv.legado === "axxa-ai/chats"
-          ? this.settings.chatsPath
-          : this.settings.ragIndexPath;
+        mv.campo === "chatsPath" ? this.settings.chatsPath : this.settings.ragIndexPath;
       const podeIr = shouldMigrate({
         caminhoAtual: atual,
         legado: mv.legado,
@@ -1718,7 +1720,7 @@ export default class AxxaPlugin extends Plugin {
       if (!podeIr) continue;
       try {
         await this.moverPasta(mv.legado, mv.novo);
-        if (mv.legado === "axxa-ai/chats") this.settings.chatsPath = mv.novo;
+        if (mv.campo === "chatsPath") this.settings.chatsPath = mv.novo;
         else this.settings.ragIndexPath = mv.novo;
         mudou = true;
       } catch (err) {
@@ -1731,7 +1733,7 @@ export default class AxxaPlugin extends Plugin {
       await this.saveSettings();
       new Notice(
         tr(
-          "AXXA moved its files into a hidden .axxa folder — your chats are out of the vault's search and file list now."
+          "AXXA moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list."
         ),
         10000
       );

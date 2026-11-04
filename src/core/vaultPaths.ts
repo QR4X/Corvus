@@ -2,22 +2,33 @@
 // Onde o app guarda o que ele cria — e o que fica ESCONDIDO do vault.
 //
 // O Obsidian ignora qualquer pasta que comece com ponto: ela não entra no
-// índice, não aparece no explorador, não entra na busca nem no grafo. É
-// exatamente o que se quer pro que é dado do app — as conversas estavam
-// poluindo a busca de quem só queria achar uma nota.
+// índice, não aparece no explorador, não entra na busca nem no grafo — e o
+// mesmo vale pro Sync do Obsidian e pra maioria dos plugins de file-sync
+// (Google Drive, …).
 //
-// Mas "invisível pro índice" corta os dois lados, e é por isso que NEM TUDO
-// vai junto:
+// As CONVERSAS moram numa pasta VISÍVEL de propósito: é ela que um sync de
+// arquivos copia entre aparelhos — pasta com ponto nunca chegaria lá (foi
+// exatamente esse o bug: chats nasciam em `.axxa/chats` e sumiam do vault
+// sincronizado). O custo é que elas aparecem na busca, no explorador e no
+// grafo; quem não quer aponta o campo "Chats folder" pra uma pasta com ponto.
 //
-//   • conversas e índice do RAG → escondem. Quem lê são o app e o motor, os
-//     dois por `adapter`, que enxerga pasta oculta.
-//   • skills → NÃO. Skill é uma nota que a PESSOA escreve; escondida, ela não
-//     abre no Obsidian pra ser editada.
-//   • mídia gerada e relatórios → NÃO. Escondidos, não dá pra `![[embutir]]`
+// O que continua HIDDEN é só o que se REFAZ: o índice do RAG é cache — o
+// motor o reconstrói, então pode ficar invisível sem custo de sync.
+//
+//   • conversas → VISÍVEIS (sync-friendly).
+//   • índice do RAG → escondido (cache, se refaz; quem lê é só o motor, por
+//     `adapter`, que enxerga pasta oculta).
+//   • skills → visíveis. Skill é uma nota que a PESSOA escreve; escondida, ela
+//     não abre no Obsidian pra ser editada.
+//   • mídia gerada e relatórios → visíveis. Escondidos, não dá pra `![[embutir]]`
 //     nem abrir: o Obsidian não resolve link pra fora do índice.
 
-/** A pasta oculta do app. */
+/** A pasta oculta do app — só o que é cache e se refaz mora aqui. */
 export const AXXA_HIDDEN = ".axxa";
+
+/** Pasta VISÍVEL das conversas. Ponto na frente quebraria o sync de arquivos
+ *  (Google Drive, Obsidian Sync…), que é justamente o motivo dela existir. */
+export const CHATS_FOLDER = "axxa/chats";
 
 /** Uma pasta que muda de lugar, e de onde ela vinha. */
 export interface HiddenMove {
@@ -25,15 +36,20 @@ export interface HiddenMove {
   legado: string;
   /** Onde passa a ficar. */
   novo: string;
+  /** Qual campo do settings passa a apontar pro `novo` após mover. */
+  campo: "chatsPath" | "ragIndexPath";
 }
 
 /**
- * O que migra. Só o que é DADO DO APP: o resto continua visível de propósito
- * (ver o cabeçalho).
+ * O que migra: todo lugar ANTIGO das conversas (legado `axxa-ai/chats` e o
+ * default oculto anterior `.axxa/chats`) agora cai na pasta VISÍVEL; o índice
+ * do RAG vai pra oculta (cache, se refaz). O resto continua visível de
+ * propósito (ver o cabeçalho).
  */
 export const HIDDEN_MOVES: HiddenMove[] = [
-  { legado: "axxa-ai/chats", novo: `${AXXA_HIDDEN}/chats` },
-  { legado: "axxa-ai/index", novo: `${AXXA_HIDDEN}/index` },
+  { legado: "axxa-ai/chats", novo: CHATS_FOLDER, campo: "chatsPath" },
+  { legado: `${AXXA_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
+  { legado: "axxa-ai/index", novo: `${AXXA_HIDDEN}/index`, campo: "ragIndexPath" },
 ];
 
 /** Está numa pasta que o Obsidian ignora? */

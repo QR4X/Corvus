@@ -18,7 +18,7 @@
 // `control` novo com a chave errada falha calado em vez de vazar.
 
 import type { AxxaSettings } from "../../main";
-import { AXXA_HIDDEN } from "../../core/vaultPaths";
+import { AXXA_HIDDEN, CHATS_FOLDER } from "../../core/vaultPaths";
 
 /** Interruptores. */
 const BOOL_KEYS = [
@@ -69,8 +69,9 @@ export function isControlKey(key: string): key is ControlKey {
   return BOOLS.has(key) || TEXTS.has(key);
 }
 
-/** Pasta das conversas quando o campo fica vazio. */
-export const DEFAULT_CHATS_PATH = `${AXXA_HIDDEN}/chats`;
+/** Pasta das conversas quando o campo fica vazio. VISÍVEL de propósito: é o
+ *  que um file-sync (Google Drive, Obsidian Sync…) copia entre aparelhos. */
+export const DEFAULT_CHATS_PATH = CHATS_FOLDER;
 /** Pasta dos skills quando o campo fica vazio. */
 export const DEFAULT_SKILLS_PATH = "axxa-ai/skills";
 /** Pasta do índice do Vault Q&A quando o campo fica vazio. */

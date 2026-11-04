@@ -148,8 +148,8 @@ export const PT_SETTINGS: Record<string, string> = {
 
   // ── ui/settings/tree.ts: Vault, Q&A, Agent, Celular ───────────────────────
   "Chats folder": "Pasta das conversas",
-  "Each chat is a .md file under <folder>/<mode>/. A folder starting with a dot is hidden from the file explorer, search and graph — which is why the default is .axxa/chats.":
-    "Cada conversa é um arquivo .md em <pasta>/<modo>/. Uma pasta que começa com ponto fica escondida do explorador de arquivos, da busca e do grafo — por isso o padrão é .axxa/chats.",
+  "Each chat is a .md file under <folder>/<mode>/. The default is visible so file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices. A folder starting with a dot stays out of the explorer, search and graph — and out of those syncs.":
+    "Cada conversa é um arquivo .md em <pasta>/<modo>/. O padrão é visível pra que os plugins de file-sync (Google Drive, Obsidian Sync…) copiem as conversas entre aparelhos. Uma pasta que começa com ponto continua fora do explorador, da busca e do grafo — e fora desses syncs também.",
   "Skills folder": "Pasta das skills",
   "Each skill is a .md note (frontmatter + prompt body).":
     "Cada skill é uma nota .md (frontmatter + o prompt no corpo).",

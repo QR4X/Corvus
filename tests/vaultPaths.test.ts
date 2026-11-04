@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   AXXA_HIDDEN,
+  CHATS_FOLDER,
   HIDDEN_MOVES,
   isHiddenPath,
   shouldMigrate,
@@ -12,12 +13,32 @@ import {
  * Mover arquivo de conversa é a operação mais perigosa deste app: é a única
  * coisa que ele guarda que não se refaz. Por isso a decisão é uma função pura,
  * testada, e cada "não" dela vale mais que o "sim".
+ *
+ * Desde que o default das conversas virou pasta VISÍVEL (pra file-sync copiar
+ * entre aparelhos), as migrações vão em DUAS direções: chats pro visível, e o
+ * índice do RAG (cache, se refaz) pra oculta.
  */
 
-describe("o que vai pra pasta oculta", () => {
-  it("conversas e índice vão; o resto não é mencionado aqui", () => {
+describe("para onde o app leva o que migra", () => {
+  it("conversas vão pra pasta VISÍVEL; o índice vai pra oculta", () => {
+    const chats = HIDDEN_MOVES.filter((m) => m.campo === "chatsPath");
+    const index = HIDDEN_MOVES.filter((m) => m.campo === "ragIndexPath");
+    expect(chats.length).toBeGreaterThan(0);
+    expect(index.length).toBeGreaterThan(0);
+    for (const m of chats) {
+      expect(m.novo).toBe(CHATS_FOLDER);
+      expect(isHiddenPath(m.novo)).toBe(false);
+    }
+    for (const m of index) {
+      expect(m.novo.startsWith(`${AXXA_HIDDEN}/`)).toBe(true);
+      expect(isHiddenPath(m.novo)).toBe(true);
+    }
+  });
+
+  it("migra o legado axxa-ai E o default oculto .axxa/chats", () => {
     const legados = HIDDEN_MOVES.map((m) => m.legado);
     expect(legados).toContain("axxa-ai/chats");
+    expect(legados).toContain(`${AXXA_HIDDEN}/chats`);
     expect(legados).toContain("axxa-ai/index");
     // Skills, mídia gerada e relatórios ficam VISÍVEIS de propósito: skill é
     // nota que a pessoa edita, e mídia escondida não dá pra embutir numa nota
@@ -25,14 +46,6 @@ describe("o que vai pra pasta oculta", () => {
     expect(legados).not.toContain("axxa-ai/skills");
     expect(legados).not.toContain("axxa-ai/generation");
     expect(legados).not.toContain("axxa-ai/reports");
-  });
-
-  it("todo destino é uma pasta que o Obsidian ignora", () => {
-    for (const m of HIDDEN_MOVES) {
-      expect(m.novo.startsWith(`${AXXA_HIDDEN}/`)).toBe(true);
-      expect(isHiddenPath(m.novo)).toBe(true);
-      expect(isHiddenPath(m.legado)).toBe(false);
-    }
   });
 });
 

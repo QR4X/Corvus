@@ -96,7 +96,18 @@ function makeApp() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { app: { vault, fileManager } as any, files, lixeira, renomeados };
+  return { app: { vault, fileManager } as any, files, lixeira, renomeados } as {
+    app: unknown;
+    files: Map<string, string>;
+    lixeira: string[];
+    renomeados: Array<[string, string]>;
+  };
+}
+
+/** Contexto padrão das tools nos testes: storage do app vazio de propósito. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeCtx(app: unknown, appDataPaths: string[] = []): any {
+  return { app, vectorIndex: null, appDataPaths, embed: {} };
 }
 
 describe("path sandboxing (segurança — anti traversal)", () => {
@@ -112,7 +123,8 @@ describe("path sandboxing (segurança — anti traversal)", () => {
   for (const p of malicious) {
     it(`recusa "${p.slice(0, 24)}"`, async () => {
       const { app, files } = makeApp();
-      await expect(toolVaultRead(app, { path: p })).rejects.toThrow();
+      const ctx = makeCtx(app);
+      await expect(toolVaultRead(ctx, { path: p })).rejects.toThrow();
       // nunca deve ter escrito/criado nada
       expect(files.size).toBe(0);
     });
@@ -120,8 +132,9 @@ describe("path sandboxing (segurança — anti traversal)", () => {
 
   it("path normal é aceito (read de arquivo existente)", async () => {
     const { app } = makeApp();
-    await toolVaultCreate(app, { path: "notes/ok.md", content: "hi" });
-    expect(await toolVaultRead(app, { path: "notes/ok.md" })).toBe("hi");
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "notes/ok.md", content: "hi" });
+    expect(await toolVaultRead(ctx, { path: "notes/ok.md" })).toBe("hi");
   });
 });
 
@@ -152,18 +165,46 @@ describe("pasta oculta é proibida PRO AGENTE", () => {
 
   it("nenhuma tool escapa: todas passam pelo sandbox", async () => {
     const { app, files } = makeApp();
+    const ctx = makeCtx(app);
     const alvo = ".obsidian/plugins/evil/main.js";
-    await expect(toolVaultCreate(app, { path: alvo, content: "x" })).rejects.toThrow(
+    await expect(toolVaultCreate(ctx, { path: alvo, content: "x" })).rejects.toThrow(
       /hidden folders/i
     );
-    await expect(toolVaultRead(app, { path: alvo })).rejects.toThrow(/hidden folders/i);
+    await expect(toolVaultRead(ctx, { path: alvo })).rejects.toThrow(/hidden folders/i);
     await expect(
-      toolVaultEdit(app, { path: alvo, oldStr: "a", newStr: "b" })
+      toolVaultEdit(ctx, { path: alvo, oldStr: "a", newStr: "b" })
     ).rejects.toThrow(/hidden folders/i);
-    await expect(toolVaultDelete(app, { path: alvo })).rejects.toThrow(/hidden folders/i);
+    await expect(toolVaultDelete(ctx, { path: alvo })).rejects.toThrow(/hidden folders/i);
     await expect(
-      toolVaultMove(app, { from: "a.md", to: alvo })
+      toolVaultMove(ctx, { from: "a.md", to: alvo })
     ).rejects.toThrow(/hidden folders/i);
+    expect(files.size).toBe(0);
+  });
+});
+
+describe("storage VISÍVEL do app (chat folder) é proibido PRO AGENTE", () => {
+  // Desde que o default das conversas virou `axxa/chats` (pasta SEM ponto, pro
+  // sync de arquivos copiar), a trava de pasta oculta não cobre mais o nosso
+  // storage. Quem fecha a porta agora é o `appDataPaths` configurado.
+  it("normalizePath barra o prefixo exato e tudo abaixo dele", () => {
+    const pastas = ["axxa/chats", ".axxa/index"];
+    for (const p of ["axxa/chats", "axxa/chats/chat/c1.md", "axxa/chats/agent/x.md", ".axxa/index/embeddings.json"]) {
+      expect(() => normalizePath(p, pastas)).toThrow(/off limits/i);
+    }
+    // Fora das pastas do app o mesmo caminho passa; fora do prefixo, também.
+    expect(normalizePath("axxa/notas/plano.md", pastas)).toBe("axxa/notas/plano.md");
+    expect(normalizePath("axxa-chats/qualquer.md", pastas)).toBe("axxa-chats/qualquer.md");
+  });
+
+  it("nenhuma tool escreve no storage visível do app", async () => {
+    const { app, files } = makeApp();
+    const ctx = makeCtx(app, ["axxa/chats"]);
+    await expect(
+      toolVaultCreate(ctx, { path: "axxa/chats/chat/e.md", content: "x" })
+    ).rejects.toThrow(/off limits/i);
+    await expect(toolVaultRead(ctx, { path: "axxa/chats/chat/e.md" })).rejects.toThrow(
+      /off limits/i
+    );
     expect(files.size).toBe(0);
   });
 });
@@ -197,8 +238,9 @@ describe("isTransientError (retry só em erro transitório)", () => {
 describe("toolVaultCreate", () => {
   it("cria + recusa sobrescrever existente", async () => {
     const { app } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "1" });
-    await expect(toolVaultCreate(app, { path: "a.md", content: "2" })).rejects.toThrow(
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "1" });
+    await expect(toolVaultCreate(ctx, { path: "a.md", content: "2" })).rejects.toThrow(
       /already exists/i
     );
   });
@@ -207,22 +249,25 @@ describe("toolVaultCreate", () => {
 describe("toolVaultEdit", () => {
   it("substitui ocorrência única", async () => {
     const { app, files } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "olá mundo" });
-    await toolVaultEdit(app, { path: "a.md", oldStr: "mundo", newStr: "vault" });
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "olá mundo" });
+    await toolVaultEdit(ctx, { path: "a.md", oldStr: "mundo", newStr: "vault" });
     expect(files.get("a.md")).toBe("olá vault");
   });
   it("RECUSA quando a string aparece N vezes (ambíguo)", async () => {
     const { app } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "x x x" });
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "x x x" });
     await expect(
-      toolVaultEdit(app, { path: "a.md", oldStr: "x", newStr: "y" })
+      toolVaultEdit(ctx, { path: "a.md", oldStr: "x", newStr: "y" })
     ).rejects.toThrow(/aparece 3x|ambig/i);
   });
   it("erro quando a string não existe", async () => {
     const { app } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "abc" });
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "abc" });
     await expect(
-      toolVaultEdit(app, { path: "a.md", oldStr: "zzz", newStr: "y" })
+      toolVaultEdit(ctx, { path: "a.md", oldStr: "zzz", newStr: "y" })
     ).rejects.toThrow(/not found/i);
   });
 });
@@ -230,13 +275,14 @@ describe("toolVaultEdit", () => {
 describe("toolVaultMove / Delete", () => {
   it("move e recusa sobrescrever destino", async () => {
     const { app, files } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "1" });
-    await toolVaultMove(app, { from: "a.md", to: "b.md" });
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "1" });
+    await toolVaultMove(ctx, { from: "a.md", to: "b.md" });
     expect(files.has("a.md")).toBe(false);
     expect(files.get("b.md")).toBe("1");
 
-    await toolVaultCreate(app, { path: "c.md", content: "2" });
-    await expect(toolVaultMove(app, { from: "c.md", to: "b.md" })).rejects.toThrow(
+    await toolVaultCreate(ctx, { path: "c.md", content: "2" });
+    await expect(toolVaultMove(ctx, { from: "c.md", to: "b.md" })).rejects.toThrow(
       /already exists/i
     );
   });
@@ -250,14 +296,15 @@ describe("toolVaultMove / Delete", () => {
 
   it("apagar vai pra LIXEIRA, nunca direto pro nada", async () => {
     const { app, files, lixeira } = makeApp();
-    await toolVaultCreate(app, { path: "a.md", content: "1" });
-    const msg = await toolVaultDelete(app, { path: "a.md" });
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "1" });
+    const msg = await toolVaultDelete(ctx, { path: "a.md" });
     expect(files.has("a.md")).toBe(false);
     // A garantia: passou por trashFile, então obedece a preferência
     // "Deleted files" de quem usa — e dá pra desfazer.
     expect(lixeira).toEqual(["a.md"]);
     expect(msg).toMatch(/trash/i);
-    await expect(toolVaultDelete(app, { path: "nope.md" })).rejects.toThrow(
+    await expect(toolVaultDelete(ctx, { path: "nope.md" })).rejects.toThrow(
       /does not exist/i
     );
   });

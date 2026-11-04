@@ -36,8 +36,8 @@ export const PT_PLUGIN: Record<string, string> = {
     "Não consegui abrir o painel do AXXA — tente abrir a barra lateral direita.",
   "AXXA: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed.":
     "AXXA: não consegui ler o arquivo de configurações. Nada vai ser sobrescrito — reinicie o Obsidian e, se precisar, confira o data.backup.json ao lado dele.",
-  "AXXA moved its files into a hidden .axxa folder — your chats are out of the vault's search and file list now.":
-    "O AXXA levou os arquivos dele pra uma pasta oculta, .axxa — as suas conversas saíram da busca e da lista de arquivos do vault.",
+  "AXXA moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list.":
+    "O AXXA moveu suas conversas pra uma pasta visível — os plugins de file-sync (Google Drive, Obsidian Sync…) copiam elas entre aparelhos agora, e elas aparecem na busca e na lista de arquivos do vault.",
   "AXXA could not save your settings — the change is active now but will be lost when you reopen Obsidian. Check the vault's disk space and permissions.":
     "A AXXA não conseguiu gravar as configurações — a mudança vale agora, mas se perde ao reabrir o Obsidian. Confira o espaço em disco e as permissões do vault.",
 

@@ -824,7 +824,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     text(
       tr("Chats folder"),
       tr(
-        "Each chat is a .md file under <folder>/<mode>/. A folder starting with a dot is hidden from the file explorer, search and graph — which is why the default is .axxa/chats."
+        "Each chat is a .md file under <folder>/<mode>/. The default is visible so file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices. A folder starting with a dot stays out of the explorer, search and graph — and out of those syncs."
       ),
       "chatsPath",
       { aliases: ["pasta", "conversas", "path"] }
