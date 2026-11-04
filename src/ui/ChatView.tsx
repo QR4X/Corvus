@@ -2391,6 +2391,30 @@ const MessageRow = memo(function MessageRow({
     case "user":
       return (
         <div className="axxa-msg axxa-msg-user" data-msg={msg.id}>
+          {msg.attachments && msg.attachments.length > 0 && (
+            <div className="axxa-msg-attachments">
+              {msg.attachments.map((a, i) => {
+                const thumb = attachmentThumb(a);
+                return thumb.kind === "image" ? (
+                  <img
+                    key={i}
+                    className="axxa-msg-attachment-img"
+                    src={thumb.url}
+                    alt=""
+                  />
+                ) : (
+                  <span className="axxa-pill-chip" key={i}>
+                    <span className="axxa-pill-chip-emoji" aria-hidden="true">
+                      {thumb.char}
+                    </span>
+                    <span className="axxa-pill-chip-label">
+                      {attachmentLabel(a)}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
           <div className="axxa-msg-text">{msg.content}</div>
         </div>
       );

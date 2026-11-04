@@ -13,9 +13,25 @@
 
 import type { App, DataAdapter } from "obsidian";
 import type { AIToolStep } from "../agent/types";
+import type { MessageAttachment } from "../providers/base";
 import { previewFromMarkdown } from "./chatPreview";
 import { texto } from "./texto";
 import { tr } from "../i18n/tr";
+
+/**
+ * Descritor MÍNIMO de um anexo no .md — nunca bytes. Imagem anexada vira um
+ * arquivo no vault (path); aqui fica só tipo, path, nome e mime. O chat é
+ * reescrito a cada mensagem, então embutir a imagem (data URL) o faria crescer
+ * pra sempre.
+ */
+export interface MessageAttachmentStored {
+  type: "image" | "note" | "pdf" | "audio";
+  /** Path no vault (imagem local) OU a URL externa (imagem de http…). */
+  path?: string;
+  name?: string;
+  mimeType?: string;
+  durationMs?: number;
+}
 
 export interface ChatMessageStored {
   type: "user" | "ai-response";
@@ -26,6 +42,8 @@ export interface ChatMessageStored {
   /** Ações de tool do agent (Agent mode) — persistidas pra continuidade de
    *  contexto ao reabrir o chat. v0.1.160 */
   agentSteps?: AIToolStep[];
+  /** Anexos da mensagem do user, como descritores pequenos (ver acima). */
+  attachments?: MessageAttachmentStored[];
   isError?: boolean;
 }
 
@@ -66,6 +84,78 @@ export interface ChatData {
  *  (string). Qualquer outra coisa = false. */
 function yamlBool(v: unknown): boolean {
   return v === true || v === "true";
+}
+
+/** Anexos da memória → descritores pequenos pro .md (nunca os bytes da imagem). */
+export function toStoredAttachments(
+  atts: MessageAttachment[]
+): MessageAttachmentStored[] {
+  return atts.map((a) => {
+    if (a.type === "image") {
+      return {
+        type: "image",
+        path: a.path ?? (a.dataUrl.startsWith("http") ? a.dataUrl : undefined),
+        name: a.name,
+        mimeType: a.mimeType,
+      };
+    }
+    if (a.type === "note") return { type: "note", path: a.path };
+    if (a.type === "pdf") return { type: "pdf", name: a.name, path: a.path };
+    return { type: "audio", path: a.path, durationMs: a.durationMs };
+  });
+}
+
+/** Relê os bytes da imagem do vault e reconstroi a data URL de exibição. */
+function base64FromBytes(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+/**
+ * Descritores do .md → anexos de novo, pra UI renderizar. Imagem local relê o
+ * arquivo do vault (path → data URL); URL externa volta como está. Nota volta
+ * sem `content` — o conteúdo só é lido no envio, não vem do disco.
+ */
+export async function fromStoredAttachments(
+  app: App,
+  stored: MessageAttachmentStored[]
+): Promise<MessageAttachment[]> {
+  const out: MessageAttachment[] = [];
+  for (const s of stored) {
+    if (s.type === "image") {
+      const p = s.path ?? "";
+      if (/^https?:/i.test(p)) {
+        out.push({ type: "image", dataUrl: p, name: s.name, mimeType: s.mimeType });
+        continue;
+      }
+      try {
+        const bin = await app.vault.adapter.readBinary(p);
+        const mime = s.mimeType ?? "image/png";
+        out.push({
+          type: "image",
+          dataUrl: `data:${mime};base64,${base64FromBytes(bin)}`,
+          mimeType: mime,
+          name: s.name,
+          path: p,
+        });
+      } catch {
+        out.push({ type: "image", dataUrl: "", name: s.name, mimeType: s.mimeType, path: p });
+      }
+      continue;
+    }
+    if (s.type === "note") {
+      out.push({ type: "note", path: s.path ?? "", content: "" });
+      continue;
+    }
+    if (s.type === "pdf") {
+      out.push({ type: "pdf", name: s.name ?? "", path: s.path });
+      continue;
+    }
+    out.push({ type: "audio", path: s.path ?? "", durationMs: s.durationMs });
+  }
+  return out;
 }
 
 export interface ChatSummary {
@@ -207,7 +297,13 @@ function renderBody(chat: ChatData): string {
         m.agentSteps && m.agentSteps.length > 0
           ? `\n\n<!-- axxa-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
           : "";
-      return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}\n`;
+      // Anexos do user — base64 no mesmo comentário (descritores pequenos;
+      // a imagem mora num arquivo do vault, ver toStoredAttachments).
+      const attsLine =
+        m.attachments && m.attachments.length > 0
+          ? `\n\n<!-- axxa-att: ${b64encode(JSON.stringify(m.attachments))} -->`
+          : "";
+      return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}${attsLine}\n`;
     })
     .join("\n");
   return `${heading}\n${sections}`;
@@ -333,6 +429,23 @@ function extractAgentSteps(content: string): {
   }
 }
 
+/** Extrai os anexos (comentário base64 no fim) e devolve o content limpo. */
+function extractAttachments(content: string): {
+  content: string;
+  attachments?: MessageAttachmentStored[];
+} {
+  const re = /\n*<!--\s*axxa-att:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const m = content.match(re);
+  if (!m || m.index === undefined) return { content };
+  try {
+    const atts = JSON.parse(b64decode(m[1])) as MessageAttachmentStored[];
+    const cleaned = (content.slice(0, m.index) + content.slice(m.index + m[0].length)).trim();
+    return { content: cleaned, attachments: atts };
+  } catch {
+    return { content };
+  }
+}
+
 function parseBody(body: string): ChatMessageStored[] {
   // Pula até a primeira heading `## You` ou `## Assistant`
   // depois alterna entre elas até o final ou outra heading desconhecida.
@@ -370,13 +483,18 @@ function parseBody(body: string): ChatMessageStored[] {
     const { content: finalContent, agentSteps } = extractAgentSteps(
       cleanContent.trim()
     );
+    // Extrai os anexos (comentário base64) e tira também do conteúdo visível.
+    const { content: finalContent2, attachments } = extractAttachments(
+      finalContent.trim()
+    );
     messages.push({
       type: cur.type,
-      content: finalContent,
+      content: finalContent2,
       // Restaura timestamp original se salvo; fallback now()
       timestamp: timestamp ?? Date.now(),
       ...(reaction != null ? { reaction } : {}),
       ...(agentSteps ? { agentSteps } : {}),
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
       ...(isError ? { isError } : {}),
     });
   }

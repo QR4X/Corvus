@@ -3292,6 +3292,23 @@ body.theme-dark {
   background-color: var(--axxa-raised);
 }
 
+/* Anexos de mensagens ENVIADAS: acima do texto da bolha, como referência
+   ("o que eu mandei mesmo?"), sobrevivendo a reloads. */
+.axxa-root .axxa-msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--axxa-2);
+}
+
+.axxa-root .axxa-msg-attachment-img {
+  display: block;
+  max-width: 180px;
+  max-height: 160px;
+  border-radius: var(--axxa-r-md);
+  object-fit: cover;
+}
+
 .axxa-root .axxa-msg-error .axxa-msg-text {
   color: var(--text-error);
 }

@@ -130,6 +130,47 @@ describe("chat persistence round-trip", () => {
     expect(r.provider).toBe(provider);
     expect(r.model).toBe(model);
   });
+
+  // Anexos de mensagens enviadas: persistem como DESCRITORES pequenos (path,
+  // tipo, nome) — nunca os bytes da imagem (o .md é reescrito a cada msg).
+  it("anexos persistem como descritores pequenos (round-trip exato)", () => {
+    const chat: ChatData = {
+      ...baseChat,
+      messages: [
+        {
+          type: "user",
+          content: "olha o print",
+          timestamp: 1,
+          attachments: [
+            {
+              type: "image",
+              path: "axxa-ai/generation/images/1700-print.png",
+              name: "print.png",
+              mimeType: "image/png",
+            },
+            { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
+            { type: "pdf", name: "contrato.pdf" },
+            { type: "audio", path: "axxa-ai/generation/audio/1800-fala.webm", durationMs: 1200 },
+            { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
+          ],
+        },
+      ],
+    };
+    const md = renderChatMarkdown(chat);
+    // nunca os bytes no .md — só o descritor, que é pequeno e estável
+    expect(md).not.toContain("data:image");
+    const r = parseChatMarkdown(md);
+    // o comentário de anexo não vaza pro conteúdo visível
+    expect(r.messages[0].content).toBe("olha o print");
+    expect(r.messages[0].attachments).toEqual(chat.messages[0].attachments);
+  });
+
+  it("mensagem enviada sem anexo não ganha o campo no round-trip", () => {
+    const md = renderChatMarkdown(baseChat);
+    expect(md).not.toContain("axxa-att:");
+    const r = parseChatMarkdown(md);
+    expect("attachments" in r.messages[0]).toBe(false);
+  });
 });
 
 // Star (menu ⋮): a marca vive no frontmatter. O risco real é o auto-save —

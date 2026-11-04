@@ -36,8 +36,11 @@ import {
   deleteChat,
   renameChat,
   generateTitle,
+  fromStoredAttachments,
+  toStoredAttachments,
   type ChatData,
 } from "./chatPersistence";
+import { persistLocalImage } from "../ui/attachSources";
 import { makeId, semCredencial } from "./helpers";
 import { streamReply, type EngineCtx } from "./chatEngine";
 import { runAgentTurn } from "./agentTurn";
@@ -389,7 +392,23 @@ export class ChatSession {
       }
     }
 
-    st.addMessage({ type: "user", content: trimmed });
+    // Imagem local (`data:`): grava os bytes UMA vez na pasta de geração e
+    // guarda o path no anexo — é esse descritor pequeno que persiste no .md
+    // (embutir os bytes deixaria o arquivo do chat gigante). Falha não derruba
+    // o envio: sem path a imagem mostra no turno, só não sobrevive ao reload.
+    if (attachments) {
+      attachments = await Promise.all(
+        attachments.map(async (a) =>
+          a.type === "image" ? persistLocalImage(this.plugin.app, a) : a
+        )
+      );
+    }
+
+    st.addMessage({
+      type: "user",
+      content: trimmed,
+      ...(attachments ? { attachments } : {}),
+    });
     // Carimba de quem é este turno ANTES de começar. É por este id que a tela
     // sabe se quem está respondendo é a conversa que ela mostra, e é ele que
     // vai junto se a conversa sair de cena no meio.
@@ -514,6 +533,9 @@ export class ChatSession {
           : {}),
         ...(m.type === "ai-response" && m.agentSteps
           ? { agentSteps: m.agentSteps }
+          : {}),
+        ...(m.type === "user" && m.attachments?.length
+          ? { attachments: toStoredAttachments(m.attachments) }
           : {}),
       })),
     };
@@ -655,19 +677,24 @@ export class ChatSession {
         ref.mode,
         ref.id
       );
-      const restored: ChatMessage[] = chat.messages.map((m) => ({
-        id: makeId(),
-        type: m.type,
-        content: m.content,
-        timestamp: m.timestamp,
-        ...(m.type === "ai-response" && m.isError ? { isError: true } : {}),
-        ...(m.type === "ai-response" && m.reaction
-          ? { reaction: m.reaction }
-          : {}),
-        ...(m.type === "ai-response" && m.agentSteps
-          ? { agentSteps: m.agentSteps }
-          : {}),
-      }));
+      const restored: ChatMessage[] = await Promise.all(
+        chat.messages.map(async (m) => ({
+          id: makeId(),
+          type: m.type,
+          content: m.content,
+          timestamp: m.timestamp,
+          ...(m.type === "ai-response" && m.isError ? { isError: true } : {}),
+          ...(m.type === "ai-response" && m.reaction
+            ? { reaction: m.reaction }
+            : {}),
+          ...(m.type === "ai-response" && m.agentSteps
+            ? { agentSteps: m.agentSteps }
+            : {}),
+          ...(m.type === "user" && m.attachments?.length
+            ? { attachments: await fromStoredAttachments(this.plugin.app, m.attachments) }
+            : {}),
+        }))
+      );
 
       const st = useChatStore.getState();
       // Abrir um chat NÃO é atividade: pula o próximo ciclo do auto-save.
@@ -857,6 +884,9 @@ export class ChatSession {
           : {}),
         ...(m.type === "ai-response" && m.agentSteps?.length
           ? { agentSteps: m.agentSteps }
+          : {}),
+        ...(m.type === "user" && m.attachments?.length
+          ? { attachments: toStoredAttachments(m.attachments) }
           : {}),
       })),
     };

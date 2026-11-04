@@ -6,11 +6,15 @@
 // vira rótulo) mora aqui, fora do componente, pra dar pra testar sem UI.
 
 import { TFile, TFolder, type App } from "obsidian";
-import type { MessageAttachment, NoteAttachment } from "../providers/base";
+import type { ImageAttachment, MessageAttachment, NoteAttachment } from "../providers/base";
+import { ensureFolder } from "../core/chatPersistence";
 import { tr } from "../i18n/tr";
 
 /** Onde o plugin salva o que gera (imagens, áudio, vídeo + sidecar .md). */
 export const GENERATION_DIR = "axxa-ai/generation";
+
+/** Onde as imagens ANEXADAS a mensagens são gravadas (uma vez, no envio). */
+export const IMAGE_GENERATION_DIR = `${GENERATION_DIR}/images`;
 
 export interface ArtifactLike {
   path: string;
@@ -208,4 +212,52 @@ export function attachmentLabel(a: MessageAttachment): string {
   if (a.type === "image") return a.name ?? tr("Image");
   if (a.type === "pdf") return a.name;
   return a.path.split("/").pop() ?? tr("Audio");
+}
+
+// ── Imagem anexada → arquivo no vault ─────────────────────────────────────
+// O chat .md é reescrito a cada mensagem; embutir a imagem nele (data URL)
+// faria o arquivo crescer pra sempre. Então o envio grava os bytes UMA vez na
+// pasta de geração e o .md persiste só o path — pequeno e estável.
+
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+  const bin = atob(b64);
+  const buf = new ArrayBuffer(bin.length);
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return buf;
+}
+
+/** Extensão da imagem pelo mime; fallback: a do nome do arquivo (senão png). */
+function imageExt(mime: string, name: string | undefined): string {
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  if (mime === "image/gif") return "gif";
+  const nome = name?.split(".").pop() ?? "";
+  return isImageExt(nome) ? nome.toLowerCase() : "png";
+}
+
+/**
+ * Grava os bytes de uma imagem `data:` no vault (a pasta de geração) e devolve
+ * o anexo com o `path` de volta — é esse path que persiste no .md, não os
+ * bytes. URL externa (http) e falha de escrita devolvem o anexo SEM path: a
+ * imagem ainda aparece no turno, só não sobrevive a um reload.
+ */
+export async function persistLocalImage(
+  app: App,
+  att: ImageAttachment
+): Promise<ImageAttachment> {
+  if (att.path || /^https?:/i.test(att.dataUrl)) return att;
+  const m = /^data:([^;,]+);base64,(.+)$/s.exec(att.dataUrl);
+  if (!m) return att;
+  const path = `${IMAGE_GENERATION_DIR}/${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}.${imageExt(m[1], att.name)}`;
+  try {
+    await ensureFolder(app.vault.adapter, IMAGE_GENERATION_DIR);
+    await app.vault.adapter.writeBinary(path, base64ToArrayBuffer(m[2]));
+    return { ...att, path, mimeType: m[1] };
+  } catch {
+    return att;
+  }
 }

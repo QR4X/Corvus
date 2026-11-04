@@ -29,6 +29,9 @@ interface BaseMessage {
 export interface UserMessage extends BaseMessage {
   type: "user";
   content: string;
+  /** Anexos (imagem, nota, PDF, áudio) que foram com esta mensagem. Persistem
+   *  no .md como descritores pequenos — nunca os bytes. */
+  attachments?: MessageAttachment[];
 }
 
 export interface AIResponseMessage extends BaseMessage {

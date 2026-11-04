@@ -29,6 +29,9 @@ export interface ImageAttachment {
   mimeType?: string;
   /** Nome do arquivo escolhido — só pra mostrar no chip do composer. */
   name?: string;
+  /** Path no vault onde a imagem foi gravada (1º envio, pasta de geração) — é o
+   *  que sobrevive a um reload no .md do chat, nunca os bytes. */
+  path?: string;
 }
 
 /** Nota do vault anexada — inlinada como contexto markdown no prompt. */
