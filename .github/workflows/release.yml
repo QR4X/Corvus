@@ -157,12 +157,12 @@ jobs:
               --title "$tag (teste)" \
               --target "${GITHUB_SHA}" \
               --prerelease --latest=false \
-              --notes "Build de TESTE do AXXA Agent ($tag), pra instalar pelo BRAT. Não é a versão do diretório do Obsidian." \
+              --notes "Test-Build von AXXA Agent ($tag), zum Installieren über BRAT. Nicht die Version aus dem Obsidian-Verzeichnis." \
               output/main.js output/manifest.json output/styles.css
           else
             gh release create "$tag" \
               --title "$tag" \
               --target "${GITHUB_SHA}" \
-              --notes "AXXA Agent $tag. Veja os commits para o changelog." \
+              --notes "AXXA Agent $tag. Siehe die Commits für das Changelog." \
               output/main.js output/manifest.json output/styles.css
           fi
