@@ -1704,6 +1704,19 @@ export default class AxxaPlugin extends Plugin {
   private async migrarParaPastaOculta(): Promise<void> {
     if (this.settingsUnsafe) return;
     const ad = this.app.vault.adapter;
+    // Destino conta como "ocupado" só se tiver CONTEÚDO. Uma pasta vazia (ex:
+    // um `axxa/chats` criado cedo e nunca usado) não pode travar a migração —
+    // senão ninguém saía do `.axxa/chats` e o sync continuava quebrado.
+    const destinoOcupado = async (pasta: string): Promise<boolean> => {
+      if (!(await ad.exists(pasta))) return false;
+      try {
+        const listing = await ad.list(pasta);
+        return listing.files.length + listing.folders.length > 0;
+      } catch {
+        // Não deu pra inspecionar → trata como ocupado (não arrisca mesclar).
+        return true;
+      }
+    };
     let mudou = false;
     for (const mv of HIDDEN_MOVES) {
       const atual =
@@ -1713,7 +1726,7 @@ export default class AxxaPlugin extends Plugin {
         legado: mv.legado,
         novo: mv.novo,
         origemExiste: await ad.exists(mv.legado),
-        destinoExiste: await ad.exists(mv.novo),
+        destinoExiste: await destinoOcupado(mv.novo),
       });
       // O caminho pode já ser o novo (instalação nova) — nada a fazer, e
       // também nada a avisar.
