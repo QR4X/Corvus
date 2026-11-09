@@ -252,7 +252,7 @@ function parseMessageMeta(content: string): {
   reaction?: "like" | "dislike" | null;
   isError?: boolean;
 } {
-  const match = content.match(/^\s*<!--\s*corvus:\s*([^>]+?)\s*-->\s*\n?/);
+  const match = content.match(/^\s*<!--\s*(?:corvus|axxa):\s*([^>]+?)\s*-->\s*\n?/);
   if (!match) return { cleanContent: content };
   const meta = match[1];
   const cleanContent = content.slice(match[0].length);
@@ -336,7 +336,7 @@ function extractAgentSteps(content: string): {
   agentSteps?: AIToolStep[];
 } {
 
-  const re = /\n*<!--\s*corvus-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const re = /\n*<!--\s*(?:corvus|axxa)-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
   const m = content.match(re);
   if (!m || m.index === undefined) return { content };
   try {
@@ -352,7 +352,7 @@ function extractAttachments(content: string): {
   content: string;
   attachments?: MessageAttachmentStored[];
 } {
-  const re = /\n*<!--\s*corvus-att:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const re = /\n*<!--\s*(?:corvus|axxa)-att:\s*([A-Za-z0-9+/=]+)\s*-->/;
   const m = content.match(re);
   if (!m || m.index === undefined) return { content };
   try {

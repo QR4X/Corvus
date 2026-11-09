@@ -129,8 +129,7 @@ export async function runAgentTurn(
   const foraDaLista = (nome: string) =>
     UNAVAILABLE_TOOLS.has(nome) ||
     ((nome === "web_search" || nome === "web_fetch") && !webLigada) ||
-    (nome === "web_search" && !tavily) ||
-    (nome === "fetch_reel_transcript" && plugin.settings.instagramReelsEnabled === false);
+    (nome === "web_search" && !tavily);
 
   const agentMdBlock = await loadAgentMd(
     plugin.app,

@@ -33,3 +33,13 @@ export function shouldMigrate(p: {
   if (p.destinoExiste) return false;
   return true;
 }
+
+export function legacyModeMoves(
+  appRoot: string,
+  chatsFolder: string,
+  modes: readonly string[]
+): { de: string; para: string }[] {
+  return modes
+    .map((mode) => ({ de: `${appRoot}/${mode}`, para: `${chatsFolder}/${mode}` }))
+    .filter((m) => m.de !== m.para);
+}

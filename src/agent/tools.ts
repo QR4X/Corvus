@@ -2,7 +2,6 @@ import { TFile, TFolder, type App, type TAbstractFile } from "obsidian";
 import type { ToolContext } from "./types";
 import { hybridSearch } from "../rag/hybrid";
 import { toolWebFetch, toolWebSearch } from "./web";
-import { transcribeInstagramReel } from "../core/instagramResolver";
 
 const VAULT_ROOT_MAX_DEPTH = 32; 
 
@@ -310,33 +309,4 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   web_search: (ctx, args) =>
     toolWebSearch(ctx, args as unknown as { query: string; maxResults?: number }),
   web_fetch: (ctx, args) => toolWebFetch(ctx, args as unknown as { url: string }),
-  fetch_reel_transcript: (ctx, args) =>
-    toolFetchReelTranscript(ctx, args as unknown as { url: string }),
 };
-
-export async function toolFetchReelTranscript(
-  ctx: ToolContext,
-  args: { url: string }
-): Promise<string> {
-  const url = String(args?.url ?? "").trim();
-  const openAi = ctx.embed?.openaiApiKey?.trim();
-  const openRouter = ctx.embed?.openrouterApiKey?.trim();
-  const cred = openAi
-    ? { apiKey: openAi, provider: "openai" as const }
-    : openRouter
-    ? { apiKey: openRouter, provider: "openrouter" as const }
-    : null;
-  if (!cred) {
-    throw new Error(
-      "Transcribing Instagram Reels requires an OpenAI or OpenRouter API key (Settings › Providers)."
-    );
-  }
-  const result = await transcribeInstagramReel(url, {
-    apiKey: cred.apiKey,
-    provider: cred.provider,
-  });
-  const parts: string[] = [`Source: ${result.url}`];
-  if (result.caption) parts.push(`Caption:\n${result.caption}`);
-  parts.push(`Spoken Transcript:\n${result.transcript}`);
-  return parts.join("\n\n");
-}

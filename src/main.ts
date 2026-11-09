@@ -1,6 +1,7 @@
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { settingsReadLooksBroken } from "./core/settingsGuard";
-import { CORVUS_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
+import { CORVUS_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate, legacyModeMoves } from "./core/vaultPaths";
+import { CHAT_MODES } from "./core/session";
 import { getProvider } from "./providers";
 import { CorvusView, VIEW_TYPE_CORVUS } from "./ui/CorvusView";
 import { FONTE_DO_HOVER } from "./ui/responseLinks";
@@ -183,8 +184,6 @@ export interface CorvusSettings {
 
   tavilyApiKey: string;
 
-  instagramReelsEnabled: boolean;
-
   mobileFullscreen: boolean;
 
   keepAwakeWhileWriting: boolean;
@@ -292,7 +291,6 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   agentDiffApproval: true,
   agentWeb: true,
   tavilyApiKey: "",
-  instagramReelsEnabled: true,
   mobileFullscreen: false,
 
   keepAwakeWhileWriting: true,
@@ -1324,6 +1322,18 @@ export default class CorvusPlugin extends Plugin {
       } catch (err) {
 
         console.error(`[corvus] migration of ${mv.legado} failed:`, err);
+      }
+    }
+    const appRoot = CHATS_FOLDER.split("/")[0];
+    for (const m of legacyModeMoves(appRoot, CHATS_FOLDER, CHAT_MODES)) {
+      if (!(await ad.exists(m.de))) continue;
+      const origem = await ad.list(m.de);
+      if (origem.files.length === 0) continue;
+      try {
+        await this.moverPasta(m.de, m.para);
+        mudou = true;
+      } catch (err) {
+        console.error(`[corvus] migration of ${m.de} failed:`, err);
       }
     }
     if (mudou) {

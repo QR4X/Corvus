@@ -183,24 +183,6 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     network: true,
   },
   {
-    name: "fetch_reel_transcript",
-    description:
-      "Fetches the transcript and caption of an Instagram Reel or video URL. Use this tool whenever the user provides an Instagram Reel link and asks to summarize, analyze, extract ideas, or work with its contents.",
-    parameters: {
-      type: "object",
-      properties: {
-        url: {
-          type: "string",
-          description:
-            "The full Instagram Reel or video URL (e.g. https://www.instagram.com/reel/C8xyz/).",
-        },
-      },
-      required: ["url"],
-    },
-    destructive: false,
-    network: true,
-  },
-  {
     name: "generate_image",
     description:
       "Generates an image from a text prompt and renders it in the conversation (saved in the vault). Use when the user asks for an image, illustration, mockup, logo, icon, cover, etc. The user confirms the model in a modal before generating — you do NOT choose the model. Write a rich, specific visual prompt. No need to switch the chat model.",

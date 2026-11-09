@@ -13,7 +13,6 @@ const BOOL_KEYS = [
   "mobileFullscreen",
   "hapticsEnabled",
   "ragStreamShards",
-  "instagramReelsEnabled",
   "keepAwakeWhileWriting",
 ] as const;
 
@@ -68,8 +67,6 @@ export function readControl(s: CorvusSettings, key: ControlKey): boolean | strin
 
     case "agentWeb":
       return s.agentWeb !== false;
-    case "instagramReelsEnabled":
-      return s.instagramReelsEnabled !== false;
     case "keepAwakeWhileWriting":
       return s.keepAwakeWhileWriting !== false;
     case "travarNoLimite":

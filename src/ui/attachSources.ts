@@ -125,8 +125,7 @@ export function artifactIcon(ext: string): string {
     : "file-audio";
 }
 
-export function noteKind(path: string): "link" | "pasted" | "reel" | "vault" {
-  if (path.startsWith("🎞️") || path.includes("Reel (")) return "reel";
+export function noteKind(path: string): "link" | "pasted" | "vault" {
   if (path.includes(" — http") || /^https?:\/\//.test(path)) return "link";
   if (path.startsWith("Pasted text")) return "pasted";
   return "vault";
@@ -143,7 +142,6 @@ export function attachmentThumb(
   if (a.type === "pdf") return { kind: "emoji", char: "📕" };
   if (a.type === "audio") return { kind: "emoji", char: "🎙️" };
   const origem = noteKind(a.path);
-  if (origem === "reel") return { kind: "emoji", char: "🎞️" };
   if (origem === "link") return { kind: "emoji", char: "🔗" };
   if (origem === "pasted") return { kind: "emoji", char: "📋" };
   return { kind: "emoji", char: "📄" };

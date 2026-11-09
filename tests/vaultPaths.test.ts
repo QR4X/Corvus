@@ -4,6 +4,7 @@ import {
   CHATS_FOLDER,
   HIDDEN_MOVES,
   isHiddenPath,
+  legacyModeMoves,
   shouldMigrate,
 } from "../src/core/vaultPaths";
 
@@ -42,6 +43,19 @@ describe("isHiddenPath", () => {
     expect(isHiddenPath("corvus-ai/chats/x.md")).toBe(false);
 
     expect(isHiddenPath("notas/plano.v2/x.md")).toBe(false);
+  });
+});
+
+describe("legacyModeMoves", () => {
+  it("aponta modos na raiz do app para dentro de corvus/chats", () => {
+    const moves = legacyModeMoves("corvus", "corvus/chats", ["chat", "vault-qa", "agent"]);
+    expect(moves).toContainEqual({ de: "corvus/agent", para: "corvus/chats/agent" });
+    expect(moves).toContainEqual({ de: "corvus/chat", para: "corvus/chats/chat" });
+    expect(moves).toContainEqual({ de: "corvus/vault-qa", para: "corvus/chats/vault-qa" });
+  });
+
+  it("não cria par quando a raiz já é o próprio chatsFolder", () => {
+    expect(legacyModeMoves("corvus/chats", "corvus/chats", ["chat"])).toEqual([]);
   });
 });
 
