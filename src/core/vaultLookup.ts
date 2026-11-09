@@ -8,7 +8,7 @@
 // busca, e duas cópias de uma coisa que fala com o índice, com o effort e com
 // a linha do tempo divergiriam na primeira mudança de qualquer um dos três.
 
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { getTranslations } from "../i18n";
 import { hybridSearch } from "../rag/hybrid";
 import { effortToVaultLookup } from "./effort";
@@ -32,7 +32,7 @@ export async function buscarContextoDoVault({
   addMessage,
   updateActivity,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   t: ReturnType<typeof getTranslations>;
   effort: string;
   query: string;
@@ -106,7 +106,7 @@ export async function buscarContextoDoVault({
     });
     return bloco;
   } catch (err) {
-    console.error("[axxa] vault search falhou:", err);
+    console.error("[corvus] vault search falhou:", err);
     updateActivity(searchActivityId, {
       phase: "failed",
       iconFailed: "x-circle",

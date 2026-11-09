@@ -3,7 +3,7 @@
 // Extraído da StarterScreen (removida na limpeza pós-ds-1.0) — a NewChatScreen
 // e futuros consumidores importam daqui.
 
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { tr } from "../i18n/tr";
 
 export const PROVIDERS = [
@@ -27,7 +27,7 @@ export const PROVIDERS = [
 export type ProviderHealth = "off" | "unknown" | "ok" | "fail";
 
 export function providerHealth(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   id: string
 ): ProviderHealth {
   if (!providerConfigured(plugin, id)) return "off";
@@ -38,14 +38,14 @@ export function providerHealth(
 
 /** Dá pra escolher este provider no chat? Só o que sabidamente não funciona
  *  fica de fora — sem credencial, ou reprovado no último teste. */
-export function providerUsable(plugin: AxxaPlugin, id: string): boolean {
+export function providerUsable(plugin: CorvusPlugin, id: string): boolean {
   const h = providerHealth(plugin, id);
   return h === "ok" || h === "unknown";
 }
 
 /** Por que este provider está bloqueado — vai no title do item desabilitado. */
 export function providerBlockedReason(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   id: string
 ): string | null {
   switch (providerHealth(plugin, id)) {
@@ -59,7 +59,7 @@ export function providerBlockedReason(
 }
 
 /** Provider tem credencial configurada? (ollama não tem key — checa endpoint) */
-export function providerConfigured(plugin: AxxaPlugin, id: string): boolean {
+export function providerConfigured(plugin: CorvusPlugin, id: string): boolean {
   const s = plugin.settings;
   switch (id) {
     case "anthropic": return !!s.anthropicApiKey?.trim();

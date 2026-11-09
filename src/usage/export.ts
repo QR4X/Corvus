@@ -1,7 +1,7 @@
 // src/usage/export.ts
 // Exportadores do Usage report — Markdown + PDF.
 //
-// Markdown: gera string formatada, salva em axxa-ai/reports/usage-{YYYY-MM-DD_HH-MM-SS}-{rand}.md
+// Markdown: gera string formatada, salva em corvus-ai/reports/usage-{YYYY-MM-DD_HH-MM-SS}-{rand}.md
 // PDF: usa Electron BrowserWindow.printToPDF quando disponível (desktop),
 //      cai pra window.print() (com CSS print-only) no resto.
 
@@ -16,7 +16,7 @@ import {
 import { formatCompact } from "./format";
 
 /** Pasta default pra reports — fica fora do generationPath pra não poluir. */
-const REPORTS_FOLDER = "axxa-ai/reports";
+const REPORTS_FOLDER = "corvus-ai/reports";
 
 function tsFileName(): string {
   // v0.1.228: toISOString().slice(0,19) descarta os ms — dois reports no mesmo
@@ -69,11 +69,11 @@ export function generateUsageMarkdown(
   lines.push(`total_tokens_out: ${agg.total.tokensOut}`);
   lines.push(`has_unknown_pricing: ${agg.total.hasUnknownCost}`);
   lines.push("tags:");
-  lines.push("  - axxa-usage-report");
+  lines.push("  - corvus-usage-report");
   lines.push("---");
   lines.push("");
 
-  lines.push(`# AXXA Agent — Usage Report`);
+  lines.push(`# Corvus — Usage Report`);
   lines.push("");
   lines.push(`> Period: **${periodLabel(agg, periodDays)}** · generated ${generatedAt}`);
   lines.push("");
@@ -161,7 +161,7 @@ export interface ExportResult {
   format: "md" | "html" | "pdf";
 }
 
-/** Salva o Markdown no vault em axxa-ai/reports/. */
+/** Salva o Markdown no vault em corvus-ai/reports/. */
 export async function saveUsageMarkdown(
   app: App,
   agg: UsageAggregate,

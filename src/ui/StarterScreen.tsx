@@ -7,7 +7,7 @@
 // As conversas gravadas NÃO moram aqui: cada módulo tem a sua home (ver
 // ModuleHome.tsx), que é onde se escolhe qual abrir. Esta tela é pra escrever.
 
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
 import { MODULES } from "./modules";
@@ -30,7 +30,7 @@ export function StarterScreen({
   plugin,
   session,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
 }) {
   const cfg = session.config;
@@ -40,7 +40,7 @@ export function StarterScreen({
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
 
   return (
-    <div className="axxa-starter">
+    <div className="corvus-starter">
       {/* O MESMO controle que filtra a lista na home (ver Segmented.tsx) —
           aqui com o nome inteiro, que cabe em três colunas. */}
       <Segmented
@@ -50,14 +50,14 @@ export function StarterScreen({
         onChange={(id) => session.setMode(id as ChatMode)}
       />
 
-      <div className="axxa-starter-hero">
-        <Icon name={mode.icon} size={26} className="axxa-starter-mark" />
-        <h2 className="axxa-starter-title">{greeting()}.</h2>
-        <p className="axxa-starter-sub">{tr(mode.tagline)}</p>
+      <div className="corvus-starter-hero">
+        <Icon name={mode.icon} size={26} className="corvus-starter-mark" />
+        <h2 className="corvus-starter-title">{greeting()}.</h2>
+        <p className="corvus-starter-sub">{tr(mode.tagline)}</p>
       </div>
 
       {!hasKey && (
-        <div className="axxa-callout">
+        <div className="corvus-callout">
           <Icon name="key-round" size={16} />
           <span>
             {tr("No API key for {provider} yet — add one to start.", {

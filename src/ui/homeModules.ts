@@ -71,7 +71,7 @@ export interface Trabalho {
 /**
  * O que foi FEITO no período — não o que foi gasto.
  *
- * Ações é o número mais AXXA de todos: é o equivalente daqui às linhas de
+ * Ações é o número mais Corvus de todos: é o equivalente daqui às linhas de
  * código do painel do Claude Code. Token mede consumo; ação mede trabalho no
  * vault.
  */

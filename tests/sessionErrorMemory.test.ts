@@ -3,7 +3,7 @@ import { ChatSession } from "../src/core/session";
 import { useChatStore } from "../src/store/chat";
 import * as persistence from "../src/core/chatPersistence";
 import { keepConversationMessage, storeMessagesToProvider } from "../src/agent/conversation";
-import type AxxaPlugin from "../src/main";
+import type CorvusPlugin from "../src/main";
 
 const initial = useChatStore.getState();
 const error = {
@@ -33,14 +33,14 @@ function setup() {
     app: {},
     settings: {
       defaultProvider: "openrouter", openrouterModel: "deepseek/deepseek-v4-flash-0731",
-      defaultMode: "agent", defaultEffort: "low", language: "en", chatsPath: ".axxa/chats",
+      defaultMode: "agent", defaultEffort: "low", language: "en", chatsPath: ".corvus/chats",
     },
     onSettingsChange: () => () => {},
     loadChatSummaries: async () => [],
     upsertChatSummary: vi.fn(), markChatUnread: vi.fn(), clearChatUnread: vi.fn(),
     unreadSet: () => new Set<string>(),
   };
-  session = new ChatSession(plugin as unknown as AxxaPlugin);
+  session = new ChatSession(plugin as unknown as CorvusPlugin);
   return { saved, save, session };
 }
 

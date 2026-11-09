@@ -43,8 +43,8 @@ export function thinkingStatus(activity?: ActivityMeta): string {
  */
 export function ThinkingGlyph() {
   return (
-    <span className="axxa-thinking-glyph" aria-hidden="true">
-      <svg viewBox="0 0 24 24" className="axxa-glyph-a">
+    <span className="corvus-thinking-glyph" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="corvus-glyph-a">
         <g
           stroke="currentColor"
           strokeWidth="2.4"
@@ -57,7 +57,7 @@ export function ThinkingGlyph() {
           <line x1="18.4" y1="5.6" x2="5.6" y2="18.4" />
         </g>
       </svg>
-      <svg viewBox="0 0 24 24" className="axxa-glyph-b">
+      <svg viewBox="0 0 24 24" className="corvus-glyph-b">
         <g
           stroke="currentColor"
           strokeWidth="3.2"
@@ -69,7 +69,7 @@ export function ThinkingGlyph() {
           <line x1="17.2" y1="9" x2="6.8" y2="15" />
         </g>
       </svg>
-      <svg viewBox="0 0 24 24" className="axxa-glyph-c">
+      <svg viewBox="0 0 24 24" className="corvus-glyph-c">
         <path
           d="M12 2.5c.7 4.4 2.4 6.1 6.8 6.8v1.4c-4.4.7-6.1 2.4-6.8 6.8h-1.4c-.7-4.4-2.4-6.1-6.8-6.8V9.3c4.4-.7 6.1-2.4 6.8-6.8z"
           fill="currentColor"
@@ -107,14 +107,14 @@ export function ThinkingLine({
   return (
     <button
       type="button"
-      className="axxa-thinking"
+      className="corvus-thinking"
       disabled={count === 0}
       onClick={onOpen}
     >
       <ThinkingGlyph />
-      <span className="axxa-thinking-label">
-        <span className="axxa-thinking-time">{elapsedLabel(passado)}</span>
-        <span className="axxa-thinking-dot"> · </span>
+      <span className="corvus-thinking-label">
+        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
+        <span className="corvus-thinking-dot"> · </span>
         {texto}
       </span>
       {count > 0 && <Icon name="chevron-right" size={15} />}
@@ -138,11 +138,11 @@ export function ThinkingInline({ since }: { since: number }) {
   }, [since]);
   const passado = Math.max(0, agora - since);
   return (
-    <span className="axxa-thinking is-inline">
+    <span className="corvus-thinking is-inline">
       <ThinkingGlyph />
-      <span className="axxa-thinking-label">
-        <span className="axxa-thinking-time">{elapsedLabel(passado)}</span>
-        <span className="axxa-thinking-dot"> · </span>
+      <span className="corvus-thinking-label">
+        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
+        <span className="corvus-thinking-dot"> · </span>
         {tr("Waiting for model response")}
       </span>
     </span>

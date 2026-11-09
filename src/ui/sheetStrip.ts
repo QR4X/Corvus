@@ -7,7 +7,7 @@
 // tem `contain: strict`, que prende o nosso `position: fixed` dentro da folha —
 // e a reserva aparecia como uma barra de outra cor grudada no fim dela. O CSS
 // pinta essa reserva com a cor da folha enquanto há folha aberta (ver
-// `.workspace-drawer-inner.axxa-sheet-open` em styles/main.css).
+// `.workspace-drawer-inner.corvus-sheet-open` em styles/main.css).
 //
 // Quem sabe que há folha aberta é a nossa árvore; a caixa a pintar é do
 // Obsidian, alguns andares acima. Até a 0.9.15 o CSS ligava as duas pontas com
@@ -23,7 +23,7 @@
 // qualquer ordem.
 
 /** A classe que o CSS da faixa espera na `.workspace-drawer-inner`. */
-export const SHEET_OPEN_CLASS = "axxa-sheet-open";
+export const SHEET_OPEN_CLASS = "corvus-sheet-open";
 
 /** A caixa do Obsidian que guarda a reserva da barra de gestos, se houver
  *  (fora da gaveta do celular, não há). */
@@ -36,6 +36,6 @@ export function syncSheetStrip(inner: Element | null | undefined): void {
   if (!inner) return;
   inner.classList.toggle(
     SHEET_OPEN_CLASS,
-    inner.querySelector(".axxa-root .axxa-sheet-layer.is-open") !== null
+    inner.querySelector(".corvus-root .corvus-sheet-layer.is-open") !== null
   );
 }

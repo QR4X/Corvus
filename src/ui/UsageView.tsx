@@ -21,7 +21,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { Notice } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import { useChatSummaries, providerIcon } from "./ChatList";
 import { Icon } from "./Icon";
@@ -104,7 +104,7 @@ export function UsageView({
   onBack,
   onOpenChat,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   /** O recorte. Mora no App: abrir uma conversa daqui desmonta esta tela, e
    *  a volta tem que achar o recorte onde ele estava. */
@@ -240,7 +240,7 @@ export function UsageView({
       );
       new Notice(tr("Report saved: {path}", { path: r.path }));
     } catch (err) {
-      console.error("[axxa] salvar report falhou:", err);
+      console.error("[corvus] salvar report falhou:", err);
       new Notice(
         tr("Could not save the report: {error}", {
           error: err instanceof Error ? err.message : String(err),
@@ -259,24 +259,24 @@ export function UsageView({
   const vazio = agg.total.chats === 0;
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
+    <div className="corvus-chat">
+      <header className="corvus-topbar is-bare">
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Back")}
           onClick={onBack}
         >
           <Icon name="arrow-left" />
         </button>
-        <span className="axxa-brand axxa-topbar-brand">{tr("Usage")}</span>
+        <span className="corvus-brand corvus-topbar-brand">{tr("Usage")}</span>
         {/* O relatório é a SAÍDA desta tela, e mora na barra, como o "New"
             das folhas: ele cria uma nota, e no app accent é o que cria.
             Flutuando embaixo, ele cobria justamente a lista que a pessoa
             tinha rolado pra ler. */}
         <button
           type="button"
-          className="axxa-topbar-action axxa-topbar-end"
+          className="corvus-topbar-action corvus-topbar-end"
           aria-label={tr("Save this report as a note")}
           title={tr("Save this report as a note")}
           disabled={salvando || vazio}
@@ -287,7 +287,7 @@ export function UsageView({
         </button>
       </header>
 
-      <div className="axxa-messages axxa-home axxa-usage-page">
+      <div className="corvus-messages corvus-home corvus-usage-page">
         {/* O que sobra HOJE vem antes de tudo: é a pergunta do dia a dia
             ("ainda dá pra usar?"), e não depende do período nem dos filtros
             — cota é do dia de cada provider. */}
@@ -305,19 +305,19 @@ export function UsageView({
 
         {/* A resposta da pergunta que a pessoa acabou de fazer com o
             recorte. */}
-        <section className="axxa-usage is-hero" aria-label={tr("Totals")}>
-          <span className="axxa-usage-meta">
-            <span className="axxa-usage-big">
+        <section className="corvus-usage is-hero" aria-label={tr("Totals")}>
+          <span className="corvus-usage-meta">
+            <span className="corvus-usage-big">
               {m === "cost"
                 ? formatUsdRounded(agg.total.cost)
                 : formatCompact(agg.total.tokensIn + agg.total.tokensOut)}
             </span>
-            <span className="axxa-usage-unit">
+            <span className="corvus-usage-unit">
               {m === "cost" ? tr("spent") : tr("tokens")}
             </span>
             {m === "cost" && agg.total.hasUnknownCost && (
               <span
-                className="axxa-usage-approx"
+                className="corvus-usage-approx"
                 title={tr("Some models have no public price — this is a floor")}
               >
                 +
@@ -326,16 +326,16 @@ export function UsageView({
           </span>
           {/* Quantas conversas, e ONDE elas caíram: "All time" sozinho não
               diz se o total é de um mês ou de dois anos. */}
-          <span className="axxa-usage-sub">
+          <span className="corvus-usage-sub">
             {contagem(agg.total.chats)}
             {!vazio && (
               <>
-                <span className="axxa-usage-sep">·</span>
+                <span className="corvus-usage-sep">·</span>
                 {faixaDeDatas(agg.periodStart, agg.periodEnd)}
               </>
             )}
           </span>
-          <div className="axxa-mods">
+          <div className="corvus-mods">
             {/* As setas são as do cartão de projeto: o que SOBE sai daqui
                 pro modelo, o que DESCE volta dele. */}
             <Modulo
@@ -396,15 +396,15 @@ export function UsageView({
         )}
 
         {visiveis.length > 0 && (
-          <section className="axxa-home-block axxa-usage-filters">
-            <div className="axxa-home-headrow">
-              <span className="axxa-section-label">{tr("Filter")}</span>
+          <section className="corvus-home-block corvus-usage-filters">
+            <div className="corvus-home-headrow">
+              <span className="corvus-section-label">{tr("Filter")}</span>
               {/* Limpa os filtros de LISTA; o período fica — ele tem o
                   seletor dele, lá em cima, e não é isto que o botão diz. */}
               {marcados(f) > 0 && (
                 <button
                   type="button"
-                  className="axxa-home-filter is-accent"
+                  className="corvus-home-filter is-accent"
                   onClick={() => setF({ ...FILTRO_VAZIO, days: f.days })}
                 >
                   <Icon name="x" size={16} />
@@ -413,15 +413,15 @@ export function UsageView({
               )}
             </div>
             {visiveis.map((d) => (
-              <div key={d.chave} className="axxa-usage-dim">
+              <div key={d.chave} className="corvus-usage-dim">
                 {/* As TRÊS mais usadas à vista; o resto mora na lista do "See
                     all" — o mesmo "See all N ›" da home, na linha do nome. */}
-                <div className="axxa-usage-dim-head">
-                  <span className="axxa-usage-dim-label">{d.titulo}</span>
+                <div className="corvus-usage-dim-head">
+                  <span className="corvus-usage-dim-label">{d.titulo}</span>
                   {d.ops.length > A_VISTA && (
                     <button
                       type="button"
-                      className="axxa-home-filter is-accent"
+                      className="corvus-home-filter is-accent"
                       onClick={() => verTodos(d.chave)}
                     >
                       <span>{tr("See all {n}", { n: d.ops.length })}</span>
@@ -429,7 +429,7 @@ export function UsageView({
                     </button>
                   )}
                 </div>
-                <div className="axxa-choices" role="group" aria-label={d.titulo}>
+                <div className="corvus-choices" role="group" aria-label={d.titulo}>
                   {opcoesAVista(d.ops, f[d.chave]).map((o) => {
                     const on = f[d.chave].includes(o.id);
                     const nome = d.nome(o.id);
@@ -437,7 +437,7 @@ export function UsageView({
                       <button
                         key={o.id}
                         type="button"
-                        className={on ? "axxa-choice is-on" : "axxa-choice"}
+                        className={on ? "corvus-choice is-on" : "corvus-choice"}
                         aria-pressed={on}
                         // Lido em voz alta, "GPT 5 13" não diz o que é o 13.
                         aria-label={`${nome}, ${contagem(o.count)}`}
@@ -447,7 +447,7 @@ export function UsageView({
                       >
                         <Icon name={d.icone(o.id)} size={16} />
                         <span>{nome}</span>
-                        <sup className="axxa-choice-count" aria-hidden="true">
+                        <sup className="corvus-choice-count" aria-hidden="true">
                           {o.count}
                         </sup>
                       </button>
@@ -460,7 +460,7 @@ export function UsageView({
         )}
 
         {vazio ? (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name="chart-no-axes-column" size={42} />
             <p>
               {chats.length === 0
@@ -471,9 +471,9 @@ export function UsageView({
         ) : (
           <>
             {/* "O caro é qual?", sem abrir conversa nenhuma. */}
-            <section className="axxa-home-block">
-              <span className="axxa-section-label">{tr("By model")}</span>
-              <div className="axxa-usage-list">
+            <section className="corvus-home-block">
+              <span className="corvus-section-label">{tr("By model")}</span>
+              <div className="corvus-usage-list">
                 {modelos.map((r) => (
                   <LinhaDeFatia
                     key={r.id}
@@ -486,11 +486,11 @@ export function UsageView({
               </div>
             </section>
 
-            <section className="axxa-home-block">
-              <span className="axxa-section-label">
+            <section className="corvus-home-block">
+              <span className="corvus-section-label">
                 {m === "cost" ? tr("Most expensive chats") : tr("Biggest chats")}
               </span>
-              <div className="axxa-usage-list">
+              <div className="corvus-usage-list">
                 {topo.map((c) => (
                   <LinhaDeConversa
                     key={c.id}
@@ -522,10 +522,10 @@ export function UsageView({
             onChange={setBuscaLista}
           />
         )}
-        <p className="axxa-usage-report-head">
+        <p className="corvus-usage-report-head">
           {escopo.map((parte, i) => (
             <span key={i}>
-              {i > 0 && <span className="axxa-usage-sep">·</span>}
+              {i > 0 && <span className="corvus-usage-sep">·</span>}
               {parte}
             </span>
           ))}
@@ -533,7 +533,7 @@ export function UsageView({
         {achadas.length === 0 ? (
           <SheetNote>{tr("Nothing matches that search.")}</SheetNote>
         ) : (
-          <div className="axxa-usage-list">
+          <div className="corvus-usage-list">
             {relatorio.usadas.map((r) => (
               <LinhaDeFatia
                 key={r.id}
@@ -594,31 +594,31 @@ function GraficoNoTempo({
   const alvo = colunas.find((c) => c.inicio === escolhida) ?? alta;
 
   return (
-    <section className="axxa-home-block" aria-label={tr("Tokens over time")}>
-      <div className="axxa-home-headrow">
-        <span className="axxa-section-label">{tr("Over time")}</span>
-        <span className="axxa-chart-step">{tr(PASSO[passo])}</span>
+    <section className="corvus-home-block" aria-label={tr("Tokens over time")}>
+      <div className="corvus-home-headrow">
+        <span className="corvus-section-label">{tr("Over time")}</span>
+        <span className="corvus-chart-step">{tr(PASSO[passo])}</span>
       </div>
-      <div className="axxa-chart">
+      <div className="corvus-chart">
         {/* A legenda existe SEMPRE: dois tons da mesma cor se distinguem, mas
             só ela diz qual dos dois é o quê. */}
-        <div className="axxa-chart-legend">
-          <span className="axxa-chart-key">
-            <span className="axxa-chart-swatch is-in" aria-hidden="true" />
+        <div className="corvus-chart-legend">
+          <span className="corvus-chart-key">
+            <span className="corvus-chart-swatch is-in" aria-hidden="true" />
             {tr("Sent")}
           </span>
-          <span className="axxa-chart-key">
-            <span className="axxa-chart-swatch is-out" aria-hidden="true" />
+          <span className="corvus-chart-key">
+            <span className="corvus-chart-swatch is-out" aria-hidden="true" />
             {tr("Received")}
           </span>
           {/* O topo da escala. Sem ele, altura é só forma: dá pra comparar as
               colunas entre si e com mais nada. */}
-          <span className="axxa-chart-peak">
+          <span className="corvus-chart-peak">
             {tr("peak {n}", { n: formatCompact(pico) })}
           </span>
         </div>
         <div
-          className="axxa-chart-plot"
+          className="corvus-chart-plot"
           role="group"
           aria-label={
             passo === "day"
@@ -634,8 +634,8 @@ function GraficoNoTempo({
               type="button"
               className={
                 c.inicio === alvo.inicio
-                  ? "axxa-chart-col is-on"
-                  : "axxa-chart-col"
+                  ? "corvus-chart-col is-on"
+                  : "corvus-chart-col"
               }
               aria-pressed={c.inicio === alvo.inicio}
               // O mesmo texto da linha de baixo: no computador sai ao passar o
@@ -657,9 +657,9 @@ function GraficoNoTempo({
                   DEDO (toda a altura, toda a faixa) e a pilha é o desenho —
                   que tem largura de teto pra não virar um bloco gordo quando
                   são poucas. */}
-              <span className="axxa-chart-stack">
+              <span className="corvus-chart-stack">
                 <span
-                  className="axxa-chart-air"
+                  className="corvus-chart-air"
                   style={{ flexGrow: Math.max(pico - c.total, 0) }}
                 />
                 {c.saida > 0 && (
@@ -670,15 +670,15 @@ function GraficoNoTempo({
                     // seletor no navegador.
                     className={
                       c.entrada > 0
-                        ? "axxa-chart-bar is-out has-in"
-                        : "axxa-chart-bar is-out"
+                        ? "corvus-chart-bar is-out has-in"
+                        : "corvus-chart-bar is-out"
                     }
                     style={{ flexGrow: c.saida }}
                   />
                 )}
                 {c.entrada > 0 && (
                   <span
-                    className="axxa-chart-bar is-in"
+                    className="corvus-chart-bar is-in"
                     style={{ flexGrow: c.entrada }}
                   />
                 )}
@@ -689,15 +689,15 @@ function GraficoNoTempo({
         {/* As pontas do eixo. Rótulo em toda coluna não caberia, e não é o que
             se lê num gráfico deste tamanho: o que se lê é a forma, e o de
             quando ela começa e termina. */}
-        <div className="axxa-chart-axis">
+        <div className="corvus-chart-axis">
           <span>{colunas[0].rotulo}</span>
           <span>{colunas[colunas.length - 1].rotulo}</span>
         </div>
-        <p className="axxa-chart-readout">
-          <span className="axxa-chart-when">{alvo.titulo}</span>
-          <span className="axxa-usage-sep">·</span>
+        <p className="corvus-chart-readout">
+          <span className="corvus-chart-when">{alvo.titulo}</span>
+          <span className="corvus-usage-sep">·</span>
           {tr("{n} sent", { n: formatCompact(alvo.entrada) })}
-          <span className="axxa-usage-sep">·</span>
+          <span className="corvus-usage-sep">·</span>
           {tr("{n} received", { n: formatCompact(alvo.saida) })}
         </p>
       </div>
@@ -728,20 +728,20 @@ function LinhaDeFatia({
   const preco =
     r.preco === "gratis" ? tr("Free") : r.preco === "sem-preco" ? "—" : formatUsd(r.cost);
   return (
-    <div className="axxa-usage-row">
+    <div className="corvus-usage-row">
       <span
-        className="axxa-share"
-        style={{ "--axxa-pct": r.pct } as CSSProperties}
+        className="corvus-share"
+        style={{ "--corvus-pct": r.pct } as CSSProperties}
         aria-hidden="true"
       >
-        <span className="axxa-donut" />
+        <span className="corvus-donut" />
         <Icon name={icone} size={16} />
       </span>
-      <span className="axxa-usage-row-text">
-        <span className="axxa-usage-row-name">{nome}</span>
-        <span className="axxa-usage-row-sub">
+      <span className="corvus-usage-row-text">
+        <span className="corvus-usage-row-name">{nome}</span>
+        <span className="corvus-usage-row-sub">
           {chats}
-          <span className="axxa-usage-sep">·</span>
+          <span className="corvus-usage-sep">·</span>
           {m === "cost"
             ? tr("{n} tokens", { n: formatCompact(r.tokens) })
             : r.preco === "sem-preco"
@@ -749,15 +749,15 @@ function LinhaDeFatia({
               : tr("free")}
         </span>
       </span>
-      <span className="axxa-usage-row-end">
+      <span className="corvus-usage-row-end">
         <span
-          className="axxa-usage-row-value"
+          className="corvus-usage-row-value"
           title={r.preco === "sem-preco" ? tr("No public price") : undefined}
         >
           {m === "cost" ? preco : formatCompact(r.tokens)}
-          {r.piso && <span className="axxa-usage-approx">+</span>}
+          {r.piso && <span className="corvus-usage-approx">+</span>}
         </span>
-        <span className="axxa-usage-row-pct">
+        <span className="corvus-usage-row-pct">
           {r.quase ? "<1%" : `${r.pct}%`}
         </span>
       </span>
@@ -788,32 +788,32 @@ const FANTASMA = [22, 34, 26, 42, 30, 47, 26, 38, 30, 44, 25, 35];
  */
 function GraficoVazio({ motivo }: { motivo: string }) {
   return (
-    <section className="axxa-home-block" aria-label={tr("Tokens over time")}>
-      <div className="axxa-home-headrow">
-        <span className="axxa-section-label">{tr("Over time")}</span>
+    <section className="corvus-home-block" aria-label={tr("Tokens over time")}>
+      <div className="corvus-home-headrow">
+        <span className="corvus-section-label">{tr("Over time")}</span>
       </div>
-      <div className="axxa-chart is-empty">
+      <div className="corvus-chart is-empty">
         {/* A legenda fica: é ela que diz o que este lugar vai mostrar. */}
-        <div className="axxa-chart-legend">
-          <span className="axxa-chart-key">
-            <span className="axxa-chart-swatch is-in" aria-hidden="true" />
+        <div className="corvus-chart-legend">
+          <span className="corvus-chart-key">
+            <span className="corvus-chart-swatch is-in" aria-hidden="true" />
             {tr("Sent")}
           </span>
-          <span className="axxa-chart-key">
-            <span className="axxa-chart-swatch is-out" aria-hidden="true" />
+          <span className="corvus-chart-key">
+            <span className="corvus-chart-swatch is-out" aria-hidden="true" />
             {tr("Received")}
           </span>
         </div>
-        <div className="axxa-chart-plot">
+        <div className="corvus-chart-plot">
           {FANTASMA.map((h, i) => (
-            <span key={i} className="axxa-chart-col" aria-hidden="true">
-              <span className="axxa-chart-stack">
-                <span className="axxa-chart-air" style={{ flexGrow: 100 - h }} />
-                <span className="axxa-chart-bar is-ghost" style={{ flexGrow: h }} />
+            <span key={i} className="corvus-chart-col" aria-hidden="true">
+              <span className="corvus-chart-stack">
+                <span className="corvus-chart-air" style={{ flexGrow: 100 - h }} />
+                <span className="corvus-chart-bar is-ghost" style={{ flexGrow: h }} />
               </span>
             </span>
           ))}
-          <p className="axxa-chart-motivo">{motivo}</p>
+          <p className="corvus-chart-motivo">{motivo}</p>
         </div>
       </div>
     </section>
@@ -827,21 +827,21 @@ function GraficoVazio({ motivo }: { motivo: string }) {
  */
 function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
   return (
-    <div className="axxa-usage-row is-idle">
+    <div className="corvus-usage-row is-idle">
       <span
-        className="axxa-share"
-        style={{ "--axxa-pct": 0 } as CSSProperties}
+        className="corvus-share"
+        style={{ "--corvus-pct": 0 } as CSSProperties}
         aria-hidden="true"
       >
-        <span className="axxa-donut" />
+        <span className="corvus-donut" />
         <Icon name={icone} size={16} />
       </span>
-      <span className="axxa-usage-row-text">
-        <span className="axxa-usage-row-name">{nome}</span>
-        <span className="axxa-usage-row-sub">{tr("No chats in this slice")}</span>
+      <span className="corvus-usage-row-text">
+        <span className="corvus-usage-row-name">{nome}</span>
+        <span className="corvus-usage-row-sub">{tr("No chats in this slice")}</span>
       </span>
-      <span className="axxa-usage-row-end">
-        <span className="axxa-usage-row-value">—</span>
+      <span className="corvus-usage-row-end">
+        <span className="corvus-usage-row-value">—</span>
       </span>
     </div>
   );
@@ -862,27 +862,27 @@ function LinhaDeConversa({
   onOpen: () => void;
 }) {
   return (
-    <button type="button" className="axxa-usage-row" onClick={onOpen}>
-      <span className="axxa-card-mark" aria-hidden="true">
+    <button type="button" className="corvus-usage-row" onClick={onOpen}>
+      <span className="corvus-card-mark" aria-hidden="true">
         <Icon name={providerIcon(c.provider)} size={20} />
       </span>
-      <span className="axxa-usage-row-text">
-        <span className="axxa-usage-row-name">{c.title || tr("Untitled")}</span>
-        <span className="axxa-usage-row-sub">
+      <span className="corvus-usage-row-text">
+        <span className="corvus-usage-row-name">{c.title || tr("Untitled")}</span>
+        <span className="corvus-usage-row-sub">
           {prettyModelName(c.model)}
-          <span className="axxa-usage-sep">·</span>
+          <span className="corvus-usage-sep">·</span>
           {moduleLabel(c.mode)}
         </span>
       </span>
-      <span className="axxa-usage-row-end">
-        <span className="axxa-usage-row-value">
+      <span className="corvus-usage-row-end">
+        <span className="corvus-usage-row-value">
           {m === "tokens"
             ? formatCompact(c.tokensIn + c.tokensOut)
             : c.cost === 0
               ? tr("Free")
               : formatUsd(c.cost)}
         </span>
-        <span className="axxa-usage-row-pct">{relativeShort(c.date)}</span>
+        <span className="corvus-usage-row-pct">{relativeShort(c.date)}</span>
       </span>
     </button>
   );
@@ -905,14 +905,14 @@ function Modulo({
   unidade: string;
 }) {
   return (
-    <div className="axxa-mod">
-      <span className="axxa-mod-title has-icon">
+    <div className="corvus-mod">
+      <span className="corvus-mod-title has-icon">
         <Icon name={icone} size={12} />
         <span>{rotulo}</span>
       </span>
-      <span className="axxa-mod-row">
-        <span className="axxa-mod-value">{valor}</span>
-        <span className="axxa-mod-unit">{unidade}</span>
+      <span className="corvus-mod-row">
+        <span className="corvus-mod-value">{valor}</span>
+        <span className="corvus-mod-unit">{unidade}</span>
       </span>
     </div>
   );

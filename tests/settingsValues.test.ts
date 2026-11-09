@@ -7,7 +7,7 @@ import {
   readControl,
   writeControl,
 } from "../src/ui/settings/values";
-import type { AxxaSettings } from "../src/main";
+import type { CorvusSettings } from "../src/main";
 
 // No Obsidian 1.13 quem desenha as linhas `control` é o próprio Obsidian, e o
 // gravador padrão dele faz `saveData(settings)` — que mandaria as chaves de API
@@ -16,20 +16,20 @@ import type { AxxaSettings } from "../src/main";
 // `saveSettings()` (quem manda as chaves pro keychain) e NUNCA aceita uma
 // chave de API como control.
 
-function fakeSettings(over: Partial<AxxaSettings> = {}): AxxaSettings {
+function fakeSettings(over: Partial<CorvusSettings> = {}): CorvusSettings {
   return {
     openaiApiKey: "sk-segredo",
     elevenApiKey: "el-segredo",
     openaiTier: 1,
-    chatsPath: "axxa/chats",
-    skillsPath: "axxa-ai/skills",
+    chatsPath: "corvus/chats",
+    skillsPath: "corvus-ai/skills",
     language: "en-us",
     voiceEnabled: true,
     ...over,
-  } as AxxaSettings;
+  } as CorvusSettings;
 }
 
-function fakePlugin(over: Partial<AxxaSettings> = {}) {
+function fakePlugin(over: Partial<CorvusSettings> = {}) {
   const calls: string[] = [];
   return {
     calls,
@@ -105,10 +105,10 @@ describe("conversões", () => {
 
   it("campos ausentes num data.json antigo leem como o padrão", () => {
     const s = fakeSettings({ language: "" });
-    delete (s as Partial<AxxaSettings>).hapticsEnabled;
-    delete (s as Partial<AxxaSettings>).mobileFullscreen;
-    delete (s as Partial<AxxaSettings>).keepAwakeWhileWriting;
-    delete (s as Partial<AxxaSettings>).openaiDataSharing;
+    delete (s as Partial<CorvusSettings>).hapticsEnabled;
+    delete (s as Partial<CorvusSettings>).mobileFullscreen;
+    delete (s as Partial<CorvusSettings>).keepAwakeWhileWriting;
+    delete (s as Partial<CorvusSettings>).openaiDataSharing;
     expect(readControl(s, "hapticsEnabled")).toBe(true);
     expect(readControl(s, "mobileFullscreen")).toBe(false);
     expect(readControl(s, "keepAwakeWhileWriting")).toBe(true);

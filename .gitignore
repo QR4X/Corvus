@@ -30,7 +30,7 @@ yarn-error.log
 output/
 
 # Local config (dev vault path, etc.)
-.axxa.local.json
+.corvus.local.json
 
 # Test Obsidian vault config (not part of the plugin)
 .obsidian/

@@ -18,9 +18,9 @@ import {
 import { tr } from "../i18n/tr";
 
 /** A fonte do `hover-link` (o "Page preview" do Obsidian lista cada uma). É o
- *  tipo da view, `VIEW_TYPE_AXXA` — repetido aqui pra este módulo não puxar a
+ *  tipo da view, `VIEW_TYPE_CORVUS` — repetido aqui pra este módulo não puxar a
  *  view inteira (e o React) pra dentro dos testes. */
-export const FONTE_DO_HOVER = "axxa-agent";
+export const FONTE_DO_HOVER = "corvus";
 
 /** O link interno sob o evento, se ele está dentro de `raiz`. */
 export function linkInterno(

@@ -4,11 +4,11 @@ import {
   providerHealth,
   providerUsable,
 } from "../src/core/providersMeta";
-import type AxxaPlugin from "../src/main";
+import type CorvusPlugin from "../src/main";
 
 /** Plugin mínimo: só o que providersMeta lê. */
-function fake(settings: Record<string, unknown>): AxxaPlugin {
-  return { settings } as unknown as AxxaPlugin;
+function fake(settings: Record<string, unknown>): CorvusPlugin {
+  return { settings } as unknown as CorvusPlugin;
 }
 
 describe("providerHealth", () => {

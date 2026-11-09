@@ -170,14 +170,14 @@ describe("persistência round-trip — edge cases", () => {
     expect(r.messages[1].agentSteps).toEqual([steps2[0]]);
   });
 
-  it("content SEM steps que termina com um comentário axxa-steps falso fica intacto", () => {
+  it("content SEM steps que termina com um comentário corvus-steps falso fica intacto", () => {
     const chat = mkChat([
       { type: "user", content: "oi", timestamp: 1 },
       // sem agentSteps; o texto só PARECE ter o marcador
-      { type: "ai-response", content: "veja <!-- axxa-steps: bogus -->", timestamp: 2 },
+      { type: "ai-response", content: "veja <!-- corvus-steps: bogus -->", timestamp: 2 },
     ]);
     const r = parseChatMarkdown(renderChatMarkdown(chat));
-    expect(r.messages[1].content).toBe("veja <!-- axxa-steps: bogus -->");
+    expect(r.messages[1].content).toBe("veja <!-- corvus-steps: bogus -->");
     expect(r.messages[1].agentSteps).toBeUndefined();
   });
 });

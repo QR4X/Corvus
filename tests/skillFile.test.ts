@@ -80,7 +80,7 @@ describe("skillProblema", () => {
   });
 
   it("não pisa num skill que já existe", () => {
-    const existentes = ["axxa-ai/skills/Weekly review.md"];
+    const existentes = ["corvus-ai/skills/Weekly review.md"];
     expect(skillProblema(draft(), existentes)).toMatch(/already/i);
     // Editando aquele mesmo, o nome dele não é conflito.
     expect(skillProblema(draft(), existentes, existentes[0])).toBeNull();
@@ -89,7 +89,7 @@ describe("skillProblema", () => {
   it("colisão ignora maiúsculas — o disco também ignora", () => {
     expect(
       skillProblema(draft({ name: "WEEKLY REVIEW" }), [
-        "axxa-ai/skills/Weekly review.md",
+        "corvus-ai/skills/Weekly review.md",
       ])
     ).toMatch(/already/i);
   });

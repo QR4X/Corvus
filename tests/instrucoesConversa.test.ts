@@ -11,7 +11,7 @@ const ler = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf8");
 
 /** Um vault de mentira: um arquivo, lido e escrito pelo adapter. */
 function vault(conteudo: string) {
-  const arquivos = new Map<string, string>([[".axxa/chats/chat/c1.md", conteudo]]);
+  const arquivos = new Map<string, string>([[".corvus/chats/chat/c1.md", conteudo]]);
   const app = {
     vault: {
       adapter: {
@@ -21,7 +21,7 @@ function vault(conteudo: string) {
       },
     },
   } as unknown as App;
-  return { app, arquivo: () => arquivos.get(".axxa/chats/chat/c1.md")! };
+  return { app, arquivo: () => arquivos.get(".corvus/chats/chat/c1.md")! };
 }
 
 const CHAT = [
@@ -37,7 +37,7 @@ const CHAT = [
   "tokens_out: 2",
   "message_count: 0",
   "tags:",
-  "  - axxa-chat",
+  "  - corvus-chat",
   "---",
   "# Oi",
   "",
@@ -47,16 +47,16 @@ describe("instruções por conversa", () => {
   it("grava, lê de volta (com quebra de linha e $& intactos) e apaga", async () => {
     const { app, arquivo } = vault(CHAT);
     const texto = "Responda em tópicos.\nCite a nota. Custa $& e $1.";
-    await setChatInstructions(app, ".axxa/chats", "chat", "c1", texto);
-    expect((await loadChat(app, ".axxa/chats", "chat", "c1")).instructions).toBe(texto);
+    await setChatInstructions(app, ".corvus/chats", "chat", "c1", texto);
+    expect((await loadChat(app, ".corvus/chats", "chat", "c1")).instructions).toBe(texto);
     expect(arquivo()).toContain("# Oi");
     // trocar não duplica a linha
-    await setChatInstructions(app, ".axxa/chats", "chat", "c1", "Outra.");
+    await setChatInstructions(app, ".corvus/chats", "chat", "c1", "Outra.");
     expect(arquivo().match(/^instructions:/gm)).toHaveLength(1);
     // vazio apaga
-    await setChatInstructions(app, ".axxa/chats", "chat", "c1", "   ");
+    await setChatInstructions(app, ".corvus/chats", "chat", "c1", "   ");
     expect(arquivo()).not.toMatch(/^instructions:/m);
-    expect((await loadChat(app, ".axxa/chats", "chat", "c1")).instructions).toBeUndefined();
+    expect((await loadChat(app, ".corvus/chats", "chat", "c1")).instructions).toBeUndefined();
   });
 
   it("o ⋯ da conversa abre a folha, que mora no App", () => {

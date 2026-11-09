@@ -7,7 +7,7 @@
 // componente separado seria o mesmo desenho contado duas vezes — foi assim
 // que o campo de busca acabou existindo em duas versões.
 //
-// O número de colunas vira token (`--axxa-seg-n`) e o thumb se acha sozinho.
+// O número de colunas vira token (`--corvus-seg-n`) e o thumb se acha sozinho.
 
 import type { CSSProperties } from "react";
 
@@ -41,13 +41,13 @@ export function Segmented({
 
   return (
     <div
-      className="axxa-modes"
+      className="corvus-modes"
       role="group"
       aria-label={label}
       style={
         {
-          "--axxa-seg": idx,
-          "--axxa-seg-n": options.length,
+          "--corvus-seg": idx,
+          "--corvus-seg-n": options.length,
         } as CSSProperties
       }
     >
@@ -55,12 +55,12 @@ export function Segmented({
         <button
           key={o.id}
           type="button"
-          className={o.id === value ? "axxa-mode is-active" : "axxa-mode"}
+          className={o.id === value ? "corvus-mode is-active" : "corvus-mode"}
           aria-pressed={o.id === value}
           onClick={() => onChange(o.id)}
         >
           <span>{o.label}</span>
-          {o.dot && <span className="axxa-seg-dot" aria-hidden="true" />}
+          {o.dot && <span className="corvus-seg-dot" aria-hidden="true" />}
         </button>
       ))}
     </div>

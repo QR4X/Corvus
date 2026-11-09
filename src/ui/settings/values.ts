@@ -17,8 +17,8 @@
 // senha), e `writeControl` recusa qualquer chave fora das listas abaixo — um
 // `control` novo com a chave errada falha calado em vez de vazar.
 
-import type { AxxaSettings } from "../../main";
-import { AXXA_HIDDEN, CHATS_FOLDER } from "../../core/vaultPaths";
+import type { CorvusSettings } from "../../main";
+import { CORVUS_HIDDEN, CHATS_FOLDER } from "../../core/vaultPaths";
 
 /** Interruptores. */
 const BOOL_KEYS = [
@@ -73,12 +73,12 @@ export function isControlKey(key: string): key is ControlKey {
  *  que um file-sync (Google Drive, Obsidian Sync…) copia entre aparelhos. */
 export const DEFAULT_CHATS_PATH = CHATS_FOLDER;
 /** Pasta dos skills quando o campo fica vazio. */
-export const DEFAULT_SKILLS_PATH = "axxa-ai/skills";
+export const DEFAULT_SKILLS_PATH = "corvus-ai/skills";
 /** Pasta do índice do Vault Q&A quando o campo fica vazio. */
-export const DEFAULT_INDEX_PATH = `${AXXA_HIDDEN}/index`;
+export const DEFAULT_INDEX_PATH = `${CORVUS_HIDDEN}/index`;
 
 /** O valor que o CONTROLE mostra — nem sempre é o que está gravado. */
-export function readControl(s: AxxaSettings, key: ControlKey): boolean | string {
+export function readControl(s: CorvusSettings, key: ControlKey): boolean | string {
   switch (key) {
     // Os três que nasceram depois do data.json de muita gente: ausente tem
     // que ler como o padrão, não como `undefined`.
@@ -111,7 +111,7 @@ export function readControl(s: AxxaSettings, key: ControlKey): boolean | string 
 
 /** Grava na memória com as conversões de cada campo. Não salva em disco. */
 export function applyControl(
-  s: AxxaSettings,
+  s: CorvusSettings,
   key: ControlKey,
   value: unknown
 ): void {
@@ -151,7 +151,7 @@ export function applyControl(
 
 /** O mínimo do plugin que a gravação precisa (e que o teste consegue fingir). */
 export interface SettingsSaver {
-  settings: AxxaSettings;
+  settings: CorvusSettings;
   saveSettings(): Promise<void>;
 }
 
@@ -165,7 +165,7 @@ export async function writeControl(
   value: unknown
 ): Promise<boolean> {
   if (!isControlKey(key)) {
-    console.warn(`[axxa] settings: "${key}" não é um control — ignorado.`);
+    console.warn(`[corvus] settings: "${key}" não é um control — ignorado.`);
     return false;
   }
   applyControl(plugin.settings, key, value);

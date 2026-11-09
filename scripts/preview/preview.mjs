@@ -3,7 +3,7 @@
 //
 // POR QUE ISTO EXISTE: o plugin roda DENTRO do Obsidian, e o app.css dele
 // estiliza `button`, `textarea` e `input` com seletores que ganham das nossas
-// classes (ex.: `button:not(.clickable-icon)` = 0,1,1 > `.axxa-chip` = 0,1,0).
+// classes (ex.: `button:not(.clickable-icon)` = 0,1,1 > `.corvus-chip` = 0,1,0).
 // Qualquer preview com tema "aproximado" mente: mostra a UI bonita e o app
 // mostra outra coisa. Então aqui a gente extrai o app.css REAL do
 // obsidian.asar instalado na máquina e monta o mesmo DOM do workspace.

@@ -1,13 +1,13 @@
 // src/ui/fullscreenScope.ts
 // Regras PURAS de escopo do fullscreen mobile (v0.1.250). Ficam fora do
-// AxxaView de propósito: são a decisão de "onde o modo vale" e de "quando a
+// CorvusView de propósito: são a decisão de "onde o modo vale" e de "quando a
 // navbar global some" — as duas coisas que, erradas, deixam o Obsidian sem
 // chrome. Puras = testáveis sem DOM nem árvore React.
 
 /**
- * O drawer que hospeda a AXXA é o DIREITO? O Obsidian marca as gavetas com
+ * O drawer que hospeda a Corvus é o DIREITO? O Obsidian marca as gavetas com
  * `mod-right`/`mod-left`. Se nenhuma das duas existir (versão que renomeou as
- * classes), NÃO travamos o modo — a AXXA só é montada no drawer direito —, mas
+ * classes), NÃO travamos o modo — a Corvus só é montada no drawer direito —, mas
  * um `mod-left` explícito é sempre um "não".
  */
 export function isRightDrawer(drawer: Element | null): boolean {
@@ -57,12 +57,12 @@ export function fullscreenOn(settingOn: boolean, chatOpen: boolean): boolean {
 }
 
 /**
- * A AXXA está mostrando uma CONVERSA? A casca marca o `.axxa-root` com
- * `axxa-chat-open` quando a tela é a conversa (`view === "chat"`, App.tsx) e
+ * A Corvus está mostrando uma CONVERSA? A casca marca o `.corvus-root` com
+ * `corvus-chat-open` quando a tela é a conversa (`view === "chat"`, App.tsx) e
  * tira a marca ao trocar de tela. Perguntar ao DOM (em vez de guardar estado
  * aqui) é o que mantém a decisão certa em troca de aba, view fechada e duas
- * views na mesma gaveta — mesma razão do `axxaNaFrente`.
+ * views na mesma gaveta — mesma razão do `corvusNaFrente`.
  */
 export function isChatScreen(root: Element | null): boolean {
-  return !!root?.classList.contains("axxa-chat-open");
+  return !!root?.classList.contains("corvus-chat-open");
 }

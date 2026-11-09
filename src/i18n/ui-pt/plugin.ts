@@ -32,14 +32,14 @@ export const PT_PLUGIN: Record<string, string> = {
   "Today's {limit} spending limit is reached ({spent} spent), so paid models are paused until midnight. Free and local models still work, or raise the limit in Settings › Chat › Daily spending.":
     "O limite de gasto de hoje foi atingido ({spent} de {limit}), então os modelos pagos estão pausados até a meia-noite. Os grátis e os locais continuam funcionando — ou aumente o limite em Configurações › Chat › Gasto diário.",
   // Painel, settings e a pasta oculta
-  "Couldn't open the AXXA panel — try toggling the right sidebar.":
-    "Não consegui abrir o painel do AXXA — tente abrir a barra lateral direita.",
-  "AXXA: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed.":
-    "AXXA: não consegui ler o arquivo de configurações. Nada vai ser sobrescrito — reinicie o Obsidian e, se precisar, confira o data.backup.json ao lado dele.",
-  "AXXA moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list.":
-    "O AXXA moveu suas conversas pra uma pasta visível — os plugins de file-sync (Google Drive, Obsidian Sync…) copiam elas entre aparelhos agora, e elas aparecem na busca e na lista de arquivos do vault.",
-  "AXXA could not save your settings — the change is active now but will be lost when you reopen Obsidian. Check the vault's disk space and permissions.":
-    "A AXXA não conseguiu gravar as configurações — a mudança vale agora, mas se perde ao reabrir o Obsidian. Confira o espaço em disco e as permissões do vault.",
+  "Couldn't open the Corvus panel — try toggling the right sidebar.":
+    "Não consegui abrir o painel do Corvus — tente abrir a barra lateral direita.",
+  "Corvus: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed.":
+    "Corvus: não consegui ler o arquivo de configurações. Nada vai ser sobrescrito — reinicie o Obsidian e, se precisar, confira o data.backup.json ao lado dele.",
+  "Corvus moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list.":
+    "O Corvus moveu suas conversas pra uma pasta visível — os plugins de file-sync (Google Drive, Obsidian Sync…) copiam elas entre aparelhos agora, e elas aparecem na busca e na lista de arquivos do vault.",
+  "Corvus could not save your settings — the change is active now but will be lost when you reopen Obsidian. Check the vault's disk space and permissions.":
+    "A Corvus não conseguiu gravar as configurações — a mudança vale agora, mas se perde ao reabrir o Obsidian. Confira o espaço em disco e as permissões do vault.",
 
   // ── editor/comandos.ts ─────────────────────────────────────────────────
   // Comandos da paleta
@@ -51,13 +51,13 @@ export const PT_PLUGIN: Record<string, string> = {
   "Translate selection…": "Traduzir a seleção…",
   "Continue writing": "Continuar escrevendo",
   // Clique direito no texto e na nota
-  "Rewrite with AXXA": "Reescrever com AXXA",
-  "Fix grammar with AXXA": "Corrigir a gramática com AXXA",
-  "Translate with AXXA…": "Traduzir com AXXA…",
-  "Send selection to AXXA": "Mandar a seleção pro AXXA",
-  "Continue writing with AXXA": "Continuar escrevendo com AXXA",
-  "Ask AXXA about this note": "Perguntar ao AXXA sobre esta nota",
-  "Summarize with AXXA": "Resumir com AXXA",
+  "Rewrite with Corvus": "Reescrever com Corvus",
+  "Fix grammar with Corvus": "Corrigir a gramática com Corvus",
+  "Translate with Corvus…": "Traduzir com Corvus…",
+  "Send selection to Corvus": "Mandar a seleção pro Corvus",
+  "Continue writing with Corvus": "Continuar escrevendo com Corvus",
+  "Ask Corvus about this note": "Perguntar ao Corvus sobre esta nota",
+  "Summarize with Corvus": "Resumir com Corvus",
 
   // ── editor/inline.ts ───────────────────────────────────────────────────
   // O aviso enquanto o modelo escreve
@@ -98,8 +98,8 @@ export const PT_PLUGIN: Record<string, string> = {
 
   // ── core/session.ts ────────────────────────────────────────────────────
   "Project sources not found: {names}": "Notas do projeto não encontradas: {names}",
-  "AXXA could not save this chat to your vault — what you see here is not on disk yet. Check the vault's disk space and permissions.":
-    "A AXXA não conseguiu gravar esta conversa no vault — o que está na tela ainda não está em disco. Confira o espaço e as permissões do vault.",
+  "Corvus could not save this chat to your vault — what you see here is not on disk yet. Check the vault's disk space and permissions.":
+    "A Corvus não conseguiu gravar esta conversa no vault — o que está na tela ainda não está em disco. Confira o espaço e as permissões do vault.",
 
   // ── core/helpers.ts ────────────────────────────────────────────────────
   // A narração do agente: fazendo · feito · falhou

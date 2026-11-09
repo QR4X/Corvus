@@ -7,7 +7,7 @@ import {
 import type { ChatData } from "../src/core/chatPersistence";
 
 // Exportar é a ÚNICA porta entre a conversa e o vault: o arquivo de verdade
-// mora em `.axxa/chats`, pasta que o Obsidian ignora (não indexa, não abre).
+// mora em `.corvus/chats`, pasta que o Obsidian ignora (não indexa, não abre).
 // Por isso a cópia precisa ser uma nota COMUM — nada de recado do app pro app
 // no meio do texto.
 
@@ -30,16 +30,16 @@ const chat = (over: Partial<ChatData> = {}): ChatData => ({
 
 describe("limparMarcas", () => {
   it("tira o comentário de metadados e mantém o texto", () => {
-    const r = limparMarcas("<!-- axxa: ts=123 reaction=like -->\nbom dia");
+    const r = limparMarcas("<!-- corvus: ts=123 reaction=like -->\nbom dia");
     expect(r).toBe("bom dia");
   });
 
   it("tira o paredão de base64 dos passos do agente", () => {
     // Invisível no preview, mas não no editor: uma nota que abre com base64
     // não é nota, é despejo.
-    const r = limparMarcas("fiz isso\n\n<!-- axxa-steps: QUJDREVGRw== -->");
+    const r = limparMarcas("fiz isso\n\n<!-- corvus-steps: QUJDREVGRw== -->");
     expect(r).toBe("fiz isso");
-    expect(r).not.toMatch(/axxa-steps/);
+    expect(r).not.toMatch(/corvus-steps/);
   });
 
   it("não come o markdown de verdade", () => {
@@ -74,7 +74,7 @@ describe("exportChatMarkdown", () => {
     const md = exportChatMarkdown(chat(), quando);
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain('model: "gpt-5"');
-    expect(md).toContain("source: AXXA");
+    expect(md).toContain("source: Corvus");
     expect(md).toContain('exported: "2026-09-27T12:00:00.000Z"');
   });
 
@@ -91,14 +91,14 @@ describe("exportChatMarkdown", () => {
         messages: [
           {
             type: "ai-response",
-            content: "<!-- axxa: ts=1 -->\nfeito\n\n<!-- axxa-steps: eyJ4IjoxfQ== -->",
+            content: "<!-- corvus: ts=1 -->\nfeito\n\n<!-- corvus-steps: eyJ4IjoxfQ== -->",
           },
         ],
       }),
       quando
     );
     expect(md).toContain("feito");
-    expect(md).not.toMatch(/axxa-steps|axxa: ts=/);
+    expect(md).not.toMatch(/corvus-steps|corvus: ts=/);
   });
 });
 

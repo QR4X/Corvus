@@ -6,7 +6,7 @@ Only the latest stable release, the one the Obsidian community directory serves,
 
 ## Reporting a vulnerability
 
-Please report privately through GitHub: **Security → Report a vulnerability** on this repository ([direct link](https://github.com/axxalab/axxa-agent/security/advisories/new)). Don't open a public issue for a security problem.
+Please report privately through GitHub: **Security → Report a vulnerability** on this repository ([direct link](https://github.com/QR4X/M.I.L.A/security/advisories/new)). Don't open a public issue for a security problem.
 
 In scope:
 
@@ -15,4 +15,4 @@ In scope:
 - prompt injection in a note or web page that leads the agent to write or delete files without the confirmation it should show;
 - any network request not listed under [Disclosures](README.md#disclosures).
 
-You can expect a first reply within about 7 days. AXXA Agent is maintained by one person, so please allow time for a fix before disclosing publicly.
+You can expect a first reply within about 7 days. Corvus is maintained by one person, so please allow time for a fix before disclosing publicly.

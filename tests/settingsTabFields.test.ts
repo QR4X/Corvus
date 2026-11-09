@@ -26,7 +26,7 @@ const DO_OBSIDIAN = [
 
 const SRC = readFileSync(resolve(__dirname, "../src/ui/SettingsTab.ts"), "utf8");
 
-describe("AxxaSettingsTab não pisa em campo do Obsidian", () => {
+describe("CorvusSettingsTab não pisa em campo do Obsidian", () => {
   it("nenhum campo/método nosso reusa um nome do SettingTab", () => {
     const nossos = [
       ...SRC.matchAll(/^\s{2}(?:private |protected |public )?(?:readonly )?(?:async )?(\w+)\s*[(:=<]/gm),

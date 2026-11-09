@@ -1,6 +1,6 @@
 # AGENTS.md
 
-M.I.L.A is a fork of AXXA Agent: an Obsidian plugin (desktop and mobile) that
+Corvus is an Obsidian plugin (desktop and mobile) that
 chats with the vault, answers questions about your notes, and lets an agent
 edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 

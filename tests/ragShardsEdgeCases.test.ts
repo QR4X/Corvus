@@ -34,7 +34,7 @@ function memAdapter() {
   return adapter;
 }
 
-const PATH = "axxa-ai/index";
+const PATH = "corvus-ai/index";
 
 describe("edge cases: empty + mode switching + backward compat", () => {
   it("empty index (0 entries) sharded → manifesto with shards:[] → loads & searches OK", async () => {

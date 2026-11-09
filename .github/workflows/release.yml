@@ -58,7 +58,7 @@ permissions:
   # Provenance attestation of the artifacts (Obsidian review recommendation):
   # signs main.js and styles.css proving they came out of THIS repository, at
   # this commit, by this workflow. Whoever installs can verify with
-  # `gh attestation verify main.js --repo axxalab/axxa-agent`.
+  # `gh attestation verify main.js --repo QR4X/M.I.L.A`.
   id-token: write
   attestations: write
 
@@ -162,12 +162,12 @@ jobs:
               --title "$tag (test)" \
               --target "${GITHUB_SHA}" \
               --prerelease --latest=false \
-              --notes "TEST build of the AXXA Agent ($tag), to install via BRAT. Not the Obsidian directory version." \
+              --notes "TEST build of the Corvus ($tag), to install via BRAT. Not the Obsidian directory version." \
               output/main.js output/manifest.json output/styles.css
           else
             gh release create "$tag" \
               --title "$tag" \
               --target "${GITHUB_SHA}" \
-              --notes "AXXA Agent $tag. See the commits for the changelog." \
+              --notes "Corvus $tag. See the commits for the changelog." \
               output/main.js output/manifest.json output/styles.css
           fi

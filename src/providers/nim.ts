@@ -283,7 +283,7 @@ export class NimProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      console.error("[axxa] NIM network error:", err);
+      console.error("[corvus] NIM network error:", err);
       throw new ProviderError("NIM connection failed.", "network");
     }
 
@@ -292,7 +292,7 @@ export class NimProvider implements Provider {
       // v0.1.228: requestUrl já parseia JSON em res.json — logar res.json ?? text
       // direto evita o re-parse redundante do IIFE (text fatiado p/ não poluir).
       console.error(
-        "[axxa] NIM response failed:",
+        "[corvus] NIM response failed:",
         res.status,
         res.json ?? (typeof res.text === "string" ? res.text.slice(0, 500) : res.text)
       );
@@ -393,7 +393,7 @@ export class NimProvider implements Provider {
       resp = await nodeStreamRequest(https, NIM_ENDPOINT, headers, JSON.stringify(body), signal);
     } catch (err) {
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      console.error("[axxa] NIM stream network error:", err);
+      console.error("[corvus] NIM stream network error:", err);
       throw new ProviderError("NIM connection failed.", "network");
     }
 
@@ -416,7 +416,7 @@ export class NimProvider implements Provider {
       ) {
         return this.streamViaNode(https, req, apiKey, onToken, onUsage, signal, onReasoning, false);
       }
-      console.error("[axxa] NIM stream failed:", resp.status, json ?? text);
+      console.error("[corvus] NIM stream failed:", resp.status, json ?? text);
       throw this.nimError(resp.status, json, text, req.model);
     }
 
@@ -483,11 +483,11 @@ export class NimProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      console.error("[axxa] NIM image gen network error:", err);
+      console.error("[corvus] NIM image gen network error:", err);
       throw new ProviderError("NIM image gen connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
-      console.error("[axxa] NIM image gen failed:", res.status, res.json ?? res.text);
+      console.error("[corvus] NIM image gen failed:", res.status, res.json ?? res.text);
       const erro = res.json as ErroNim | undefined;
       const detail =
         erro?.detail ??
@@ -519,7 +519,7 @@ export class NimProvider implements Provider {
       items.push({ data: base64ToBytes(imagem.b64_json), mime: "image/png" });
     }
     if (items.length === 0) {
-      console.error("[axxa] NIM unknown response shape:", res.json);
+      console.error("[corvus] NIM unknown response shape:", res.json);
       throw new ProviderError(
         `NIM returned no images — check whether "${request.model}" supports text-to-image. See the DevTools console for the raw response.`,
         "unknown"

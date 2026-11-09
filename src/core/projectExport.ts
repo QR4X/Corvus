@@ -63,7 +63,7 @@ export function exportProjectMarkdown(
     `exported: ${JSON.stringify(quando.toISOString())}`,
     `notes: ${project.sources.length}`,
     `chats: ${project.chatIds.length}`,
-    "source: AXXA",
+    "source: Corvus",
     "kind: project",
     "---",
   ].join("\n");

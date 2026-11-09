@@ -5,8 +5,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const CONFIG_FILE = ".axxa.local.json";
-const PLUGIN_FOLDER = "axxa-agent";
+const CONFIG_FILE = ".corvus.local.json";
+const PLUGIN_FOLDER = "corvus";
 const FILES = ["main.js", "manifest.json", "styles.css"];
 
 function readConfig() {

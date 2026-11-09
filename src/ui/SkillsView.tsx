@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import { Notice, TFile, normalizePath } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { Skill } from "../skills/skills";
 import {
   SKILL_DRAFT_VAZIO,
@@ -54,7 +54,7 @@ export function SkillsView({
   onUse,
   onClose,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   open: boolean;
   onUse: (skill: Skill) => void;
   onClose: () => void;
@@ -85,7 +85,7 @@ export function SkillsView({
   }, [plugin, open]);
 
   const skills = plugin.skills;
-  const folder = plugin.settings.skillsPath || "axxa-ai/skills";
+  const folder = plugin.settings.skillsPath || "corvus-ai/skills";
 
   const visiveis = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -318,7 +318,7 @@ export function SkillsView({
         /* Pilha com respiro: na folha os blocos são irmãos soltos, e irmão
            solto não tem vão nenhum. */
         <ListaCheia>
-        <div className="axxa-sheet-stack">
+        <div className="corvus-sheet-stack">
           {/* O MESMO segmented do resto do app (a home, o trilho de providers
               nas settings): trilho, thumb que desliza, colunas iguais. Abas
               sublinhadas eram um terceiro jeito de dizer "escolha uma", e o
@@ -358,29 +358,29 @@ export function SkillsView({
           />
 
           {visiveis.length > 0 && (
-            <div className="axxa-tiles">
+            <div className="corvus-tiles">
               {visiveis.map((s) => (
-                <div key={s.id} className="axxa-tile-wrap">
+                <div key={s.id} className="corvus-tile-wrap">
                   <button
                     type="button"
-                    className="axxa-tile"
+                    className="corvus-tile"
                     onClick={() => onUse(s)}
                   >
                     {/* O prompt, como ele é. A miniatura do cartão não é
                         ilustração: é o texto que vai cair no campo quando você
                         tocar — a única pergunta que se faz olhando uma lista
                         de skills é "qual deles escreve o quê". */}
-                    <span className="axxa-tile-paper">
-                      <span className="axxa-tile-text">{s.body}</span>
+                    <span className="corvus-tile-paper">
+                      <span className="corvus-tile-text">{s.body}</span>
                     </span>
                     {/* O brasão do skill no CARTÃO, não só na prévia do
                         formulário. Sem ele, a cor e o ícone que a pessoa
                         escolheu não apareciam em lugar nenhum depois de
                         salvar — e a galeria era uma grade de papéis cinzas
                         onde o nome era a única pista. */}
-                    <span className="axxa-tile-head">
+                    <span className="corvus-tile-head">
                       <span
-                        className="axxa-thing-mark is-dense"
+                        className="corvus-thing-mark is-dense"
                         style={{ color: projectColor(s.color) }}
                         aria-hidden="true"
                       >
@@ -390,9 +390,9 @@ export function SkillsView({
                             proporção do brasão grande (20 em 36). */}
                         <Icon name={s.icon || "sparkles"} size={14} />
                       </span>
-                      <span className="axxa-tile-name">{s.name}</span>
+                      <span className="corvus-tile-name">{s.name}</span>
                     </span>
-                    <span className="axxa-tile-meta">
+                    <span className="corvus-tile-meta">
                       <Icon
                         name={
                           isChatMode(s.mode) ? MODULES[s.mode].icon : "sparkles"
@@ -412,7 +412,7 @@ export function SkillsView({
                   </button>
                   <button
                     type="button"
-                    className="axxa-icon-btn axxa-tile-more"
+                    className="corvus-icon-btn corvus-tile-more"
                     aria-label={tr("Actions for {name}", { name: s.name })}
                     onClick={(e) =>
                       openActions(e, [
@@ -448,7 +448,7 @@ export function SkillsView({
           )}
 
           {visiveis.length === 0 && (
-            <div className="axxa-home-empty">
+            <div className="corvus-home-empty">
               <Icon name="sparkles" size={42} />
               <p>
                 {skills.length > 0
@@ -460,7 +460,7 @@ export function SkillsView({
               {skills.length === 0 && (
                 <button
                   type="button"
-                  className="axxa-home-pill"
+                  className="corvus-home-pill"
                   onClick={() => void exemplos()}
                 >
                   <Icon name="wand" size={18} />

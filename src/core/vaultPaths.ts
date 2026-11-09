@@ -8,7 +8,7 @@
 //
 // As CONVERSAS moram numa pasta VISÍVEL de propósito: é ela que um sync de
 // arquivos copia entre aparelhos — pasta com ponto nunca chegaria lá (foi
-// exatamente esse o bug: chats nasciam em `.axxa/chats` e sumiam do vault
+// exatamente esse o bug: chats nasciam em `.corvus/chats` e sumiam do vault
 // sincronizado). O custo é que elas aparecem na busca, no explorador e no
 // grafo; quem não quer aponta o campo "Chats folder" pra uma pasta com ponto.
 //
@@ -24,11 +24,11 @@
 //     nem abrir: o Obsidian não resolve link pra fora do índice.
 
 /** A pasta oculta do app — só o que é cache e se refaz mora aqui. */
-export const AXXA_HIDDEN = ".axxa";
+export const CORVUS_HIDDEN = ".corvus";
 
 /** Pasta VISÍVEL das conversas. Ponto na frente quebraria o sync de arquivos
  *  (Google Drive, Obsidian Sync…), que é justamente o motivo dela existir. */
-export const CHATS_FOLDER = "axxa/chats";
+export const CHATS_FOLDER = "corvus/chats";
 
 /** Uma pasta que muda de lugar, e de onde ela vinha. */
 export interface HiddenMove {
@@ -41,15 +41,15 @@ export interface HiddenMove {
 }
 
 /**
- * O que migra: todo lugar ANTIGO das conversas (legado `axxa-ai/chats` e o
- * default oculto anterior `.axxa/chats`) agora cai na pasta VISÍVEL; o índice
+ * O que migra: todo lugar ANTIGO das conversas (legado `corvus-ai/chats` e o
+ * default oculto anterior `.corvus/chats`) agora cai na pasta VISÍVEL; o índice
  * do RAG vai pra oculta (cache, se refaz). O resto continua visível de
  * propósito (ver o cabeçalho).
  */
 export const HIDDEN_MOVES: HiddenMove[] = [
-  { legado: "axxa-ai/chats", novo: CHATS_FOLDER, campo: "chatsPath" },
-  { legado: `${AXXA_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
-  { legado: "axxa-ai/index", novo: `${AXXA_HIDDEN}/index`, campo: "ragIndexPath" },
+  { legado: "corvus-ai/chats", novo: CHATS_FOLDER, campo: "chatsPath" },
+  { legado: `${CORVUS_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
+  { legado: "corvus-ai/index", novo: `${CORVUS_HIDDEN}/index`, campo: "ragIndexPath" },
 ];
 
 /** Está numa pasta que o Obsidian ignora? */

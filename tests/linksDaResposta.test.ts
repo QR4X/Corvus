@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Platform, __avisos } from "obsidian";
 import type { App } from "obsidian";
 import { FONTE_DO_HOVER, abrirLinkDaResposta } from "../src/ui/linksDaResposta";
-import { VIEW_TYPE_AXXA } from "../src/ui/AxxaView";
+import { VIEW_TYPE_CORVUS } from "../src/ui/CorvusView";
 
 // As citações [[Nota]] de uma resposta abrem a nota: o que existe abre (com a
 // seção, se tiver), o que a IA inventou vira aviso em vez de nota vazia, e no
@@ -55,7 +55,7 @@ describe("os links da resposta", () => {
   });
 
   it("a fonte do hover é o tipo da view", () => {
-    expect(FONTE_DO_HOVER).toBe(VIEW_TYPE_AXXA);
+    expect(FONTE_DO_HOVER).toBe(VIEW_TYPE_CORVUS);
   });
 
   it("abre a nota citada, com a seção, e repassa o pedido de aba nova", () => {

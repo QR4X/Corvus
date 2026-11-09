@@ -17,9 +17,9 @@ export class ImageModal extends Modal {
   }
 
   onOpen() {
-    this.contentEl.addClass("axxa-image-modal");
+    this.contentEl.addClass("corvus-image-modal");
     this.contentEl.createEl("img", {
-      cls: "axxa-image-modal-img",
+      cls: "corvus-image-modal-img",
       attr: { src: this.url, alt: this.alt },
     });
   }

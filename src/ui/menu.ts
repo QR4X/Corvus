@@ -76,7 +76,7 @@ export interface Caixa {
  * Onde o balão pousa — a conta, separada do DOM pra poder ser conferida.
  *
  * As coordenadas de SAÍDA são da camada, que é `absolute` dentro da
- * `.axxa-root`: por isso tudo desconta `raiz`.
+ * `.corvus-root`: por isso tudo desconta `raiz`.
  *
  * Mas quem decide se CABE é a TELA, não a raiz — e essa distinção é o bug que
  * esta função existe pra não deixar voltar. No celular a folha vira `fixed` e
@@ -87,7 +87,7 @@ export interface Caixa {
 export function posicaoDoBalao(params: {
   /** O botão que abriu (coordenadas de viewport). */
   ancora: Pick<Caixa, "left" | "top" | "right" | "bottom">;
-  /** A `.axxa-root`, que é a origem das coordenadas da camada. */
+  /** A `.corvus-root`, que é a origem das coordenadas da camada. */
   raiz: Caixa;
   /** A tela. */
   tela: { width: number; height: number };
@@ -188,15 +188,15 @@ export function openActions(
   const doc = ancoraEl?.ownerDocument ?? document;
   const win = doc.defaultView ?? window;
 
-  // ONDE o balão mora. Aberto de dentro do app, na `.axxa-root` dele — a
+  // ONDE o balão mora. Aberto de dentro do app, na `.corvus-root` dele — a
   // mesma de sempre. Aberto de FORA (as settings são um modal do Obsidian),
   // ele não pode ir pra raiz do painel: ela fica atrás do modal, e o balão
   // abriria escondido. Aí ele mora no próprio modal (some junto quando o
   // modal fecha — o "voltar" do Android fecha o modal sem passar por aqui) ou,
   // sem modal, no body; e a camada vira `fixed`, com a tela como referência.
   const raizApp = ancoraEl
-    ? ancoraEl.closest<HTMLElement>(".axxa-root")
-    : doc.querySelector<HTMLElement>(".axxa-root");
+    ? ancoraEl.closest<HTMLElement>(".corvus-root")
+    : doc.querySelector<HTMLElement>(".corvus-root");
   const solto = !raizApp;
   const raiz =
     raizApp ??
@@ -208,10 +208,10 @@ export function openActions(
   // diferença visível: nada pinta até esta tarefa terminar, e a medição do
   // balão (offsetWidth, em `posicionar`) exige estar na árvore de qualquer jeito.
   const camada = raiz.createDiv({
-    cls: solto ? "axxa-pop-layer is-loose" : "axxa-pop-layer",
+    cls: solto ? "corvus-pop-layer is-loose" : "corvus-pop-layer",
   });
   const balao = camada.createDiv({
-    cls: opts.escolha ? "axxa-pop is-pick" : "axxa-pop",
+    cls: opts.escolha ? "corvus-pop is-pick" : "corvus-pop",
     attr: { role: "menu" },
   });
   let fechar = () => {};
@@ -224,10 +224,10 @@ export function openActions(
   ): HTMLButtonElement => {
     // Com um segundo botão, os dois dividem uma LINHA: botão dentro de botão
     // não existe em HTML (e o leitor de tela leria os dois como um só).
-    const linha = a.extra ? pai.createDiv({ cls: "axxa-pop-row", attr: { role: "none" } }) : pai;
+    const linha = a.extra ? pai.createDiv({ cls: "corvus-pop-row", attr: { role: "none" } }) : pai;
     const b = linha.createEl("button", {
       cls:
-        "axxa-pop-item" +
+        "corvus-pop-item" +
         (a.danger ? " is-danger" : "") +
         (a.checked ? " is-checked" : ""),
       // Item de escolha (tem `checked`, mesmo falso) diz pro leitor de tela
@@ -238,26 +238,26 @@ export function openActions(
           : { type: "button", role: "menuitemradio", "aria-checked": String(a.checked) },
     });
     if (a.glyph) {
-      b.createSpan({ cls: "axxa-pop-ico axxa-pop-glyph", text: a.glyph });
+      b.createSpan({ cls: "corvus-pop-ico corvus-pop-glyph", text: a.glyph });
     } else if (a.icon) {
       // Com cor, o ícone ganha a MESMA plaquinha da lista de projetos
-      // (`axxa-thing-mark`): mesma forma, mesmo jeito de tingir — o fundo sai
+      // (`corvus-thing-mark`): mesma forma, mesmo jeito de tingir — o fundo sai
       // do `currentColor`. Reusar a classe é o que garante que as duas telas
       // não comecem a divergir na terceira mudança.
       const ico = b.createSpan({
-        cls: a.color ? "axxa-pop-ico axxa-thing-mark" : "axxa-pop-ico",
+        cls: a.color ? "corvus-pop-ico corvus-thing-mark" : "corvus-pop-ico",
       });
       if (a.color) ico.style.color = a.color;
       // O mesmo `setIcon` do resto do app (ver Icon.tsx): o set de ícones é o
       // do Obsidian, então o menu não traz um segundo vocabulário de desenho.
       setIcon(ico, a.icon);
     }
-    b.createSpan({ cls: "axxa-pop-label", text: a.label });
+    b.createSpan({ cls: "corvus-pop-label", text: a.label });
     if (a.checked) {
-      setIcon(b.createSpan({ cls: "axxa-pop-check" }), "check");
+      setIcon(b.createSpan({ cls: "corvus-pop-check" }), "check");
     }
     if (a.children) {
-      setIcon(b.createSpan({ cls: "axxa-pop-chev" }), "chevron-right");
+      setIcon(b.createSpan({ cls: "corvus-pop-chev" }), "chevron-right");
     }
     b.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -266,7 +266,7 @@ export function openActions(
     if (a.extra) {
       const { icon, label, run } = a.extra;
       const x = linha.createEl("button", {
-        cls: "axxa-pop-extra",
+        cls: "corvus-pop-extra",
         attr: { type: "button", role: "menuitem", "aria-label": label },
       });
       setIcon(x, icon);
@@ -370,7 +370,7 @@ export function openActions(
   desenhar(actions, null);
   // Lista que rola (uma escolha longa): abre com a opção de agora à vista,
   // no meio — não no topo, onde ela pode nem estar.
-  const marcado = balao.querySelector<HTMLElement>(".axxa-pop-item.is-checked");
+  const marcado = balao.querySelector<HTMLElement>(".corvus-pop-item.is-checked");
   if (marcado && balao.scrollHeight > balao.clientHeight) {
     balao.scrollTop = Math.max(
       0,

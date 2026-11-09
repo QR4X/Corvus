@@ -178,7 +178,7 @@ export function effortToMaxTokens(level: string): number {
 /**
  * Versao SMART: max retorna 80% do context window do modelo.
  * Outros niveis retornam o cap fixo do config.
- * Usado pelo AxxaApp pra mandar max_tokens pro provider.
+ * Usado pelo CorvusApp pra mandar max_tokens pro provider.
  *
  * Quando userConfigs vem, usa override do usuário (Settings → Effort).
  */

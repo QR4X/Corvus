@@ -52,7 +52,7 @@ describe("candidatePaths", () => {
     expect(paths).toContain("agent.md");
     expect(paths).toContain(".agent.md");
     expect(paths).toContain("CLAUDE.md");
-    expect(paths).toContain(".axxa/AGENT.md");
+    expect(paths).toContain(".corvus/AGENT.md");
   });
 
   it("coloca o caminho customizado em primeiro lugar e evita duplicatas", () => {

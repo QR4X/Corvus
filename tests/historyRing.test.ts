@@ -20,7 +20,7 @@ describe("o anel do brasão", () => {
   // pela lista da home.
   for (const estado of ["is-current", "is-waiting"]) {
     it(`${estado}: desenhado por dentro, 1px`, () => {
-      const [corpo] = blocos(`.axxa-root .axxa-history-row.is-flat.${estado} .axxa-card-mark`);
+      const [corpo] = blocos(`.corvus-root .corvus-history-row.is-flat.${estado} .corvus-card-mark`);
       expect(corpo).toMatch(/box-shadow:\s*inset 0 0 0 1px /);
     });
   }
@@ -28,7 +28,7 @@ describe("o anel do brasão", () => {
 
 describe("a lista da home rola com folga", () => {
   it("padding e margem negativa do MESMO tamanho — o conteúdo não sai do lugar", () => {
-    const [corpo] = blocos(".axxa-root .axxa-dash .axxa-history");
+    const [corpo] = blocos(".corvus-root .corvus-dash .corvus-history");
     expect(corpo).toMatch(/overflow-y:\s*auto/);
     const pad = corpo.match(/(?:^|;|\s)padding:\s*([^;]+);/)?.[1].trim();
     const margem = corpo.match(/(?:^|;|\s)margin:\s*([^;]+);/)?.[1].trim();
@@ -37,10 +37,10 @@ describe("a lista da home rola com folga", () => {
   });
 
   it("a folga cobre o halo de quem está respondendo", () => {
-    // O halo abre 3px (`axxa-respira`); a folga é um token de 8px.
-    const [corpo] = blocos(".axxa-root .axxa-dash .axxa-history");
-    expect(corpo).toMatch(/padding:\s*var\(--axxa-2\)/);
-    expect(SEM_COMENTARIO).toMatch(/--axxa-2:\s*8px/);
+    // O halo abre 3px (`corvus-respira`); a folga é um token de 8px.
+    const [corpo] = blocos(".corvus-root .corvus-dash .corvus-history");
+    expect(corpo).toMatch(/padding:\s*var\(--corvus-2\)/);
+    expect(SEM_COMENTARIO).toMatch(/--corvus-2:\s*8px/);
     expect(SEM_COMENTARIO).toMatch(/box-shadow:\s*0 0 0 3px\s/);
   });
 });

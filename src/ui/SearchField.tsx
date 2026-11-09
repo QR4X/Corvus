@@ -64,16 +64,16 @@ export function SearchField({
     return (
       <button
         type="button"
-        className="axxa-search-field is-trigger"
+        className="corvus-search-field is-trigger"
         aria-label={label ?? placeholder}
         onClick={onOpen}
       >
         <Icon name="search" size={18} />
-        <span className={procurando ? "axxa-search-text" : "axxa-search-text is-empty"}>
+        <span className={procurando ? "corvus-search-text" : "corvus-search-text is-empty"}>
           {procurando ? value : placeholder}
         </span>
         {procurando && found !== undefined && (
-          <span className="axxa-search-found">
+          <span className="corvus-search-found">
             {found === 1 ? tr("1 found") : tr("{n} found", { n: found })}
           </span>
         )}
@@ -82,7 +82,7 @@ export function SearchField({
   }
 
   return (
-    <label className={invalid ? "axxa-search-field is-bad" : "axxa-search-field"}>
+    <label className={invalid ? "corvus-search-field is-bad" : "corvus-search-field"}>
       <Icon name="search" size={18} />
       <input
         ref={ref}
@@ -93,7 +93,7 @@ export function SearchField({
         onChange={(e) => onChange(e.currentTarget.value)}
       />
       {procurando && found !== undefined && (
-        <span className="axxa-search-found">
+        <span className="corvus-search-found">
           {/* A contagem aparece SEMPRE que se está buscando — na expressão
               quebrada também, com o aviso de que ali virou busca literal.
               Trocar o número pelo aviso deixava a pessoa sem saber se achou

@@ -22,16 +22,16 @@ describe("a faixa da barra de gestos tem a cor da folha", () => {
   // gaveta do Obsidian (`.workspace-drawer-inner`), pintada com a cor da
   // gaveta — um degrau mais escura que a folha. Aparecia como uma barra grudada
   // no fim dela.
-  const faixa = () => bloco(".workspace-drawer-inner.axxa-sheet-open {");
+  const faixa = () => bloco(".workspace-drawer-inner.corvus-sheet-open {");
 
   it("a folha e a faixa usam o MESMO token de cor", () => {
     // Duas contas pra mesma cor é como se descobre, meses depois, que uma
     // delas foi ajustada e a outra não.
-    expect(bloco(".axxa-root .axxa-sheet {")).toContain(
-      "background-color: var(--axxa-sheet-bg)"
+    expect(bloco(".corvus-root .corvus-sheet {")).toContain(
+      "background-color: var(--corvus-sheet-bg)"
     );
-    expect(faixa()).toContain("var(--axxa-sheet-bg)");
-    expect(CSS).toMatch(/--axxa-sheet-bg:\s*color-mix\(/);
+    expect(faixa()).toContain("var(--corvus-sheet-bg)");
+    expect(CSS).toMatch(/--corvus-sheet-bg:\s*color-mix\(/);
   });
 
   it("pinta SÓ a faixa de baixo — a de cima é da barra de status", () => {
@@ -52,13 +52,13 @@ describe("a faixa da barra de gestos tem a cor da folha", () => {
     // tela cheia o seletor de abas e o cabeçalho da gaveta ficam entre a folha
     // e a reserva, e a faixa pintada ficava solta.
     expect(SEM_COMENTARIO).toContain(
-      "body.is-mobile .workspace-drawer.axxa-fullscreen .workspace-drawer-inner.axxa-sheet-open {"
+      "body.is-mobile .workspace-drawer.corvus-fullscreen .workspace-drawer-inner.corvus-sheet-open {"
     );
     const js = readFileSync(resolve(__dirname, "../src/ui/sheetStrip.ts"), "utf8");
     // A classe que o JS põe é a que o CSS espera, e o JS pergunta pela MESMA
     // camada aberta que o `:has` perguntava.
-    expect(js).toContain('SHEET_OPEN_CLASS = "axxa-sheet-open"');
-    expect(js).toContain('".axxa-root .axxa-sheet-layer.is-open"');
+    expect(js).toContain('SHEET_OPEN_CLASS = "corvus-sheet-open"');
+    expect(js).toContain('".corvus-root .corvus-sheet-layer.is-open"');
   });
 });
 
@@ -77,13 +77,13 @@ describe("o CSS passa no linter da revisão do Obsidian", () => {
 
 describe("o tamanho FIT: a folha encolhe quando o teclado fecha", () => {
   it("do tamanho do conteúdo, com o teto do grande", () => {
-    const b = bloco(".axxa-root .axxa-sheet.is-fit {");
+    const b = bloco(".corvus-root .corvus-sheet.is-fit {");
     // `0` e não `auto`: do grande pra este a folha ENCOLHE, e de auto o
     // navegador não anima.
     expect(b).toContain("min-height: 0");
     expect(b).toContain("max-height: 94%");
     // O teto é o mesmo do grande — um formulário longo pode chegar lá.
-    expect(bloco(".axxa-root .axxa-sheet.is-full {")).toContain("max-height: 94%");
+    expect(bloco(".corvus-root .corvus-sheet.is-full {")).toContain("max-height: 94%");
   });
 });
 
@@ -92,7 +92,7 @@ describe("os cartões de skill têm todos o mesmo tamanho", () => {
   // ritmo é o tamanho igual: cartões de alturas diferentes numa grade abrem
   // degraus, e a fileira seguinte começa torta.
   it("a prévia do prompt tem altura FIXA, não um intervalo", () => {
-    const b = bloco(".axxa-root .axxa-tile-paper {");
+    const b = bloco(".corvus-root .corvus-tile-paper {");
     expect(b).toMatch(/(^|\s)height:\s*\d+px/);
     expect(b).not.toMatch(/min-height|max-height/);
   });
@@ -100,15 +100,15 @@ describe("os cartões de skill têm todos o mesmo tamanho", () => {
   it("as colunas são metades exatas — o conteúdo não estica nenhuma", () => {
     // `1fr` é `minmax(auto, 1fr)`: o nome, que é nowrap, esticava a coluna e o
     // cartão saía pela borda da tela.
-    expect(bloco(".axxa-root .axxa-tiles {")).toContain(
+    expect(bloco(".corvus-root .corvus-tiles {")).toContain(
       "grid-template-columns: repeat(2, minmax(0, 1fr))"
     );
-    expect(bloco(".axxa-root .axxa-tile-wrap {")).toContain("min-width: 0");
+    expect(bloco(".corvus-root .corvus-tile-wrap {")).toContain("min-width: 0");
   });
 
   it("o cartão ocupa a célula inteira, e o nome corta em vez de quebrar", () => {
-    expect(bloco(".axxa-root button.axxa-tile {")).toContain("height: 100%");
-    const nome = bloco(".axxa-root .axxa-tile-head .axxa-tile-name {");
+    expect(bloco(".corvus-root button.corvus-tile {")).toContain("height: 100%");
+    const nome = bloco(".corvus-root .corvus-tile-head .corvus-tile-name {");
     expect(nome).toContain("white-space: nowrap");
     expect(nome).toContain("text-overflow: ellipsis");
   });
@@ -123,12 +123,12 @@ describe("contraste dentro das folhas — medido, e preso aqui", () => {
     // `--text-faint` só é legível no fundo da página (a regra dos degraus, lá
     // nos tokens). Em cima de uma superfície levantada ele fica abaixo de 3:1.
     for (const sel of [
-      ".axxa-root .axxa-proj-card-when {",
-      ".axxa-root .axxa-proj-card-about.is-empty {",
-      ".axxa-root .axxa-proj-card-stat .axxa-icon {",
-      ".axxa-root button.axxa-proj-card-more {",
-      ".axxa-root button.axxa-tile-more {",
-      ".axxa-root .axxa-field-hint {",
+      ".corvus-root .corvus-proj-card-when {",
+      ".corvus-root .corvus-proj-card-about.is-empty {",
+      ".corvus-root .corvus-proj-card-stat .corvus-icon {",
+      ".corvus-root button.corvus-proj-card-more {",
+      ".corvus-root button.corvus-tile-more {",
+      ".corvus-root .corvus-field-hint {",
     ]) {
       const b = bloco(sel);
       expect(b, sel).toContain("var(--text-muted)");
@@ -137,50 +137,50 @@ describe("contraste dentro das folhas — medido, e preso aqui", () => {
   });
 
   it("no tema claro, o cartão é o papel do tema — mais CLARO que a folha", () => {
-    const claro = bloco("body.theme-light .axxa-root .axxa-sheet {");
-    expect(claro).toContain("--axxa-s1: var(--background-primary)");
+    const claro = bloco("body.theme-light .corvus-root .corvus-sheet {");
+    expect(claro).toContain("--corvus-s1: var(--background-primary)");
   });
 
   it("os degraus da folha saem só do tema — nenhuma cor escrita à mão", () => {
     // É o que deixa isto funcionar em qualquer tema do Obsidian: tudo é
     // mistura das variáveis dele. O bloco do escuro é achado pela declaração
-    // (há mais de uma regra `.axxa-root .axxa-sheet`).
+    // (há mais de uma regra `.corvus-root .corvus-sheet`).
     const i = SEM_COMENTARIO.indexOf(
-      "--axxa-s1: color-mix(in srgb, var(--text-normal) 12%"
+      "--corvus-s1: color-mix(in srgb, var(--text-normal) 12%"
     );
     expect(i, "o degrau do escuro dentro da folha sumiu").toBeGreaterThan(-1);
     const escuro = SEM_COMENTARIO.slice(
       SEM_COMENTARIO.lastIndexOf("{", i),
       SEM_COMENTARIO.indexOf("}", i)
     );
-    const claro = bloco("body.theme-light .axxa-root .axxa-sheet {");
+    const claro = bloco("body.theme-light .corvus-root .corvus-sheet {");
     for (const b of [escuro, claro]) {
-      expect(b).toContain("--axxa-s1:");
+      expect(b).toContain("--corvus-s1:");
       expect(b).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
     }
   });
 
   it("campos, grupos, prévia e busca usam a MESMA superfície dos cartões", () => {
-    const b = bloco(".axxa-root .axxa-sheet .axxa-sheet-group,");
-    expect(b).toContain("background-color: var(--axxa-s1)");
+    const b = bloco(".corvus-root .corvus-sheet .corvus-sheet-group,");
+    expect(b).toContain("background-color: var(--corvus-s1)");
     for (const sel of [
-      ".axxa-root .axxa-sheet .axxa-form-preview",
-      ".axxa-root .axxa-sheet .axxa-field-input",
-      ".axxa-root .axxa-sheet .axxa-textarea",
-      ".axxa-root .axxa-sheet .axxa-search-field",
+      ".corvus-root .corvus-sheet .corvus-form-preview",
+      ".corvus-root .corvus-sheet .corvus-field-input",
+      ".corvus-root .corvus-sheet .corvus-textarea",
+      ".corvus-root .corvus-sheet .corvus-search-field",
     ])
       expect(CSS).toContain(sel);
   });
 
   it("o ícone de um projeto se mistura com o texto do TEMA pra ler na placa", () => {
     // Mais claro no escuro, mais escuro no claro — sozinho, sem regra por tema.
-    expect(bloco(".axxa-root .axxa-thing-mark svg {")).toMatch(
+    expect(bloco(".corvus-root .corvus-thing-mark svg {")).toMatch(
       /color-mix\(in srgb, currentColor \d+%, var\(--text-normal\)\)/
     );
   });
 
   it("o véu parte do véu do tema, só mais fundo", () => {
-    const b = bloco(".axxa-root .axxa-scrim {");
+    const b = bloco(".corvus-root .corvus-scrim {");
     expect(b).toContain("var(--background-modifier-cover");
     expect(b).toContain("color-mix(");
   });

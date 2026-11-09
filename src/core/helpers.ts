@@ -1,6 +1,6 @@
-// src/views/axxaApp.helpers.ts
-// Helpers PUROS extraídos do AxxaApp (v0.1.234) — sem estado de componente, sem
-// React. Ficavam no topo do AxxaApp.tsx (god-file de 3300+ linhas); vivem aqui
+// src/views/corvusApp.helpers.ts
+// Helpers PUROS extraídos do CorvusApp (v0.1.234) — sem estado de componente, sem
+// React. Ficavam no topo do CorvusApp.tsx (god-file de 3300+ linhas); vivem aqui
 // agora pra (1) encolher o componente e (2) ganhar testes (eram lógica sem
 // cobertura). Comportamento idêntico — extração mecânica, zero mudança.
 

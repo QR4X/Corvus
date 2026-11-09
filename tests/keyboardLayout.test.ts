@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 // A regra do app é: quem publica a medida é o Obsidian (`--keyboard-height` no
 // <html>), e quem a desconta é a GAVETA, uma vez só:
 //
-//     body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-keyboard-open {
+//     body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-keyboard-open {
 //       height: calc(100dvh - var(--keyboard-height, 0px));
 //     }
 //
@@ -61,12 +61,12 @@ describe("a única conta de teclado", () => {
     // verificada aqui: a gaveta desconta o teclado, e o vh vem ANTES como
     // reserva pra quem não tem dvh — agora pela ORDEM dos dois blocos, que é
     // o que decide entre regras de mesma especificidade.
-    const b = bloco("body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-keyboard-open {");
+    const b = bloco("body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-keyboard-open {");
     expect(b).toContain("calc(100vh - var(--keyboard-height, 0px))");
     expect(b).not.toContain("100dvh");
 
     const iRegra = SEM_COMENTARIO.indexOf(
-      "body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-keyboard-open {"
+      "body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-keyboard-open {"
     );
     const iSupports = SEM_COMENTARIO.indexOf(
       "@supports (height: 100dvh)",
@@ -75,7 +75,7 @@ describe("a única conta de teclado", () => {
     expect(iSupports, "o @supports com o dvh sumiu").toBeGreaterThan(iRegra);
     const dentro = SEM_COMENTARIO.slice(iSupports, iSupports + 400);
     expect(dentro).toContain(
-      "body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-keyboard-open"
+      "body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-keyboard-open"
     );
     expect(dentro).toContain("calc(100dvh - var(--keyboard-height, 0px))");
   });
@@ -83,10 +83,10 @@ describe("a única conta de teclado", () => {
   it("a gaveta em TELA CHEIA desconta pelo mesmo par", () => {
     // O outro sítio do mesmo padrão. Estava sem teste e passou despercebido
     // até a 0.9.8 mexer nos dois de uma vez.
-    const b = bloco("body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-fullscreen {");
+    const b = bloco("body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-fullscreen {");
     expect(b).toContain("calc(100vh - var(--keyboard-height, 0px))");
     const i = SEM_COMENTARIO.indexOf(
-      "body.is-mobile:not(#axxa-especificidade) .workspace-drawer.axxa-fullscreen {"
+      "body.is-mobile:not(#corvus-especificidade) .workspace-drawer.corvus-fullscreen {"
     );
     const dentro = SEM_COMENTARIO.slice(
       SEM_COMENTARIO.indexOf("@supports (height: 100dvh)", i),
@@ -102,7 +102,7 @@ describe("a única conta de teclado", () => {
     // mais que qualquer largura menor, inline ou não. Tirar o min-width não
     // quebra nada no celular — e corta a tela cheia nesse tablet. Tirar o
     // width corta 62px à direita no celular comum (a gaveta fica em 84vw).
-    const b = bloco("body.is-mobile .workspace-drawer.axxa-fullscreen {");
+    const b = bloco("body.is-mobile .workspace-drawer.corvus-fullscreen {");
     const sem = b.replace(/\/\*[\s\S]*?\*\//g, "");
     expect(sem).toMatch(/(?:^|[\s;])width:\s*100vw;/);
     expect(sem).toMatch(/min-width:\s*100vw;/);
@@ -111,7 +111,7 @@ describe("a única conta de teclado", () => {
 
   it("as quatro alturas da gaveta carregam o reforço de especificidade", () => {
     // 0.9.12: sem `!important`, o que faz a altura da gaveta vencer as regras
-    // do app.css é o `:not(#axxa-especificidade)` (+1 ID). Tirar o reforço
+    // do app.css é o `:not(#corvus-especificidade)` (+1 ID). Tirar o reforço
     // numa delas não quebra nada à vista no desktop — e deixa o composer atrás
     // do teclado no celular. Cada `height: calc(…--keyboard-height…)` tem de
     // estar numa regra com ele.
@@ -120,14 +120,14 @@ describe("a única conta de teclado", () => {
       /(?:^|[\s;{])height:\s*calc\(100d?vh - var\(--keyboard-height/.test(r)
     );
     expect(alturas).toHaveLength(4);
-    for (const r of alturas) expect(r).toContain(":not(#axxa-especificidade)");
+    for (const r of alturas) expect(r).toContain(":not(#corvus-especificidade)");
   });
 
   it("as camadas da folha entram na CAIXA do composer, sem conta própria", () => {
     // Com o teclado aberto elas deixam de ser `fixed` e viram `absolute` dentro
-    // da `.axxa-root` — a mesma caixa onde o composer é o último item em fluxo.
+    // da `.corvus-root` — a mesma caixa onde o composer é o último item em fluxo.
     const b = bloco(
-      ".workspace-drawer.axxa-keyboard-open .axxa-root .axxa-sheet-layer"
+      ".workspace-drawer.corvus-keyboard-open .corvus-root .corvus-sheet-layer"
     );
     expect(b).toContain("position: absolute");
     expect(b).not.toContain("--keyboard-height");
@@ -148,8 +148,8 @@ describe("a única conta de teclado", () => {
       CSS.indexOf("/* Teclado aberto: a folha vira o COMPOSER."),
       CSS.indexOf("{", CSS.indexOf("/* Teclado aberto: a folha vira o COMPOSER."))
     );
-    expect(regra).toContain(".workspace-drawer.axxa-keyboard-open .axxa-root .axxa-sheet-layer");
-    expect(regra).toContain("body.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet-layer");
+    expect(regra).toContain(".workspace-drawer.corvus-keyboard-open .corvus-root .corvus-sheet-layer");
+    expect(regra).toContain("body.is-mobile.corvus-keyboard-open .corvus-root .corvus-sheet-layer");
   });
 
   it("a folha é um item flex SEM altura calculada e sem transição de altura", () => {
@@ -158,7 +158,7 @@ describe("a única conta de teclado", () => {
     // As duas coisas que ela tinha e ele não: `min/max-height: 94%` e uma
     // transição de 260ms nessas alturas. Aqui, nenhuma das duas.
     const b = bloco(
-      ".workspace-drawer.axxa-keyboard-open .axxa-root .axxa-sheet-layer .axxa-sheet"
+      ".workspace-drawer.corvus-keyboard-open .corvus-root .corvus-sheet-layer .corvus-sheet"
     );
     expect(b).toContain("flex: 1 1 auto");
     expect(b).toContain("min-height: 0");
@@ -203,7 +203,7 @@ describe("o painel da assistente segue o composer", () => {
     // contido pela folha (`will-change: transform` faz bloco contenedor) e
     // recortado pelo `overflow: hidden` dela. Absolute na raiz — que já encolhe
     // com a gaveta — é o mesmo chão do composer.
-    const b = bloco(".axxa-root .axxa-assist-layer {");
+    const b = bloco(".corvus-root .corvus-assist-layer {");
     expect(b).toContain("position: absolute");
     expect(b).not.toContain("--keyboard-height");
   });
@@ -223,23 +223,23 @@ describe("o respiro embaixo do último botão é o que JÁ funciona no aparelho"
         b.replace(/\/\*[\s\S]*?\*\//g, "")
       )?.[1].trim();
     const folha = valor(
-      bloco("body.axxa-keyboard-open .axxa-root .axxa-sheet-actions,")
+      bloco("body.corvus-keyboard-open .corvus-root .corvus-sheet-actions,")
     );
-    const painel = valor(bloco(".axxa-root .axxa-assist-layer {"));
+    const painel = valor(bloco(".corvus-root .corvus-assist-layer {"));
     expect(folha).toBe("15px");
     expect(folha).toBe(painel);
   });
 
   it("o composer continua com o respiro dele", () => {
     // O composer está certo como está — ninguém mexe nele por tabela.
-    const c = bloco("body.is-mobile .axxa-keyboard-open .axxa-composer,");
-    expect(c).toContain("padding-bottom: var(--axxa-2)");
+    const c = bloco("body.is-mobile .corvus-keyboard-open .corvus-composer,");
+    expect(c).toContain("padding-bottom: var(--corvus-2)");
   });
 
   it("o painel da assistente usa os 15px do composer", () => {
-    const b = bloco(".axxa-root .axxa-assist-layer {");
+    const b = bloco(".corvus-root .corvus-assist-layer {");
     expect(b).toContain("padding-bottom: 15px");
-    expect(CSS).not.toContain("--axxa-ime-slack:");
+    expect(CSS).not.toContain("--corvus-ime-slack:");
   });
 
   it("o cartão da assistente desce por margem, não por `justify-content`", () => {
@@ -248,12 +248,12 @@ describe("o respiro embaixo do último botão é o que JÁ funciona no aparelho"
     // TOPO da tela. `margin-top: auto` não tem essa exceção.
     // Sem os comentários: o da própria regra explica por que NÃO é flex-end,
     // e um teste que lê comentário acusa a explicação.
-    const camada = bloco(".axxa-root .axxa-assist-layer {").replace(
+    const camada = bloco(".corvus-root .corvus-assist-layer {").replace(
       /\/\*[\s\S]*?\*\//g,
       ""
     );
     expect(camada).not.toMatch(/justify-content:\s*flex-end/);
-    const cartao = bloco(".axxa-root .axxa-assist-layer .axxa-assist {");
+    const cartao = bloco(".corvus-root .corvus-assist-layer .corvus-assist {");
     expect(cartao).toContain("margin-top: auto");
   });
 });
@@ -266,8 +266,8 @@ describe("com o teclado aberto, o botão da folha pousa como o cartão da assist
   // afaste do original.
   const sem = (b: string) => b.replace(/\/\*[\s\S]*?\*\//g, "");
   const flutuante = () =>
-    sem(bloco(".workspace-drawer.axxa-keyboard-open .axxa-root .axxa-float-foot,"));
-  const painel = () => sem(bloco(".axxa-root .axxa-assist-layer {"));
+    sem(bloco(".workspace-drawer.corvus-keyboard-open .corvus-root .corvus-float-foot,"));
+  const painel = () => sem(bloco(".corvus-root .corvus-assist-layer {"));
 
   it("mesma caixa e mesma coluna que o painel", () => {
     for (const d of [
@@ -287,7 +287,7 @@ describe("com o teclado aberto, o botão da folha pousa como o cartão da assist
   });
 
   it("desce por margem automática, como o cartão do painel", () => {
-    expect(sem(bloco(".axxa-root .axxa-float-foot-card {"))).toContain(
+    expect(sem(bloco(".corvus-root .corvus-float-foot-card {"))).toContain(
       "margin-top: auto"
     );
   });
@@ -295,7 +295,7 @@ describe("com o teclado aberto, o botão da folha pousa como o cartão da assist
   it("não engole os toques na folha embaixo", () => {
     // A camada cobre a raiz inteira; sem isto, nada na folha receberia toque.
     expect(flutuante()).toContain("pointer-events: none");
-    expect(sem(bloco(".axxa-root .axxa-float-foot-card {"))).toContain(
+    expect(sem(bloco(".corvus-root .corvus-float-foot-card {"))).toContain(
       "pointer-events: auto"
     );
   });
@@ -307,11 +307,11 @@ describe("com o teclado aberto, o botão da folha pousa como o cartão da assist
   });
 
   it("fechado o teclado, ela nem aparece — e o pé de dentro da folha volta", () => {
-    expect(sem(bloco(".axxa-root .axxa-float-foot {"))).toContain("display: none");
+    expect(sem(bloco(".corvus-root .corvus-float-foot {"))).toContain("display: none");
     // Aberto, o de dentro fica invisível mas GUARDA o lugar (visibility, não
     // display): sem o espaço dele o conteúdo passaria por baixo do botão.
     const dentro = sem(
-      bloco(".workspace-drawer.axxa-keyboard-open .axxa-root .axxa-sheet-actions,\nbody.is-mobile.axxa-keyboard-open .axxa-root .axxa-sheet-actions {")
+      bloco(".workspace-drawer.corvus-keyboard-open .corvus-root .corvus-sheet-actions,\nbody.is-mobile.corvus-keyboard-open .corvus-root .corvus-sheet-actions {")
     );
     expect(dentro).toContain("visibility: hidden");
   });

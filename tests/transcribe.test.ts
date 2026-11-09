@@ -72,7 +72,7 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
 
 describe("audioMimeFor", () => {
   it("mapeia as extensões que o gravador produz", () => {
-    expect(audioMimeFor("axxa-ai/recordings/x.webm")).toBe("audio/webm");
+    expect(audioMimeFor("corvus-ai/recordings/x.webm")).toBe("audio/webm");
     expect(audioMimeFor("x.m4a")).toBe("audio/mp4");
     expect(audioMimeFor("x.ogg")).toBe("audio/ogg");
     expect(audioMimeFor("x.mp3")).toBe("audio/mpeg");
@@ -186,8 +186,8 @@ describe("transcribeAudio — contrato de erro", () => {
 
     expect(res).toBe("transcrição via openrouter");
     expect(sent.url).toBe("https://openrouter.ai/api/v1/audio/transcriptions");
-    expect(sent.headers["HTTP-Referer"]).toBe("https://github.com/axxalab/axxa-agent");
-    expect(sent.headers["X-Title"]).toBe("M.I.L.A");
+    expect(sent.headers["HTTP-Referer"]).toBe("https://github.com/QR4X/M.I.L.A");
+    expect(sent.headers["X-Title"]).toBe("Corvus");
     expect(dec.decode(sent.body)).toContain("openai/whisper-1");
   });
 

@@ -235,7 +235,7 @@ describe("transcribeInstagramReel & reelAttachment", () => {
 
     expect(result.transcript).toBe("Transkribiert mit OpenRouter Whisper!");
     expect(transcribeCalledWith.url).toBe("https://openrouter.ai/api/v1/audio/transcriptions");
-    expect(transcribeCalledWith.headers["HTTP-Referer"]).toBe("https://github.com/axxalab/axxa-agent");
+    expect(transcribeCalledWith.headers["HTTP-Referer"]).toBe("https://github.com/QR4X/M.I.L.A");
   });
 
   it("deaktiviertes instagramReelsEnabled schaltet die Tool- und Link-Erkennung ab", async () => {

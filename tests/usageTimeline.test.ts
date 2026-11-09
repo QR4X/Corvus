@@ -190,8 +190,8 @@ const VIEW = readFileSync(resolve(__dirname, "../src/ui/UsageView.tsx"), "utf8")
 /**
  * O corpo da regra desse seletor — dele SOZINHO.
  *
- * Um `indexOf` cru pegava a regra COMPARTILHADA (`.axxa-chart-air,
- * .axxa-chart-bar {`), que é outra: o teste passava a ler as declarações
+ * Um `indexOf` cru pegava a regra COMPARTILHADA (`.corvus-chart-air,
+ * .corvus-chart-bar {`), que é outra: o teste passava a ler as declarações
  * erradas. Aqui o seletor tem que vir logo depois do fim da regra anterior
  * (`}`) e não depois de uma vírgula.
  */
@@ -210,27 +210,27 @@ describe("o desenho do gráfico", () => {
     // Uma segunda cor fixa colidiria com o acento no dia em que a pessoa
     // escolhesse justamente ela — e tom é o canal que qualquer daltonismo
     // enxerga.
-    const b = bloco(".axxa-root .axxa-chart {");
-    expect(b).toContain("--axxa-serie-in: var(--interactive-accent)");
-    expect(b).toMatch(/--axxa-serie-out:\s*color-mix\(/);
+    const b = bloco(".corvus-root .corvus-chart {");
+    expect(b).toContain("--corvus-serie-in: var(--interactive-accent)");
+    expect(b).toMatch(/--corvus-serie-out:\s*color-mix\(/);
     // Puxada pro TEXTO do tema, não pro fundo: medido no escuro, mistura com
     // o fundo dava 1,03:1 contra o cartão — a barra sumia.
-    const fora = b.slice(b.indexOf("--axxa-serie-out"));
+    const fora = b.slice(b.indexOf("--corvus-serie-out"));
     expect(fora).toContain("var(--text-normal)");
     expect(fora).not.toContain("var(--background-primary)");
   });
 
   it("a legenda existe sempre — só ela diz qual tom é qual", () => {
-    expect(VIEW).toContain("axxa-chart-legend");
-    expect(VIEW).toContain("axxa-chart-swatch is-in");
-    expect(VIEW).toContain("axxa-chart-swatch is-out");
+    expect(VIEW).toContain("corvus-chart-legend");
+    expect(VIEW).toContain("corvus-chart-swatch is-in");
+    expect(VIEW).toContain("corvus-chart-swatch is-out");
     // E a escala tem topo anunciado: sem ele, altura só compara consigo mesma.
     expect(VIEW).toContain("peak ");
   });
 
   it("a coluna escolhida se marca por um TRAÇO, não pintando a faixa", () => {
     // Retângulo da altura do quadro lia como mais uma barra — a mais alta.
-    const b = bloco(".axxa-root button.axxa-chart-col.is-on {");
+    const b = bloco(".corvus-root button.corvus-chart-col.is-on {");
     expect(b).toContain("inset 0 -2px 0 var(--interactive-accent)");
     expect(b).not.toContain("background-color");
   });
@@ -238,29 +238,29 @@ describe("o desenho do gráfico", () => {
   it("o cartão do gráfico não muda de largura com o que está escrito nele", () => {
     // O bloco de seção encolhe os filhos pro conteúdo: sem esticar, escolher
     // uma semana vazia encolhia o gráfico inteiro.
-    expect(bloco(".axxa-root .axxa-chart {")).toContain("align-self: stretch");
+    expect(bloco(".corvus-root .corvus-chart {")).toContain("align-self: stretch");
   });
 
   it("a barra tem teto de largura e piso de altura", () => {
     // Teto: com sete colunas num painel largo ela viraria um bloco.
-    expect(bloco(".axxa-root .axxa-chart-stack {")).toContain(
+    expect(bloco(".corvus-root .corvus-chart-stack {")).toContain(
       "width: min(100%, 24px)"
     );
     // Piso: zero e quase-zero são coisas diferentes.
-    expect(bloco(".axxa-root .axxa-chart-bar {")).toContain("min-height: 2px");
+    expect(bloco(".corvus-root .corvus-chart-bar {")).toContain("min-height: 2px");
   });
 
   it("o vão entre as partes e entre as colunas é a cor do cartão, não um risco", () => {
-    expect(bloco(".axxa-root .axxa-chart-plot {")).toContain("gap: 2px");
+    expect(bloco(".corvus-root .corvus-chart-plot {")).toContain("gap: 2px");
     // O vão só existe quando HÁ barra de entrada embaixo. Era um
     // `:has(+ .is-in)`; virou a classe `has-in`, decidida no render — quem
     // sabe se a outra barra existe é ele, e saber ali não custa invalidação
     // de seletor no navegador.
-    expect(bloco(".axxa-root .axxa-chart-bar.is-out.has-in {")).toContain(
+    expect(bloco(".corvus-root .corvus-chart-bar.is-out.has-in {")).toContain(
       "margin-bottom: 2px"
     );
-    expect(VIEW).toContain('"axxa-chart-bar is-out has-in"');
-    expect(bloco(".axxa-root .axxa-chart-bar {")).not.toContain("border:");
+    expect(VIEW).toContain('"corvus-chart-bar is-out has-in"');
+    expect(bloco(".corvus-root .corvus-chart-bar {")).not.toContain("border:");
   });
 
   it("o número não depende de mouse: vai no title E no rótulo acessível", () => {
@@ -271,7 +271,7 @@ describe("o desenho do gráfico", () => {
     expect(VIEW).toMatch(
       /title=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.titulo,\s*sent: formatCompact\(c\.entrada\)/
     );
-    expect(VIEW).toContain("axxa-chart-readout");
+    expect(VIEW).toContain("corvus-chart-readout");
   });
 
   it("com uma coluna só não há série — seria o total desenhado de novo", () => {
@@ -307,9 +307,9 @@ describe("o gráfico VAZIO", () => {
 
   it("as colunas de mentira nunca usam as cores das séries", () => {
     // Fantasma na cor do dado seria dado inventado.
-    const b = bloco(".axxa-root .axxa-chart-bar.is-ghost {");
+    const b = bloco(".corvus-root .corvus-chart-bar.is-ghost {");
     expect(b).toMatch(/color-mix\(in srgb, var\(--text-normal\) \d+%/);
-    expect(b).not.toContain("--axxa-serie");
+    expect(b).not.toContain("--corvus-serie");
   });
 
   it("as alturas de mentira são FIXAS — sorteio faria a tela piscar", () => {
@@ -327,18 +327,18 @@ describe("o gráfico VAZIO", () => {
 
   it("sem dado não há piso: o fio do eixo sai", () => {
     // Ele prometeria uma escala que não está medindo nada.
-    expect(bloco(".axxa-root .axxa-chart.is-empty .axxa-chart-plot {")).toContain(
+    expect(bloco(".corvus-root .corvus-chart.is-empty .corvus-chart-plot {")).toContain(
       "border-bottom-color: transparent"
     );
   });
 
   it("a faixa da coluna serve ao botão E ao span do vazio", () => {
-    // A regra estava presa em `button.axxa-chart-col`, e o fantasma é span:
+    // A regra estava presa em `button.corvus-chart-col`, e o fantasma é span:
     // sem isto ele nasceria sem largura nenhuma.
-    const b = bloco(".axxa-root .axxa-chart-col {");
+    const b = bloco(".corvus-root .corvus-chart-col {");
     expect(b).toContain("flex: 1 1 0");
     expect(b).toContain("height: 100%");
-    expect(bloco(".axxa-root button.axxa-chart-col {")).toContain(
+    expect(bloco(".corvus-root button.corvus-chart-col {")).toContain(
       "cursor: pointer"
     );
   });

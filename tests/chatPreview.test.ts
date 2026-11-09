@@ -17,7 +17,7 @@ describe("previewFromMarkdown", () => {
     // A meta e os passos do agente são base64 — apareceriam como uma parede
     // de caracteres exatamente onde deveria estar a última frase.
     const md = arquivo(
-      "## Assistant\n\n<!-- axxa: ts=1 -->\nmovi 3 notas\n\n<!-- axxa-steps: eyJhIjoxfQ== -->\n"
+      "## Assistant\n\n<!-- corvus: ts=1 -->\nmovi 3 notas\n\n<!-- corvus-steps: eyJhIjoxfQ== -->\n"
     );
     expect(previewFromMarkdown(md)).toBe("movi 3 notas");
   });
@@ -83,7 +83,7 @@ describe("previewFromMarkdown", () => {
 });
 
 function arquifoVazio() {
-  return arquivo("## You\n\npergunta\n\n## Assistant\n\n<!-- axxa: ts=2 -->\n");
+  return arquivo("## You\n\npergunta\n\n## Assistant\n\n<!-- corvus: ts=2 -->\n");
 }
 
 function arquifoSoCabecalho() {

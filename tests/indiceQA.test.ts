@@ -4,7 +4,7 @@ import { QUANT_PROFILES } from "../src/rag/quant";
 import { applyControl, DEFAULT_INDEX_PATH, isControlKey } from "../src/ui/settings/values";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { AxxaSettings } from "../src/main";
+import type { CorvusSettings } from "../src/main";
 
 // A precisão e os pedaços do índice do Vault Q&A voltaram pra tela (sumiram no
 // redesign da 0.4.0; o motor continuou lendo).
@@ -46,7 +46,7 @@ describe("o índice do Q&A: precisão e pedaços", () => {
 });
 
 describe("a pasta do índice", () => {
-  const s = () => ({ ragIndexPath: "x" }) as unknown as AxxaSettings;
+  const s = () => ({ ragIndexPath: "x" }) as unknown as CorvusSettings;
 
   it("vira campo na aba Vault, junto das outras pastas", () => {
     expect(isControlKey("ragIndexPath")).toBe(true);
@@ -61,6 +61,6 @@ describe("a pasta do índice", () => {
     expect(a.ragIndexPath).toBe("meu/indice");
     applyControl(a, "ragIndexPath", "   ");
     expect(a.ragIndexPath).toBe(DEFAULT_INDEX_PATH);
-    expect(DEFAULT_INDEX_PATH).toBe(".axxa/index");
+    expect(DEFAULT_INDEX_PATH).toBe(".corvus/index");
   });
 });

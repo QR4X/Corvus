@@ -1,5 +1,5 @@
 // src/editor/comandos.ts
-// O AXXA a partir da NOTA: comandos na paleta (e, no celular, na barra de
+// O Corvus a partir da NOTA: comandos na paleta (e, no celular, na barra de
 // ferramentas do editor, onde a pessoa pode pôr os que usa) e itens no
 // clique direito — do texto selecionado e da nota na lista de arquivos.
 //
@@ -10,7 +10,7 @@
 //     escrevem direto na nota (inline.ts), desfazíveis com Ctrl/Cmd+Z.
 
 import { MarkdownView, TFile, type Editor, type Menu, type MarkdownFileInfo } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { pedirAoPainel } from "./ponte";
 import { IdiomaModal, acaoNoTexto, type AcaoNoTexto } from "./inline";
 import { marca, tr } from "../i18n/tr";
@@ -28,7 +28,7 @@ function ehNota(f: unknown): f is TFile {
   return f instanceof TFile && f.extension === "md";
 }
 
-export function registrarComandosDoEditor(plugin: AxxaPlugin): void {
+export function registrarComandosDoEditor(plugin: CorvusPlugin): void {
   const app = plugin.app;
 
   /** Abre o painel e entrega o pedido (a ponte segura até ele montar). */
@@ -115,17 +115,17 @@ export function registrarComandosDoEditor(plugin: AxxaPlugin): void {
   plugin.registerEvent(
     app.workspace.on("editor-menu", (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
       const item = (title: string, icon: string, acao: () => void) =>
-        menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("axxa").onClick(acao));
+        menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("corvus").onClick(acao));
       if (temSelecao(editor)) {
-        item(tr("Rewrite with AXXA"), "wand-sparkles", () => noTexto(editor, "rewrite"));
-        item(tr("Fix grammar with AXXA"), "spell-check", () => noTexto(editor, "fix"));
-        item(tr("Translate with AXXA…"), "languages", () => traduzir(editor));
-        item(tr("Send selection to AXXA"), "message-square-quote", () => mandarTrecho(editor, info));
+        item(tr("Rewrite with Corvus"), "wand-sparkles", () => noTexto(editor, "rewrite"));
+        item(tr("Fix grammar with Corvus"), "spell-check", () => noTexto(editor, "fix"));
+        item(tr("Translate with Corvus…"), "languages", () => traduzir(editor));
+        item(tr("Send selection to Corvus"), "message-square-quote", () => mandarTrecho(editor, info));
       } else {
-        item(tr("Continue writing with AXXA"), "pen-line", () => noTexto(editor, "continue"));
+        item(tr("Continue writing with Corvus"), "pen-line", () => noTexto(editor, "continue"));
         if (ehNota(info.file)) {
           const f = info.file;
-          item(tr("Ask AXXA about this note"), "message-square-text", () => perguntarSobre(f));
+          item(tr("Ask Corvus about this note"), "message-square-text", () => perguntarSobre(f));
         }
       }
     })
@@ -136,9 +136,9 @@ export function registrarComandosDoEditor(plugin: AxxaPlugin): void {
     app.workspace.on("file-menu", (menu: Menu, file) => {
       if (!ehNota(file)) return;
       const item = (title: string, icon: string, acao: () => void) =>
-        menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("axxa").onClick(acao));
-      item(tr("Ask AXXA about this note"), "message-square-text", () => perguntarSobre(file));
-      item(tr("Summarize with AXXA"), "list", () => resumir(file));
+        menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("corvus").onClick(acao));
+      item(tr("Ask Corvus about this note"), "message-square-text", () => perguntarSobre(file));
+      item(tr("Summarize with Corvus"), "list", () => resumir(file));
     })
   );
 }

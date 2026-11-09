@@ -7,7 +7,7 @@
 // Tudo que a UI faz passa pela ChatSession (src/core/session.ts) ou pelo plugin.
 
 import { useCallback, useEffect, useReducer, useState } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import { SEGMENT_ALL, startupMode } from "./modules";
 import type { Skill } from "../skills/skills";
@@ -39,7 +39,7 @@ export function App({
   session,
   onScreenChange,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   /** A TELA mudou (conversa × painel/histórico/uso/…). O fullscreen mobile
    *  depende disso e é reativo, então a view precisa saber na hora. */
@@ -101,10 +101,10 @@ export function App({
 
   // A TELA mudou (conversa ↔ painel/histórico/uso/…)? O fullscreen mobile
   // depende disso: a conversa liga o modo sozinha, as outras telas devolvem o
-  // valor da setting. Aqui o AxxaView recalcula na hora — sem este aviso a
+  // valor da setting. Aqui o CorvusView recalcula na hora — sem este aviso a
   // moldura só apareceria/sumiria quando o observer da gaveta disparasse
   // (260ms depois). A `view` já mudou no DOM quando o efeito roda, então a
-  // marca `axxa-chat-open` lida pela view é a nova.
+  // marca `corvus-chat-open` lida pela view é a nova.
   useEffect(() => {
     onScreenChange?.();
   }, [view, onScreenChange]);
@@ -209,7 +209,7 @@ export function App({
         instrucoesDe: (chat: ChatSummary) => setInstrucoesPara(chat),
       }}
     >
-    <div className={view === "chat" ? "axxa-root axxa-chat-open" : "axxa-root"}>
+    <div className={view === "chat" ? "corvus-root corvus-chat-open" : "corvus-root"}>
       {view === "home" ? (
         <Dashboard
           plugin={plugin}

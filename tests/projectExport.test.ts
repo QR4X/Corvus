@@ -36,7 +36,7 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   tokensOut: 2,
   messageCount: 2,
   toolCount: 0,
-  filePath: ".axxa/chats/c1.md",
+  filePath: ".corvus/chats/c1.md",
   ...over,
 });
 
@@ -61,7 +61,7 @@ describe("exportProjectMarkdown", () => {
     const md = exportProjectMarkdown(proj(), [chat()], quando);
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain("kind: project");
-    expect(md).toContain("source: AXXA");
+    expect(md).toContain("source: Corvus");
     expect(md).toContain('created: "2026-09-01T10:00:00.000Z"');
     expect(md).toContain("notes: 2");
   });

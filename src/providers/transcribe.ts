@@ -42,7 +42,7 @@ export type MultipartField =
  */
 export function buildMultipartBody(
   fields: MultipartField[],
-  boundary = `----axxa${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  boundary = `----corvus${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
 ): { body: ArrayBuffer; contentType: string } {
   const enc = new TextEncoder();
   const chunks: Uint8Array[] = [];
@@ -193,8 +193,8 @@ export async function transcribeAudio(
     Authorization: `Bearer ${opts.apiKey.trim()}`,
   };
   if (isRouter) {
-    headers["HTTP-Referer"] = "https://github.com/axxalab/axxa-agent";
-    headers["X-Title"] = "M.I.L.A";
+    headers["HTTP-Referer"] = "https://github.com/QR4X/M.I.L.A";
+    headers["X-Title"] = "Corvus";
   }
 
   let res;

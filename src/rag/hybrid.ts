@@ -85,7 +85,7 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
     } catch (err) {
       // embed falhou (sem key / rate limit) → segue só com keyword.
       // Loga pra erro real (não só rate limit) ficar diagnosticável. v0.1.228
-      console.warn("[axxa/rag] busca semântica falhou, caindo pra keyword:", err);
+      console.warn("[corvus/rag] busca semântica falhou, caindo pra keyword:", err);
     }
   }
 

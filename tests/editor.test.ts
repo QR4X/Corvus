@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { emendar, limparResposta, mensagensDaAcao, IdiomaModal } from "../src/editor/inline";
 import { esquecerPedidos, ouvirPedidos, pedirAoPainel, type PedidoDoEditor } from "../src/editor/ponte";
 import { registrarComandosDoEditor, PEDIDO_RESUMO } from "../src/editor/comandos";
-import type AxxaPlugin from "../src/main";
+import type CorvusPlugin from "../src/main";
 
-// O AXXA a partir da nota: as instruções de cada ação no texto, a limpeza da
+// O Corvus a partir da nota: as instruções de cada ação no texto, a limpeza da
 // resposta, a ponte editor → painel e os comandos registrados.
 
 describe("ações no texto", () => {
@@ -36,7 +36,7 @@ describe("ações no texto", () => {
 
   it("o idioma digitado que não está na lista vira a primeira opção", () => {
     const m = new IdiomaModal({} as never, () => {});
-    expect(m.modalEl.hasClass("axxa-language-modal")).toBe(true);
+    expect(m.modalEl.hasClass("corvus-language-modal")).toBe(true);
     expect(m.getSuggestions("port")).toEqual(["port", "Portuguese (Brazil)", "Portuguese (Portugal)"]);
     expect(m.getSuggestions("Spanish")).toEqual(["Spanish"]);
     expect(m.getSuggestions("").length).toBeGreaterThan(10);
@@ -70,7 +70,7 @@ describe("os comandos", () => {
       addCommand: (c: { id: string; name: string }) => comandos.push(c),
       registerEvent: () => {},
       activateView: async () => {},
-    } as unknown as AxxaPlugin;
+    } as unknown as CorvusPlugin;
     registrarComandosDoEditor(plugin);
     expect(comandos.map((c) => c.id)).toEqual([
       "ask-about-note",
@@ -81,8 +81,8 @@ describe("os comandos", () => {
       "translate-selection",
       "continue-writing",
     ]);
-    // nome sem o do plugin: a paleta já prefixa "AXXA Agent:"
-    expect(comandos.every((c) => !/axxa/i.test(c.name))).toBe(true);
+    // nome sem o do plugin: a paleta já prefixa "Corvus:"
+    expect(comandos.every((c) => !/corvus/i.test(c.name))).toBe(true);
     expect(eventos).toEqual(["editor-menu", "file-menu"]);
   });
 });

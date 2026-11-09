@@ -45,17 +45,17 @@ describe("a primeira posição é instantânea", () => {
     putThumb(row);
     expect(log).toEqual([
       "+is-placing",
-      "--axxa-seg-x=85px (sem transição)",
-      "--axxa-seg-w=77px (sem transição)",
+      "--corvus-seg-x=85px (sem transição)",
+      "--corvus-seg-w=77px (sem transição)",
       "mede",
       "-is-placing",
     ]);
   });
 
   it("linha que já tinha thumb: só escreve — e o CSS desliza", () => {
-    const { row, log } = linha({ left: 85, width: 77 }, { "--axxa-seg-x": "161px", "--axxa-seg-w": "85px" });
+    const { row, log } = linha({ left: 85, width: 77 }, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
     putThumb(row);
-    expect(log).toEqual(["--axxa-seg-x=85px", "--axxa-seg-w=77px"]);
+    expect(log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
   });
 
   it("escondida (outra aba) mede zero e fica sem posição", () => {
@@ -74,13 +74,13 @@ describe("a primeira posição é instantânea", () => {
 
 describe("a linha remontada nasce onde a velha estava", () => {
   it("o thumb da velha passa pra nova, e aí desliza até o novo ativo", () => {
-    const velha = linha(null, { "--axxa-seg-x": "161px", "--axxa-seg-w": "85px" });
+    const velha = linha(null, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
     const nova = linha({ left: 85, width: 77 });
     seedThumb(nova.row, thumbOf(velha.row));
     nova.log.length = 0;
     putThumb(nova.row);
     // Não é "primeira": não desliga a transição — sai de 161 e vai pra 85.
-    expect(nova.log).toEqual(["--axxa-seg-x=85px", "--axxa-seg-w=77px"]);
+    expect(nova.log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
   });
 
   it("sem thumb na velha (ou sem velha), a nova é primeira posição", () => {
@@ -93,14 +93,14 @@ describe("a linha remontada nasce onde a velha estava", () => {
 
 describe("o CSS tem o desligador", () => {
   const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  it("`.axxa-seg.is-placing::before` sem transição", () => {
-    expect(CSS).toMatch(/\.axxa-settings-root \.axxa-seg\.is-placing::before\s*\{\s*transition:\s*none;\s*\}/);
+  it("`.corvus-seg.is-placing::before` sem transição", () => {
+    expect(CSS).toMatch(/\.corvus-settings-root \.corvus-seg\.is-placing::before\s*\{\s*transition:\s*none;\s*\}/);
   });
 
   it("a barra de abas zera a margem da direita que o app.css dá ao 1º filho", () => {
     // `.setting-item > *:first-child { margin-inline-end: 16px }` — a barra
     // parava 16px antes do trilho de providers logo abaixo.
-    const corpo = CSS.match(/\.axxa-settings-root \.axxa-settings-nav\s*\{([^}]*)\}/)?.[1] ?? "";
+    const corpo = CSS.match(/\.corvus-settings-root \.corvus-settings-nav\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(corpo).toMatch(/margin:\s*0 0 var\(--size-4-3\);/);
   });
 });

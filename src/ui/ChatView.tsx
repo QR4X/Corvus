@@ -23,7 +23,7 @@ import {
   requestUrl,
   type App,
 } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import {
   NEW_CHAT_DRAFT,
   useChatStore,
@@ -136,7 +136,7 @@ export function ChatView({
   onBackHome,
   onUseSkill,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
   /** Volta pra home do módulo desta conversa. */
@@ -278,7 +278,7 @@ export function ChatView({
       );
       // UMA fonte de verdade: o CSS lê esta var no max-height, então JS e CSS
       // não podem mais discordar sobre o teto.
-      el.style.setProperty("--axxa-composer-max", `${max}px`);
+      el.style.setProperty("--corvus-composer-max", `${max}px`);
       // Zera pra medir o conteúdo e só então fixa a altura: sem o zero, o
       // scrollHeight devolve a altura ATUAL e o campo nunca encolhe.
       el.setCssStyles({ height: "0px" });
@@ -592,13 +592,13 @@ export function ChatView({
   // (anexo, fila, campo crescendo, modo de voz), então é medida, não chutada.
   useEffect(() => {
     const el = composerRef.current;
-    const raiz = el?.closest(".axxa-root") as HTMLElement | null;
+    const raiz = el?.closest(".corvus-root") as HTMLElement | null;
     if (!el || !raiz) return;
     const publicar = () => {
       // A ALTURA dele: é o quanto a conversa precisa avançar por baixo (margem
       // negativa) e devolver por dentro (padding).
       raiz.style.setProperty(
-        "--axxa-composer-h",
+        "--corvus-composer-h",
         `${Math.max(0, Math.round(el.getBoundingClientRect().height))}px`
       );
       // Cresceu embaixo de quem estava no fim: desce junto.
@@ -1160,8 +1160,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   const effort = cfg.effort as EffortLevel;
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar">
+    <div className="corvus-chat">
+      <header className="corvus-topbar">
         {/* Só a seta. O menu tem UMA porta, e ela é a home — que fica a um
             toque daqui. Duas portas pro mesmo lugar na mesma barra gastavam
             a única coisa escassa desta tela, que é largura: a seta, o
@@ -1169,14 +1169,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             linha, e o título perdia. */}
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Back")}
           onClick={onBackHome}
         >
           <Icon name="arrow-left" />
         </button>
-        <div className="axxa-topbar-title">
-          <span className="axxa-topbar-name">
+        <div className="corvus-topbar-title">
+          <span className="corvus-topbar-name">
             {/* Sem conversa gravada, o título é O QUE VAI SER CRIADO — e isso
                 muda com o modo escolhido logo abaixo: "New chat", "New
                 question", "New session". É a mesma palavra que o botão de
@@ -1188,14 +1188,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               : tr(moduleFabLabel(cfg.mode))}
           </span>
           {locked && (
-            <span className="axxa-topbar-meta">
+            <span className="corvus-topbar-meta">
               {tr(moduleLabel(cfg.mode))} · {cfg.model}
             </span>
           )}
         </div>
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("New chat")}
           disabled={empty && !currentChatId}
           onClick={() => session.newChat()}
@@ -1204,8 +1204,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         </button>
       </header>
 
-      <div className="axxa-messages" ref={scrollRef}>
-        {loadingChat && <p className="axxa-empty-line">{tr("Loading…")}</p>}
+      <div className="corvus-messages" ref={scrollRef}>
+        {loadingChat && <p className="corvus-empty-line">{tr("Loading…")}</p>}
         {empty ? (
           <StarterScreen plugin={plugin} session={session} />
         ) : (
@@ -1245,14 +1245,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
       {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
           sem régua horizontal separando nada. */}
-      <section className="axxa-composer" ref={composerRef}>
+      <section className="corvus-composer" ref={composerRef}>
           {/* Quem subiu pra ler precisa de um caminho de volta — e de saber que
               a resposta ficou pronta lá embaixo. Ancorado no composer (que é
               position: relative), flutuando logo acima dele. */}
           {mostrarAviso && (
             <button
               type="button"
-              className={avisoId ? "axxa-jump is-done" : "axxa-jump"}
+              className={avisoId ? "corvus-jump is-done" : "corvus-jump"}
               onClick={voltarPraBaixo}
             >
               <Icon name="arrow-down" size={15} />
@@ -1263,12 +1263,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               Obsidian. Escolher insere o link e anexa a nota. Fica dentro do
               composer pra subir junto com ele quando o teclado abre. */}
           {mention && mentionHits.length > 0 && (
-            <div className="axxa-mention">
+            <div className="corvus-mention">
               {mentionHits.map((n) => (
                 <button
                   key={n.path}
                   type="button"
-                  className="axxa-mention-row"
+                  className="corvus-mention-row"
                   // mousedown antes do blur: o blur fecharia a lista antes do
                   // clique chegar.
                   onMouseDown={(e) => {
@@ -1277,8 +1277,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   }}
                 >
                   <Icon name="file-text" size={15} />
-                  <span className="axxa-mention-name">{n.basename}</span>
-                  <span className="axxa-mention-path">{n.path}</span>
+                  <span className="corvus-mention-name">{n.basename}</span>
+                  <span className="corvus-mention-path">{n.path}</span>
                 </button>
               ))}
             </div>
@@ -1292,14 +1292,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               coisa. Cada um mostra a MINIATURA de verdade quando tem o que
               mostrar; senão, o emoji do que ele é. */}
           {(attachments.length > 0 || queued.length > 0) && (
-            <div className="axxa-pills-row">
+            <div className="corvus-pills-row">
               {queued.map((q, i) => (
-                <span className="axxa-pill-chip is-queued" key={`q${i}`}>
+                <span className="corvus-pill-chip is-queued" key={`q${i}`}>
                   <Icon name="clock" size={14} />
-                  <span className="axxa-pill-chip-label">{q}</span>
+                  <span className="corvus-pill-chip-label">{q}</span>
                   <button
                     type="button"
-                    className="axxa-pill-chip-x"
+                    className="corvus-pill-chip-x"
                     aria-label={tr("Cancel queued message")}
                     onClick={() => {
                       removeQueued(i);
@@ -1313,24 +1313,24 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               {attachments.map((a, i) => {
                 const thumb = attachmentThumb(a);
                 return (
-                  <span className="axxa-pill-chip" key={`a${i}`}>
+                  <span className="corvus-pill-chip" key={`a${i}`}>
                     {thumb.kind === "image" ? (
                       <img
-                        className="axxa-pill-chip-thumb"
+                        className="corvus-pill-chip-thumb"
                         src={thumb.url}
                         alt=""
                       />
                     ) : (
-                      <span className="axxa-pill-chip-emoji" aria-hidden="true">
+                      <span className="corvus-pill-chip-emoji" aria-hidden="true">
                         {thumb.char}
                       </span>
                     )}
-                    <span className="axxa-pill-chip-label">
+                    <span className="corvus-pill-chip-label">
                       {attachmentLabel(a)}
                     </span>
                     <button
                       type="button"
-                      className="axxa-pill-chip-x"
+                      className="corvus-pill-chip-x"
                       aria-label={tr("Remove attachment")}
                       onClick={() => removeAttachment(i)}
                     >
@@ -1343,11 +1343,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           )}
 
           <div
-            className="axxa-swap"
+            className="corvus-swap"
             data-mode={voice.state !== "idle" || arming ? "voice" : "text"}
           >
-            <div className="axxa-swap-row">
-            <div className="axxa-input">
+            <div className="corvus-swap-row">
+            <div className="corvus-input">
               {/* O que vai junto da mensagem. Fica ACIMA do texto porque é
                   contexto do que está sendo escrito — e cada um sai com um
                   toque, senão anexar vira armadilha. */}
@@ -1399,10 +1399,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               />
 
               {/* + à esquerda, o modelo ao lado, e à direita voz e enviar. */}
-              <div className="axxa-input-bar">
+              <div className="corvus-input-bar">
                 <button
                   type="button"
-                  className="axxa-round-btn"
+                  className="corvus-round-btn"
                   aria-label={tr("Add to chat")}
                   onClick={() => openSheet("plus")}
                 >
@@ -1444,7 +1444,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   }}
                 />
 
-                <div className="axxa-pills">
+                <div className="corvus-pills">
                   <Pill
                     label={prettyModelName(cfg.model) || tr("no model")}
                     logo={
@@ -1457,7 +1457,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 {plugin.settings.voiceEnabled && (
                   <button
                     type="button"
-                    className="axxa-round-btn"
+                    className="corvus-round-btn"
                     aria-label={tr("Voice mode")}
                     onClick={() => void startVoice()}
                   >
@@ -1473,7 +1473,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     {draft.trim() && (
                       <button
                         type="button"
-                        className="axxa-round-btn"
+                        className="corvus-round-btn"
                         aria-label={tr("Send when this finishes")}
                         onPointerDown={(e) => e.preventDefault()}
                         onClick={() => void submit()}
@@ -1483,7 +1483,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     )}
                     <button
                       type="button"
-                      className="axxa-send is-stop"
+                      className="corvus-send is-stop"
                       aria-label={tr("Stop")}
                       onPointerDown={(e) => e.preventDefault()}
                       onClick={() => session.stop()}
@@ -1494,7 +1494,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 ) : (
                   <button
                     type="button"
-                    className="axxa-send"
+                    className="corvus-send"
                     aria-label={tr("Send")}
                     disabled={!draft.trim()}
                     // Sem isto o toque tira o foco do campo e o Android fecha o
@@ -1509,9 +1509,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             </div>
             </div>
 
-            <div className="axxa-swap-row">
-              <div className="axxa-voice-side">
-                {liveText && <p className="axxa-voice-live">{liveText}</p>}
+            <div className="corvus-swap-row">
+              <div className="corvus-voice-side">
+                {liveText && <p className="corvus-voice-live">{liveText}</p>}
                 <VoiceDock voice={voice} />
               </div>
             </div>
@@ -2136,14 +2136,14 @@ function Pill({
   return (
     <button
       type="button"
-      className={active ? "axxa-pill is-on" : "axxa-pill"}
+      className={active ? "corvus-pill is-on" : "corvus-pill"}
       // `aria-pressed` só quando ela é interruptor: numa pílula que abre uma
       // folha, "pressionada" não quer dizer nada.
       aria-pressed={active === undefined ? undefined : active}
       onClick={onClick}
     >
-      {logo && <Icon name={logo} size={16} className="axxa-pill-logo" />}
-      <span className="axxa-pill-label">{label}</span>
+      {logo && <Icon name={logo} size={16} className="corvus-pill-logo" />}
+      <span className="corvus-pill-label">{label}</span>
     </button>
   );
 }
@@ -2215,7 +2215,7 @@ function UndoChip({
   plugin,
   actions,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   actions: TurnAction[];
 }) {
   const [rodando, setRodando] = useState(false);
@@ -2226,7 +2226,7 @@ function UndoChip({
   return (
     <button
       type="button"
-      className="axxa-tools-chip"
+      className="corvus-tools-chip"
       disabled={rodando}
       aria-label={
         ids.length === 1
@@ -2263,9 +2263,9 @@ function ToolDetail({
     action.kind === "activity" ? idDesfazivel(action.activity) : null;
   const desfeita = action.kind === "activity" && action.activity.undone;
   return (
-    <div className="axxa-tool-detail">
+    <div className="corvus-tool-detail">
       {action.kind !== "reasoning" && (
-        <p className={ok ? "axxa-tool-state is-ok" : "axxa-tool-state"}>
+        <p className={ok ? "corvus-tool-state is-ok" : "corvus-tool-state"}>
           <Icon
             name={pending ? "loader-circle" : ok ? "circle-check" : "circle-alert"}
             size={15}
@@ -2274,7 +2274,7 @@ function ToolDetail({
         </p>
       )}
       {desfeita && (
-        <p className="axxa-tool-state is-undone">
+        <p className="corvus-tool-state is-undone">
           <Icon name="undo-2" size={15} />
           {tr("Undone")}
         </p>
@@ -2282,7 +2282,7 @@ function ToolDetail({
       {desfazivel && (
         <button
           type="button"
-          className="axxa-tool-undo"
+          className="corvus-tool-undo"
           disabled={rodando}
           onClick={() => {
             setRodando(true);
@@ -2299,27 +2299,27 @@ function ToolDetail({
       )}
       {action.kind === "step" ? (
         <>
-          <p className="axxa-tool-label">{tr("Arguments")}</p>
-          <pre className="axxa-tool-block">
+          <p className="corvus-tool-label">{tr("Arguments")}</p>
+          <pre className="corvus-tool-block">
             {JSON.stringify(action.step.arguments ?? {}, null, 2)}
           </pre>
-          <p className="axxa-tool-label">{tr("Result")}</p>
-          <pre className="axxa-tool-block">
+          <p className="corvus-tool-label">{tr("Result")}</p>
+          <pre className="corvus-tool-block">
             {action.step.result || tr("(empty)")}
           </pre>
         </>
       ) : action.kind === "activity" ? (
         action.activity.toolName ? (
           <>
-            <p className="axxa-tool-label">{tr("Tool call")}</p>
-            <pre className="axxa-tool-block">
+            <p className="corvus-tool-label">{tr("Tool call")}</p>
+            <pre className="corvus-tool-block">
               {action.activity.toolName}(
                 {JSON.stringify(action.activity.toolArguments ?? {}, null, 2)})
             </pre>
-            <p className="axxa-tool-label">
+            <p className="corvus-tool-label">
               {pending ? tr("Status") : tr("Result")}
             </p>
-            <pre className="axxa-tool-block">
+            <pre className="corvus-tool-block">
               {pending
                 ? activityText(action.activity)
                 : action.activity.detail || activityText(action.activity)}
@@ -2327,14 +2327,14 @@ function ToolDetail({
           </>
         ) : (
           <>
-            <p className="axxa-tool-label">{tr("What happened")}</p>
-            <pre className="axxa-tool-block">
+            <p className="corvus-tool-label">{tr("What happened")}</p>
+            <pre className="corvus-tool-block">
               {action.activity.detail || activityText(action.activity)}
             </pre>
           </>
         )
       ) : (
-        <pre className="axxa-tool-block is-prose">{action.text}</pre>
+        <pre className="corvus-tool-block is-prose">{action.text}</pre>
       )}
     </div>
   );
@@ -2345,14 +2345,14 @@ function ReadAloudButton({
   plugin,
   text,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   text: string;
 }) {
   const [speaking, setSpeaking] = useState(false);
   return (
     <button
       type="button"
-      className={speaking ? "axxa-msg-listen is-on" : "axxa-msg-listen"}
+      className={speaking ? "corvus-msg-listen is-on" : "corvus-msg-listen"}
       aria-label={speaking ? tr("Stop") : tr("Read aloud")}
       onClick={() => {
         if (speaking) {
@@ -2383,7 +2383,7 @@ const MessageRow = memo(function MessageRow({
   onOpenTools,
 }: {
   msg: ChatMessage;
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   streaming: boolean;
   /** Terminou enquanto o usuário lia lá em cima: acende uma vez. */
   glow?: boolean;
@@ -2397,33 +2397,33 @@ const MessageRow = memo(function MessageRow({
   switch (msg.type) {
     case "user":
       return (
-        <div className="axxa-msg axxa-msg-user" data-msg={msg.id}>
+        <div className="corvus-msg corvus-msg-user" data-msg={msg.id}>
           {msg.attachments && msg.attachments.length > 0 && (
-            <div className="axxa-msg-attachments">
+            <div className="corvus-msg-attachments">
               {msg.attachments.map((a, i) => {
                 const thumb = attachmentThumb(a);
                 return thumb.kind === "image" ? (
                   <button
                     key={i}
                     type="button"
-                    className="axxa-msg-attachment-img-btn"
+                    className="corvus-msg-attachment-img-btn"
                     aria-label={attachmentLabel(a)}
                     onClick={() =>
                       new ImageModal(plugin.app, thumb.url, attachmentLabel(a)).open()
                     }
                   >
                     <img
-                      className="axxa-msg-attachment-img"
+                      className="corvus-msg-attachment-img"
                       src={thumb.url}
                       alt=""
                     />
                   </button>
                 ) : (
-                  <span className="axxa-pill-chip" key={i}>
-                    <span className="axxa-pill-chip-emoji" aria-hidden="true">
+                  <span className="corvus-pill-chip" key={i}>
+                    <span className="corvus-pill-chip-emoji" aria-hidden="true">
                       {thumb.char}
                     </span>
-                    <span className="axxa-pill-chip-label">
+                    <span className="corvus-pill-chip-label">
                       {attachmentLabel(a)}
                     </span>
                   </span>
@@ -2431,7 +2431,7 @@ const MessageRow = memo(function MessageRow({
               })}
             </div>
           )}
-          <div className="axxa-msg-text">{msg.content}</div>
+          <div className="corvus-msg-text">{msg.content}</div>
         </div>
       );
     case "ai-response":
@@ -2439,15 +2439,15 @@ const MessageRow = memo(function MessageRow({
         <div
           data-msg={msg.id}
           className={
-            "axxa-msg axxa-msg-ai" +
-            (msg.isError ? " axxa-msg-error" : "") +
+            "corvus-msg corvus-msg-ai" +
+            (msg.isError ? " corvus-msg-error" : "") +
             (glow ? " is-done" : "")
           }
         >
           {msg.reasoning && (
             <button
               type="button"
-              className="axxa-tools-chip"
+              className="corvus-tools-chip"
               onClick={() =>
                 onOpenTools?.([{ kind: "reasoning", text: msg.reasoning ?? "" }])
               }
@@ -2457,7 +2457,7 @@ const MessageRow = memo(function MessageRow({
             </button>
           )}
           {msg.isError ? (
-            <div className="axxa-msg-text">{msg.content}</div>
+            <div className="corvus-msg-text">{msg.content}</div>
           ) : (
             <Markdown
               app={plugin.app}
@@ -2468,14 +2468,14 @@ const MessageRow = memo(function MessageRow({
           {plugin.settings.ttsEnabled && !msg.isError && msg.content.trim() && (
             <ReadAloudButton plugin={plugin} text={msg.content} />
           )}
-          {msg.truncated && <small className="axxa-msg-note">{tr("truncated")}</small>}
+          {msg.truncated && <small className="corvus-msg-note">{tr("truncated")}</small>}
           {actions && actions.length > 0 && (
-            <div className="axxa-tools-row">
+            <div className="corvus-tools-row">
               {/* O que o agente FEZ vira um chip: quem quer ver abre a folha, e
                   quem não quer não leva um <details> no meio da leitura. */}
               <button
                 type="button"
-                className="axxa-tools-chip"
+                className="corvus-tools-chip"
                 onClick={() => onOpenTools?.(actions)}
               >
                 <span>
@@ -2495,7 +2495,7 @@ const MessageRow = memo(function MessageRow({
       );
     case "ai-comment":
       return (
-        <div className="axxa-msg axxa-msg-comment" data-msg={msg.id}>
+        <div className="corvus-msg corvus-msg-comment" data-msg={msg.id}>
           <Icon
             name={
               msg.activity?.phase === "failed"
@@ -2515,7 +2515,7 @@ const MessageRow = memo(function MessageRow({
             // empurrava a conversa toda pra baixo no meio de uma rodada.
             <button
               type="button"
-              className="axxa-tools-chip is-inline"
+              className="corvus-tools-chip is-inline"
               onClick={() =>
                 msg.activity &&
                 onOpenTools?.([{ kind: "activity", activity: msg.activity }])
@@ -2529,15 +2529,15 @@ const MessageRow = memo(function MessageRow({
       );
     case "ai-options":
       return (
-        <div className="axxa-msg axxa-msg-options" data-msg={msg.id}>
+        <div className="corvus-msg corvus-msg-options" data-msg={msg.id}>
           <div>{msg.prompt}</div>
-          <div className="axxa-suggestions">
+          <div className="corvus-suggestions">
             {msg.options.map((o, i) => (
               <button
                 key={i}
                 type="button"
                 className={
-                  msg.selectedIndex === i ? "axxa-chip is-active" : "axxa-chip"
+                  msg.selectedIndex === i ? "corvus-chip is-active" : "corvus-chip"
                 }
                 disabled={msg.selectedIndex !== undefined}
                 onClick={() => useChatStore.getState().selectOption(msg.id, i)}

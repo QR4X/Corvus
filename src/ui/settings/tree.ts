@@ -7,9 +7,9 @@
 //   • 1.11.4–1.12.x  → o `display()` desenha a MESMA árvore (ver legacy.ts).
 //
 // As abas (Providers, Chat, …) e os providers NÃO são páginas do Obsidian:
-// cada grupo leva a classe da sua aba (`axxa-set-tab-chat`) e do seu provider
-// (`axxa-set-prov-openai`), e o CSS esconde o que não é a aba ativa pelos
-// atributos `data-axxa-tab`/`data-axxa-prov` do container. Esconder por CSS, e
+// cada grupo leva a classe da sua aba (`corvus-set-tab-chat`) e do seu provider
+// (`corvus-set-prov-openai`), e o CSS esconde o que não é a aba ativa pelos
+// atributos `data-corvus-tab`/`data-corvus-prov` do container. Esconder por CSS, e
 // não pelo `visible` da API, é o que deixa TODA linha na busca: no 1.13
 // `visible: false` tira a linha da busca junto.
 //
@@ -33,7 +33,7 @@ import type {
   SettingGroup,
   SettingGroupItem,
 } from "obsidian";
-import type { AxxaSettings } from "../../main";
+import type { CorvusSettings } from "../../main";
 import { PROVIDERS } from "../../core/providersMeta";
 import {
   EFFORT_ICONS,
@@ -195,7 +195,7 @@ export interface Place {
 /** O que a árvore pede à aba: estado pra decidir visibilidade e os desenhos. */
 export interface SettingsUi {
   readonly isMobile: boolean;
-  settings(): AxxaSettings;
+  settings(): CorvusSettings;
   hasCredential(providerId: string): boolean;
   /** Quantos modelos do catálogo da OpenAI ganhariam cota com o data-sharing. */
   freeOfferCount(): number;
@@ -295,7 +295,7 @@ function guarded(render: RowRender): RowRender {
     try {
       return render(row, group);
     } catch (err) {
-      console.error("[axxa] settings: uma linha falhou ao desenhar", err);
+      console.error("[corvus] settings: uma linha falhou ao desenhar", err);
       row.setDesc(tr("This setting failed to draw — see the developer console."));
     }
   };
@@ -320,9 +320,9 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     rows: SettingGroupItem[]
   ): void {
     const cls = [
-      "axxa-set-group",
-      place ? `axxa-set-tab-${place.tab}` : "",
-      place?.provider ? `axxa-set-prov-${place.provider}` : "",
+      "corvus-set-group",
+      place ? `corvus-set-tab-${place.tab}` : "",
+      place?.provider ? `corvus-set-prov-${place.provider}` : "",
       opts.cls ?? "",
     ]
       .filter(Boolean)
@@ -359,12 +359,12 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   }
 
   // ── a barra de abas: sempre à vista, sem cartão ──────────────────────────
-  group(null, { cls: "axxa-set-flat axxa-set-navgroup" }, [
+  group(null, { cls: "corvus-set-flat corvus-set-navgroup" }, [
     { name: "", render: ui.nav, searchable: false },
   ]);
 
   // ── Providers ────────────────────────────────────────────────────────────
-  group({ tab: "providers" }, { cls: "axxa-set-flat axxa-set-railgroup" }, [
+  group({ tab: "providers" }, { cls: "corvus-set-flat corvus-set-railgroup" }, [
     { name: "", render: ui.rail, searchable: false },
   ]);
 
@@ -508,7 +508,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Open on startup"),
       null,
       tr(
-        "What opens when M.I.L.A starts: a fresh chat of this mode, or its dashboard. \"Off\" keeps M.I.L.A closed — Obsidian opens your notes as usual."
+        "What opens when Corvus starts: a fresh chat of this mode, or its dashboard. \"Off\" keeps Corvus closed — Obsidian opens your notes as usual."
       ),
       "startupChatMode",
       () => [
@@ -986,7 +986,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       toggle(
         tr("Fullscreen"),
         tr(
-          "Fullscreen hides the drawer chrome and the global navbar while AXXA is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck."
+          "Fullscreen hides the drawer chrome and the global navbar while Corvus is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck."
         ),
         "mobileFullscreen",
         { aliases: ["tela cheia", "full screen"] }

@@ -4,7 +4,7 @@ import { useChatStore } from "../src/store/chat";
 import { alinharAoInstalado } from "../src/core/ollamaPadrao";
 import { modeloSalvoPara } from "../src/core/modeloPadrao";
 import { pareceEmbeddingDoOllama } from "../src/rag/types";
-import type { AxxaSettings } from "../src/main";
+import type { CorvusSettings } from "../src/main";
 
 // A conversa ABERTA segue a lista do Ollama: quando a busca tira um modelo
 // que não está instalado, a próxima conversa não nasce nele. E o aviso de
@@ -21,7 +21,7 @@ function montar(extra: Record<string, unknown> = {}) {
     favoriteModels: {},
     ollamaEndpoint: "http://localhost:11434",
     ...extra,
-  } as unknown as AxxaSettings;
+  } as unknown as CorvusSettings;
   const plugin = {
     settings,
     onSettingsChange: (cb: () => void) => {
@@ -104,7 +104,7 @@ describe("sem modelo do Ollama", () => {
 describe("o modelo salvo do Ollama nunca cai num embedding", () => {
   it("com o campo vazio, o primeiro da lista que conversa — ou nenhum", () => {
     const s = (ativos: string[]) =>
-      ({ ollamaModel: "", activeModels: { ollama: ativos } }) as unknown as AxxaSettings;
+      ({ ollamaModel: "", activeModels: { ollama: ativos } }) as unknown as CorvusSettings;
     expect(modeloSalvoPara(s(["nomic-embed-text:latest", "qwen3.5:9b"]), "ollama")).toBe("qwen3.5:9b");
     expect(modeloSalvoPara(s(["nomic-embed-text:latest"]), "ollama")).toBe("");
   });

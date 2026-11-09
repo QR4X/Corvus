@@ -42,7 +42,7 @@ import {
   SheetTextarea,
 } from "./SheetForm";
 import { SheetGroup, SheetNote, SheetRow, useSheetFit } from "./Sheet";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { AssistantPanel, ComAssistente, useRun } from "./AssistantPanel";
 import { limparRun } from "../assistant/store";
 import type { ProjetoSugerido } from "../assistant/parse";
@@ -103,7 +103,7 @@ export function ProjectForm({
   draft: ProjectDraft;
   focar: boolean;
   onDraft: (d: ProjectDraft) => void;
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   extras: ExtrasProjeto;
   onExtras: (e: ExtrasProjeto) => void;
   /** Qual passo mostrar. `undefined` = o formulário inteiro (EDITAR). */
@@ -246,19 +246,19 @@ export function ProjectForm({
     <>
       {/* O cartão que vai aparecer na lista — e que agora conta as notas
           escolhidas enquanto elas são escolhidas. */}
-      <div className="axxa-form-preview">
+      <div className="corvus-form-preview">
         <span
-          className="axxa-thing-mark"
+          className="corvus-thing-mark"
           style={{ color: cor }}
           aria-hidden="true"
         >
           <Icon name={draft.icon} size={20} />
         </span>
-        <span className="axxa-thing-text">
-          <span className="axxa-thing-name">
+        <span className="corvus-thing-text">
+          <span className="corvus-thing-name">
             {draft.name.trim() || tr("Untitled project")}
           </span>
-          <span className="axxa-thing-note">
+          <span className="corvus-thing-note">
             {quantas === 0
               ? tr("No notes yet")
               : quantas === 1

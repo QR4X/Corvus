@@ -1,6 +1,6 @@
 // src/rag/indexer.ts
 // Orquestra a indexação RAG:
-//   1. Walks vault (skip pastas internas do AXXA + arquivos de áudio)
+//   1. Walks vault (skip pastas internas do Corvus + arquivos de áudio)
 //   2. Pra cada .md: hash → compara com índice → chunk + re-embedda
 //   3. Pra cada imagem (se modelo suporta): hash → re-embedda inteira (1 chunk)
 //   4. Batch embedding (16 por API call no OpenAI, 1-por-1 no OpenRouter)
@@ -101,7 +101,7 @@ const SAVE_EVERY_N_FILES = 25;
  * aliases e wikilinks mesmo quando esses termos não estão no corpo do chunk.
  * Usa o `metadataCache` nativo do Obsidian (sem regex/parse YAML na mão).
  *
- * Ex: "Nota: Arquitetura · Tags: projeto, axxa · Links: RAG, Effort Engine"
+ * Ex: "Nota: Arquitetura · Tags: projeto, corvus · Links: RAG, Effort Engine"
  */
 function buildObsidianContext(
   file: TFile,
@@ -277,7 +277,7 @@ export async function indexVault(
         }
       }
     } catch (err) {
-      console.warn(`[axxa/rag] skip ${file.path}:`, err);
+      console.warn(`[corvus/rag] skip ${file.path}:`, err);
       continue;
     }
 
@@ -422,7 +422,7 @@ export async function indexVault(
       // Skip arquivo com erro, log, continua próximo
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
-        `[axxa/rag] file failed: ${item.file.path}`,
+        `[corvus/rag] file failed: ${item.file.path}`,
         err
       );
       failedFiles.push({ path: item.file.path, error: msg });
@@ -439,7 +439,7 @@ export async function indexVault(
   // Log final de arquivos que falharam (pra user inspeccionar no DevTools)
   if (failedFiles.length > 0) {
     console.warn(
-      `[axxa/rag] ${failedFiles.length} arquivos falharam durante indexação:`,
+      `[corvus/rag] ${failedFiles.length} arquivos falharam durante indexação:`,
       failedFiles
     );
   }

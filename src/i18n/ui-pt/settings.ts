@@ -66,8 +66,8 @@ export const PT_SETTINGS: Record<string, string> = {
   "Chat, Vault Q&A or Agent. Locks on the first message.":
     "Chat, Vault Q&A ou Agent. Fica fixo a partir da primeira mensagem.",
   "Open on startup": "Abrir ao iniciar",
-  "What opens when M.I.L.A starts: a fresh chat of this mode, or its dashboard. \"Off\" keeps M.I.L.A closed — Obsidian opens your notes as usual.":
-    "O que abre quando o M.I.L.A inicia: uma conversa nova deste modo, ou a dashboard dele. \"Off\" mantém o M.I.L.A fechado — o Obsidian abre suas notas normalmente.",
+  "What opens when Corvus starts: a fresh chat of this mode, or its dashboard. \"Off\" keeps Corvus closed — Obsidian opens your notes as usual.":
+    "O que abre quando o Corvus inicia: uma conversa nova deste modo, ou a dashboard dele. \"Off\" mantém o Corvus fechado — o Obsidian abre suas notas normalmente.",
   Dashboard: "Dashboard",
   Effort: "Esforço",
   "How hard the model works: length, temperature.":
@@ -187,8 +187,8 @@ export const PT_SETTINGS: Record<string, string> = {
   "Keeps the screen awake while the AI is writing a reply, like a video. It may sleep again as soon as the reply is done.":
     "Mantém a tela acesa enquanto a IA escreve a resposta, como num vídeo. Ela pode apagar de novo assim que a resposta terminar.",
   Fullscreen: "Tela cheia",
-  "Fullscreen hides the drawer chrome and the global navbar while AXXA is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck.":
-    "A tela cheia esconde a moldura da barra lateral e a barra de navegação global enquanto a AXXA é a aba ativa. As conversas já ligam sozinhas; esta chave só muda as outras telas. O botão de menu fica, então você nunca fica preso.",
+  "Fullscreen hides the drawer chrome and the global navbar while Corvus is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck.":
+    "A tela cheia esconde a moldura da barra lateral e a barra de navegação global enquanto a Corvus é a aba ativa. As conversas já ligam sozinhas; esta chave só muda as outras telas. O botão de menu fica, então você nunca fica preso.",
   Haptics: "Vibração",
   "A short buzz on every tap. Android only — iPhone doesn't let a plugin touch the Taptic Engine.":
     "Uma vibração curta a cada toque. Só no Android — o iPhone não deixa um plugin mexer no Taptic Engine.",

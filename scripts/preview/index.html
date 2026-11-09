@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AXXA preview</title>
+    <title>Corvus preview</title>
     <script src="lucide.js"></script>
     <!-- Os helpers de DOM do Obsidian (createDiv, el.win, addClass…), extraídos
          do app instalado. Antes do bundle, como no app de verdade. -->
@@ -135,14 +135,14 @@
     </style>
   </head>
   <body class="theme-dark is-mobile is-phone">
-    <!-- Mesma árvore do mobile: a AXXA mora na gaveta DIREITA, dentro da aba
+    <!-- Mesma árvore do mobile: a Corvus mora na gaveta DIREITA, dentro da aba
          ativa. É o que o CSS de fullscreen/teclado ancora. -->
     <div id="behind">editor por tras (workspace)</div>
     <div class="app-container">
       <div class="workspace-drawer mod-right" id="drawer">
         <div class="workspace-drawer-inner">
           <div class="workspace-drawer-header">
-            <div class="workspace-drawer-header-name">AXXA Agent</div>
+            <div class="workspace-drawer-header-name">Corvus</div>
           </div>
           <!-- O app monta `.workspace-drawer-tab-container` (relativo) com o
                `.workspace-drawer-active-tab-container` ABSOLUTO dentro, e a
@@ -156,7 +156,7 @@
                 <div class="workspace-tab-header workspace-drawer-tab-select">
                   <div class="workspace-tab-header-inner">
                     <span class="workspace-tab-header-inner-icon"></span>
-                    <span class="workspace-tab-header-inner-title">AXXA Agent</span>
+                    <span class="workspace-tab-header-inner-title">Corvus</span>
                     <span class="workspace-tab-header-inner-chevron"></span>
                   </div>
                 </div>
@@ -167,15 +167,15 @@
                      mas pode não existir na versão atual do Obsidian: o parâmetro
                      &chain=short tira o elo pra provar que nada depende dele. -->
                 <div class="__TAB_CONTAINER__">
-                <!-- `axxa-leaf`: o AxxaView.onOpen põe esta classe na folha que o
+                <!-- `corvus-leaf`: o CorvusView.onOpen põe esta classe na folha que o
                      embrulha. Aqui a árvore é montada à mão, então vem escrita. -->
-                <div class="workspace-leaf axxa-leaf">
+                <div class="workspace-leaf corvus-leaf">
                   <div
                     class="workspace-leaf-content"
-                    data-type="axxa-agent"
+                    data-type="corvus"
                     data-mode="preview"
                   >
-                    <div class="view-header"><span>AXXA Agent</span></div>
+                    <div class="view-header"><span>Corvus</span></div>
                     <div class="view-content" id="app"></div>
                   </div>
                 </div>
@@ -186,7 +186,7 @@
         </div>
       </div>
       <!-- navbar nativa: exercita a reserva de espaço do composer, o recuo
-           com o teclado e o fullscreen. A regra lê `body.axxa-has-navbar`, que
+           com o teclado e o fullscreen. A regra lê `body.corvus-has-navbar`, que
            no app o observarNavbar() do main.ts mantém — aqui, o script abaixo. -->
       <div class="mobile-navbar"></div>
     </div>
@@ -262,13 +262,13 @@
       const kb = Number(q.get("kb") ?? 0);
       document.documentElement.style.setProperty("--keyboard-height", kb + "px");
       document.body.classList.toggle("preview-kb", kb > 0);
-      // As classes abaixo são as MESMAS que a AxxaView põe nos ancestrais
+      // As classes abaixo são as MESMAS que a CorvusView põe nos ancestrais
       // (applyFullscreen / observer do teclado). Aqui elas entram na mão
       // porque o preview renderiza <App> direto, sem a ItemView.
       const drawer = document.getElementById("drawer");
-      drawer.classList.toggle("axxa-keyboard-open", kb > 0);
-      document.body.classList.toggle("axxa-keyboard-open", kb > 0);
-      // Altura útil MEDIDA, como a AxxaView faz com visualViewport.height —
+      drawer.classList.toggle("corvus-keyboard-open", kb > 0);
+      document.body.classList.toggle("corvus-keyboard-open", kb > 0);
+      // Altura útil MEDIDA, como a CorvusView faz com visualViewport.height —
       // e recalculada no resize, também como ela. (No aparelho o valor vem do
       // viewport; aqui é derivado do ?kb=.)
       // Espelha o comportamento REAL do Obsidian mobile (docs/archive/
@@ -299,12 +299,12 @@
       // faz quando o teclado abre.
       if (q.get("nav") === "none") document.querySelector(".mobile-navbar")?.remove();
       document.body.classList.toggle(
-        "axxa-has-navbar",
+        "corvus-has-navbar",
         document.querySelector(".mobile-navbar") !== null
       );
       const fs = q.get("fs") === "1";
-      drawer.classList.toggle("axxa-fullscreen", fs);
-      document.body.classList.toggle("axxa-fullscreen", fs);
+      drawer.classList.toggle("corvus-fullscreen", fs);
+      document.body.classList.toggle("corvus-fullscreen", fs);
       // Os helpers de DOM (createEl, createDiv, addClass, setText, empty…) vêm
       // do enhance.js REAL do Obsidian, carregado no <head>. Aqui havia um
       // substituto escrito à mão que só entendia `text` e `cls`: ignorava

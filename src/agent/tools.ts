@@ -66,14 +66,14 @@ export function isTransientError(message: string): boolean {
  *     essa tool auto-aprova, sem modal. Fim da linha: instrução plantada numa
  *     nota vira arquivo de plugin, e arquivo de plugin vira código rodando no
  *     próximo restart;
- *   · `.axxa/` é NOSSO storage — o agente também não escreve nele. Deixar
+ *   · `.corvus/` é NOSSO storage — o agente também não escreve nele. Deixar
  *     seria abrir pra injeção reescrever o histórico de conversa ou corromper
  *     o índice. Quem escreve lá é o plugin, por outro caminho;
  *   · `.git/`, `.trash/` e o que mais comece com ponto entram junto pela
  *     mesma razão: nada disso é nota de quem usa.
  *
  * E o `appDataPaths` cobre o complemento da regra do ponto: desde que o
- * default das conversas virou uma pasta VISÍVEL (`axxa/chats`, pra sync de
+ * default das conversas virou uma pasta VISÍVEL (`corvus/chats`, pra sync de
  * arquivos copiar entre aparelhos), o storage do app não é mais sempre oculto.
  * Quem não quer que o agente reescreva o histórico de conversa passa aqui as
  * pastas configuradas (chatsPath, ragIndexPath) — mesmo sem ponto na frente.
@@ -108,7 +108,7 @@ export function normalizePath(
         `They hold app config and plugin data, not your notes.`
     );
   }
-  // Storage VISÍVEL do app (ex: axxa/chats — o default atual) e qualquer
+  // Storage VISÍVEL do app (ex: corvus/chats — o default atual) e qualquer
   // outra pasta configurada: conferida por PREFIXO realmente configurado, não
   // por literal. `alvo` vazio ou "." nunca cai aqui (o ".."/"." já morreu
   // acima), então `pasta.replace(/\/+$/, "")` bastaria; o guarda-raio abaixo
@@ -424,7 +424,7 @@ export async function toolVaultSearch(
 // Registry — executor central
 // ============================================================
 
-/** Mapa nome → função executor. AxxaApp/agent loop usa pra despachar.
+/** Mapa nome → função executor. CorvusApp/agent loop usa pra despachar.
  *  Recebe ToolContext (app + RAG + creds) — tools simples usam só ctx.app. */
 export type ToolExecutor = (
   ctx: ToolContext,

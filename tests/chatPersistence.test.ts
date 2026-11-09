@@ -144,13 +144,13 @@ describe("chat persistence round-trip", () => {
           attachments: [
             {
               type: "image",
-              path: "axxa-ai/generation/images/1700-print.png",
+              path: "corvus-ai/generation/images/1700-print.png",
               name: "print.png",
               mimeType: "image/png",
             },
             { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
             { type: "pdf", name: "contrato.pdf" },
-            { type: "audio", path: "axxa-ai/generation/audio/1800-fala.webm", durationMs: 1200 },
+            { type: "audio", path: "corvus-ai/generation/audio/1800-fala.webm", durationMs: 1200 },
             { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
           ],
         },
@@ -167,7 +167,7 @@ describe("chat persistence round-trip", () => {
 
   it("mensagem enviada sem anexo não ganha o campo no round-trip", () => {
     const md = renderChatMarkdown(baseChat);
-    expect(md).not.toContain("axxa-att:");
+    expect(md).not.toContain("corvus-att:");
     const r = parseChatMarkdown(md);
     expect("attachments" in r.messages[0]).toBe(false);
   });

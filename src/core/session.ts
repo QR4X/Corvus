@@ -18,7 +18,7 @@
 //     contexto no 1º envio de um chat criado "dentro" do projeto.
 
 import { Notice, TFile } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import {
   useChatStore,
   type AIResponseMessage,
@@ -113,7 +113,7 @@ export class ChatSession {
   /** null = ninguém mexeu no interruptor das notas; vale o padrão do modo. */
   private vaultEscolha: boolean | null = null;
 
-  constructor(private readonly plugin: AxxaPlugin) {
+  constructor(private readonly plugin: CorvusPlugin) {
     const s = plugin.settings;
     this.provider = s.defaultProvider || "openai";
     this.model = this.modelFor(this.provider);
@@ -167,7 +167,7 @@ export class ChatSession {
       try {
         cb();
       } catch (err) {
-        console.error("[axxa] session listener falhou:", err);
+        console.error("[corvus] session listener falhou:", err);
       }
     });
   }
@@ -386,7 +386,7 @@ export class ChatSession {
             const reelAtt = reelAttachment(res);
             attachments = attachments ? [...attachments, reelAtt] : [reelAtt];
           } catch (err) {
-            console.warn("[M.I.L.A] Auto-Transkription des Instagram Reels fehlgeschlagen:", err);
+            console.warn("[Corvus] Auto-Transkription des Instagram Reels fehlgeschlagen:", err);
           }
         }
       }
@@ -725,7 +725,7 @@ export class ChatSession {
       // Sem campo no arquivo, volta a valer o padrão do modo.
       this.vaultEscolha = chat.vault ?? null;
     } catch (err) {
-      console.error("[axxa] loadChat falhou:", err);
+      console.error("[corvus] loadChat falhou:", err);
       new Notice(
         `${this.t.ai.errorPrefix} ${err instanceof Error ? err.message : this.t.ai.unknownError}`
       );
@@ -756,7 +756,7 @@ export class ChatSession {
       if (useChatStore.getState().currentChatId === ref.id) this.newChat();
       new Notice(this.t.chat.deletedToTrash);
     } catch (err) {
-      console.error("[axxa] deleteChat falhou:", err);
+      console.error("[corvus] deleteChat falhou:", err);
       new Notice(
         `${this.t.ai.errorPrefix} ${err instanceof Error ? err.message : ""}`
       );
@@ -837,12 +837,12 @@ export class ChatSession {
    * mensagem); volta a avisar depois que uma gravação dá certo.
    */
   private avisarFalhaDeGravacao(err: unknown): void {
-    console.error("[axxa] não consegui gravar a conversa:", err);
+    console.error("[corvus] não consegui gravar a conversa:", err);
     if (this.avisoDeGravacaoDado) return;
     this.avisoDeGravacaoDado = true;
     new Notice(
       tr(
-        "AXXA could not save this chat to your vault — what you see here is not on disk yet. Check the vault's disk space and permissions."
+        "Corvus could not save this chat to your vault — what you see here is not on disk yet. Check the vault's disk space and permissions."
       ),
       12000
     );

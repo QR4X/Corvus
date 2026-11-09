@@ -2,7 +2,7 @@
 // Os MÓDULOS do app — chat, vault-qa e agent — num lugar só.
 //
 // Eles já existiam como `ChatMode` no motor (e como PASTA no vault: uma
-// conversa mora em `axxa-ai/chats/<modo>/<id>.md`, então o módulo dela é o
+// conversa mora em `corvus-ai/chats/<modo>/<id>.md`, então o módulo dela é o
 // caminho, não um campo qualquer). O que não existia era um lugar onde o
 // módulo se descrevesse: o rótulo estava escrito à mão na tela inicial, de
 // novo no ChatView, e a gaveta mostrava o id cru ("vault-qa") pro usuário.
@@ -79,7 +79,7 @@ export const MODULE_LIST: ModuleMeta[] = CHAT_MODES.map((m) => MODULES[m]);
  * que apareça nas conversas gravadas.
  *
  * Sem isso, uma conversa com modo desconhecido — gravada por uma versão mais
- * nova, ou numa pasta criada na mão dentro de `axxa-ai/chats/` — ficaria
+ * nova, ou numa pasta criada na mão dentro de `corvus-ai/chats/` — ficaria
  * INALCANÇÁVEL: o menu só teria portas pros modos que esta versão conhece, e
  * o arquivo estaria lá, invisível. O menu lista o que os dados dizem.
  */
@@ -325,13 +325,13 @@ export function startupMode(valor: string | undefined | null): ChatMode | null {
 
 /**
  * O valor de `startupChatMode` que abre o painel na DASHBOARD (a home do
- * M.I.L.A), sem iniciar conversa nenhuma.
+ * Corvus), sem iniciar conversa nenhuma.
  */
 export const STARTUP_DASHBOARD = "dashboard";
 
 /**
  * O painel deve abrir JUNTO com o Obsidian? Vale para a dashboard e para os
- * modos de conversa. Vazio, ausente ou desconhecido = false: o M.I.L.A fica
+ * modos de conversa. Vazio, ausente ou desconhecido = false: o Corvus fica
  * fechado e o Obsidian abre as notas, como sempre.
  */
 export function startupOpensPanel(valor: string | undefined | null): boolean {

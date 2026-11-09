@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 const MAIN = readFileSync(resolve(__dirname, "../src/main.ts"), "utf8");
 
 function camposDeChave(): string[] {
-  const i = MAIN.indexOf("export interface AxxaSettings");
+  const i = MAIN.indexOf("export interface CorvusSettings");
   const fim = MAIN.indexOf("\n}", i);
   const corpo = MAIN.slice(i, fim);
   return [...corpo.matchAll(/^\s*(\w+ApiKey)\??\s*:/gm)].map((m) => m[1]);

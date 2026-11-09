@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { App } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import type { EstadoDaChave } from "../providers/openrouter";
 import { prettyModelName } from "../providers/modelDescriptions";
@@ -40,7 +40,7 @@ import { Icon } from "./Icon";
 import { localeDaInterface, tr } from "../i18n/tr";
 
 /** Onde mora (no localStorage do vault) quais blocos ficaram abertos. */
-const CHAVE_ABERTOS = "axxa-left-today-open";
+const CHAVE_ABERTOS = "corvus-left-today-open";
 
 function lerAbertos(app: App): Set<string> {
   try {
@@ -115,7 +115,7 @@ function nomeDo(m: Medidor): string {
   return m.modelo ? prettyModelName(m.modelo) : m.rotulo;
 }
 
-export function LeftToday({ plugin }: { plugin: AxxaPlugin }) {
+export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   const s = plugin.settings;
 
   // O relógio da seção: o "resets in" anda, e o dia vira com a tela aberta.
@@ -179,11 +179,11 @@ export function LeftToday({ plugin }: { plugin: AxxaPlugin }) {
   if (cartoes.length === 0) return null;
 
   return (
-    <section className="axxa-home-block axxa-left" aria-label={tr("Left today")}>
-      <div className="axxa-home-headrow">
-        <span className="axxa-section-label">{tr("Left today")}</span>
+    <section className="corvus-home-block corvus-left" aria-label={tr("Left today")}>
+      <div className="corvus-home-headrow">
+        <span className="corvus-section-label">{tr("Left today")}</span>
       </div>
-      <div className="axxa-usage-list">
+      <div className="corvus-usage-list">
         {cartoes.map((c) => (
           <CartaoDoDia
             key={c.provider}
@@ -219,38 +219,38 @@ function CartaoDoDia({
   /** Só o OpenRouter: perguntar de novo à chave. */
   atualizar?: { lendo: boolean; ir: () => void };
 }) {
-  const idCorpo = `axxa-left-${c.provider}`;
+  const idCorpo = `corvus-left-${c.provider}`;
   // Fechado, só o que tem barra: um modelo sem teto não tem o que desenhar.
   const comBarra = c.medidores.filter((m) => fracaoQueSobra(m) != null);
   return (
-    <div className={aberto ? "axxa-left-prov is-open" : "axxa-left-prov"}>
+    <div className={aberto ? "corvus-left-prov is-open" : "corvus-left-prov"}>
       <button
         type="button"
-        className="axxa-left-head"
+        className="corvus-left-head"
         aria-expanded={aberto}
         aria-controls={idCorpo}
         onClick={onAlternar}
       >
-        <span className="axxa-card-mark" aria-hidden="true">
+        <span className="corvus-card-mark" aria-hidden="true">
           <Icon name={c.provider === "spend" ? "wallet" : providerIcon(c.provider)} size={20} />
         </span>
-        <span className="axxa-left-name">{c.nome}</span>
+        <span className="corvus-left-name">{c.nome}</span>
         {aberto && (c.viraEm != null || c.semDia) && (
           <span
-            className="axxa-left-reset"
+            className="corvus-left-reset"
             title={c.viraOnde ? tr("Resets at {when}", { when: c.viraOnde }) : undefined}
           >
             {c.viraEm != null ? tr("resets in {time}", { time: emQuanto(c.viraEm) }) : c.semDia}
           </span>
         )}
-        <span className="axxa-left-chev" aria-hidden="true">
+        <span className="corvus-left-chev" aria-hidden="true">
           <Icon name="chevron-down" />
         </span>
       </button>
 
       {aberto ? (
-        <div className="axxa-left-body" id={idCorpo}>
-          {c.vazio && <p className="axxa-left-note">{c.vazio}</p>}
+        <div className="corvus-left-body" id={idCorpo}>
+          {c.vazio && <p className="corvus-left-note">{c.vazio}</p>}
           {c.medidores.map((m) => (
             <LinhaDoMedidor
               key={m.id}
@@ -262,13 +262,13 @@ function CartaoDoDia({
           ))}
           {c.credito && <LinhaDoCredito credito={c.credito} />}
           {c.nota && (
-            <p className="axxa-left-note">
+            <p className="corvus-left-note">
               {c.nota}
               {c.link && (
                 <>
                   {" "}
                   <a
-                    className="axxa-left-link"
+                    className="corvus-left-link"
                     href={c.link.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -284,7 +284,7 @@ function CartaoDoDia({
         comBarra.length > 0 && (
           // Tocar nas barras também abre — o botão de verdade (pro teclado e
           // pro leitor de tela) é o cabeçalho, logo acima.
-          <div className="axxa-left-bars" id={idCorpo} onClick={onAlternar}>
+          <div className="corvus-left-bars" id={idCorpo} onClick={onAlternar}>
             {comBarra.map((m) => (
               <Barra key={m.id} m={m} />
             ))}
@@ -314,7 +314,7 @@ function Barra({ m }: { m: Medidor }) {
         });
   return (
     <span
-      className={n ? `axxa-left-bar is-${n}` : "axxa-left-bar"}
+      className={n ? `corvus-left-bar is-${n}` : "corvus-left-bar"}
       role="meter"
       aria-valuemin={0}
       aria-valuemax={m.limite}
@@ -322,7 +322,7 @@ function Barra({ m }: { m: Medidor }) {
       aria-label={texto}
       title={texto}
     >
-      <span className="axxa-left-fill" style={{ "--axxa-left": f } as CSSProperties} />
+      <span className="corvus-left-fill" style={{ "--corvus-left": f } as CSSProperties} />
     </span>
   );
 }
@@ -361,11 +361,11 @@ function LinhaDoMedidor({
         : null;
   const pe = [conta, m.nota].filter(Boolean).join(" · ");
   return (
-    <div className={n ? `axxa-left-row is-${n}` : "axxa-left-row"}>
-      <span className="axxa-left-row-name">{nome}</span>
-      <span className="axxa-left-row-value">{valor}</span>
+    <div className={n ? `corvus-left-row is-${n}` : "corvus-left-row"}>
+      <span className="corvus-left-row-name">{nome}</span>
+      <span className="corvus-left-row-value">{valor}</span>
       <Barra m={m} />
-      {pe && <span className="axxa-left-row-sub">{pe}</span>}
+      {pe && <span className="corvus-left-row-sub">{pe}</span>}
       {m.limiteEditavel ? (
         <EditorDeLimite
           atual={m.limite}
@@ -378,7 +378,7 @@ function LinhaDoMedidor({
         atualizar && (
           <button
             type="button"
-            className="axxa-home-filter is-accent axxa-left-action"
+            className="corvus-home-filter is-accent corvus-left-action"
             aria-label={tr("Ask OpenRouter again")}
             disabled={atualizar.lendo}
             onClick={atualizar.ir}
@@ -425,7 +425,7 @@ function EditorDeLimite({
     return (
       <button
         type="button"
-        className="axxa-home-filter is-accent axxa-left-action"
+        className="corvus-home-filter is-accent corvus-left-action"
         aria-label={
           dinheiro
             ? atual
@@ -455,13 +455,13 @@ function EditorDeLimite({
   };
   return (
     <>
-      <span className="axxa-left-action axxa-left-edit">
+      <span className="corvus-left-action corvus-left-edit">
         <input
           type="number"
           inputMode="numeric"
           min={dinheiro ? 0 : 1}
           step={dinheiro ? 0.5 : 1}
-          className="axxa-left-input"
+          className="corvus-left-input"
           value={txt}
           placeholder={dinheiro ? tr("$ a day") : tr("Per day")}
           aria-label={
@@ -476,7 +476,7 @@ function EditorDeLimite({
         />
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Save limit")}
           onClick={salvar}
         >
@@ -484,10 +484,10 @@ function EditorDeLimite({
         </button>
       </span>
       {ajuda && (
-        <span className="axxa-left-row-hint">
+        <span className="corvus-left-row-hint">
           {tr("Requests per day.")}{" "}
           <a
-            className="axxa-left-link"
+            className="corvus-left-link"
             href={ajuda.url}
             target="_blank"
             rel="noopener noreferrer"
@@ -519,16 +519,16 @@ function LinhaDoCredito({
         .join(" · ")
     : tr("No spending cap on this key");
   return (
-    <div className="axxa-left-row">
-      <span className="axxa-left-row-name">
+    <div className="corvus-left-row">
+      <span className="corvus-left-row-name">
         {comTeto ? tr("Key credit") : tr("Spent today")}
       </span>
-      <span className="axxa-left-row-value">
+      <span className="corvus-left-row-value">
         {comTeto
           ? tr("{n} left", { n: dinheiro(credito.restante ?? 0) })
           : dinheiro(credito.gastoHoje ?? 0)}
       </span>
-      {pe && <span className="axxa-left-row-sub">{pe}</span>}
+      {pe && <span className="corvus-left-row-sub">{pe}</span>}
     </div>
   );
 }

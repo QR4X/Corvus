@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Notice, TFile } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import {
   makeProjectId,
@@ -84,7 +84,7 @@ export function ProjectsView({
   onOpenChat,
   onClose,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   open: boolean;
   /** Qual projeto está aberto. Vem de fora (App) pra sobreviver à ida e volta
@@ -483,13 +483,13 @@ export function ProjectsView({
         onSubmit={salvarInstrucoes}
       />
     ) : nivel === "projeto" && aberto ? (
-      <div className="axxa-sheet-foot">
+      <div className="corvus-sheet-foot">
         {/* Editar e apagar ficam à esquerda e em texto, e não num ⋯ da barra
             de cima: lá o canto direito já é do X, e um menu escondido ao lado
             do fechar é convite pra fechar sem querer. */}
         <button
           type="button"
-          className="axxa-home-filter"
+          className="corvus-home-filter"
           onClick={(e) =>
             openActions(e, acoesDoProjeto(aberto))
           }
@@ -499,7 +499,7 @@ export function ProjectsView({
         </button>
         <button
           type="button"
-          className="axxa-sheet-cta"
+          className="corvus-sheet-cta"
           onClick={() => {
             void session.newChatInProject(aberto);
             onOpenChat();
@@ -696,7 +696,7 @@ export function ProjectsView({
         /* Pilha com respiro: dentro da folha os blocos são irmãos soltos, e
            irmão solto não tem vão nenhum — as pílulas encostavam na caixa, que
            encostava nos cartões. */
-        <div className="axxa-sheet-stack">
+        <div className="corvus-sheet-stack">
           {/* As pílulas dizem ONDE isto mora — o projeto é agrupamento e vive
               nos dados do plugin, dentro do vault, não num serviço nosso. Não
               dizem "privado": as notas daqui vão como contexto pro modelo
@@ -705,8 +705,8 @@ export function ProjectsView({
           {/* Uma etiqueta só, e ela INFORMA: sem contorno e sem superfície de
               botão, porque não há nada pra tocar aqui. A do nome saiu — ele já
               está na barra da folha, com a cor e o ícone do projeto. */}
-          <div className="axxa-info-pills">
-            <span className="axxa-info-pill">
+          <div className="corvus-info-pills">
+            <span className="corvus-info-pill">
               <Icon name="hard-drive" size={14} />
               <span>
                 {tr("Lives in this vault · since {date}", {
@@ -719,7 +719,7 @@ export function ProjectsView({
           {/* A caixa de cima responde "o que este projeto faz por mim" — e a
               resposta muda conforme ele tem ou não notas, porque a pergunta de
               quem tem zero não é a mesma de quem tem seis. */}
-          <p className="axxa-boxnote">
+          <p className="corvus-boxnote">
             {aberto.sources.length === 0
               ? tr(
                   "Pick the notes this project is about. They go in as context every time you start a chat here."
@@ -733,36 +733,36 @@ export function ProjectsView({
 
           {/* Os dois lados do projeto, lado a lado: o que ele SABE e como ele
               deve responder. */}
-          <div className="axxa-duo">
+          <div className="corvus-duo">
             <button
               type="button"
-              className="axxa-duo-card"
+              className="corvus-duo-card"
               onClick={() => setVendoNotas(true)}
             >
-              <span className="axxa-duo-title">{tr("Project notes")}</span>
-              <span className="axxa-duo-note">
+              <span className="corvus-duo-title">{tr("Project notes")}</span>
+              <span className="corvus-duo-note">
                 {aberto.sources.length === 0
                   ? tr("Nothing yet")
                   : aberto.sources.length === 1
                     ? tr("1 note")
                     : tr("{n} notes", { n: aberto.sources.length })}
               </span>
-              <span className="axxa-duo-action">
+              <span className="corvus-duo-action">
                 {aberto.sources.length === 0 ? tr("Add notes") : tr("See notes")}
               </span>
             </button>
             <button
               type="button"
-              className="axxa-duo-card"
+              className="corvus-duo-card"
               onClick={() => setInstrucoes(aberto.instructions ?? "")}
             >
-              <span className="axxa-duo-title">{tr("Custom instructions")}</span>
-              <span className="axxa-duo-note">
+              <span className="corvus-duo-title">{tr("Custom instructions")}</span>
+              <span className="corvus-duo-note">
                 {aberto.instructions?.trim()
                   ? aberto.instructions.trim().split("\n")[0]
                   : tr("Nothing yet")}
               </span>
-              <span className="axxa-duo-action">
+              <span className="corvus-duo-action">
                 {aberto.instructions?.trim()
                   ? tr("Edit")
                   : tr("Add instructions")}
@@ -774,7 +774,7 @@ export function ProjectsView({
             <>
               {/* Rótulo DA FOLHA, não da home: dentro dela o versalete
                   miúdo é a letra de grupo, e o da home é palavra normal. */}
-              <span className="axxa-sheet-group-label">{tr("Chats")}</span>
+              <span className="corvus-sheet-group-label">{tr("Chats")}</span>
               <ChatList
                 plugin={plugin}
                 session={session}
@@ -783,7 +783,7 @@ export function ProjectsView({
               />
             </>
           ) : (
-            <div className="axxa-home-empty">
+            <div className="corvus-home-empty">
               <Icon name="message-circle" size={42} />
               <p>{tr("Ask anything. Chats in this project show up here.")}</p>
             </div>
@@ -793,17 +793,17 @@ export function ProjectsView({
       )}
 
       {nivel === "lista" && (
-        <div className="axxa-sheet-stack">
+        <div className="corvus-sheet-stack">
           {projects.length > 0 ? (
-            <div className="axxa-proj-cards">
+            <div className="corvus-proj-cards">
               {projects.map((p) => {
                 const info = resumoDoProjeto(p, chats);
                 const jaAqui = !!escolhaPara && p.chatIds.includes(escolhaPara);
                 return (
-                <div key={p.id} className="axxa-proj-card-wrap">
+                <div key={p.id} className="corvus-proj-card-wrap">
                   <button
                     type="button"
-                    className="axxa-proj-card"
+                    className="corvus-proj-card"
                     onClick={() => {
                       // No modo escolha a linha faz o que a pessoa veio
                       // fazer: põe a conversa ali e fecha. Abrir o projeto
@@ -823,24 +823,24 @@ export function ProjectsView({
                       setAbertoId(p.id);
                     }}
                   >
-                    <span className="axxa-proj-card-head">
+                    <span className="corvus-proj-card-head">
                       <span
-                        className="axxa-thing-mark is-big"
+                        className="corvus-thing-mark is-big"
                         style={{ color: projectColor(p.color) }}
                         aria-hidden="true"
                       >
                         <Icon name={p.icon} size={22} />
                       </span>
-                      <span className="axxa-proj-card-title">
+                      <span className="corvus-proj-card-title">
                         {/* A DATA na linha do título, à direita — como na
                             lista de conversas: é onde o olho procura "quando". */}
-                        <span className="axxa-proj-card-top">
-                          <span className="axxa-proj-card-name">{p.name}</span>
+                        <span className="corvus-proj-card-top">
+                          <span className="corvus-proj-card-name">{p.name}</span>
                           <span
                             className={
                               jaAqui
-                                ? "axxa-proj-card-when is-here"
-                                : "axxa-proj-card-when"
+                                ? "corvus-proj-card-when is-here"
+                                : "corvus-proj-card-when"
                             }
                           >
                             {jaAqui ? tr("Already here") : info.quando}
@@ -855,22 +855,22 @@ export function ProjectsView({
                         <span
                           className={
                             info.sobre
-                              ? "axxa-proj-card-about"
-                              : "axxa-proj-card-about is-empty"
+                              ? "corvus-proj-card-about"
+                              : "corvus-proj-card-about is-empty"
                           }
                         >
                           {info.sobre ?? tr("No instructions yet")}
                         </span>
                       </span>
                     </span>
-                    <span className="axxa-proj-card-meta">
-                      <span className="axxa-proj-card-stat">
+                    <span className="corvus-proj-card-meta">
+                      <span className="corvus-proj-card-stat">
                         <Icon name="file-text" size={14} />
                         {p.sources.length === 1
                           ? tr("1 note")
                           : tr("{n} notes", { n: p.sources.length })}
                       </span>
-                      <span className="axxa-proj-card-stat">
+                      <span className="corvus-proj-card-stat">
                         <Icon name="message-circle" size={14} />
                         {info.conversas === 1
                           ? tr("1 chat")
@@ -883,7 +883,7 @@ export function ProjectsView({
                           instante. */}
                       {tokensPorProjeto[p.id] !== undefined && (
                         <span
-                          className="axxa-proj-card-stat"
+                          className="corvus-proj-card-stat"
                           title={tr(
                             "Input tokens each new chat here starts with: the instructions plus the full text of its notes."
                           )}
@@ -900,7 +900,7 @@ export function ProjectsView({
                   {!escolhaPara && (
                   <button
                     type="button"
-                    className="axxa-icon-btn axxa-proj-card-more"
+                    className="corvus-icon-btn corvus-proj-card-more"
                     aria-label={tr("Actions for {name}", { name: p.name })}
                     onClick={(e) =>
                       /* Sem "Open": tocar no cartão já abre o projeto, e
@@ -918,7 +918,7 @@ export function ProjectsView({
               })}
             </div>
           ) : (
-            <div className="axxa-home-empty">
+            <div className="corvus-home-empty">
               <Icon name="folder-open" size={42} />
               <p>
                 {tr(
@@ -953,7 +953,7 @@ function TamanhoDaCasa() {
  * desde a última vez, e a leitura em cache é barata.
  */
 function useTokensDeEntrada(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   projects: readonly Project[],
   aberta: boolean
 ): Record<string, number> {

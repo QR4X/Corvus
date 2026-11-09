@@ -7,8 +7,8 @@
 // título centralizado, e o conteúdo em CARDS agrupados — linhas com título +
 // legenda, divisória entre elas, a selecionada em accent com um check.
 //
-// Fecha no scrim, no X e no Esc. Renderiza dentro da .axxa-root (que é
-// position: relative), então cobre só o painel da AXXA — nunca o app inteiro.
+// Fecha no scrim, no X e no Esc. Renderiza dentro da .corvus-root (que é
+// position: relative), então cobre só o painel da Corvus — nunca o app inteiro.
 
 import {
   createContext,
@@ -227,11 +227,11 @@ export function Sheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
-   * A raiz da AXXA — pra onde o rodapé vai com o teclado aberto.
+   * A raiz da Corvus — pra onde o rodapé vai com o teclado aberto.
    *
    * Com o teclado aberto, o rodapé NÃO é desenhado dentro da folha: ele vai
    * pra uma camada na raiz, idêntica à do painel da assistente (ver
-   * `.axxa-float-foot` no CSS). O motivo é medido, não teórico: no aparelho, no
+   * `.corvus-float-foot` no CSS). O motivo é medido, não teórico: no aparelho, no
    * MESMO quadro, com a barra de ferramentas do SwiftKey visível, o cartão da
    * assistente terminava no topo do teclado e o botão da folha ficava cortado
    * por ele. Os dois moram na mesma caixa; só a folha errava, e o preview
@@ -244,7 +244,7 @@ export function Sheet({
    */
   const [raiz, setRaiz] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setRaiz(panelRef.current?.closest<HTMLElement>(".axxa-root") ?? null);
+    setRaiz(panelRef.current?.closest<HTMLElement>(".corvus-root") ?? null);
   }, []);
 
   // A faixa da barra de gestos (ver ui/sheetStrip.ts). Depois do commit a
@@ -569,20 +569,20 @@ export function Sheet({
 
   return (
     <div
-      className={open ? "axxa-sheet-layer is-open" : "axxa-sheet-layer"}
+      className={open ? "corvus-sheet-layer is-open" : "corvus-sheet-layer"}
       aria-hidden={!open}
     >
-      <div className="axxa-scrim" onClick={onClose} />
+      <div className="corvus-scrim" onClick={onClose} />
       <div
         ref={panelRef}
         className={
           size === "full"
-            ? "axxa-sheet is-full"
+            ? "corvus-sheet is-full"
             : size === "fit"
-              ? "axxa-sheet is-fit"
+              ? "corvus-sheet is-fit"
               : minSize === "mid"
-                ? "axxa-sheet is-mid"
-                : "axxa-sheet"
+                ? "corvus-sheet is-mid"
+                : "corvus-sheet"
         }
         role="dialog"
         aria-modal="true"
@@ -590,25 +590,25 @@ export function Sheet({
         tabIndex={-1}
       >
         <div
-          className="axxa-sheet-drag"
+          className="corvus-sheet-drag"
           title={tr("Drag to resize")}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <div className="axxa-sheet-grab" aria-hidden="true" />
+          <div className="corvus-sheet-grab" aria-hidden="true" />
         </div>
-        <header className="axxa-sheet-head">
+        <header className="corvus-sheet-head">
           <button
             type="button"
-            className="axxa-icon-btn"
+            className="corvus-icon-btn"
             aria-label={interno || onBack ? tr("Back") : tr("Close")}
             onClick={interno ? interno.voltar : (onBack ?? onClose)}
           >
             <Icon name={interno || onBack ? "chevron-left" : "x"} />
           </button>
-          <h3 className="axxa-sheet-title">
+          <h3 className="corvus-sheet-title">
             {/* A marca vive COM o nome, que é o único lugar onde ela não vira
                 um segundo objeto na tela. Antes ela era uma pílula logo
                 abaixo, repetindo o nome que já estava aqui — e com cara de
@@ -616,14 +616,14 @@ export function Sheet({
                 toca. */}
             {mark && (
               <span
-                className="axxa-sheet-mark"
+                className="corvus-sheet-mark"
                 style={mark.color ? { color: mark.color } : undefined}
                 aria-hidden="true"
               >
                 <Icon name={mark.icon} size={16} />
               </span>
             )}
-            <span className="axxa-sheet-title-text">
+            <span className="corvus-sheet-title-text">
               {interno?.titulo ?? title}
             </span>
           </h3>
@@ -632,7 +632,7 @@ export function Sheet({
           {action && (
             <button
               type="button"
-              className="axxa-sheet-action"
+              className="corvus-sheet-action"
               aria-label={action.label}
               title={action.label}
               onClick={action.onClick}
@@ -644,7 +644,7 @@ export function Sheet({
           {interno || onBack ? (
             <button
               type="button"
-              className="axxa-icon-btn"
+              className="corvus-icon-btn"
               aria-label={tr("Close")}
               onClick={onClose}
             >
@@ -652,26 +652,26 @@ export function Sheet({
             </button>
           ) : (
             !action && (
-              <span className="axxa-sheet-head-spacer" aria-hidden="true" />
+              <span className="corvus-sheet-head-spacer" aria-hidden="true" />
             )
           )}
         </header>
         {progress}
-        <div ref={bodyRef} className="axxa-sheet-body">
+        <div ref={bodyRef} className="corvus-sheet-body">
           <SheetSizeCtx.Provider value={api}>
             <SheetLevelCtx.Provider value={nivelApi}>
               {children}
             </SheetLevelCtx.Provider>
           </SheetSizeCtx.Provider>
         </div>
-        {footer && <div className="axxa-sheet-actions">{footer}</div>}
+        {footer && <div className="corvus-sheet-actions">{footer}</div>}
       </div>
       {/* O MESMO rodapé, na camada da raiz — só aparece com o teclado aberto
           (ver `raiz`, logo no começo do componente). */}
       {open && footer && raiz
         ? createPortal(
-            <div className="axxa-float-foot">
-              <div className="axxa-float-foot-card">{footer}</div>
+            <div className="corvus-float-foot">
+              <div className="corvus-float-foot-card">{footer}</div>
             </div>,
             raiz
           )
@@ -684,7 +684,7 @@ export function Sheet({
 /** A fileira de três do topo da folha — os caminhos principais, grandes o
  *  bastante pra acertar com o polegar. O que é secundário desce pra lista. */
 export function SheetTiles({ children }: { children: ReactNode }) {
-  return <div className="axxa-sheet-tiles">{children}</div>;
+  return <div className="corvus-sheet-tiles">{children}</div>;
 }
 
 export function SheetTile({
@@ -704,13 +704,13 @@ export function SheetTile({
   return (
     <button
       type="button"
-      className={disabled ? "axxa-sheet-tile is-off" : "axxa-sheet-tile"}
+      className={disabled ? "corvus-sheet-tile is-off" : "corvus-sheet-tile"}
       disabled={disabled}
       onClick={onClick}
     >
       <Icon name={icon} size={26} />
-      <span className="axxa-sheet-tile-label">{label}</span>
-      {hint && <span className="axxa-sheet-tile-hint">{hint}</span>}
+      <span className="corvus-sheet-tile-label">{label}</span>
+      {hint && <span className="corvus-sheet-tile-hint">{hint}</span>}
     </button>
   );
 }
@@ -743,7 +743,7 @@ export function SheetSearch({
   autoFocus?: boolean;
 }) {
   return (
-    <div className="axxa-sheet-search">
+    <div className="corvus-sheet-search">
       <SearchField
         value={value}
         placeholder={placeholder}
@@ -765,11 +765,11 @@ export function SheetGroup({
    *  quando só existe um. */
   label?: string;
 }) {
-  if (!label) return <div className="axxa-sheet-group">{children}</div>;
+  if (!label) return <div className="corvus-sheet-group">{children}</div>;
   return (
-    <div className="axxa-sheet-block">
-      <span className="axxa-sheet-group-label">{label}</span>
-      <div className="axxa-sheet-group">{children}</div>
+    <div className="corvus-sheet-block">
+      <span className="corvus-sheet-group-label">{label}</span>
+      <div className="corvus-sheet-group">{children}</div>
     </div>
   );
 }
@@ -794,21 +794,21 @@ export function SheetTabs({
   label: string;
 }) {
   return (
-    <div className="axxa-sheet-tabs" role="group" aria-label={label}>
+    <div className="corvus-sheet-tabs" role="group" aria-label={label}>
       {items.map((it) => (
         <button
           key={it.id}
           type="button"
           className={
             it.id === activeId
-              ? "axxa-sheet-tab is-active"
-              : "axxa-sheet-tab"
+              ? "corvus-sheet-tab is-active"
+              : "corvus-sheet-tab"
           }
           aria-pressed={it.id === activeId}
           onClick={() => onPick(it.id)}
         >
           <span>{it.label}</span>
-          <span className="axxa-sheet-tab-count">{it.count}</span>
+          <span className="corvus-sheet-tab-count">{it.count}</span>
         </button>
       ))}
     </div>
@@ -852,13 +852,13 @@ export function SheetSeg({
   const [insistindo, setInsistindo] = useState<string | null>(null);
   return (
     <div
-      className="axxa-sheet-seg"
+      className="corvus-sheet-seg"
       role="group"
       aria-label={label}
       style={
         {
-          "--axxa-seg": index,
-          "--axxa-seg-count": items.length,
+          "--corvus-seg": index,
+          "--corvus-seg-count": items.length,
         } as CSSProperties
       }
     >
@@ -867,7 +867,7 @@ export function SheetSeg({
           key={it.id}
           type="button"
           className={
-            "axxa-sheet-seg-item" +
+            "corvus-sheet-seg-item" +
             (it.id === activeId ? " is-active" : "") +
             (it.blocked ? " is-blocked" : "")
           }
@@ -890,11 +890,11 @@ export function SheetSeg({
             setInsistindo(it.id);
           }}
         >
-          <span className="axxa-sheet-seg-mark">
+          <span className="corvus-sheet-seg-mark">
             <Icon name={it.icon} size={20} />
             {it.health && (
               <span
-                className={`axxa-seg-dot is-${it.health}`}
+                className={`corvus-seg-dot is-${it.health}`}
                 aria-hidden="true"
               />
             )}
@@ -924,17 +924,17 @@ export function SheetNavRow({
   // O valor vai ao LADO do chevron, não numa segunda linha: a linha de
   // navegação não precisa de duas alturas pra dizer "Effort · Med".
   return (
-    <button type="button" className="axxa-sheet-row is-nav" onClick={onClick}>
+    <button type="button" className="corvus-sheet-row is-nav" onClick={onClick}>
       {icon && (
         <Icon
           name={icon}
           size={20}
-          className="axxa-sheet-row-icon is-badge"
+          className="corvus-sheet-row-icon is-badge"
         />
       )}
-      <span className="axxa-sheet-row-title">{title}</span>
-      {note && <span className="axxa-sheet-row-value">{note}</span>}
-      <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
+      <span className="corvus-sheet-row-title">{title}</span>
+      {note && <span className="corvus-sheet-row-value">{note}</span>}
+      <Icon name="chevron-right" size={18} className="corvus-sheet-chev" />
     </button>
   );
 }
@@ -965,23 +965,23 @@ export function SheetToggleRow({
   return (
     <button
       type="button"
-      className="axxa-sheet-row is-nav"
+      className="corvus-sheet-row is-nav"
       role="switch"
       aria-checked={on}
       onClick={() => onToggle(!on)}
     >
       {icon && (
-        <Icon name={icon} size={20} className="axxa-sheet-row-icon is-badge" />
+        <Icon name={icon} size={20} className="corvus-sheet-row-icon is-badge" />
       )}
-      <span className="axxa-sheet-row-title">{title}</span>
-      {note && <span className="axxa-sheet-row-value">{note}</span>}
+      <span className="corvus-sheet-row-title">{title}</span>
+      {note && <span className="corvus-sheet-row-value">{note}</span>}
       {/* `aria-hidden`: quem anuncia o estado é o `role="switch"` da linha —
           a chave é o desenho dele, não um segundo controle. */}
       <span
-        className={on ? "axxa-switch is-on" : "axxa-switch"}
+        className={on ? "corvus-switch is-on" : "corvus-switch"}
         aria-hidden="true"
       >
-        <span className="axxa-switch-bola" />
+        <span className="corvus-switch-bola" />
       </span>
     </button>
   );
@@ -989,7 +989,7 @@ export function SheetToggleRow({
 
 /** Linha de recado dentro do cartão (lista vazia, aviso). */
 export function SheetNote({ children }: { children: ReactNode }) {
-  return <p className="axxa-sheet-note">{children}</p>;
+  return <p className="corvus-sheet-note">{children}</p>;
 }
 
 export function SheetRow({
@@ -1039,7 +1039,7 @@ export function SheetRow({
     <button
       type="button"
       className={
-        "axxa-sheet-row" +
+        "corvus-sheet-row" +
         (selected ? " is-active" : "") +
         (dense ? " is-dense" : "")
       }
@@ -1051,44 +1051,44 @@ export function SheetRow({
           name={icon}
           size={badge ? 20 : dense ? 16 : 18}
           className={
-            (badge ? "axxa-sheet-row-icon is-badge" : "axxa-sheet-row-icon") +
+            (badge ? "corvus-sheet-row-icon is-badge" : "corvus-sheet-row-icon") +
             (iconTone === "danger" ? " is-danger" : "")
           }
         />
       )}
       {dense ? (
         <>
-          <span className="axxa-sheet-row-title">
+          <span className="corvus-sheet-row-title">
             {title}
-            {tag && <span className="axxa-sheet-tag">{tag}</span>}
+            {tag && <span className="corvus-sheet-tag">{tag}</span>}
           </span>
-          {note && <span className="axxa-sheet-row-value">{note}</span>}
+          {note && <span className="corvus-sheet-row-value">{note}</span>}
         </>
       ) : (
-        <span className="axxa-sheet-row-main">
-          <span className="axxa-sheet-row-title">
+        <span className="corvus-sheet-row-main">
+          <span className="corvus-sheet-row-title">
             {title}
-            {tag && <span className="axxa-sheet-tag">{tag}</span>}
+            {tag && <span className="corvus-sheet-tag">{tag}</span>}
           </span>
-          {note && <span className="axxa-sheet-row-note">{note}</span>}
+          {note && <span className="corvus-sheet-row-note">{note}</span>}
         </span>
       )}
-      {selected && <Icon name="check" size={20} className="axxa-sheet-check" />}
+      {selected && <Icon name="check" size={20} className="corvus-sheet-check" />}
       {chevron && (
-        <Icon name="chevron-right" size={18} className="axxa-sheet-chev" />
+        <Icon name="chevron-right" size={18} className="corvus-sheet-chev" />
       )}
     </button>
   );
   if (!action) return linha;
   return (
-    <div className="axxa-sheet-row-wrap">
+    <div className="corvus-sheet-row-wrap">
       {linha}
       <button
         type="button"
         className={
           action.on
-            ? "axxa-sheet-row-action is-on"
-            : "axxa-sheet-row-action"
+            ? "corvus-sheet-row-action is-on"
+            : "corvus-sheet-row-action"
         }
         aria-label={action.label}
         aria-pressed={action.on === true}

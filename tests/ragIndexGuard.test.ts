@@ -7,7 +7,7 @@ import type { DataAdapter } from "obsidian";
 // é PULADO (em vez de estourar o heap do WebView e derrubar o Obsidian).
 // hybridSearch lida com index null → RAG cai pro keyword.
 
-const INDEX_PATH = "axxa-ai/index";
+const INDEX_PATH = "corvus-ai/index";
 const FILE = `${INDEX_PATH}/embeddings.json`;
 
 // IndexFile mínimo e VÁLIDO (versão 2, sem entries) → carrega um índice vazio.
@@ -91,14 +91,14 @@ describe("indexFilePath — separação desktop/mobile", () => {
   it("desktop → embeddings.json (nome legado, sem reindex forçado)", () => {
     (Platform as { isMobile: boolean }).isMobile = false;
     expect(indexFileName()).toBe("embeddings.json");
-    expect(indexFilePath("axxa-ai/index")).toBe("axxa-ai/index/embeddings.json");
+    expect(indexFilePath("corvus-ai/index")).toBe("corvus-ai/index/embeddings.json");
   });
 
   it("mobile → embeddings.mobile.json (arquivo próprio)", () => {
     (Platform as { isMobile: boolean }).isMobile = true;
     expect(indexFileName()).toBe("embeddings.mobile.json");
-    expect(indexFilePath("axxa-ai/index")).toBe(
-      "axxa-ai/index/embeddings.mobile.json"
+    expect(indexFilePath("corvus-ai/index")).toBe(
+      "corvus-ai/index/embeddings.mobile.json"
     );
   });
 

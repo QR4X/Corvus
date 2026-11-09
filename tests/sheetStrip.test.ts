@@ -19,7 +19,7 @@ function fakeInner(abertas: () => number) {
       },
     },
     querySelector: (sel: string) => {
-      expect(sel).toBe(".axxa-root .axxa-sheet-layer.is-open");
+      expect(sel).toBe(".corvus-root .corvus-sheet-layer.is-open");
       return abertas() > 0 ? {} : null;
     },
   };

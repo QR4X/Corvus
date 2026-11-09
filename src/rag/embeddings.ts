@@ -297,8 +297,8 @@ export async function embedBatchOpenRouter(
             headers: {
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
-              "HTTP-Referer": "https://github.com/axxalab/axxa-agent",
-              "X-Title": "AXXA Agent",
+              "HTTP-Referer": "https://github.com/QR4X/M.I.L.A",
+              "X-Title": "Corvus",
             },
             body: JSON.stringify(body),
             throw: false,
@@ -318,7 +318,7 @@ export async function embedBatchOpenRouter(
       if (transient && attempt < MAX_ATTEMPTS) {
         const backoff = 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
         console.warn(
-          `[axxa/rag] OpenRouter ${res.status} — esperando ${backoff}ms antes do retry ${attempt + 1}/${MAX_ATTEMPTS}`
+          `[corvus/rag] OpenRouter ${res.status} — esperando ${backoff}ms antes do retry ${attempt + 1}/${MAX_ATTEMPTS}`
         );
         await sleep(backoff);
         continue;
@@ -338,11 +338,11 @@ export async function embedBatchOpenRouter(
     if (res.status >= 400) {
       // Log COMPLETO no console pra debug (resposta + body enviado)
       console.error(
-        `[axxa/rag] OpenRouter ${res.status} — body enviado:`,
+        `[corvus/rag] OpenRouter ${res.status} — body enviado:`,
         JSON.stringify(body).slice(0, 400)
       );
       console.error(
-        `[axxa/rag] OpenRouter ${res.status} — resposta:`,
+        `[corvus/rag] OpenRouter ${res.status} — resposta:`,
         res.text?.slice(0, 500)
       );
       throw new ProviderError(
@@ -357,15 +357,15 @@ export async function embedBatchOpenRouter(
     if (!parsed || !Array.isArray(parsed.data) || parsed.data.length === 0) {
       // CASO DO BUG ORIGINAL — vamos logar tudo pra inspeção
       console.error(
-        "[axxa/rag] Nemotron devolveu data vazio. Modelo:",
+        "[corvus/rag] Nemotron devolveu data vazio. Modelo:",
         model
       );
       console.error(
-        "[axxa/rag] Body enviado:",
+        "[corvus/rag] Body enviado:",
         JSON.stringify(body).slice(0, 400)
       );
       console.error(
-        "[axxa/rag] Resposta inteira:",
+        "[corvus/rag] Resposta inteira:",
         res.text?.slice(0, 800)
       );
       throw new ProviderError(

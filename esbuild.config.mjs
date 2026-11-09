@@ -30,7 +30,7 @@ async function syncAssets() {
  */
 const vistasNoDicionario = new Map();
 const dicionarioCurto = {
-  name: "axxa-dicionario-curto",
+  name: "corvus-dicionario-curto",
   setup(build) {
     build.onStart(() => vistasNoDicionario.clear());
     // O filtro do esbuild é regex do Go (sem lookahead): o index, que só
@@ -45,7 +45,7 @@ const dicionarioCurto = {
 };
 
 const copyAssetsPlugin = {
-  name: "axxa-copy-assets",
+  name: "corvus-copy-assets",
   setup(build) {
     build.onStart(async () => {
       await syncAssets();

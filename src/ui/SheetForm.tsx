@@ -44,9 +44,9 @@ export function SheetField({
   children: ReactNode;
 }) {
   return (
-    <div className="axxa-field">
-      <span className="axxa-field-label">{label}</span>
-      {hint && <span className="axxa-field-hint">{hint}</span>}
+    <div className="corvus-field">
+      <span className="corvus-field-label">{label}</span>
+      {hint && <span className="corvus-field-hint">{hint}</span>}
       {children}
     </div>
   );
@@ -99,10 +99,10 @@ export function SheetInput({
   return (
     <input
       ref={ref}
-      // `axxa-field-input`, e não `axxa-input`: esse é o cartão do composer
+      // `corvus-field-input`, e não `corvus-input`: esse é o cartão do composer
       // (ver o comentário da regra em styles/main.css).
       className={
-        comSpark ? "axxa-field-input axxa-has-spark" : "axxa-field-input"
+        comSpark ? "corvus-field-input corvus-has-spark" : "corvus-field-input"
       }
       type="text"
       value={value}
@@ -134,7 +134,7 @@ export function SheetTextarea({
   return (
     <textarea
       ref={ref}
-      className={comSpark ? "axxa-textarea axxa-has-spark" : "axxa-textarea"}
+      className={comSpark ? "corvus-textarea corvus-has-spark" : "corvus-textarea"}
       value={value}
       placeholder={placeholder}
       rows={rows}
@@ -173,12 +173,12 @@ export function SheetChoices({
   label: string;
 }) {
   return (
-    <div className="axxa-choices" role="group" aria-label={label}>
+    <div className="corvus-choices" role="group" aria-label={label}>
       {items.map((it) => (
         <button
           key={it.id}
           type="button"
-          className={it.id === value ? "axxa-choice is-on" : "axxa-choice"}
+          className={it.id === value ? "corvus-choice is-on" : "corvus-choice"}
           aria-pressed={it.id === value}
           /* O nome inteiro vai no rótulo acessível: lido em voz alta, "Work 21"
              não diz o que é o 21 — "Work, 21 icons" diz. */
@@ -192,7 +192,7 @@ export function SheetChoices({
           {it.icon && <Icon name={it.icon} size={16} />}
           <span>{it.label}</span>
           {it.count !== undefined && (
-            <sup className="axxa-choice-count" aria-hidden="true">
+            <sup className="corvus-choice-count" aria-hidden="true">
               {it.count}
             </sup>
           )}
@@ -224,7 +224,7 @@ function IconTile({
     <button
       type="button"
       className={
-        "axxa-icontile" + (on ? " is-on" : "") + (on && tint ? " is-tinted" : "")
+        "corvus-icontile" + (on ? " is-on" : "") + (on && tint ? " is-tinted" : "")
       }
       aria-label={icon}
       aria-pressed={on}
@@ -257,7 +257,7 @@ export function SheetIconGrid({
   /**
    * A cor escolhida logo acima. Quando existe, o azulejo marcado vira a
    * MESMA plaquinha do brasão do projeto — cor cheia no ícone, fundo tirado
-   * dela (ver `.axxa-icontile.is-on.is-tinted`). Sem ela — o caso das skills,
+   * dela (ver `.corvus-icontile.is-on.is-tinted`). Sem ela — o caso das skills,
    * que não têm cor — o marcado continua no accent do app.
    */
   tint,
@@ -276,7 +276,7 @@ export function SheetIconGrid({
   const curtos = icons.includes(value) ? [...icons] : [value, ...icons];
 
   return (
-    <div className="axxa-icongrid" role="group" aria-label={tr("Icon")}>
+    <div className="corvus-icongrid" role="group" aria-label={tr("Icon")}>
       {curtos.map((ic) => (
         <IconTile
           key={ic}
@@ -294,15 +294,15 @@ export function SheetIconGrid({
           nunca tem. */}
       <button
         type="button"
-        className="axxa-icontile is-more"
+        className="corvus-icontile is-more"
         aria-label={tr("More icons — {n} to choose from", {
           n: iconCatalogSize(),
         })}
         onClick={onBrowse}
       >
         <Icon name="plus" size={18} />
-        <span className="axxa-more-rotulo">{tr("More")}</span>
-        <span className="axxa-more-conta">{iconCatalogSize()}</span>
+        <span className="corvus-more-rotulo">{tr("More")}</span>
+        <span className="corvus-more-conta">{iconCatalogSize()}</span>
       </button>
     </div>
   );
@@ -361,7 +361,7 @@ export function SheetIconCatalog({
   const atual = ICON_CATALOG.find((c) => c.id === aba) ?? ICON_CATALOG[0];
 
   return (
-    <div className="axxa-iconcat">
+    <div className="corvus-iconcat">
       {/* Sem botão de voltar aqui dentro: quem volta é a seta da barra de
           cima, que esta tela agora empresta (useSheetLevel). Enquanto ela
           pulava o formulário inteiro, um voltar próprio era a única saída
@@ -380,7 +380,7 @@ export function SheetIconCatalog({
           count: c.icons.length,
         }))}
       />
-      <div className="axxa-icongrid" role="group" aria-label={tr(atual.label)}>
+      <div className="corvus-icongrid" role="group" aria-label={tr(atual.label)}>
         {atual.icons.map((ic) => (
           <IconTile
             key={ic}
@@ -419,18 +419,18 @@ export function SheetSwatches({
   resolve: (color: string) => string;
 }) {
   return (
-    <div className="axxa-swatches" role="group" aria-label={tr("Color")}>
+    <div className="corvus-swatches" role="group" aria-label={tr("Color")}>
       {colors.map((c) => (
         <button
           key={c}
           type="button"
-          className={c === value ? "axxa-swatch is-on" : "axxa-swatch"}
+          className={c === value ? "corvus-swatch is-on" : "corvus-swatch"}
           aria-label={c}
           aria-pressed={c === value}
           onClick={() => onPick(c)}
         >
           <span
-            className="axxa-swatch-fill"
+            className="corvus-swatch-fill"
             style={{ backgroundColor: resolve(c) }}
           />
         </button>
@@ -459,16 +459,16 @@ export function SheetSubmit({
   onSubmit: () => void;
 }) {
   return (
-    <div className="axxa-form-foot">
+    <div className="corvus-form-foot">
       {problema && (
-        <p className="axxa-form-problem" role="status">
+        <p className="corvus-form-problem" role="status">
           <Icon name="info" size={15} />
           <span>{problema}</span>
         </p>
       )}
       <button
         type="button"
-        className="axxa-form-submit"
+        className="corvus-form-submit"
         aria-disabled={!!problema}
         onClick={onSubmit}
       >
@@ -518,7 +518,7 @@ export function SheetProgress({
   const feito = Math.min(Math.max(atual + 1, 1), passos);
   return (
     <div
-      className="axxa-wiz-bar"
+      className="corvus-wiz-bar"
       role="progressbar"
       aria-valuemin={1}
       aria-valuemax={passos}
@@ -526,7 +526,7 @@ export function SheetProgress({
       aria-label={tr("Step {n} of {total}", { n: feito, total: passos })}
     >
       <span
-        className="axxa-wiz-fill"
+        className="corvus-wiz-fill"
         style={{ width: `${(feito / passos) * 100}%` }}
       />
     </div>
@@ -577,13 +577,13 @@ export function SheetWizardFoot({
   // essa meia dúzia de ternários é uma função pura com testes.
   const pe = peDoWizard({ atual, total, problema });
   return (
-    <div className="axxa-form-foot">
+    <div className="corvus-form-foot">
       {pe.status === "problema" ? (
         /* O que falta só aparece no ÚLTIMO passo, que é onde mora o botão de
            concluir. "Give it a name." na tela do prompt seria um aviso sobre
            uma pergunta que ainda não foi feita — a pessoa leria como erro do
            que ela acabou de escrever. */
-        <p className="axxa-form-problem" role="status">
+        <p className="corvus-form-problem" role="status">
           <Icon name="info" size={15} />
           <span>{problema}</span>
         </p>
@@ -592,7 +592,7 @@ export function SheetWizardFoot({
            deve tocar "Next" três vezes pra sair de uma coisa que já está
            pronta. É o caso de quem pediu ajuda à assistente no primeiro passo
            e recebeu o skill inteiro preenchido de uma vez. */
-        <button type="button" className="axxa-wiz-now" onClick={onSubmit}>
+        <button type="button" className="corvus-wiz-now" onClick={onSubmit}>
           <Icon name="check" size={15} />
           <span>{tr("{label} now", { label })}</span>
         </button>
@@ -600,7 +600,7 @@ export function SheetWizardFoot({
 
       <button
         type="button"
-        className="axxa-form-submit"
+        className="corvus-form-submit"
         aria-disabled={pe.primario === "submit" ? !pe.pronto : undefined}
         onClick={() =>
           pe.primario === "submit" ? onSubmit() : onPasso(atual + 1)

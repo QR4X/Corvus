@@ -22,7 +22,7 @@ describe("isRightDrawer — fullscreen NÃO pode valer no drawer esquerdo", () =
     expect(isRightDrawer(drawerEl("workspace-drawer", "mod-left"))).toBe(false);
   });
 
-  it("sem marca de lado, não trava o modo (a AXXA só monta no direito)", () => {
+  it("sem marca de lado, não trava o modo (a Corvus só monta no direito)", () => {
     expect(isRightDrawer(drawerEl("workspace-drawer"))).toBe(true);
   });
 
@@ -80,12 +80,12 @@ describe("isChatScreen — a marca da conversa vem do DOM", () => {
   const rootEl = (...classes: string[]) =>
     ({ classList: { contains: (c: string) => classes.includes(c) } }) as Element;
 
-  it("com a marca `axxa-chat-open`, é conversa", () => {
-    expect(isChatScreen(rootEl("axxa-root", "axxa-chat-open"))).toBe(true);
+  it("com a marca `corvus-chat-open`, é conversa", () => {
+    expect(isChatScreen(rootEl("corvus-root", "corvus-chat-open"))).toBe(true);
   });
 
   it("sem a marca (painel, histórico, uso) não é conversa", () => {
-    expect(isChatScreen(rootEl("axxa-root"))).toBe(false);
+    expect(isChatScreen(rootEl("corvus-root"))).toBe(false);
   });
 
   it("sem root não é conversa", () => {

@@ -13,7 +13,7 @@
 // dentro do clique; quando o mp3 chega, ele só troca de fonte.
 
 import { Notice } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import { elevenSpeak } from "../providers/elevenlabs";
 import { marca, tr } from "../i18n/tr";
@@ -57,7 +57,7 @@ export const TTS_PROVIDERS: { id: string; label: string; needs: string }[] = [
 ];
 
 /** Tem credencial pra falar por este caminho? */
-export function ttsReady(plugin: AxxaPlugin, id: string): boolean {
+export function ttsReady(plugin: CorvusPlugin, id: string): boolean {
   return id === "eleven"
     ? !!plugin.settings.elevenApiKey?.trim()
     : !!plugin.providerCredential("openai");
@@ -98,7 +98,7 @@ const MAX_GUARDADAS = 16;
 
 /** Gera o áudio pelo caminho configurado. */
 async function synthesize(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   text: string,
   opts: SpeakOptions
 ): Promise<{ data: Uint8Array; mime: string } | null> {
@@ -143,7 +143,7 @@ async function synthesize(
  * gesto pra destravar o áudio.
  */
 export async function speak(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   text: string,
   opts: SpeakOptions = {}
 ): Promise<void> {

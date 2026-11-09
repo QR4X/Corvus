@@ -22,7 +22,7 @@
 // que é onde se garimpa.
 
 import { Platform } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import { CHAT_MODES, isChatMode, type ChatMode } from "../core/session";
 import { useChatStore } from "../store/chat";
@@ -49,7 +49,7 @@ export function Dashboard({
   onOpenHistory,
   onOpenUsage,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   /** A aba vale pras duas telas: filtrar aqui e pedir "ver tudo" leva o
    *  filtro junto. */
@@ -62,8 +62,8 @@ export function Dashboard({
   onOpenHistory: () => void;
   onOpenUsage: () => void;
 }) {
-  // A AxxaView reage ao saveSettings e troca as classes nos ancestrais (ver
-  // AxxaView.applyFullscreen) — aqui só se vira a chave.
+  // A CorvusView reage ao saveSettings e troca as classes nos ancestrais (ver
+  // CorvusView.applyFullscreen) — aqui só se vira a chave.
   const alternarTelaCheia = async () => {
     plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
     await plugin.saveSettings();
@@ -82,11 +82,11 @@ export function Dashboard({
   const visiveis = chatsOfModule(chats, atual);
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
+    <div className="corvus-chat">
+      <header className="corvus-topbar is-bare">
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Open menu")}
           onClick={onOpenMenu}
         >
@@ -97,7 +97,7 @@ export function Dashboard({
             a única tela que não é "um lugar" — é a casa. Como nome do app ele
             é assinatura, não cabeçalho, e o espaço que ele ocupava em cima
             virou quase uma conversa a mais na lista. */}
-        <span className="axxa-brand axxa-topbar-brand">AXXA AGENT</span>
+        <span className="corvus-brand corvus-topbar-brand">CORVUS</span>
 
         {/* Tela cheia SÓ aqui, e só no celular. Ela era uma linha do menu, e
             menu é lugar de ir pra algum lugar — isto não vai a lugar nenhum,
@@ -109,7 +109,7 @@ export function Dashboard({
         {Platform.isMobile && (
           <button
             type="button"
-            className="axxa-icon-btn axxa-topbar-end"
+            className="corvus-icon-btn corvus-topbar-end"
             aria-label={
               plugin.settings.mobileFullscreen
                 ? tr("Exit fullscreen")
@@ -127,7 +127,7 @@ export function Dashboard({
         )}
       </header>
 
-      <div className="axxa-messages axxa-home axxa-dash">
+      <div className="corvus-messages corvus-home corvus-dash">
         {/* O gasto vem ANTES da lista porque é a única coisa aqui que corre
             sozinha enquanto você usa o app: conversa velha continua onde
             estava, conta não. Ele conta a semana inteira, de todos os modos —
@@ -155,8 +155,8 @@ export function Dashboard({
 
         {visiveis.length > 0 && (
           <>
-            <div className="axxa-home-headrow">
-              <span className="axxa-section-label">
+            <div className="corvus-home-headrow">
+              <span className="corvus-section-label">
                 {tr("Pick up where you left")}
               </span>
               {/* Só aparece quando há mesmo mais o que ver. Um "ver tudo" que
@@ -169,7 +169,7 @@ export function Dashboard({
                   // cor do app é o que diz isso. O irmão de classe (o filtro
                   // de período do Agent) abre um menu no mesmo lugar — pintar
                   // os dois igual ensinaria que a cor não significa nada.
-                  className="axxa-home-filter is-accent"
+                  className="corvus-home-filter is-accent"
                   // Fixa a aba ANTES de sair: o histórico lê a mesma, e ela
                   // pode estar valendo por dedução (ver `atual`). Sem isto,
                   // "ver tudo" de Agent abriria o histórico em "All".
@@ -193,7 +193,7 @@ export function Dashboard({
         )}
 
         {visiveis.length === 0 && (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name={MODULES[atual].icon} size={42} />
             <p>{tr(MODULES[atual].emptyLine)}</p>
           </div>
@@ -201,8 +201,8 @@ export function Dashboard({
 
         {/* Grudado na base DENTRO do scroller, como o botão flutuante da home
             de módulo — fora dele precisaria de um ancestral posicionado, e
-            `.axxa-chat` não é posicionado (ver o bloco do composer no CSS). */}
-        <section className="axxa-start">
+            `.corvus-chat` não é posicionado (ver o bloco do composer no CSS). */}
+        <section className="corvus-start">
           {/* O "ou" é o ponto da tela: continuar OU começar, e quem decide é
               quem abriu. Sem ele os dois blocos viram uma lista comprida com
               um rodapé — a escolha existe, mas não se lê.
@@ -214,21 +214,21 @@ export function Dashboard({
               E só aparece quando há o que continuar: sem conversa nenhuma não
               há bifurcação, há um caminho só. */}
           {visiveis.length > 0 && (
-            <span className="axxa-or">
+            <span className="corvus-or">
               <span>{tr("or")}</span>
             </span>
           )}
-          <span className="axxa-section-label">{tr("Start something new")}</span>
-          <div className="axxa-start-grid">
+          <span className="corvus-section-label">{tr("Start something new")}</span>
+          <div className="corvus-start-grid">
             {CHAT_MODES.map((m) => (
               <button
                 key={m}
                 type="button"
-                className="axxa-start-card"
+                className="corvus-start-card"
                 onClick={() => onNewChat(m)}
               >
                 <Icon name={MODULES[m].icon} size={20} />
-                <span className="axxa-start-name">{MODULES[m].short}</span>
+                <span className="corvus-start-name">{MODULES[m].short}</span>
               </button>
             ))}
           </div>

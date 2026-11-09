@@ -1,7 +1,7 @@
 // src/core/chatExport.ts
 // EXPORTAR uma conversa: tirar uma cópia legível dela pra dentro do vault.
 //
-// Isto existe por causa de onde as conversas moram. Elas ficam em `.axxa/chats`
+// Isto existe por causa de onde as conversas moram. Elas ficam em `.corvus/chats`
 // — pasta com ponto, que o Obsidian ignora de propósito (ver core/vaultPaths):
 // não entra no índice, na busca, no grafo, nem abre com um clique. É o certo
 // pro dado do app, e é exatamente por isso que "abrir a nota da conversa" não
@@ -21,13 +21,13 @@ import type { ChatData } from "./chatPersistence";
 import { ensureFolder } from "./chatPersistence";
 
 /** Pasta das cópias. Visível, ao lado dos relatórios. */
-export const EXPORTS_FOLDER = "axxa-ai/exports";
+export const EXPORTS_FOLDER = "corvus-ai/exports";
 
 /** Tira do markdown o que era recado do app pro app. */
 export function limparMarcas(texto: string): string {
   return texto
-    .replace(/<!--\s*axxa-steps:[\s\S]*?-->/g, "")
-    .replace(/<!--\s*axxa:[^>]*-->\n?/g, "")
+    .replace(/<!--\s*corvus-steps:[\s\S]*?-->/g, "")
+    .replace(/<!--\s*corvus:[^>]*-->\n?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -60,7 +60,7 @@ export function exportChatMarkdown(chat: ChatData, quando: Date): string {
     `model: ${JSON.stringify(chat.model)}`,
     `provider: ${JSON.stringify(chat.provider)}`,
     `mode: ${JSON.stringify(chat.mode)}`,
-    "source: AXXA",
+    "source: Corvus",
     "---",
   ].join("\n");
 

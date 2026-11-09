@@ -1,6 +1,6 @@
 // src/providers/index.ts
 // Registry de todos os providers disponíveis.
-// AxxaApp usa getProvider(settings.defaultProvider) pra escolher o provider ativo.
+// CorvusApp usa getProvider(settings.defaultProvider) pra escolher o provider ativo.
 
 import type { Provider, Usage } from "./base";
 import { openaiProvider } from "./openai";

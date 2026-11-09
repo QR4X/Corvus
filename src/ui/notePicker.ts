@@ -51,7 +51,7 @@ export function rankNotes(
 /** As notas do vault no formato do ranking. */
 /**
  * A nota que a pessoa tem aberta (ou teve por último): o "This note" do "+".
- * `getActiveFile` devolve a do painel em foco e, com o foco no AXXA, a
+ * `getActiveFile` devolve a do painel em foco e, com o foco no Corvus, a
  * última aberta — que é justamente a que se quer anexar.
  */
 export function notaAberta(app: App): { path: string; basename: string } | null {

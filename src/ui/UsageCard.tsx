@@ -22,7 +22,7 @@
 //     ativos e o trabalho que o agente fez no vault.
 
 import type { CSSProperties } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSummary } from "../core/chatPersistence";
 import { formatUsdRounded } from "../usage/pricing";
 import { formatCompact } from "../usage/format";
@@ -49,7 +49,7 @@ export function UsageCard({
   chats,
   onOpen,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   chats: readonly ChatSummary[];
   /** Abre a página de uso — o cartão inteiro é a porta dela. */
   onOpen: () => void;
@@ -79,7 +79,7 @@ export function UsageCard({
     // convida a mesma pergunta ("e daí?"). Um botãozinho "ver mais" num canto
     // seria um alvo pequeno pra uma intenção grande.
     <section
-      className="axxa-usage is-clickable"
+      className="corvus-usage is-clickable"
       role="button"
       tabIndex={0}
       aria-label={tr("Usage in {month} — open details", { month: mapa.rotulo })}
@@ -91,19 +91,19 @@ export function UsageCard({
         }
       }}
     >
-      <div className="axxa-usage-line">
-        <span className="axxa-usage-meta">
-          <span className="axxa-usage-big">{formatCompact(mapa.total)}</span>
-          <span className="axxa-usage-unit">{tr("tokens")}</span>
-          <span className="axxa-usage-sep">·</span>
+      <div className="corvus-usage-line">
+        <span className="corvus-usage-meta">
+          <span className="corvus-usage-big">{formatCompact(mapa.total)}</span>
+          <span className="corvus-usage-unit">{tr("tokens")}</span>
+          <span className="corvus-usage-sep">·</span>
           {agg.total.chats === 1 ? tr("1 chat") : tr("{n} chats", { n: agg.total.chats })}
           {agg.total.cost > 0 && (
             <>
-              <span className="axxa-usage-sep">·</span>
+              <span className="corvus-usage-sep">·</span>
               {formatUsdRounded(agg.total.cost)}
               {agg.total.hasUnknownCost && (
                 <span
-                  className="axxa-usage-approx"
+                  className="corvus-usage-approx"
                   title={tr("Some models have no public price — this is a floor")}
                 >
                   +
@@ -114,15 +114,15 @@ export function UsageCard({
         </span>
         {/* O mês dá nome ao que está sendo contado. Sem ele o cartão parece
             falar do começo dos tempos. */}
-        <span className="axxa-usage-month">{mapa.rotulo}</span>
+        <span className="corvus-usage-month">{mapa.rotulo}</span>
       </div>
 
       {/* Calendário e modelos LADO A LADO: o mês é um quadrado estreito, e a
           largura que sobrava dele não servia pra mais nada. */}
-      <div className="axxa-usage-mid">
+      <div className="corvus-usage-mid">
         <Calendario celulas={mapa.celulas} pico={mapa.pico} />
         {modelos.length > 0 && (
-          <div className="axxa-models">
+          <div className="corvus-models">
             {modelos.map((m) => (
               <LinhaDeModelo key={m.model} m={m} />
             ))}
@@ -130,7 +130,7 @@ export function UsageCard({
         )}
       </div>
 
-      <div className="axxa-mods">
+      <div className="corvus-mods">
         {/* A sequência primeiro: é a única que muda de valor por você abrir o
             app hoje, e a única que se PERDE. */}
         <Modulo
@@ -146,7 +146,7 @@ export function UsageCard({
           valor={String(ativos.ativos)}
           unidade={tr("of {n}", { n: ativos.total })}
         />
-        {/* Ações é o número mais AXXA de todos: é o equivalente daqui às
+        {/* Ações é o número mais Corvus de todos: é o equivalente daqui às
             linhas de código do painel do Claude Code. Token mede consumo;
             ação mede TRABALHO feito no vault. Sem nenhuma — quem nunca usou o
             Agent —, o lugar vai pras mensagens em vez de exibir um zero. */}
@@ -174,7 +174,7 @@ export function UsageCard({
           as settings do índice, o ↻ reindexa), e herdar o "abrir o uso" do
           cartão faria dois destinos no mesmo lugar. */}
       <div
-        className="axxa-usage-foot"
+        className="corvus-usage-foot"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -188,7 +188,7 @@ export function UsageCard({
 function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
   return (
     <div
-      className="axxa-heat"
+      className="corvus-heat"
       role="img"
       aria-label={tr("Daily usage this month, busiest day {n} tokens", { n: formatCompact(pico) })}
     >
@@ -197,10 +197,10 @@ function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
           key={i}
           className={
             c.dia
-              ? `axxa-heat-cell is-${c.nivel}`
+              ? `corvus-heat-cell is-${c.nivel}`
               : c.futuro
-                ? "axxa-heat-cell is-future"
-                : "axxa-heat-cell is-void"
+                ? "corvus-heat-cell is-future"
+                : "corvus-heat-cell is-void"
           }
           // O título é o que dá o número exato de um dia sem gastar linha:
           // no desktop sai no hover, no celular é inofensivo.
@@ -223,17 +223,17 @@ function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
  */
 function LinhaDeModelo({ m }: { m: ModeloUsado }) {
   return (
-    <div className="axxa-model-row" title={tr("{n} tokens", { n: formatCompact(m.tokens) })}>
+    <div className="corvus-model-row" title={tr("{n} tokens", { n: formatCompact(m.tokens) })}>
       <span
-        className="axxa-donut"
-        style={{ "--axxa-pct": m.pct } as CSSProperties}
+        className="corvus-donut"
+        style={{ "--corvus-pct": m.pct } as CSSProperties}
         aria-hidden="true"
       />
       <Icon name={providerIcon(m.provider)} size={14} />
       {/* O nome do APP, como no seletor e na página de uso: o id da API
           ("claude-sonnet-4-6") é o jeito do provider chamar, não o nosso. */}
-      <span className="axxa-model-name">{prettyModelName(m.model)}</span>
-      <span className="axxa-model-pct">{m.pct}%</span>
+      <span className="corvus-model-name">{prettyModelName(m.model)}</span>
+      <span className="corvus-model-pct">{m.pct}%</span>
     </div>
   );
 }
@@ -254,11 +254,11 @@ function Modulo({
   unidade: string;
 }) {
   return (
-    <div className="axxa-mod">
-      <span className="axxa-mod-title">{rotulo}</span>
-      <span className="axxa-mod-row">
-        <span className="axxa-mod-value">{valor}</span>
-        <span className="axxa-mod-unit">{unidade}</span>
+    <div className="corvus-mod">
+      <span className="corvus-mod-title">{rotulo}</span>
+      <span className="corvus-mod-row">
+        <span className="corvus-mod-value">{valor}</span>
+        <span className="corvus-mod-unit">{unidade}</span>
       </span>
     </div>
   );

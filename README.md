@@ -1,8 +1,8 @@
-<h1 align="center">AXXA Agent</h1>
+<h1 align="center">Corvus</h1>
 
 <p align="center">
-  <a href="https://community.obsidian.md/plugins/axxa-agent"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%22axxa-agent%22%5D.downloads&label=downloads&logo=obsidian&color=7C3AED" alt="Obsidian downloads"></a>
-  <a href="https://github.com/axxalab/axxa-agent/releases/latest"><img src="https://img.shields.io/github/v/release/axxalab/axxa-agent?label=version&color=6c5ce7" alt="Latest release"></a>
+  <a href="https://community.obsidian.md/plugins/corvus"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%22corvus%22%5D.downloads&label=downloads&logo=obsidian&color=7C3AED" alt="Obsidian downloads"></a>
+  <a href="https://github.com/QR4X/M.I.L.A/releases/latest"><img src="https://img.shields.io/github/v/release/QR4X/M.I.L.A?label=version&color=6c5ce7" alt="Latest release"></a>
   <a href="#faq"><img src="https://img.shields.io/badge/desktop%20%2B%20mobile-supported-success" alt="Desktop and mobile"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0"></a>
 </p>
@@ -10,14 +10,14 @@
 <p align="center"><b>English</b> · <a href="README.pt-BR.md">Português (Brasil)</a></p>
 
 <p align="center">
-  <a href="https://community.obsidian.md/plugins/axxa-agent"><img src="https://img.shields.io/badge/Add%20to%20Obsidian-7c3aed?logo=obsidian&logoColor=white&style=for-the-badge" alt="Add to Obsidian"></a>
+  <a href="https://community.obsidian.md/plugins/corvus"><img src="https://img.shields.io/badge/Add%20to%20Obsidian-7c3aed?logo=obsidian&logoColor=white&style=for-the-badge" alt="Add to Obsidian"></a>
 </p>
 
 <p align="center"><b>Chat, ask your vault, and let an agent edit your notes, on your phone as well as your desktop.</b><br>Six providers, your own API keys, every conversation saved as Markdown.</p>
 
 <p align="center"><img src="assets/demo/hero.gif" width="900" alt="A real recording on the Obsidian mobile layout: a question about the vault, then an answer that cites the notes it came from"></p>
 
-<p align="center"><a href="https://agent.axxalab.com.br">Website</a> · <a href="#install">Install</a> · <a href="#quick-start">Quick start</a> · <a href="#privacy-and-data">Privacy</a> · <a href="#faq">FAQ</a> · <a href="https://github.com/axxalab/axxa-agent/discussions">Discussions</a></p>
+<p align="center"><a href="https://github.com/QR4X/M.I.L.A">Website</a> · <a href="#install">Install</a> · <a href="#quick-start">Quick start</a> · <a href="#privacy-and-data">Privacy</a> · <a href="#faq">FAQ</a> · <a href="https://github.com/QR4X/M.I.L.A/discussions">Discussions</a></p>
 
 ## What it does
 
@@ -48,25 +48,25 @@
 
 Requires Obsidian **1.11.4** or newer, on desktop or mobile, and either an API key for one provider or a local Ollama server.
 
-1. Open the [AXXA Agent page in the community directory](https://community.obsidian.md/plugins/axxa-agent) and choose **Add to Obsidian**, or in Obsidian go to **Settings → Community plugins → Browse** and search for **AXXA Agent**.
+1. Open the [Corvus page in the community directory](https://community.obsidian.md/plugins/corvus) and choose **Add to Obsidian**, or in Obsidian go to **Settings → Community plugins → Browse** and search for **Corvus**.
 2. Select **Install**, then **Enable**.
-3. Open it from the ribbon icon or the command palette (**AXXA Agent: Open**).
+3. Open it from the ribbon icon or the command palette (**Corvus: Open**).
 
 ### Beta builds (BRAT)
 
-Test builds are published as GitHub pre-releases. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), add `axxalab/axxa-agent`, and BRAT keeps you on the latest beta. Betas can break; the community directory always serves the stable release.
+Test builds are published as GitHub pre-releases. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), add `QR4X/M.I.L.A`, and BRAT keeps you on the latest beta. Betas can break; the community directory always serves the stable release.
 
 <details>
 <summary>Manual install</summary>
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/axxalab/axxa-agent/releases/latest).
-2. Copy them into `<vault>/.obsidian/plugins/axxa-agent/`.
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/QR4X/M.I.L.A/releases/latest).
+2. Copy them into `<vault>/.obsidian/plugins/corvus/`.
 3. Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 </details>
 
 ## Quick start
 
-1. Open **Settings → AXXA Agent → Providers**.
+1. Open **Settings → Corvus → Providers**.
 2. Add a key for one provider ([where to get one](#providers)), or set your Ollama server address (usually `http://localhost:11434`).
 3. Start a chat from the home screen, pick a mode, and send.
 
@@ -142,12 +142,12 @@ Per Obsidian's developer policies, in plain terms:
 - **Accounts and payment.** The plugin is free, but it needs your own key for at least one provider (Ollama, running locally, needs none). Most providers bill API usage per token; some offer free models or quotas.
 - **Vault enumeration.** The plugin reads your vault's file list (Obsidian's `getMarkdownFiles` / `getFiles`) to build the Vault Q&A index, for the keyword half of vault search (Vault Q&A, Agent context and the agent's `vault_search`), for the note picker (**+ › Notes**, `[[` mentions and project sources) and, only if you turn on *Let it see your note names* (off by default), so the creation assistant can suggest notes for a project. The list itself stays on your device, with three exceptions: in that last case the paths of up to 300 recent notes (never their content) go to the assistant's model; in Agent mode the `vault_list` tool sends the names of the files in a folder (the vault root included) to the chat model, without asking; and `vault_search` sends the paths and excerpts of the notes it finds.
 - **Automatic context.** In Vault Q&A and Agent conversations, a per-chat vault switch starts **on**: excerpts of the notes that match your message are sent with it to the chat provider. In Chat it starts **off**.
-- **Files read and written.** Chats and the Vault Q&A index are saved inside your vault, in the hidden `.axxa/` folder by default. When you ask for them, exports go to `axxa-ai/exports/`, usage reports to `axxa-ai/reports/` and skills to `axxa-ai/skills/`. In Agent mode the model can read any text file in your vault and create, edit, move and delete notes and folders through its tools. Changes ask for confirmation according to the permission level you set (and **Approve all** in that dialog stops asking for the rest of that turn's reversible changes; on a web request, it covers only that turn's web requests); deletes ask at every level except YOLO, and even there when Obsidian is set to delete files permanently. Every change the agent makes can be undone from the chat while Obsidian stays open.
+- **Files read and written.** Chats and the Vault Q&A index are saved inside your vault, in the hidden `.corvus/` folder by default. When you ask for them, exports go to `corvus-ai/exports/`, usage reports to `corvus-ai/reports/` and skills to `corvus-ai/skills/`. In Agent mode the model can read any text file in your vault and create, edit, move and delete notes and folders through its tools. Changes ask for confirmation according to the permission level you set (and **Approve all** in that dialog stops asking for the rest of that turn's reversible changes; on a web request, it covers only that turn's web requests); deletes ask at every level except YOLO, and even there when Obsidian is set to delete files permanently. Every change the agent makes can be undone from the chat while Obsidian stays open.
 
 <details>
 <summary>Why the plugin uses <code>fetch</code>, and the one Node API it touches</summary>
 
-Obsidian recommends its own `requestUrl` for network requests, and AXXA uses it everywhere it can. But `requestUrl` returns the whole response at once and cannot stream, and streaming is what makes an answer appear as it is written (and what lets **Stop** actually stop the model). So chat replies from OpenAI, Anthropic, Gemini, OpenRouter and Ollama stream through the browser's `fetch`, in a single helper (`fetchStream` in `src/providers/_shared.ts`). That helper calls it as `window.fetch`, the very same function as `fetch` (the bare name is just a shortcut to it). Obsidian's review linter only checks the bare name, so it no longer flags this call; we would rather say so here than let the review read as "no `fetch`". If streaming can't connect (for example, blocked by CORS on mobile), the plugin falls back to `requestUrl` and shows the answer in one piece.
+Obsidian recommends its own `requestUrl` for network requests, and Corvus uses it everywhere it can. But `requestUrl` returns the whole response at once and cannot stream, and streaming is what makes an answer appear as it is written (and what lets **Stop** actually stop the model). So chat replies from OpenAI, Anthropic, Gemini, OpenRouter and Ollama stream through the browser's `fetch`, in a single helper (`fetchStream` in `src/providers/_shared.ts`). That helper calls it as `window.fetch`, the very same function as `fetch` (the bare name is just a shortcut to it). Obsidian's review linter only checks the bare name, so it no longer flags this call; we would rather say so here than let the review read as "no `fetch`". If streaming can't connect (for example, blocked by CORS on mobile), the plugin falls back to `requestUrl` and shows the answer in one piece.
 
 The NVIDIA NIM provider asks Electron for Node's `https` to stream on desktop ([`nim.ts`](src/providers/nim.ts)). It is gated behind `Platform.isMobile`, wrapped in try/catch, checked for shape, and falls back to `requestUrl`; on mobile that branch is never reached.
 </details>
@@ -187,13 +187,13 @@ Each provider has its own rule. The model list in Settings shows the limit next 
 <details>
 <summary><b>Can I keep other AI plugins installed?</b></summary>
 
-Yes. AXXA runs in its own panel, its styles are scoped to that panel, and it doesn't depend on or replace other plugins.
+Yes. Corvus runs in its own panel, its styles are scoped to that panel, and it doesn't depend on or replace other plugins.
 </details>
 
 <details>
 <summary><b>How do I report a bug?</b></summary>
 
-Use the [bug report form](https://github.com/axxalab/axxa-agent/issues/new?template=bug_report.yml). Your platform, Obsidian version and the steps to reproduce make it much faster to fix. Questions go to [Discussions](https://github.com/axxalab/axxa-agent/discussions).
+Use the [bug report form](https://github.com/QR4X/M.I.L.A/issues/new?template=bug_report.yml). Your platform, Obsidian version and the steps to reproduce make it much faster to fix. Questions go to [Discussions](https://github.com/QR4X/M.I.L.A/discussions).
 </details>
 
 <details>
@@ -202,7 +202,7 @@ Use the [bug report form](https://github.com/axxalab/axxa-agent/issues/new?templ
 - **Effort** (Low to Max) scales how hard the model works: max tokens, temperature, parallel tool calls, retries, and how much of your vault goes into context. Every level is tunable in Settings. Agent runs have no turn limit, including with older saved settings. Use **Stop** to end a run; the loop guard detects repeated identical tool calls, not every possible research loop. Longer runs can cost more.
 - **Empty OpenRouter answers.** An empty or reasoning-only stream gets one additional request through Obsidian's native connection, using the same conversation and an output budget within the existing model ceiling. The chat announces the attempt, which can consume additional API credits. Previous tools are not executed again. If it still fails, the chat distinguishes an output-token limit, an incomplete stream and an empty answer; completed tool actions remain available when continuing or reopening the conversation.
 - **Usage** reads your saved chats and estimates spend in USD by provider, model, mode and day, with a 30-day heatmap. Export the report as PDF, Markdown or HTML.
-- **Left today**, at the top of Usage, shows what's left on each free tier and when it resets: OpenRouter's free requests, read live from your key (so they count every app that uses it); OpenAI's data-sharing tokens and Gemini's free-tier requests, counted by AXXA on this device (Google doesn't publish Gemini's limits, so you type each model's limit from AI Studio); and NVIDIA NIM's requests today, which have no daily cap. The count is a local log that never leaves your device.
+- **Left today**, at the top of Usage, shows what's left on each free tier and when it resets: OpenRouter's free requests, read live from your key (so they count every app that uses it); OpenAI's data-sharing tokens and Gemini's free-tier requests, counted by Corvus on this device (Google doesn't publish Gemini's limits, so you type each model's limit from AI Studio); and NVIDIA NIM's requests today, which have no daily cap. The count is a local log that never leaves your device.
 </details>
 
 ## Roadmap
@@ -211,18 +211,17 @@ Use the [bug report form](https://github.com/axxalab/axxa-agent/issues/new?templ
 - **Next:** PDFs on Gemini, NIM and Ollama; a Coder mode with diff previews.
 - **Later:** MCP connectors (Notion, Linear, GitHub); optional paid extras such as cross-device sync and automatic media transcription.
 
-Ideas and votes live in [Discussions › Ideas](https://github.com/axxalab/axxa-agent/discussions/categories/ideas).
+Ideas and votes live in [Discussions › Ideas](https://github.com/QR4X/M.I.L.A/discussions/categories/ideas).
 
 ## Feedback and community
 
-- Found a bug? [Report it](https://github.com/axxalab/axxa-agent/issues/new?template=bug_report.yml).
-- Have a question? [Ask in Discussions](https://github.com/axxalab/axxa-agent/discussions).
+- Found a bug? [Report it](https://github.com/QR4X/M.I.L.A/issues/new?template=bug_report.yml).
+- Have a question? [Ask in Discussions](https://github.com/QR4X/M.I.L.A/discussions).
 - Built a useful skill? Skills are `.md` files, so share yours in Discussions.
-- If AXXA helps you, a star on GitHub helps other people find it.
-- Want to back it with money? [Sponsor it on GitHub](https://github.com/sponsors/rafaelpsyik), monthly or one time. It unlocks nothing: every feature stays free. More ways to help are on the [support page](https://agent.axxalab.com.br/support).
+- If Corvus helps you, a star on GitHub helps other people find it.
 
 ## License
 
 **GPL-3.0-or-later**, see [LICENSE](LICENSE). Use it for anything, including at work, and fork it freely; if you distribute a modified version, ship its source under the same terms. The provider logos come from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT) and are credited in [NOTICE.md](NOTICE.md).
 
-© 2026 AXXA Lab™.
+© 2026 Corvus.

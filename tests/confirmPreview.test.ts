@@ -26,7 +26,7 @@ describe("previewFor", () => {
   });
 
   it("arquivo de código vira bloco com a linguagem do Prism", () => {
-    expect(previewFor("axxa-ai/review.ts")).toEqual({
+    expect(previewFor("corvus-ai/review.ts")).toEqual({
       kind: "code",
       lang: "typescript",
     });

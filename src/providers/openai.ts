@@ -149,7 +149,7 @@ export class OpenAIProvider implements Provider {
   ): Promise<ProviderResponse> {
     if (!apiKey || !apiKey.trim()) {
       throw new ProviderError(
-        "OpenAI API key not configured. Go to Settings → AXXA Agent to paste your key.",
+        "OpenAI API key not configured. Go to Settings → Corvus to paste your key.",
         "no-key"
       );
     }
@@ -248,19 +248,19 @@ export class OpenAIProvider implements Provider {
           throw: false,
         });
       } catch (err) {
-        console.error("[axxa] OpenAI image gen network error:", err);
+        console.error("[corvus] OpenAI image gen network error:", err);
         throw new ProviderError("Connection failed during generation.", "network");
       }
       if (res.status < 500 || attempt >= MAX_ATTEMPTS) break;
       // 500/502/503 → retry com backoff exponencial
-      console.warn(`[axxa] OpenAI image gen ${res.status}, retry ${attempt}/${MAX_ATTEMPTS}`);
+      console.warn(`[corvus] OpenAI image gen ${res.status}, retry ${attempt}/${MAX_ATTEMPTS}`);
       await new Promise((r) => window.setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
     if (!res) {
       throw new ProviderError("OpenAI images: no response.", "unknown");
     }
     if (res.status < 200 || res.status >= 300) {
-      console.error("[axxa] OpenAI image gen failed:", res.status, res.json ?? res.text);
+      console.error("[corvus] OpenAI image gen failed:", res.status, res.json ?? res.text);
     }
     if (res.status === 401) {
       throw new ProviderError("Invalid API key.", "invalid-key");

@@ -48,7 +48,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 // ADOÇÃO ACUMULADA: soma de downloads do top-20 do org (sort=downloads).
 async function hfDownloads(org) {
   const url = `https://huggingface.co/api/models?author=${org}&sort=downloads&limit=20`;
-  const res = await fetch(url, { headers: { "User-Agent": "axxa-collect-hot" } });
+  const res = await fetch(url, { headers: { "User-Agent": "corvus-collect-hot" } });
   if (!res.ok) throw new Error(`HF ${org}: HTTP ${res.status}`);
   const arr = await res.json();
   let downloads = 0;
@@ -61,7 +61,7 @@ async function hfDownloads(org) {
 // modelo recém-lançado bombando empurra a família, mesmo sem downloads ainda.
 async function hfTrending() {
   const url = `https://huggingface.co/api/models?sort=trendingScore&limit=100`;
-  const res = await fetch(url, { headers: { "User-Agent": "axxa-collect-hot" } });
+  const res = await fetch(url, { headers: { "User-Agent": "corvus-collect-hot" } });
   if (!res.ok) throw new Error(`HF trending: HTTP ${res.status}`);
   const arr = await res.json();
   return arr.map((m) => ({

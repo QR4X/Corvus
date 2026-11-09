@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { Notice } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { loadChat, setChatStarred } from "../core/chatPersistence";
@@ -37,7 +37,7 @@ export function providerIcon(id: string): string {
  * As conversas gravadas, sempre frescas. O cache mora no plugin (índice em
  * disco + varredura em segundo plano); aqui só se assina a mudança.
  */
-export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
+export function useChatSummaries(plugin: CorvusPlugin): ChatSummary[] {
   const [chats, setChats] = useState<ChatSummary[]>(plugin.chatSummaries ?? []);
   useEffect(() => {
     let vivo = true;
@@ -62,7 +62,7 @@ export function useChatSummaries(plugin: AxxaPlugin): ChatSummary[] {
  * faz o React redesenhar. Ler `plugin.settings.unreadChats` direto no render
  * lia o valor certo e não redesenhava nunca.
  */
-export function useUnreadChats(plugin: AxxaPlugin): Set<string> {
+export function useUnreadChats(plugin: CorvusPlugin): Set<string> {
   const [naoLidas, setNaoLidas] = useState<Set<string>>(() =>
     plugin.unreadSet(),
   );
@@ -103,7 +103,7 @@ export function ChatList({
   chats,
   onOpen,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   chats: ChatSummary[];
   /** Chamado DEPOIS de mandar carregar — pra quem precisa fechar algo. */
@@ -167,7 +167,7 @@ export function ChatList({
     new Notice(tr("Marked as unread."));
   };
 
-  /** Exportar: a conversa mora em `.axxa/chats`, pasta que o Obsidian ignora —
+  /** Exportar: a conversa mora em `.corvus/chats`, pasta que o Obsidian ignora —
    *  esta é a única ponte entre ela e o vault (ver core/chatExport.ts). */
   const exportar = async (c: ChatSummary) => {
     try {
@@ -218,7 +218,7 @@ export function ChatList({
   };
 
   return (
-    <div className="axxa-history">
+    <div className="corvus-history">
       {chats.map((c) => {
         const st = acoes(c);
         const alerta = chatAlert({
@@ -230,7 +230,7 @@ export function ChatList({
           <div
             key={c.id}
             className={[
-              "axxa-history-row",
+              "corvus-history-row",
               // A roupa vem do MÓDULO, não da tela onde a lista está:
               // conversa é fala e vira LINHA; sessão de vault ou de agente é
               // um objeto com estado e vira CARTÃO. Assim a mesma conversa
@@ -248,40 +248,40 @@ export function ChatList({
           >
             <button
               type="button"
-              className="axxa-history-open"
+              className="corvus-history-open"
               onClick={() => abrir(c)}
             >
-              <span className="axxa-card-top">
+              <span className="corvus-card-top">
                 {/* O brasão é o LOGO DO PROVIDER, colorido: é o que diz de
                   relance com quem a conversa foi, sem gastar uma palavra. */}
-                <span className="axxa-card-mark" aria-hidden="true">
+                <span className="corvus-card-mark" aria-hidden="true">
                   <Icon name={providerIcon(c.provider)} size={20} />
                 </span>
 
-                <span className="axxa-card-text">
-                  <span className="axxa-history-title">
+                <span className="corvus-card-text">
+                  <span className="corvus-history-title">
                     {c.title || tr("Untitled")}
                   </span>
-                  <span className="axxa-history-meta">
+                  <span className="corvus-history-meta">
                     {/* O ponto pulsa e a palavra diz o que ele significa — um
                       ponto sozinho não se explica. */}
                     {alerta && (
-                      <span className={`axxa-card-live is-${alerta}`}>
-                        <span className="axxa-card-pulse" aria-hidden="true" />
+                      <span className={`corvus-card-live is-${alerta}`}>
+                        <span className="corvus-card-pulse" aria-hidden="true" />
                         {tr(ALERT_LABEL[alerta])}
                       </span>
                     )}
-                    {alerta && <span className="axxa-card-dot">·</span>}
+                    {alerta && <span className="corvus-card-dot">·</span>}
                     {st && (
                       <span
                         className={
-                          st.ativo ? "axxa-card-state is-on" : "axxa-card-state"
+                          st.ativo ? "corvus-card-state is-on" : "corvus-card-state"
                         }
                       >
                         {st.texto}
                       </span>
                     )}
-                    {st && c.model && <span className="axxa-card-dot">·</span>}
+                    {st && c.model && <span className="corvus-card-dot">·</span>}
                     {c.model && <span>{c.model}</span>}
                   </span>
                 </span>
@@ -294,7 +294,7 @@ export function ChatList({
                   é a primeira frase, e repetir a fala embaixo dele seria dizer
                   a mesma coisa duas vezes. */}
               {c.mode === "agent" && c.preview && (
-                <span className="axxa-card-preview">{c.preview}</span>
+                <span className="corvus-card-preview">{c.preview}</span>
               )}
             </button>
 
@@ -307,10 +307,10 @@ export function ChatList({
 
                 Tempo desde a ÚLTIMA interação: `date` é reescrito a cada
                 gravação da conversa, não é a data de criação. */}
-            <span className="axxa-card-end">
+            <span className="corvus-card-end">
             <button
               type="button"
-              className="axxa-icon-btn axxa-history-more"
+              className="corvus-icon-btn corvus-history-more"
               aria-label={tr("Actions for {title}", {
                 title: c.title || tr("Untitled"),
               })}
@@ -403,7 +403,7 @@ export function ChatList({
             >
               <Icon name="more-horizontal" />
             </button>
-              <span className="axxa-card-age">{relativeShort(c.date)}</span>
+              <span className="corvus-card-age">{relativeShort(c.date)}</span>
             </span>
           </div>
         );

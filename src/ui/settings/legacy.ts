@@ -50,7 +50,7 @@ function isVisible(def: SettingDefinition): boolean {
   try {
     return v();
   } catch (err) {
-    console.error("[axxa] settings: visible falhou", err);
+    console.error("[corvus] settings: visible falhou", err);
     return true;
   }
 }
@@ -115,7 +115,7 @@ export function drawLegacyTree(
         });
         break;
       default:
-        console.warn(`[axxa] settings: control "${c.type}" sem desenho antes do 1.13.`);
+        console.warn(`[corvus] settings: control "${c.type}" sem desenho antes do 1.13.`);
     }
   };
 
@@ -145,7 +145,7 @@ export function drawLegacyTree(
         try {
           c();
         } catch (err) {
-          console.error("[axxa] settings: limpeza falhou", err);
+          console.error("[corvus] settings: limpeza falhou", err);
         }
       }
     },

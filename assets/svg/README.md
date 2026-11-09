@@ -1,6 +1,6 @@
 # SVG source assets
 
-Arquivos SVG crus usados na UI do AXXA Agent. São **fonte**: o
+Arquivos SVG crus usados na UI do Corvus. São **fonte**: o
 `scripts/genLogos.mjs` os embute no `main.js` no build (o plugin distribui só
 `main.js` + `manifest.json` + `styles.css`).
 

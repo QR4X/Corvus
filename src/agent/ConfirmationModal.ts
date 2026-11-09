@@ -63,12 +63,12 @@ export class ConfirmationModal extends Modal {
   onOpen() {
     const { contentEl, opts } = this;
     contentEl.empty();
-    contentEl.addClass("axxa-confirm-modal");
-    this.modalEl.addClass("axxa-modal-keyboard-aware");
+    contentEl.addClass("corvus-confirm-modal");
+    this.modalEl.addClass("corvus-modal-keyboard-aware");
     // O `.modal-container` é do Obsidian e fica ACIMA do nosso modal. Marcá-lo
     // aqui troca um `:has()` no CSS por uma classe: mesma especificidade, sem
     // invalidação de seletor, e funciona onde `:has` não existe.
-    this.containerEl.addClass("axxa-modal-container", "axxa-confirm-container");
+    this.containerEl.addClass("corvus-modal-container", "corvus-confirm-container");
 
     const irreversible = !!opts.definition.irreversible;
     const strings = opts.strings;
@@ -81,13 +81,13 @@ export class ConfirmationModal extends Modal {
           : strings.confirmTitle,
     });
 
-    const summaryEl = contentEl.createDiv({ cls: "axxa-confirm-summary" });
+    const summaryEl = contentEl.createDiv({ cls: "corvus-confirm-summary" });
     summaryEl.createDiv({
-      cls: "axxa-confirm-tool-name",
+      cls: "corvus-confirm-tool-name",
       text: opts.toolCall.name,
     });
     summaryEl.createDiv({
-      cls: "axxa-confirm-tool-desc",
+      cls: "corvus-confirm-tool-desc",
       text: firstSentence(opts.definition.description),
     });
 
@@ -99,7 +99,7 @@ export class ConfirmationModal extends Modal {
         this.resolveOnce(false);
         this.close();
       });
-      btn.buttonEl.classList.add("axxa-confirm-deny");
+      btn.buttonEl.classList.add("corvus-confirm-deny");
     });
     // "Aprovar todas" — só em ações reversíveis (delete sempre é por ação).
     if (!irreversible) {
@@ -108,7 +108,7 @@ export class ConfirmationModal extends Modal {
           this.resolveOnce(true, true);
           this.close();
         });
-        btn.buttonEl.classList.add("axxa-confirm-approveall");
+        btn.buttonEl.classList.add("corvus-confirm-approveall");
       });
     }
     setting.addButton((btn) => {
@@ -119,7 +119,7 @@ export class ConfirmationModal extends Modal {
           this.resolveOnce(true);
           this.close();
         });
-      if (irreversible) btn.buttonEl.classList.add("axxa-confirm-irreversible");
+      if (irreversible) btn.buttonEl.classList.add("corvus-confirm-irreversible");
     });
   }
 
@@ -129,12 +129,12 @@ export class ConfirmationModal extends Modal {
     const { name, arguments: args } = this.opts.toolCall;
     const strings = this.opts.strings;
     const path = typeof args.path === "string" ? args.path : "";
-    const box = root.createDiv({ cls: "axxa-confirm-preview" });
+    const box = root.createDiv({ cls: "corvus-confirm-preview" });
 
     const pathRow = (label: string, value: string, cls = "") => {
-      const row = box.createDiv({ cls: "axxa-confirm-path " + cls });
-      row.createSpan({ cls: "axxa-confirm-path-label", text: label });
-      row.createSpan({ cls: "axxa-confirm-path-val", text: value });
+      const row = box.createDiv({ cls: "corvus-confirm-path " + cls });
+      row.createSpan({ cls: "corvus-confirm-path-label", text: label });
+      row.createSpan({ cls: "corvus-confirm-path-val", text: value });
     };
 
     // O conteúdo aparece DO JEITO QUE ELE É: nota vira markdown formatado,
@@ -146,7 +146,7 @@ export class ConfirmationModal extends Modal {
       kind: "add" | "del" | "ctx",
       como: Preview = previewFor(path)
     ) => {
-      const cls = "axxa-diff-block axxa-diff-" + kind;
+      const cls = "corvus-diff-block corvus-diff-" + kind;
       const cortado =
         text.length > MAX_PREVIEW ? text.slice(0, MAX_PREVIEW) : text;
 
@@ -169,7 +169,7 @@ export class ConfirmationModal extends Modal {
 
       if (cortado.length < text.length) {
         box.createDiv({
-          cls: "axxa-diff-more",
+          cls: "corvus-diff-more",
           text: strings.confirmTruncated(text.length - cortado.length),
         });
       }
@@ -183,21 +183,21 @@ export class ConfirmationModal extends Modal {
         return;
       }
       case "vault_create": {
-        pathRow(strings.confirmLabelCreate, path, "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelCreate, path, "corvus-confirm-path-add");
         block(texto(args.content), "add");
         return;
       }
       case "vault_create_folder": {
-        pathRow(strings.confirmLabelCreateFolder, path, "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelCreateFolder, path, "corvus-confirm-path-add");
         return;
       }
       case "vault_move": {
-        pathRow(strings.confirmLabelFrom, texto(args.from), "axxa-confirm-path-del");
-        pathRow(strings.confirmLabelTo, texto(args.to), "axxa-confirm-path-add");
+        pathRow(strings.confirmLabelFrom, texto(args.from), "corvus-confirm-path-del");
+        pathRow(strings.confirmLabelTo, texto(args.to), "corvus-confirm-path-add");
         return;
       }
       case "vault_delete": {
-        pathRow(strings.confirmLabelDelete, path, "axxa-confirm-path-del");
+        pathRow(strings.confirmLabelDelete, path, "corvus-confirm-path-del");
         return;
       }
       // A web mostra o que SAI: a consulta inteira, a URL inteira — é nela que

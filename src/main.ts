@@ -1,15 +1,15 @@
 // src/main.ts
-// Entry point do plugin. O Obsidian instancia AxxaPlugin ao carregar o plugin.
+// Entry point do plugin. O Obsidian instancia CorvusPlugin ao carregar o plugin.
 // É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
 
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { settingsReadLooksBroken } from "./core/settingsGuard";
-import { AXXA_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
+import { CORVUS_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
 import { getProvider } from "./providers";
-import { AxxaView, VIEW_TYPE_AXXA } from "./ui/AxxaView";
+import { CorvusView, VIEW_TYPE_CORVUS } from "./ui/CorvusView";
 import { FONTE_DO_HOVER } from "./ui/linksDaResposta";
 import { registerBrandLogos } from "./ui/brandLogos";
-import { AxxaSettingsTab } from "./ui/SettingsTab";
+import { CorvusSettingsTab } from "./ui/SettingsTab";
 import { startupOpensPanel } from "./ui/modules";
 import { VectorIndex, loadIndex, RAG_SHARD_SIZE } from "./rag/vectorIndex";
 import { indexVault } from "./rag/indexer";
@@ -72,7 +72,7 @@ export interface ProviderStatus {
   detail?: string;
 }
 
-export interface AxxaSettings {
+export interface CorvusSettings {
   // ---- Providers (BYOK). As chaves vivem no SecretStorage do SO; aqui só em
   // memória (persistableSettings() zera antes de gravar o data.json).
   openaiApiKey: string;
@@ -251,7 +251,7 @@ export interface AxxaSettings {
   keepAwakeWhileWriting: boolean;
 }
 
-const DEFAULT_SETTINGS: AxxaSettings = {
+const DEFAULT_SETTINGS: CorvusSettings = {
   openaiApiKey: "",
   anthropicApiKey: "",
   geminiApiKey: "",
@@ -345,9 +345,9 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   // (Google Drive, Obsidian Sync…) copiam ela entre aparelhos. Só o índice do
   // RAG continua oculto — é cache, se refaz com o rerun.
   chatsPath: CHATS_FOLDER,
-  skillsPath: "axxa-ai/skills",
+  skillsPath: "corvus-ai/skills",
   projects: [],
-  ragIndexPath: `${AXXA_HIDDEN}/index`,
+  ragIndexPath: `${CORVUS_HIDDEN}/index`,
   ragEmbeddingProvider: "openai",
   ragEmbeddingModel: "text-embedding-3-small",
   ragQuantProfile: "balanced",
@@ -366,15 +366,15 @@ const DEFAULT_SETTINGS: AxxaSettings = {
   keepAwakeWhileWriting: true,
 };
 
-export default class AxxaPlugin extends Plugin {
-  settings!: AxxaSettings;
+export default class CorvusPlugin extends Plugin {
+  settings!: CorvusSettings;
   /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
-   *  (indexação) e AxxaApp (busca). null = ainda não foi carregado/indexado. */
+   *  (indexação) e CorvusApp (busca). null = ainda não foi carregado/indexado. */
   vectorIndex: VectorIndex | null = null;
   /** Indexação em curso (o mesmo botão cancela). */
   indexing: AbortController | null = null;
   /** (P1-69) Ref da settings tab — permite abrir numa aba específica. */
-  settingsTab: AxxaSettingsTab | null = null;
+  settingsTab: CorvusSettingsTab | null = null;
   /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
    *  React tree quando o user troca idioma ou outro setting reativo. */
   private settingsListeners = new Set<() => void>();
@@ -447,7 +447,7 @@ export default class AxxaPlugin extends Plugin {
       try {
         cb();
       } catch (err) {
-        console.error("[axxa] listener de não lidas falhou:", err);
+        console.error("[corvus] listener de não lidas falhou:", err);
       }
     });
   }
@@ -462,7 +462,7 @@ export default class AxxaPlugin extends Plugin {
       try {
         cb();
       } catch (err) {
-        console.error("[axxa] chats listener falhou:", err);
+        console.error("[corvus] chats listener falhou:", err);
       }
     });
   }
@@ -501,7 +501,7 @@ export default class AxxaPlugin extends Plugin {
       } else if (
         parsed &&
         typeof parsed === "object" &&
-        parsed.v === AxxaPlugin.CHAT_INDEX_VERSION
+        parsed.v === CorvusPlugin.CHAT_INDEX_VERSION
       ) {
         items = parsed.items;
       } else {
@@ -525,7 +525,7 @@ export default class AxxaPlugin extends Plugin {
         starred: it.starred === true,
       }));
     } catch (err) {
-      console.error("[axxa] readChatIndex falhou:", err);
+      console.error("[corvus] readChatIndex falhou:", err);
       return null;
     }
   }
@@ -539,13 +539,13 @@ export default class AxxaPlugin extends Plugin {
     }
     try {
       // Envelope versionado pra detectar/descartar caches de schema antigo.
-      const envelope = { v: AxxaPlugin.CHAT_INDEX_VERSION, items: arr };
+      const envelope = { v: CorvusPlugin.CHAT_INDEX_VERSION, items: arr };
       await this.app.vault.adapter.write(
         this.chatIndexPath(),
         JSON.stringify(envelope)
       );
     } catch (err) {
-      console.error("[axxa] writeChatIndex falhou:", err);
+      console.error("[corvus] writeChatIndex falhou:", err);
     }
   }
   /** Persiste o índice debounced (após upsert/remove). */
@@ -586,7 +586,7 @@ export default class AxxaPlugin extends Plugin {
         void this.writeChatIndex(all);
         return all;
       } catch (err) {
-        console.error("[axxa] loadChatSummaries falhou:", err);
+        console.error("[corvus] loadChatSummaries falhou:", err);
         return this.chatSummaries ?? [];
       } finally {
         this.chatSummariesPromise = null;
@@ -611,7 +611,7 @@ export default class AxxaPlugin extends Plugin {
         void this.writeChatIndex(fresh);
       }
     } catch (err) {
-      console.error("[axxa] reconcileChatSummaries falhou:", err);
+      console.error("[corvus] reconcileChatSummaries falhou:", err);
     } finally {
       this.reconcilingChats = false;
     }
@@ -724,7 +724,7 @@ export default class AxxaPlugin extends Plugin {
         ? await enriquecerCapacidadesOllama(this.settings.ollamaEndpoint, lista)
         : await enrichModelsFromCatalog(providerId, lista);
     } catch (err) {
-      console.error("[axxa] enriquecerCapacidades falhou:", err);
+      console.error("[corvus] enriquecerCapacidades falhou:", err);
       return 0;
     }
   }
@@ -884,7 +884,7 @@ export default class AxxaPlugin extends Plugin {
       }
       if (cota || livres.length) await this.saveSettings();
     } catch (err) {
-      console.error("[axxa] não consegui listar os modelos grátis:", err);
+      console.error("[corvus] não consegui listar os modelos grátis:", err);
     }
   }
 
@@ -952,7 +952,7 @@ export default class AxxaPlugin extends Plugin {
       if (err instanceof DOMException && err.name === "AbortError") {
         new Notice(tr("Indexing cancelled."));
       } else {
-        console.error("[axxa] indexVault falhou:", err);
+        console.error("[corvus] indexVault falhou:", err);
         new Notice(
           tr("Indexing failed: {error}", {
             error: err instanceof Error ? err.message : String(err),
@@ -969,7 +969,7 @@ export default class AxxaPlugin extends Plugin {
   }
 
   /**
-   * `axxa-has-navbar` no body enquanto a navbar global do celular estiver NO
+   * `corvus-has-navbar` no body enquanto a navbar global do celular estiver NO
    * DOM. Substitui um `body:has(.mobile-navbar)` no CSS — a regra que dá ao
    * composer a folga acima dessa barra — e tem o mesmo valor de verdade que
    * ele tinha: presença no DOM, não visibilidade.
@@ -998,7 +998,7 @@ export default class AxxaPlugin extends Plugin {
     const doc = activeDocument;
     const sync = () =>
       doc.body.toggleClass(
-        "axxa-has-navbar",
+        "corvus-has-navbar",
         doc.body.querySelector(".mobile-navbar") !== null
       );
     const obs = new MutationObserver(sync);
@@ -1007,7 +1007,7 @@ export default class AxxaPlugin extends Plugin {
     sync();
     this.register(() => {
       obs.disconnect();
-      doc.body.removeClass("axxa-has-navbar");
+      doc.body.removeClass("corvus-has-navbar");
     });
   }
 
@@ -1075,7 +1075,7 @@ export default class AxxaPlugin extends Plugin {
               );
               this.settings.ragMobileSkipNoticeShown = true;
               void this.saveSettings().catch((err) =>
-                console.error("[axxa] não consegui persistir o flag do Notice RAG mobile:", err)
+                console.error("[corvus] não consegui persistir o flag do Notice RAG mobile:", err)
               );
             },
           }
@@ -1086,7 +1086,7 @@ export default class AxxaPlugin extends Plugin {
         mobileGuard
       );
     } catch (err) {
-      console.error("[axxa] falha ao carregar índice RAG:", err);
+      console.error("[corvus] falha ao carregar índice RAG:", err);
     }
   }
 
@@ -1102,7 +1102,7 @@ export default class AxxaPlugin extends Plugin {
       try {
         cb();
       } catch (err) {
-        console.error("[axxa] settings listener falhou:", err);
+        console.error("[corvus] settings listener falhou:", err);
       }
     });
   }
@@ -1139,7 +1139,7 @@ export default class AxxaPlugin extends Plugin {
       }
       registerLocalUsage(byModel);
     } catch (err) {
-      console.error("[axxa] refreshLocalUsageHot falhou:", err);
+      console.error("[corvus] refreshLocalUsageHot falhou:", err);
     }
   }
 
@@ -1148,7 +1148,7 @@ export default class AxxaPlugin extends Plugin {
     try {
       this.skills = await loadSkills(this.app, this.settings.skillsPath);
     } catch (err) {
-      console.error("[axxa] reloadSkills falhou:", err);
+      console.error("[corvus] reloadSkills falhou:", err);
       this.skills = [];
     }
     this.notifyListeners();
@@ -1182,7 +1182,7 @@ export default class AxxaPlugin extends Plugin {
         );
       }
     } catch (err) {
-      console.error("[axxa] falha ao carregar modelInfoCache:", err);
+      console.error("[corvus] falha ao carregar modelInfoCache:", err);
     }
   }
 
@@ -1194,7 +1194,7 @@ export default class AxxaPlugin extends Plugin {
         JSON.stringify(getModelInfoCache(), null, 2)
       );
     } catch (err) {
-      console.error("[axxa] falha ao salvar modelInfoCache:", err);
+      console.error("[corvus] falha ao salvar modelInfoCache:", err);
     }
   }
 
@@ -1228,19 +1228,19 @@ export default class AxxaPlugin extends Plugin {
     // Registra a view na sidebar direita.
     // É como registrar um componente custom no design system — depois pode ser instanciado.
     this.registerView(
-      VIEW_TYPE_AXXA,
-      (leaf) => new AxxaView(leaf, this)
+      VIEW_TYPE_CORVUS,
+      (leaf) => new CorvusView(leaf, this)
     );
 
     // Os [[links]] das respostas mostram a prévia da nota ao passar o mouse,
     // como os de uma nota (o "Page preview" lista a fonte e o atalho).
     this.registerHoverLinkSource(FONTE_DO_HOVER, {
-      display: "AXXA Agent",
+      display: "Corvus",
       defaultMod: true,
     });
 
     // Ícone na ribbon (sidebar esquerda do Obsidian).
-    this.addRibbonIcon("bot", "AXXA Agent", () => {
+    this.addRibbonIcon("bot", "Corvus", () => {
       void this.activateView();
     });
 
@@ -1249,7 +1249,7 @@ export default class AxxaPlugin extends Plugin {
     registerBrandLogos();
 
     // O Obsidian já prefixa o comando com o nome do plugin na paleta, então
-    // "Open AXXA Agent" viraria "AXXA Agent: Open AXXA Agent".
+    // "Open Corvus" viraria "Corvus: Open Corvus".
     this.addCommand({
       id: "open-panel",
       name: tr("Open panel"),
@@ -1264,12 +1264,12 @@ export default class AxxaPlugin extends Plugin {
       },
     });
 
-    // O AXXA a partir da nota: comandos (perguntar, resumir, reescrever,
+    // O Corvus a partir da nota: comandos (perguntar, resumir, reescrever,
     // corrigir, traduzir, continuar) e o clique direito no texto e na nota.
     registrarComandosDoEditor(this);
 
-    // Settings tab — aparece em Settings -> Community Plugins -> AXXA Agent.
-    this.settingsTab = new AxxaSettingsTab(this.app, this);
+    // Settings tab — aparece em Settings -> Community Plugins -> Corvus.
+    this.settingsTab = new CorvusSettingsTab(this.app, this);
     this.addSettingTab(this.settingsTab);
 
     // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
@@ -1510,7 +1510,7 @@ export default class AxxaPlugin extends Plugin {
       });
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
-        console.error("[axxa] auto-reindex falhou:", err);
+        console.error("[corvus] auto-reindex falhou:", err);
       }
     }
   }
@@ -1518,7 +1518,7 @@ export default class AxxaPlugin extends Plugin {
   async activateView() {
     const { workspace } = this.app;
     let leaf: WorkspaceLeaf | null = null;
-    const leaves = workspace.getLeavesOfType(VIEW_TYPE_AXXA);
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_CORVUS);
 
     if (leaves.length > 0) {
       leaf = leaves[0];
@@ -1526,7 +1526,7 @@ export default class AxxaPlugin extends Plugin {
       // getRightLeaf(false) pode retornar null (sem split direito disponível);
       // força a criação como fallback pra view não falhar em silêncio. v0.1.228
       leaf = workspace.getRightLeaf(false) ?? workspace.getRightLeaf(true);
-      await leaf?.setViewState({ type: VIEW_TYPE_AXXA, active: true });
+      await leaf?.setViewState({ type: VIEW_TYPE_CORVUS, active: true });
     }
 
     if (leaf) {
@@ -1537,7 +1537,7 @@ export default class AxxaPlugin extends Plugin {
       // inverso já é usado em linksDaResposta (rightSplit.collapse).
       if (Platform.isMobile) workspace.rightSplit?.expand();
     } else {
-      new Notice(tr("Couldn't open the AXXA panel — try toggling the right sidebar."));
+      new Notice(tr("Couldn't open the Corvus panel — try toggling the right sidebar."));
     }
   }
 
@@ -1559,9 +1559,9 @@ export default class AxxaPlugin extends Plugin {
     "tavilyApiKey",
   ] as const;
 
-  /** ID do segredo no SecretStorage (lowercase + dashes). Ex: axxa-openai-key. */
+  /** ID do segredo no SecretStorage (lowercase + dashes). Ex: corvus-openai-key. */
   private secretId(field: string): string {
-    return `axxa-${field.replace(/ApiKey$/, "")}-key`;
+    return `corvus-${field.replace(/ApiKey$/, "")}-key`;
   }
 
   /**
@@ -1598,15 +1598,15 @@ export default class AxxaPlugin extends Plugin {
         await this.app.vault.adapter.write(this.dataPath("data.backup.json"), bruto);
       }
     } catch (err) {
-      console.error("[axxa] backup das settings falhou:", err);
+      console.error("[corvus] backup das settings falhou:", err);
     }
   }
 
   async loadSettings() {
     // loadData() lê do arquivo do plugin no vault — substitui localStorage.
     // loadData() devolve `any`; o arquivo é do usuário e pode estar em
-    // qualquer estado, então a forma declarada é "pedaço de AxxaSettings".
-    const saved = ((await this.loadData()) ?? {}) as Partial<AxxaSettings>;
+    // qualquer estado, então a forma declarada é "pedaço de CorvusSettings".
+    const saved = ((await this.loadData()) ?? {}) as Partial<CorvusSettings>;
 
     // `loadData` devolve null tanto pra "primeira instalação" quanto pra
     // "o arquivo está lá e não deu pra ler" (JSON quebrado, escrita
@@ -1630,21 +1630,21 @@ export default class AxxaPlugin extends Plugin {
           ) {
             this.settingsUnsafe = true;
             console.error(
-              "[axxa] data.json existe mas não foi lido — settings NÃO serão gravadas até reiniciar."
+              "[corvus] data.json existe mas não foi lido — settings NÃO serão gravadas até reiniciar."
             );
             // O idioma escolhido mora justamente no arquivo que não deu pra
             // ler: o aviso sai no do Obsidian ("auto"), o melhor palpite.
             definirIdiomaDaInterface(resolverIdioma(DEFAULT_SETTINGS.language));
             new Notice(
               tr(
-                "AXXA: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed."
+                "Corvus: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed."
               ),
               15000
             );
           }
         }
       } catch (err) {
-        console.error("[axxa] checagem do data.json falhou:", err);
+        console.error("[corvus] checagem do data.json falhou:", err);
       }
     } else {
       void this.backupSettings(JSON.stringify(saved, null, 2));
@@ -1689,8 +1689,8 @@ export default class AxxaPlugin extends Plugin {
   /**
    * Move o dado do app pra onde ele deve morar hoje, UMA vez.
    *
-   * Conversas (que nasceram no legado `axxa-ai/chats` ou no default oculto
-   * `.axxa/chats`) passam pra pasta VISÍVEL — é o que um file-sync de arquivos
+   * Conversas (que nasceram no legado `corvus-ai/chats` ou no default oculto
+   * `.corvus/chats`) passam pra pasta VISÍVEL — é o que um file-sync de arquivos
    * copia entre aparelhos. O índice do RAG faz o caminho inverso (pra oculta):
    * cache, se refaz.
    *
@@ -1705,8 +1705,8 @@ export default class AxxaPlugin extends Plugin {
     if (this.settingsUnsafe) return;
     const ad = this.app.vault.adapter;
     // Destino conta como "ocupado" só se tiver CONTEÚDO. Uma pasta vazia (ex:
-    // um `axxa/chats` criado cedo e nunca usado) não pode travar a migração —
-    // senão ninguém saía do `.axxa/chats` e o sync continuava quebrado.
+    // um `corvus/chats` criado cedo e nunca usado) não pode travar a migração —
+    // senão ninguém saía do `.corvus/chats` e o sync continuava quebrado.
     const destinoOcupado = async (pasta: string): Promise<boolean> => {
       if (!(await ad.exists(pasta))) return false;
       try {
@@ -1739,14 +1739,14 @@ export default class AxxaPlugin extends Plugin {
       } catch (err) {
         // Falhou? A origem continua lá, intacta, e o caminho não muda: o app
         // segue lendo de onde sempre leu.
-        console.error(`[axxa] migração de ${mv.legado} falhou:`, err);
+        console.error(`[corvus] migração de ${mv.legado} falhou:`, err);
       }
     }
     if (mudou) {
       await this.saveSettings();
       new Notice(
         tr(
-          "AXXA moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list."
+          "Corvus moved your chats into a visible folder — file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices now, and they show up in the vault's search and file list."
         ),
         10000
       );
@@ -1790,7 +1790,7 @@ export default class AxxaPlugin extends Plugin {
     const ss = this.app.secretStorage;
     if (!ss) return; // runtime < 1.11.4 (sideload): mantém fallback no data.json
     let migrated = false;
-    for (const f of AxxaPlugin.SECRET_FIELDS) {
+    for (const f of CorvusPlugin.SECRET_FIELDS) {
       const id = this.secretId(f);
       const stored = ss.getSecret(id);
       if (stored) {
@@ -1809,16 +1809,16 @@ export default class AxxaPlugin extends Plugin {
     // e com a leitura falha o "arquivo inteiro" é o padrão de fábrica.
     if (migrated && !this.settingsUnsafe) {
       void this.saveData(this.persistableSettings()).catch((err) =>
-        console.error("[axxa] migração de secrets (saveData) falhou:", err)
+        console.error("[corvus] migração de secrets (saveData) falhou:", err)
       );
     }
   }
 
   /** Cópia das settings com as chaves zeradas — é isso que vai pro data.json
    *  (os valores reais vivem só em memória + no SecretStorage do SO). */
-  private persistableSettings(): AxxaSettings {
+  private persistableSettings(): CorvusSettings {
     const copy = { ...this.settings };
-    for (const f of AxxaPlugin.SECRET_FIELDS) copy[f] = "";
+    for (const f of CorvusPlugin.SECRET_FIELDS) copy[f] = "";
     return copy;
   }
 
@@ -1840,14 +1840,14 @@ export default class AxxaPlugin extends Plugin {
     // Leitura falhou: o que está na memória é o padrão de fábrica, não o que a
     // pessoa configurou. Gravar aqui é apagar de verdade.
     if (this.settingsUnsafe) {
-      console.error("[axxa] saveSettings bloqueado: as settings não foram lidas.");
+      console.error("[corvus] saveSettings bloqueado: as settings não foram lidas.");
       return;
     }
     try {
       const ss = this.app.secretStorage;
       if (ss) {
         // Chaves vão pro SecretStorage; data.json é salvo sem elas.
-        for (const f of AxxaPlugin.SECRET_FIELDS) {
+        for (const f of CorvusPlugin.SECRET_FIELDS) {
           ss.setSecret(this.secretId(f), this.settings[f] ?? "");
         }
         await this.saveData(this.persistableSettings());
@@ -1857,7 +1857,7 @@ export default class AxxaPlugin extends Plugin {
       }
       this.avisoDeSaveDado = false;
     } catch (err) {
-      console.error("[axxa] não consegui gravar as settings:", err);
+      console.error("[corvus] não consegui gravar as settings:", err);
       // UMA vez por sequência de falhas: se o disco está cheio, cada
       // interruptor tocado dispararia um aviso e a tela viraria uma parede de
       // avisos sobre o mesmo problema. Volta a avisar depois de uma gravação
@@ -1866,7 +1866,7 @@ export default class AxxaPlugin extends Plugin {
         this.avisoDeSaveDado = true;
         new Notice(
           tr(
-            "AXXA could not save your settings — the change is active now but will be lost when you reopen Obsidian. Check the vault's disk space and permissions."
+            "Corvus could not save your settings — the change is active now but will be lost when you reopen Obsidian. Check the vault's disk space and permissions."
           ),
           12000
         );
@@ -1876,12 +1876,12 @@ export default class AxxaPlugin extends Plugin {
     // O idioma da interface muda ANTES de avisar: quem re-renderiza já pega
     // o texto novo.
     definirIdiomaDaInterface(resolverIdioma(this.settings.language));
-    // Avisa quem tá escutando (ex.: AxxaApp pra re-renderizar com novo idioma)
+    // Avisa quem tá escutando (ex.: CorvusApp pra re-renderizar com novo idioma)
     this.settingsListeners.forEach((cb) => {
       try {
         cb();
       } catch (err) {
-        console.error("[axxa] settings listener falhou:", err);
+        console.error("[corvus] settings listener falhou:", err);
       }
     });
   }

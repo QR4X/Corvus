@@ -1,13 +1,13 @@
 name: Bug report
-description: Something in AXXA Agent is broken or behaves unexpectedly.
+description: Something in Corvus is broken or behaves unexpectedly.
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. AXXA Agent is built by one person, so a clear, reproducible report gets fixed fastest.
-        Questions and ideas belong in [Discussions](https://github.com/axxalab/axxa-agent/discussions).
+        Thanks for reporting. Corvus is built by one person, so a clear, reproducible report gets fixed fastest.
+        Questions and ideas belong in [Discussions](https://github.com/QR4X/M.I.L.A/discussions).
   - type: checkboxes
     id: checks
     attributes:
@@ -15,7 +15,7 @@ body:
       options:
         - label: I searched the existing issues and this is not a duplicate.
           required: true
-        - label: I am on the latest AXXA Agent version and I restarted Obsidian.
+        - label: I am on the latest Corvus version and I restarted Obsidian.
           required: true
         - label: I removed API keys and private note content from everything I paste below.
           required: true
@@ -50,8 +50,8 @@ body:
   - type: input
     id: plugin-version
     attributes:
-      label: AXXA Agent version
-      description: Settings > Community plugins > AXXA Agent. Say if it is a BRAT beta.
+      label: Corvus version
+      description: Settings > Community plugins > Corvus. Say if it is a BRAT beta.
       placeholder: "0.9.20"
     validations:
       required: true
@@ -116,7 +116,7 @@ body:
     id: logs
     attributes:
       label: Console errors
-      description: Desktop - Ctrl+Shift+I (Cmd+Option+I on macOS), Console tab, copy red lines mentioning axxa. Mobile - a screenshot of the error notice is enough.
+      description: Desktop - Ctrl+Shift+I (Cmd+Option+I on macOS), Console tab, copy red lines mentioning corvus. Mobile - a screenshot of the error notice is enough.
       render: shell
   - type: textarea
     id: media

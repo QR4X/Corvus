@@ -31,7 +31,7 @@ import {
   SheetTextarea,
 } from "./SheetForm";
 import { useEffect, useState } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { AssistantPanel, ComAssistente, useRun } from "./AssistantPanel";
 import { useSheetFit } from "./Sheet";
 import { limparRun } from "../assistant/store";
@@ -75,7 +75,7 @@ export function SkillForm({
   /** O campo do nome toma o foco (a folha acabou de abrir neste nível). */
   focar: boolean;
   onDraft: (d: SkillDraft) => void;
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   /** Qual passo mostrar. `undefined` = o formulário INTEIRO, que é o modo de
    *  EDITAR: ali a pessoa veio mexer num campo específico, e uma fila de cinco
    *  telas pra trocar uma palavra seria um pedágio. */
@@ -165,19 +165,19 @@ export function SkillForm({
           outro, e é por isso que a fila não parece cinco formulários seguidos.
           Cada resposta muda o cartão na hora — o que se está montando está
           sempre à vista. */}
-      <div className="axxa-form-preview">
+      <div className="corvus-form-preview">
         <span
-          className="axxa-thing-mark"
+          className="corvus-thing-mark"
           style={{ color: cor }}
           aria-hidden="true"
         >
           <Icon name={draft.icon || "sparkles"} size={20} />
         </span>
-        <span className="axxa-thing-text">
-          <span className="axxa-thing-name">
+        <span className="corvus-thing-text">
+          <span className="corvus-thing-name">
             {draft.name.trim() || tr("Untitled skill")}
           </span>
-          <span className="axxa-thing-note">
+          <span className="corvus-thing-note">
             {draft.description.trim() ||
               (draft.body.trim()
                 ? draft.body.trim().split("\n")[0]

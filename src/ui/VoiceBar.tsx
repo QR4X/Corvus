@@ -17,10 +17,10 @@ import { tr } from "../i18n/tr";
 export function VoiceDock({ voice }: { voice: Voice }) {
   const working = voice.state === "working";
   return (
-    <div className="axxa-voice-dock">
+    <div className="corvus-voice-dock">
       <button
         type="button"
-        className="axxa-voice-x"
+        className="corvus-voice-x"
         aria-label={tr("Discard recording")}
         disabled={working}
         onClick={() => {
@@ -32,15 +32,15 @@ export function VoiceDock({ voice }: { voice: Voice }) {
       </button>
 
       {working ? (
-        <span className="axxa-voice-working">{tr("Transcribing…")}</span>
+        <span className="corvus-voice-working">{tr("Transcribing…")}</span>
       ) : (
         // A onda é a única prova de que o microfone está ouvindo: sem ela,
         // mudo e quebrado são a mesma tela.
-        <div className="axxa-voice-wave" aria-hidden="true">
+        <div className="corvus-voice-wave" aria-hidden="true">
           {voice.levels.map((l, i) => (
             <span
               key={i}
-              className="axxa-voice-bar"
+              className="corvus-voice-bar"
               style={{ height: `${Math.max(3, Math.round(l * 26))}px` }}
             />
           ))}
@@ -49,7 +49,7 @@ export function VoiceDock({ voice }: { voice: Voice }) {
 
       <button
         type="button"
-        className="axxa-voice-ok"
+        className="corvus-voice-ok"
         aria-label={tr("Use this transcript")}
         disabled={working}
         onClick={() => {

@@ -12,7 +12,7 @@
 
 import { Platform } from "obsidian";
 
-/** Espelha `settings.hapticsEnabled` — o AxxaView mantém em dia. */
+/** Espelha `settings.hapticsEnabled` — o CorvusView mantém em dia. */
 let enabled = true;
 
 export function setHapticsEnabled(value: boolean): void {
@@ -98,7 +98,7 @@ export function hapticsOn(root: HTMLElement): () => void {
     const el = e.target as HTMLElement | null;
     if (!el?.closest) return null;
     return el.closest(
-      'button, a, [role="button"], input[type="checkbox"], .checkbox-container, select, .axxa-sheet-row, .axxa-seg-item'
+      'button, a, [role="button"], input[type="checkbox"], .checkbox-container, select, .corvus-sheet-row, .corvus-seg-item'
     );
   };
 

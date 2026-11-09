@@ -18,7 +18,7 @@ export const AGENT_MD_CANDIDATES: readonly string[] = [
   ".agent.md",
   "CLAUDE.md",
   "claude.md",
-  ".axxa/AGENT.md",
+  ".corvus/AGENT.md",
 ];
 
 /**
@@ -26,7 +26,7 @@ export const AGENT_MD_CANDIDATES: readonly string[] = [
  */
 export const TEMPLATE_AGENT_MD = `# Agent Instructions
 
-<!-- Instructions in this note are loaded on every reply by M.I.L.A / AXXA Agent (like CLAUDE.md). -->
+<!-- Instructions in this note are loaded on every reply by Corvus / Corvus (like CLAUDE.md). -->
 
 ## Rules & Tone
 - Answer clearly and concisely.
@@ -125,7 +125,7 @@ export async function loadAgentMd(
       return parseAgentMd(raw);
     }
   } catch (err) {
-    console.error("[axxa] falha ao ler AGENT.md:", err);
+    console.error("[corvus] falha ao ler AGENT.md:", err);
   }
   return "";
 }
@@ -172,7 +172,7 @@ export async function openOrCreateAgentMd(
         await leaf.openFile(file);
       }
     } catch (err) {
-      console.error("[axxa] erro ao abrir AGENT.md no editor:", err);
+      console.error("[corvus] erro ao abrir AGENT.md no editor:", err);
     }
   }
   return file;

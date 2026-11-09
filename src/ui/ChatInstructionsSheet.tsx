@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { Notice } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSummary } from "../core/chatPersistence";
 import { loadChat, setChatInstructions } from "../core/chatPersistence";
 import { useChatStore } from "../store/chat";
@@ -24,7 +24,7 @@ export function ChatInstructionsSheet({
   open,
   onClose,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   chat: ChatSummary | null;
   open: boolean;
   onClose: () => void;

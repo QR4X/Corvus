@@ -5,7 +5,7 @@
 //   const t = useT();
 //   return <button>{t.menu.copy}</button>;
 //
-// Uso em código TS puro (ex.: AxxaSettingsTab):
+// Uso em código TS puro (ex.: CorvusSettingsTab):
 //   const t = getTranslations(plugin.settings.language);
 //   notice(t.settings.modelSetNotice(modelName));
 
@@ -59,7 +59,7 @@ export function getTranslations(locale: string): Translations {
   return DICIONARIOS[resolverIdioma(locale)] ?? EN_US;
 }
 
-/** Context React — AxxaApp envolve toda a árvore com o locale ativo. */
+/** Context React — CorvusApp envolve toda a árvore com o locale ativo. */
 export const TranslationsContext = createContext<Translations>(EN_US);
 
 /** Hook pra ler o dicionário do locale ativo. */

@@ -73,7 +73,7 @@ function parseSkillFile(
 
 /** Prefixo normalizado da pasta de skills (sempre terminando em "/"). */
 export function skillsFolderPrefix(folderPath: string): string {
-  const folder = normalizePath(folderPath || "axxa-ai/skills");
+  const folder = normalizePath(folderPath || "corvus-ai/skills");
   return folder.endsWith("/") ? folder : folder + "/";
 }
 
@@ -184,7 +184,7 @@ export async function seedExampleSkills(
   app: App,
   folderPath: string
 ): Promise<number> {
-  const folder = normalizePath(folderPath || "axxa-ai/skills");
+  const folder = normalizePath(folderPath || "corvus-ai/skills");
   if (!(await app.vault.adapter.exists(folder))) {
     await app.vault.adapter.mkdir(folder);
   }

@@ -1,11 +1,11 @@
-# Contributing to AXXA Agent
+# Contributing to Corvus
 
-Thanks for looking. AXXA Agent is maintained by AXXA Lab™. Bug reports, reproductions
+Thanks for looking. Corvus is maintained by QR4X. Bug reports, reproductions
 and focused pull requests are welcome.
 
 ## Reporting a bug
 
-Open an [issue](https://github.com/axxalab/axxa-agent/issues) with:
+Open an [issue](https://github.com/QR4X/M.I.L.A/issues) with:
 
 - your Obsidian version, platform (desktop / iOS / Android) and the plugin version;
 - the provider and model you were using, if the bug involves a conversation;
@@ -33,7 +33,7 @@ inside the app.
 - **The review's Errors block a release.** Run `npm run lint` before opening a PR; it
   must report 0 errors. Every warning that stays open is justified in
   `eslint.config.mjs` or at the top of `styles/main.css` — read those before "fixing" one.
-- **Selectors for our own UI start with `.axxa-root`.** Obsidian's `app.css` styles
+- **Selectors for our own UI start with `.corvus-root`.** Obsidian's `app.css` styles
   bare elements with selectors worth `(0,1,1)`; a single plugin class (`0,1,0`) loses
   to them. The exceptions are the rules that must reach Obsidian's own elements (the
   mobile drawer, the leaf, the modal container) — they live in the block at the top
@@ -79,5 +79,5 @@ inside the app.
 
 ## License
 
-AXXA Agent is licensed under [GPL-3.0-or-later](LICENSE). By submitting a contribution
+Corvus is licensed under [GPL-3.0-or-later](LICENSE). By submitting a contribution
 you agree that it is licensed under the same terms.

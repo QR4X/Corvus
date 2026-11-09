@@ -481,7 +481,7 @@ export async function runAgentTurn(
           try {
             antes = await antesDe(plugin.app, call.name, call.arguments);
           } catch (err) {
-            console.warn("[axxa] sem cópia pro Undo:", err);
+            console.warn("[corvus] sem cópia pro Undo:", err);
           }
         }
         const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
@@ -518,7 +518,7 @@ export async function runAgentTurn(
                   updateActivity(activityId, { undoId: activityId });
                 }
               } catch (err) {
-                console.warn("[axxa] Undo não registrado:", err);
+                console.warn("[corvus] Undo não registrado:", err);
               }
             }
             return {

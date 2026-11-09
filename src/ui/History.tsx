@@ -11,7 +11,7 @@
 // tudo quer todo o Agent, não tudo de novo.
 
 import { useMemo, useState } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { useChatStore } from "../store/chat";
@@ -38,7 +38,7 @@ export function History({
   onBack,
   onOpenChat,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   aba: string;
   onAba: (id: string) => void;
@@ -67,11 +67,11 @@ export function History({
   const visiveis = busca.hits;
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
+    <div className="corvus-chat">
+      <header className="corvus-topbar is-bare">
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Back")}
           onClick={onBack}
         >
@@ -81,10 +81,10 @@ export function History({
             leva de volta e o que se está vendo moram na mesma barra. Como
             título dentro da página ele ocupava uma linha inteira pra dizer
             uma palavra. */}
-        <span className="axxa-brand axxa-topbar-brand">{tr("History")}</span>
+        <span className="corvus-brand corvus-topbar-brand">{tr("History")}</span>
       </header>
 
-      <div className="axxa-messages axxa-home">
+      <div className="corvus-messages corvus-home">
 
         {/* Com um módulo só em uso, o trilho teria uma aba: um controle que
             não controla nada. */}
@@ -126,7 +126,7 @@ export function History({
         )}
 
         {visiveis.length === 0 && (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name="message-circle" size={42} />
             <p>
               {query.trim()
@@ -162,7 +162,7 @@ export function History({
             }}
           />
         ) : (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name="search" size={42} />
             <p>
               {query.trim()

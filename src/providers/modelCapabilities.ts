@@ -21,11 +21,11 @@ export interface ModelCapabilities {
   streaming: boolean;
   /** Modelo gratuito (sem custo de uso). null = informação desconhecida */
   free?: boolean;
-  /** Gera imagens (text-to-image). Salvas em axxa-ai/generation/images/ */
+  /** Gera imagens (text-to-image). Salvas em corvus-ai/generation/images/ */
   imageGen?: boolean;
-  /** Gera áudio (TTS ou voice models). Salvos em axxa-ai/generation/audio/ */
+  /** Gera áudio (TTS ou voice models). Salvos em corvus-ai/generation/audio/ */
   audioGen?: boolean;
-  /** Gera vídeo (Veo, Sora, Cosmos, etc). Salvos em axxa-ai/generation/video/ */
+  /** Gera vídeo (Veo, Sora, Cosmos, etc). Salvos em corvus-ai/generation/video/ */
   videoGen?: boolean;
   /** Aceita PDF anexado no wire (bloco document / content part `file`). v0.1.248 */
   pdf?: boolean;

@@ -3,7 +3,7 @@ import { ladoDaEscolha, posicaoDoBalao, type Caixa } from "../src/ui/menu";
 
 // Esta conta já nasceu errada duas vezes, sempre pelo mesmo motivo: ela mistura
 // DOIS retângulos. As coordenadas de saída são da camada, que é `absolute`
-// dentro da `.axxa-root`; mas quem decide se o balão CABE é a tela. No celular
+// dentro da `.corvus-root`; mas quem decide se o balão CABE é a tela. No celular
 // a folha vira `fixed` e vai até o fundo do viewport — mais baixo do que a raiz
 // alcança —, então um ⋯ na parte de baixo da folha está numa altura que a raiz
 // nem tem. Medindo pela raiz, o balão "cabia" na conta e nascia fora da tela.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  AXXA_HIDDEN,
+  CORVUS_HIDDEN,
   CHATS_FOLDER,
   HIDDEN_MOVES,
   isHiddenPath,
@@ -30,30 +30,30 @@ describe("para onde o app leva o que migra", () => {
       expect(isHiddenPath(m.novo)).toBe(false);
     }
     for (const m of index) {
-      expect(m.novo.startsWith(`${AXXA_HIDDEN}/`)).toBe(true);
+      expect(m.novo.startsWith(`${CORVUS_HIDDEN}/`)).toBe(true);
       expect(isHiddenPath(m.novo)).toBe(true);
     }
   });
 
-  it("migra o legado axxa-ai E o default oculto .axxa/chats", () => {
+  it("migra o legado corvus-ai E o default oculto .corvus/chats", () => {
     const legados = HIDDEN_MOVES.map((m) => m.legado);
-    expect(legados).toContain("axxa-ai/chats");
-    expect(legados).toContain(`${AXXA_HIDDEN}/chats`);
-    expect(legados).toContain("axxa-ai/index");
+    expect(legados).toContain("corvus-ai/chats");
+    expect(legados).toContain(`${CORVUS_HIDDEN}/chats`);
+    expect(legados).toContain("corvus-ai/index");
     // Skills, mídia gerada e relatórios ficam VISÍVEIS de propósito: skill é
     // nota que a pessoa edita, e mídia escondida não dá pra embutir numa nota
     // (o Obsidian não resolve link pra fora do índice).
-    expect(legados).not.toContain("axxa-ai/skills");
-    expect(legados).not.toContain("axxa-ai/generation");
-    expect(legados).not.toContain("axxa-ai/reports");
+    expect(legados).not.toContain("corvus-ai/skills");
+    expect(legados).not.toContain("corvus-ai/generation");
+    expect(legados).not.toContain("corvus-ai/reports");
   });
 });
 
 describe("isHiddenPath", () => {
   it("qualquer trecho com ponto na frente esconde o caminho inteiro", () => {
-    expect(isHiddenPath(".axxa/chats/agent/x.md")).toBe(true);
+    expect(isHiddenPath(".corvus/chats/agent/x.md")).toBe(true);
     expect(isHiddenPath("notas/.rascunho/x.md")).toBe(true);
-    expect(isHiddenPath("axxa-ai/chats/x.md")).toBe(false);
+    expect(isHiddenPath("corvus-ai/chats/x.md")).toBe(false);
     // Ponto NO MEIO do nome não esconde nada — só no começo.
     expect(isHiddenPath("notas/plano.v2/x.md")).toBe(false);
   });
@@ -61,9 +61,9 @@ describe("isHiddenPath", () => {
 
 describe("shouldMigrate", () => {
   const base = {
-    caminhoAtual: "axxa-ai/chats",
-    legado: "axxa-ai/chats",
-    novo: ".axxa/chats",
+    caminhoAtual: "corvus-ai/chats",
+    legado: "corvus-ai/chats",
+    novo: ".corvus/chats",
     origemExiste: true,
     destinoExiste: false,
   };
@@ -81,7 +81,7 @@ describe("shouldMigrate", () => {
   });
 
   it("instalação nova (já no caminho novo) não tenta nada", () => {
-    expect(shouldMigrate({ ...base, caminhoAtual: ".axxa/chats" })).toBe(false);
+    expect(shouldMigrate({ ...base, caminhoAtual: ".corvus/chats" })).toBe(false);
   });
 
   it("origem inexistente: não há o que mover", () => {

@@ -21,7 +21,7 @@ export const PT_SHELL: Record<string, string> = {
   "Projects": "Projetos",
   "Skills": "Skills",
   "Usage": "Uso",
-  "AXXA menu": "Menu do AXXA",
+  "Corvus menu": "Menu do Corvus",
   "Close menu": "Fechar menu",
   "Settings": "Configurações",
 
@@ -110,8 +110,8 @@ export const PT_SHELL: Record<string, string> = {
   "Cancel": "Cancelar",
   "OK": "OK",
   "Confirm": "Confirmar",
-  "Open Settings → Community plugins → AXXA Agent.":
-    "Abra Configurações → Plugins da comunidade → AXXA Agent.",
+  "Open Settings → Community plugins → Corvus.":
+    "Abra Configurações → Plugins da comunidade → Corvus.",
 
   // iconCatalog.ts — as categorias do catálogo de ícones
   "Work": "Trabalho",

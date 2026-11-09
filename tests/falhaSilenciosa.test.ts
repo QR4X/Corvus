@@ -81,8 +81,8 @@ describe("gravar a conversa", () => {
     const usos = [...SESSION.matchAll(/this\.avisarFalhaDeGravacao\(err\)/g)];
     expect(usos.length).toBe(2);
     // E nenhum dos dois voltou pro console-e-mais-nada.
-    expect(SESSION).not.toContain('console.error("[axxa] saveChat falhou:');
-    expect(SESSION).not.toContain('console.error("[axxa] gravarFundo falhou:');
+    expect(SESSION).not.toContain('console.error("[corvus] saveChat falhou:');
+    expect(SESSION).not.toContain('console.error("[corvus] gravarFundo falhou:');
   });
 });
 

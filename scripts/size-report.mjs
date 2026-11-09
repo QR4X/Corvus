@@ -41,7 +41,7 @@ function locOf(dir, exts) {
 }
 
 export function report() {
-  console.log("\n— AXXA · régua de tamanho (output instalado) —");
+  console.log("\n— Corvus · régua de tamanho (output instalado) —");
   let over = false;
   for (const f of ["main.js", "styles.css"]) {
     const p = path.join(OUT, f);

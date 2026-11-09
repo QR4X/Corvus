@@ -4,10 +4,10 @@
 // usa (session.ts) e o que as ações do editor usam (editor/inline.ts): os
 // dois lugares tinham que concordar, então a regra mora num lugar só.
 
-import type { AxxaSettings } from "../main";
+import type { CorvusSettings } from "../main";
 import { pareceEmbeddingDoOllama } from "../rag/types";
 
-export function modeloSalvoPara(s: AxxaSettings, provider: string): string {
+export function modeloSalvoPara(s: CorvusSettings, provider: string): string {
   const doCampo = (() => {
     switch (provider) {
       case "anthropic":

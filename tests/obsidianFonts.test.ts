@@ -7,13 +7,13 @@ const read = (path: string) =>
   readFileSync(resolve(__dirname, "..", path), "utf8");
 const css = read("styles/main.css").replace(/\/\*[\s\S]*?\*\//g, "");
 const roots = [
-  ".axxa-root",
-  ".axxa-settings-root",
-  ".axxa-pop-layer",
-  ".axxa-modal-container",
-  ".axxa-effort-modal",
-  ".axxa-native-confirm-modal",
-  ".axxa-language-modal",
+  ".corvus-root",
+  ".corvus-settings-root",
+  ".corvus-pop-layer",
+  ".corvus-modal-container",
+  ".corvus-effort-modal",
+  ".corvus-native-confirm-modal",
+  ".corvus-language-modal",
 ];
 
 describe("Obsidian Appearance is the only source of plugin typography", () => {
@@ -42,15 +42,15 @@ describe("Obsidian Appearance is the only source of plugin typography", () => {
       expect(["inherit", "var(--font-interface)"]).toContain(value);
     }
     expect(css).not.toMatch(/font-size:\s*[\d.]+(?:px|rem)\b/);
-    expect(css).not.toMatch(/--axxa-(?:read-font|font-family|font-size)/);
-    for (const selector of [".axxa-markdown", ".axxa-msg-user"]) {
+    expect(css).not.toMatch(/--corvus-(?:read-font|font-family|font-size)/);
+    for (const selector of [".corvus-markdown", ".corvus-msg-user"]) {
       const escaped = selector.replace(/\./g, "\\.");
       expect(css).toMatch(
         new RegExp(`${escaped}\\s*\\{[^}]*font-size:\\s*var\\(--font-ui-medium\\)`)
       );
     }
     expect(css).toMatch(
-      /\.axxa-input textarea:active\s*\{[^}]*font-size:\s*var\(--font-ui-medium\)/
+      /\.corvus-input textarea:active\s*\{[^}]*font-size:\s*var\(--font-ui-medium\)/
     );
   });
 
@@ -59,10 +59,10 @@ describe("Obsidian Appearance is the only source of plugin typography", () => {
       ":is(button, input, textarea, select, code, pre, .markdown-rendered,"
     );
     expect(read("src/ui/modals.ts")).toContain(
-      'this.modalEl.addClass("axxa-native-confirm-modal")'
+      'this.modalEl.addClass("corvus-native-confirm-modal")'
     );
     expect(read("src/editor/inline.ts")).toContain(
-      'this.modalEl.addClass("axxa-language-modal")'
+      'this.modalEl.addClass("corvus-language-modal")'
     );
   });
 

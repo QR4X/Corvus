@@ -12,7 +12,7 @@ import {
   requireApiVersion,
   type ButtonComponent,
 } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { tr } from "../i18n/tr";
 
 /**
@@ -59,24 +59,24 @@ export class PromptModal extends Modal {
     // campo de duas polegadas do lado de uma palavra. Aqui é a mesma anatomia
     // das folhas — rótulo em cima, campo largo embaixo, ações no fim.
     //
-    // `axxa-modal-keyboard-aware` é a classe que a casca 0.2.37 já lia: com o
+    // `corvus-modal-keyboard-aware` é a classe que a casca 0.2.37 já lia: com o
     // teclado aberto, o CSS levanta o cartão acima dele com folga, em vez de
     // deixá-lo encostado na primeira fileira de teclas.
-    this.modalEl.addClass("axxa-prompt-modal");
-    this.modalEl.addClass("axxa-modal-keyboard-aware");
+    this.modalEl.addClass("corvus-prompt-modal");
+    this.modalEl.addClass("corvus-modal-keyboard-aware");
     // Ver a nota em agent/ConfirmationModal.ts: marca o container do Obsidian
     // pra o CSS não precisar de `:has()` pra chegar nele.
-    this.containerEl.addClass("axxa-modal-container", "axxa-prompt-container");
+    this.containerEl.addClass("corvus-modal-container", "corvus-prompt-container");
     this.titleEl.setText(this.opts.title);
 
-    const campo = this.contentEl.createDiv({ cls: "axxa-prompt-field" });
+    const campo = this.contentEl.createDiv({ cls: "corvus-prompt-field" });
     if (this.opts.label) {
       campo.createEl("label", {
-        cls: "axxa-prompt-label",
+        cls: "corvus-prompt-label",
         text: this.opts.label,
       });
     }
-    const input = campo.createEl("input", { cls: "axxa-prompt-input" });
+    const input = campo.createEl("input", { cls: "corvus-prompt-input" });
     input.type = "text";
     input.value = this.value;
     if (this.opts.placeholder) input.placeholder = this.opts.placeholder;
@@ -97,15 +97,15 @@ export class PromptModal extends Modal {
       input.setSelectionRange(input.value.length, input.value.length);
     }, 0);
 
-    const acoes = this.contentEl.createDiv({ cls: "axxa-prompt-actions" });
+    const acoes = this.contentEl.createDiv({ cls: "corvus-prompt-actions" });
     const cancelar = acoes.createEl("button", {
-      cls: "axxa-prompt-btn",
+      cls: "corvus-prompt-btn",
       text: tr("Cancel"),
     });
     cancelar.type = "button";
     cancelar.onclick = () => this.close();
     const ok = acoes.createEl("button", {
-      cls: "axxa-prompt-btn is-cta",
+      cls: "corvus-prompt-btn is-cta",
       text: this.opts.submitLabel ?? tr("OK"),
     });
     ok.type = "button";
@@ -159,7 +159,7 @@ export class ConfirmModal extends Modal {
   }
 
   onOpen(): void {
-    this.modalEl.addClass("axxa-native-confirm-modal");
+    this.modalEl.addClass("corvus-native-confirm-modal");
     this.titleEl.setText(this.opts.title);
     if (this.opts.body) this.contentEl.createEl("p", { text: this.opts.body });
     new Setting(this.contentEl)
@@ -197,7 +197,7 @@ export class ConfirmModal extends Modal {
 }
 
 /** Abre as Settings do plugin. `app.setting` é semi-privado → guardado. */
-export function openPluginSettings(plugin: AxxaPlugin): void {
+export function openPluginSettings(plugin: CorvusPlugin): void {
   const app = plugin.app as unknown as {
     setting?: { open?: () => void; openTabById?: (id: string) => void };
   };
@@ -205,7 +205,7 @@ export function openPluginSettings(plugin: AxxaPlugin): void {
     app.setting?.open?.();
     app.setting?.openTabById?.(plugin.manifest.id);
   } catch (err) {
-    console.error("[axxa] abrir Settings falhou:", err);
-    new Notice(tr("Open Settings → Community plugins → AXXA Agent."));
+    console.error("[corvus] abrir Settings falhou:", err);
+    new Notice(tr("Open Settings → Community plugins → Corvus."));
   }
 }

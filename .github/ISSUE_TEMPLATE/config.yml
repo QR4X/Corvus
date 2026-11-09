@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Ask a question
-    url: https://github.com/axxalab/axxa-agent/discussions/categories/q-a
+    url: https://github.com/QR4X/M.I.L.A/discussions/categories/q-a
     about: Setup help and how-to questions.
   - name: Share an idea
-    url: https://github.com/axxalab/axxa-agent/discussions/categories/ideas
+    url: https://github.com/QR4X/M.I.L.A/discussions/categories/ideas
     about: Early ideas, before they become a feature request.
   - name: Report a security problem privately
-    url: https://github.com/axxalab/axxa-agent/security/advisories/new
+    url: https://github.com/QR4X/M.I.L.A/security/advisories/new
     about: Key handling, agent sandbox escapes, unexpected network calls.

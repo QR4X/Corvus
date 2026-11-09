@@ -21,13 +21,13 @@
 // re-embedado, senão "atualizar" custaria a conta de um índice inteiro.
 
 import { useEffect, useState } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { formatCompact } from "../usage/format";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 import { tr } from "../i18n/tr";
 
-export function RagLine({ plugin }: { plugin: AxxaPlugin }) {
+export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
   // O índice muda por fora desta tela (a indexação roda no plugin), e o
   // plugin avisa pelos mesmos listeners das settings.
   const [, redesenhar] = useState(0);
@@ -43,10 +43,10 @@ export function RagLine({ plugin }: { plugin: AxxaPlugin }) {
   const rodando = plugin.indexing !== null;
 
   return (
-    <div className={pronto ? "axxa-rag-line is-on" : "axxa-rag-line"}>
+    <div className={pronto ? "corvus-rag-line is-on" : "corvus-rag-line"}>
       <button
         type="button"
-        className="axxa-rag-open"
+        className="corvus-rag-open"
         aria-label={tr("Index settings")}
         onClick={() => openPluginSettings(plugin)}
       >
@@ -54,7 +54,7 @@ export function RagLine({ plugin }: { plugin: AxxaPlugin }) {
             no CSS). Trocar o desenho junto faria parecer outra coisa, e é a
             mesma coisa em dois estados. */}
         <Icon name="database" size={14} />
-        <span className="axxa-rag-text">
+        <span className="corvus-rag-text">
           {pronto ? (
             <>
               <strong>{tr("Local index")}</strong> ·{" "}
@@ -78,7 +78,7 @@ export function RagLine({ plugin }: { plugin: AxxaPlugin }) {
           quando percebe que começou na hora errada. */}
       <button
         type="button"
-        className={rodando ? "axxa-rag-refresh is-running" : "axxa-rag-refresh"}
+        className={rodando ? "corvus-rag-refresh is-running" : "corvus-rag-refresh"}
         aria-label={rodando ? tr("Cancel indexing") : tr("Update index")}
         title={rodando ? tr("Cancel indexing") : tr("Update index with new notes")}
         onClick={() => void plugin.runVaultIndex()}

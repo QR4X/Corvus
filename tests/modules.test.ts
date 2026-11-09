@@ -37,7 +37,7 @@ const chat = (over: Partial<ChatSummary>): ChatSummary =>
     tokensOut: 0,
     messageCount: 2,
     toolCount: 0,
-    filePath: "axxa-ai/chats/chat/x.md",
+    filePath: "corvus-ai/chats/chat/x.md",
     starred: false,
     ...over,
   }) as ChatSummary;

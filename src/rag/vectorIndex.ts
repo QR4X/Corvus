@@ -209,7 +209,7 @@ export class VectorIndex {
         // Shard ausente/corrompido — pula (não derruba a busca), mas AVISA:
         // os resultados ficam incompletos. (loadIndex já valida no load, mas
         // um shard pode sumir entre o load e a busca.)
-        console.warn(`[axxa/rag] shard ilegível, pulando: ${shardName}`, err);
+        console.warn(`[corvus/rag] shard ilegível, pulando: ${shardName}`, err);
         continue;
       }
       for (const s of parsed.entries) {
@@ -284,7 +284,7 @@ export async function loadIndex(
       const missingIdx = present.findIndex((ok) => !ok);
       if (missingIdx !== -1) {
         console.warn(
-          `[axxa/rag] índice sharded incompleto — shard ausente: ${shardNames[missingIdx]}. Reindexe.`
+          `[corvus/rag] índice sharded incompleto — shard ausente: ${shardNames[missingIdx]}. Reindexe.`
         );
         return null;
       }
@@ -299,7 +299,7 @@ export async function loadIndex(
       idx.setStreamed(adapter, indexPath, manifest);
       return idx;
     } catch (err) {
-      console.error("[axxa/rag] manifesto sharded inválido:", err);
+      console.error("[corvus/rag] manifesto sharded inválido:", err);
       return null;
     }
   }
@@ -316,7 +316,7 @@ export async function loadIndex(
       if (st && st.size > opts.maxBytes) {
         const mb = st.size / (1024 * 1024);
         console.warn(
-          `[axxa/rag] índice ${mb.toFixed(1)}MB > teto ${(opts.maxBytes / (1024 * 1024)).toFixed(0)}MB — pulando load semântico (RAG via keyword).`
+          `[corvus/rag] índice ${mb.toFixed(1)}MB > teto ${(opts.maxBytes / (1024 * 1024)).toFixed(0)}MB — pulando load semântico (RAG via keyword).`
         );
         opts.onSkip?.(mb);
         return null;
@@ -330,7 +330,7 @@ export async function loadIndex(
     const parsed = JSON.parse(raw) as IndexFile;
     if (parsed.version !== INDEX_VERSION) {
       console.warn(
-        `[axxa/rag] índice versão ${parsed.version} != ${INDEX_VERSION} — descartando (reindexe do zero).`
+        `[corvus/rag] índice versão ${parsed.version} != ${INDEX_VERSION} — descartando (reindexe do zero).`
       );
       return null;
     }
@@ -354,7 +354,7 @@ export async function loadIndex(
       lastIndexedAt: parsed.lastIndexedAt,
     });
   } catch (err) {
-    console.error("[axxa/rag] falha ao parsear índice:", err);
+    console.error("[corvus/rag] falha ao parsear índice:", err);
     return null;
   }
 }

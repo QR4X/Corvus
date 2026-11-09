@@ -28,7 +28,7 @@ export function idiomaDoApp(locale: string): string {
 
 /** Regras que valem pras duas — quem ela é, e como responde. */
 function base(idioma: string): string {
-  return `You help someone set up their AXXA workspace inside Obsidian.
+  return `You help someone set up their Corvus workspace inside Obsidian.
 You know Obsidian well: wikilinks ([[Note]]), frontmatter, daily notes, tags,
 folders, and that a vault is someone's own writing — not a database.
 
@@ -41,7 +41,7 @@ Rules for every answer:
 }
 
 /** O que um skill É aqui — a parte que não dá pra inferir de fora. */
-const SOBRE_SKILL = `A SKILL in AXXA is a saved prompt. Tapping it drops its
+const SOBRE_SKILL = `A SKILL in Corvus is a saved prompt. Tapping it drops its
 text into the composer, ready to send — it is not an agent, not a macro, not a
 setting. So the body must read as something a person would type, in the first
 person, addressed to the assistant.
@@ -61,7 +61,7 @@ Fields:
   answer when the shape matters (a list, a table, three bullets).`;
 
 /** O que um projeto É aqui. */
-const SOBRE_PROJETO = `A PROJECT in AXXA groups chats around one subject, and
+const SOBRE_PROJETO = `A PROJECT in Corvus groups chats around one subject, and
 carries two things into every new chat started inside it: its source notes and
 its custom instructions.
 

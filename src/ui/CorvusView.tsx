@@ -1,30 +1,30 @@
-// src/ui/AxxaView.tsx
+// src/ui/CorvusView.tsx
 // ItemView nativa do Obsidian que hospeda a casca (React/Preact). Cria uma
 // ChatSession por view e a descarta ao fechar (flusha o save pendente).
 //
 // Além disso mora aqui tudo que precisa mexer em ancestrais da view — nunca em
 // API interna do Obsidian, só em classes:
-//   • observer do teclado mobile  → .axxa-keyboard-open
-//   • fullscreen mobile (opt-in)  → .axxa-fullscreen
+//   • observer do teclado mobile  → .corvus-keyboard-open
+//   • fullscreen mobile (opt-in)  → .corvus-fullscreen
 // Ambos são portados da casca anterior (0.3.0), onde já tinham rodado no
 // aparelho; as regras de escopo do fullscreen vivem em fullscreenScope.ts
 // (puras e testadas).
 
 import { ItemView, Platform, WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { ChatSession } from "../core/session";
 import { App } from "./App";
 import { fullscreenOn, isChatScreen, isDrawerOnScreen, isRightDrawer } from "./fullscreenScope";
 import { hapticsOn, setHapticsEnabled } from "./haptics";
 import { syncSheetStrip } from "./sheetStrip";
 
-export const VIEW_TYPE_AXXA = "axxa-agent";
+export const VIEW_TYPE_CORVUS = "corvus";
 
 /** Espera a animação da gaveta terminar antes de reavaliar a geometria. */
 const DRAWER_SETTLE_MS = 260;
 
-export class AxxaView extends ItemView {
+export class CorvusView extends ItemView {
   private root: Root | null = null;
   private session: ChatSession | null = null;
   private keyboardObserver: MutationObserver | null = null;
@@ -33,30 +33,30 @@ export class AxxaView extends ItemView {
   /** Último valor lido de --keyboard-height (early-return do observer). */
   private lastKeyboardHeight = -1;
   private settingsUnsub: (() => void) | null = null;
-  /** A `.workspace-leaf` marcada com `axxa-leaf` — guardada, ver onClose. */
+  /** A `.workspace-leaf` marcada com `corvus-leaf` — guardada, ver onClose. */
   private folhaMarcada: HTMLElement | null = null;
   /** A `.workspace-drawer` onde a view esteve por último. Guardada porque,
    *  com outra aba na frente (ou depois de fechada), a nossa folha sai do DOM
    *  e o `closest` já não acha a gaveta — e as classes que pusemos nela (tela
    *  cheia, faixa da folha, teclado) têm de sair mesmo assim. Até a 0.9.15
-   *  não saíam: trocar de aba ou fechar a AXXA com a tela cheia ligada
+   *  não saíam: trocar de aba ou fechar a Corvus com a tela cheia ligada
    *  deixava a gaveta sem cabeçalho e sem o seletor de abas. */
   private gaveta: Element | null = null;
   private hapticsOff: (() => void) | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
-    private readonly plugin: AxxaPlugin
+    private readonly plugin: CorvusPlugin
   ) {
     super(leaf);
   }
 
   getViewType(): string {
-    return VIEW_TYPE_AXXA;
+    return VIEW_TYPE_CORVUS;
   }
 
   getDisplayText(): string {
-    return "AXXA Agent";
+    return "Corvus";
   }
 
   getIcon(): string {
@@ -66,12 +66,12 @@ export class AxxaView extends ItemView {
   async onOpen(): Promise<void> {
     // A folha que embrulha esta view (o pai do containerEl, que é o
     // `.workspace-leaf-content`) ganha uma classe nossa. Ela substitui um
-    // `.workspace-leaf:has(.workspace-leaf-content[data-type="axxa-agent"])` no
+    // `.workspace-leaf:has(.workspace-leaf-content[data-type="corvus"])` no
     // CSS: a folha é fixa durante a vida da view, e o `.workspace-drawer-active-
-    // tab-container .axxa-leaf` continua dinâmico — quando outra aba da gaveta
+    // tab-container .corvus-leaf` continua dinâmico — quando outra aba da gaveta
     // vira a corrente, a nossa folha sai do DOM e o seletor para de casar.
     this.folhaMarcada = this.containerEl.parentElement;
-    this.folhaMarcada?.addClass("axxa-leaf");
+    this.folhaMarcada?.addClass("corvus-leaf");
     // containerEl.children[1] é o miolo da view (o [0] é o header nativo).
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -121,7 +121,7 @@ export class AxxaView extends ItemView {
     // `View.close` do Obsidian faz `containerEl.detach()` ANTES de chamar o
     // onClose, então aqui o pai já é null. Sem isto a classe ficava na folha,
     // e a folha é reaproveitada pela próxima view que abrir nela.
-    this.folhaMarcada?.removeClass("axxa-leaf");
+    this.folhaMarcada?.removeClass("corvus-leaf");
     this.folhaMarcada = null;
     this.hapticsOff?.();
     this.hapticsOff = null;
@@ -150,7 +150,7 @@ export class AxxaView extends ItemView {
    *
    * O Obsidian mobile publica `--keyboard-height` INLINE no `<html>` quando o
    * teclado abre/fecha; observamos o atributo `style` e reagimos. A classe
-   * `axxa-keyboard-open` vai na gaveta (o CSS esconde o chrome dela) e no body
+   * `corvus-keyboard-open` vai na gaveta (o CSS esconde o chrome dela) e no body
    * (modais vivem fora da gaveta, e é o body que aparece na faixa abaixo do
    * `.app-container` encolhido).
    *
@@ -182,9 +182,9 @@ export class AxxaView extends ItemView {
       ".workspace-drawer-active-tab-content"
     );
     const isOpen = active && keyboardHeight > 0;
-    drawer.classList.toggle("axxa-keyboard-open", isOpen);
+    drawer.classList.toggle("corvus-keyboard-open", isOpen);
     // No body também, pros modais (que ficam FORA da gaveta) se reposicionarem.
-    this.containerEl.doc.body.classList.toggle("axxa-keyboard-open", isOpen);
+    this.containerEl.doc.body.classList.toggle("corvus-keyboard-open", isOpen);
   };
 
   private setupKeyboardObserver(): void {
@@ -209,10 +209,10 @@ export class AxxaView extends ItemView {
     this.lastKeyboardHeight = -1;
     // Pela gaveta guardada: no onClose a folha já saiu do DOM e o `closest`
     // devolveria null — a gaveta ficava sem cabeçalho até o teclado abrir de
-    // novo noutra view da AXXA.
+    // novo noutra view da Corvus.
     const drawer = this.containerEl.closest(".workspace-drawer") ?? this.gaveta;
-    drawer?.classList.remove("axxa-keyboard-open");
-    this.containerEl.doc.body.classList.remove("axxa-keyboard-open");
+    drawer?.classList.remove("corvus-keyboard-open");
+    this.containerEl.doc.body.classList.remove("corvus-keyboard-open");
   }
 
   // ── fullscreen ────────────────────────────────────────────────────────────
@@ -222,10 +222,10 @@ export class AxxaView extends ItemView {
    * classes em ancestrais, sem tocar em API interna nem em variável nativa do
    * Obsidian.
    *
-   * - `.workspace-drawer.axxa-fullscreen` esconde o header da gaveta, que é
-   *   redundante quando a AXXA está ativa (temos topbar e menu próprios).
-   * - `body.axxa-fullscreen` esconde a navbar global e desliga a reserva de
-   *   espaço do composer (a regra `:not(.axxa-fullscreen)` no CSS).
+   * - `.workspace-drawer.corvus-fullscreen` esconde o header da gaveta, que é
+   *   redundante quando a Corvus está ativa (temos topbar e menu próprios).
+   * - `body.corvus-fullscreen` esconde a navbar global e desliga a reserva de
+   *   espaço do composer (a regra `:not(.corvus-fullscreen)` no CSS).
    *
    * Vale por DUAS razões (ver fullscreenOn): a setting `mobileFullscreen`
    * ligada à mão, OU uma CONVERSA aberta — que liga o modo sozinha em qualquer
@@ -251,7 +251,7 @@ export class AxxaView extends ItemView {
   /**
    * Recalcula as classes de UMA gaveta pelo que está nela AGORA — não por qual
    * view chamou. A tela cheia vale quando a aba corrente da gaveta direita é
-   * uma view da AXXA (esta ou outra) E a setting está ligada OU a casca está
+   * uma view da Corvus (esta ou outra) E a setting está ligada OU a casca está
    * mostrando uma CONVERSA (fullscreenOn); a faixa, quando há folha nossa
    * aberta nela (ui/sheetStrip.ts). Perguntar ao DOM é o que faz troca de aba,
    * folha movida, view fechada e duas views na mesma gaveta darem o mesmo
@@ -262,40 +262,40 @@ export class AxxaView extends ItemView {
   private recomputeDrawer(drawer: Element | null): void {
     if (!drawer) return;
     syncSheetStrip(drawer.querySelector(".workspace-drawer-inner"));
-    const axxaNaFrente =
+    const corvusNaFrente =
       drawer.querySelector(
-        '.workspace-drawer-active-tab-content .workspace-leaf-content[data-type="axxa-agent"]'
+        '.workspace-drawer-active-tab-content .workspace-leaf-content[data-type="corvus"]'
       ) !== null;
     const on =
-      axxaNaFrente &&
+      corvusNaFrente &&
       isRightDrawer(drawer) &&
       fullscreenOn(
         !!this.plugin.settings.mobileFullscreen,
-        isChatScreen(drawer.querySelector(".axxa-root"))
+        isChatScreen(drawer.querySelector(".corvus-root"))
       );
-    drawer.classList.toggle("axxa-fullscreen", on);
+    drawer.classList.toggle("corvus-fullscreen", on);
     // A navbar global é IRMÃ das gavetas (mora no body). Some só ENQUANTO a
-    // gaveta da AXXA está na tela: abrir a gaveta esquerda (ou fechar a nossa
+    // gaveta da Corvus está na tela: abrir a gaveta esquerda (ou fechar a nossa
     // no swipe) devolve a navegação global na hora, em vez de deixar o
     // Obsidian sem chrome. Só a gaveta DIREITA mexe no body — é a única que
     // liga a tela cheia.
     if (isRightDrawer(drawer)) {
       this.containerEl.doc.body.classList.toggle(
-        "axxa-fullscreen",
+        "corvus-fullscreen",
         on && this.hostDrawerVisible(drawer)
       );
     }
   }
 
   /** No onClose a folha já saiu do DOM: a gaveta guardada é recalculada sem
-   *  ela — se outra view da AXXA está na frente, a tela cheia continua. */
+   *  ela — se outra view da Corvus está na frente, a tela cheia continua. */
   private clearFullscreen(): void {
     this.recomputeDrawer(this.gaveta);
     this.gaveta = null;
   }
 
   /**
-   * A gaveta que hospeda a AXXA está VISÍVEL agora? Pergunta geométrica de
+   * A gaveta que hospeda a Corvus está VISÍVEL agora? Pergunta geométrica de
    * propósito: nome de classe de ESTADO da gaveta muda entre versões do
    * Obsidian, "o retângulo intersecta a viewport" não. Falha pro lado seguro:
    * qualquer dúvida conta como visível, então o modo continua funcionando em

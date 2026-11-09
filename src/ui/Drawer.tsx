@@ -15,7 +15,7 @@
 // dois toques, longe de onde se escreve.
 
 import { useEffect, useMemo, useRef } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import { useChatStore } from "../store/chat";
 import { useChatSummaries, useUnreadChats } from "./ChatList";
@@ -54,7 +54,7 @@ export function Drawer({
   onNavigate,
   onClose,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   open: boolean;
   view: ViewId;
@@ -112,22 +112,22 @@ export function Drawer({
 
   return (
     <div
-      className={open ? "axxa-drawer-layer is-open" : "axxa-drawer-layer"}
+      className={open ? "corvus-drawer-layer is-open" : "corvus-drawer-layer"}
       aria-hidden={!open}
     >
-      <div className="axxa-scrim" onClick={onClose} />
+      <div className="corvus-scrim" onClick={onClose} />
       <aside
         ref={panelRef}
-        className="axxa-drawer"
+        className="corvus-drawer"
         role="dialog"
-        aria-label={tr("AXXA menu")}
+        aria-label={tr("Corvus menu")}
         tabIndex={-1}
       >
-        <header className="axxa-drawer-head">
-          <span className="axxa-brand">AXXA Agent</span>
+        <header className="corvus-drawer-head">
+          <span className="corvus-brand">Corvus</span>
           <button
             type="button"
-            className="axxa-icon-btn"
+            className="corvus-icon-btn"
             aria-label={tr("Close menu")}
             onClick={onClose}
           >
@@ -135,7 +135,7 @@ export function Drawer({
           </button>
         </header>
 
-        <nav className="axxa-drawer-nav">
+        <nav className="corvus-drawer-nav">
             {/* Os módulos, direto. Saíram daqui o "New chat" e o "Home", que
                 tinham virado eco: a home já é o que a seta de voltar alcança
                 de qualquer tela (0.6.39), e começar conversa é o que os três
@@ -157,40 +157,40 @@ export function Drawer({
                   className={
                     (view === "chat" || view === "module") &&
                     moduloAtual === m.id
-                      ? "axxa-nav-item axxa-module-item is-active"
-                      : "axxa-nav-item axxa-module-item"
+                      ? "corvus-nav-item corvus-module-item is-active"
+                      : "corvus-nav-item corvus-module-item"
                   }
                   onClick={() => onEnterModule(m.id)}
                 >
                   <Icon name={m.icon} />
-                  <span className="axxa-module-text">
-                    <span className="axxa-module-label">{m.label}</span>
-                    <span className="axxa-module-hint">
+                  <span className="corvus-module-text">
+                    <span className="corvus-module-label">{m.label}</span>
+                    <span className="corvus-module-hint">
                       {moduleHint(stats)}
                     </span>
                   </span>
                   {/* Quantas conversas daqui pedem alguma coisa. Fica ANTES
                       do chevron porque é informação, e o chevron é gesto. */}
                   {pedindo > 0 && (
-                    <span className="axxa-module-badge">{pedindo}</span>
+                    <span className="corvus-module-badge">{pedindo}</span>
                   )}
                   <Icon
                     name="chevron-right"
                     size={18}
-                    className="axxa-module-chev"
+                    className="corvus-module-chev"
                   />
                 </button>
               );
             })}
 
-            <span className="axxa-nav-sep" role="presentation" />
+            <span className="corvus-nav-sep" role="presentation" />
 
             {NAV.map((n) => (
               <button
                 key={n.id}
                 type="button"
                 className={
-                  view === n.id ? "axxa-nav-item is-active" : "axxa-nav-item"
+                  view === n.id ? "corvus-nav-item is-active" : "corvus-nav-item"
                 }
                 onClick={() => go(n.id)}
               >
@@ -200,7 +200,7 @@ export function Drawer({
             ))}
             <button
               type="button"
-              className="axxa-nav-item"
+              className="corvus-nav-item"
               onClick={() => {
                 openPluginSettings(plugin);
                 onClose();
@@ -211,7 +211,7 @@ export function Drawer({
             </button>
           </nav>
 
-        <footer className="axxa-drawer-foot">v{plugin.manifest.version}</footer>
+        <footer className="corvus-drawer-foot">v{plugin.manifest.version}</footer>
       </aside>
     </div>
   );

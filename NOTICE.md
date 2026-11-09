@@ -1,6 +1,6 @@
 # Third-party notices
 
-AXXA Agent is licensed under the GNU General Public License v3.0 or later (see
+Corvus is licensed under the GNU General Public License v3.0 or later (see
 [LICENSE](LICENSE)). It bundles the material below, which carries its own terms.
 
 The bundled MIT-licensed material stays under MIT — GPL-3.0 is compatible with

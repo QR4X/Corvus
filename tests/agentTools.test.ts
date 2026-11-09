@@ -140,12 +140,12 @@ describe("path sandboxing (segurança — anti traversal)", () => {
 
 describe("pasta oculta é proibida PRO AGENTE", () => {
   // O caminho que chega no sandbox foi escolhido por um modelo que acabou de
-  // ler notas — e nota é dado de fora. O storage do plugin (.axxa) escreve por
+  // ler notas — e nota é dado de fora. O storage do plugin (.corvus) escreve por
   // outro caminho, direto no adapter, e não passa por aqui.
   const proibidos = [
     ".obsidian/plugins/x/main.js", // vira código rodando no próximo restart
     ".obsidian/app.json",
-    ".axxa/chats/algum.md", // nosso storage: injeção não reescreve histórico
+    ".corvus/chats/algum.md", // nosso storage: injeção não reescreve histórico
     ".git/config",
     ".trash/nota.md",
     "notes/.obsidian/x.json", // oculta no MEIO do caminho conta igual
@@ -183,26 +183,26 @@ describe("pasta oculta é proibida PRO AGENTE", () => {
 });
 
 describe("storage VISÍVEL do app (chat folder) é proibido PRO AGENTE", () => {
-  // Desde que o default das conversas virou `axxa/chats` (pasta SEM ponto, pro
+  // Desde que o default das conversas virou `corvus/chats` (pasta SEM ponto, pro
   // sync de arquivos copiar), a trava de pasta oculta não cobre mais o nosso
   // storage. Quem fecha a porta agora é o `appDataPaths` configurado.
   it("normalizePath barra o prefixo exato e tudo abaixo dele", () => {
-    const pastas = ["axxa/chats", ".axxa/index"];
-    for (const p of ["axxa/chats", "axxa/chats/chat/c1.md", "axxa/chats/agent/x.md", ".axxa/index/embeddings.json"]) {
+    const pastas = ["corvus/chats", ".corvus/index"];
+    for (const p of ["corvus/chats", "corvus/chats/chat/c1.md", "corvus/chats/agent/x.md", ".corvus/index/embeddings.json"]) {
       expect(() => normalizePath(p, pastas)).toThrow(/off limits/i);
     }
     // Fora das pastas do app o mesmo caminho passa; fora do prefixo, também.
-    expect(normalizePath("axxa/notas/plano.md", pastas)).toBe("axxa/notas/plano.md");
-    expect(normalizePath("axxa-chats/qualquer.md", pastas)).toBe("axxa-chats/qualquer.md");
+    expect(normalizePath("corvus/notas/plano.md", pastas)).toBe("corvus/notas/plano.md");
+    expect(normalizePath("corvus-chats/qualquer.md", pastas)).toBe("corvus-chats/qualquer.md");
   });
 
   it("nenhuma tool escreve no storage visível do app", async () => {
     const { app, files } = makeApp();
-    const ctx = makeCtx(app, ["axxa/chats"]);
+    const ctx = makeCtx(app, ["corvus/chats"]);
     await expect(
-      toolVaultCreate(ctx, { path: "axxa/chats/chat/e.md", content: "x" })
+      toolVaultCreate(ctx, { path: "corvus/chats/chat/e.md", content: "x" })
     ).rejects.toThrow(/off limits/i);
-    await expect(toolVaultRead(ctx, { path: "axxa/chats/chat/e.md" })).rejects.toThrow(
+    await expect(toolVaultRead(ctx, { path: "corvus/chats/chat/e.md" })).rejects.toThrow(
       /off limits/i
     );
     expect(files.size).toBe(0);

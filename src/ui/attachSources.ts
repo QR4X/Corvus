@@ -11,7 +11,7 @@ import { ensureFolder } from "../core/chatPersistence";
 import { tr } from "../i18n/tr";
 
 /** Onde o plugin salva o que gera (imagens, áudio, vídeo + sidecar .md). */
-export const GENERATION_DIR = "axxa-ai/generation";
+export const GENERATION_DIR = "corvus-ai/generation";
 
 /** Onde as imagens ANEXADAS a mensagens são gravadas (uma vez, no envio). */
 export const IMAGE_GENERATION_DIR = `${GENERATION_DIR}/images`;

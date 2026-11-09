@@ -46,7 +46,7 @@ export const EN_US = {
     loopAborted: "Agent kept repeating the same action and was stopped. Try rephrasing the task or giving more context.",
     thinking: "🤖 Agent thinking...",
     systemPrompt:
-      "You are AXXA Agent, an assistant integrated into Obsidian with direct access " +
+      "You are Corvus, an assistant integrated into Obsidian with direct access " +
       "to the user's vault via tools. Respond in English. " +
       "To FIND notes about a topic or question, use vault_search FIRST " +
       "(semantic search) instead of listing folders and reading file by file — it's " +
@@ -139,7 +139,7 @@ export const EN_US = {
 
   systemPrompt: {
     base:
-      "You are AXXA Agent, an assistant integrated into Obsidian. " +
+      "You are Corvus, an assistant integrated into Obsidian. " +
       "Answer in English, clearly, directly, and helpfully. " +
       "Use Markdown when it makes sense.",
     vaultQaSuffix:

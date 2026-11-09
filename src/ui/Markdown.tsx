@@ -129,5 +129,5 @@ export function Markdown({
     };
   }, [app]);
 
-  return <div ref={ref} className="axxa-markdown" />;
+  return <div ref={ref} className="corvus-markdown" />;
 }

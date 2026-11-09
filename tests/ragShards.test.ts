@@ -66,7 +66,7 @@ function buildIndex(): VectorIndex {
   });
 }
 
-const PATH = "axxa-ai/index";
+const PATH = "corvus-ai/index";
 
 describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
   it("saveIndex sharded escreve manifesto + N shards (shardSize=2 → 2 shards)", async () => {

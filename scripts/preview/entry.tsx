@@ -4,11 +4,11 @@
 // relativos a RAIZ do projeto: o esbuild do preview.mjs usa resolveDir=ROOT.
 
 import { createRoot } from "react-dom/client";
-import { App as AxxaApp } from "./src/ui/App";
+import { App as CorvusApp } from "./src/ui/App";
 import { useChatStore } from "./src/store/chat";
 import { registerBrandLogos } from "./src/ui/brandLogos";
 import type { ChatSession } from "./src/core/session";
-import type AxxaPlugin from "./src/main";
+import type CorvusPlugin from "./src/main";
 import { vaultAtivo } from "./src/core/vaultContext";
 import { loadSkills } from "./src/skills/skills";
 import { TFile } from "obsidian";
@@ -35,7 +35,7 @@ const dias = (n: number, h = 10) => {
 const chats = [
   { id: "1", title: "Weekly review plan", date: "2026-09-11T09:12:00", mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 14, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Wrote the review into Journal/2026-W37.md and linked the three open projects. Two tasks had no due date — left them as they were.", toolCount: 14 },
   { id: "2", title: "What did I write about spaced repetition?", date: "2026-09-10T21:03:00", mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "3", title: "Outline for the Axxa landing page", date: "2026-09-09T14:44:00", mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 22, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "3", title: "Outline for the Corvus landing page", date: "2026-09-09T14:44:00", mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 22, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "4", title: "Clean up the inbox folder", date: "2026-09-08T08:20:00", mode: "agent", provider: "gemini", model: "gemini-2.5-flash", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Moved 41 notes out of Inbox/ into the folders they belong to. Six had no clear home and stayed put; the list is at the end of this session.", toolCount: 9 },
   { id: "5", title: "Rewrite the plugin README", date: dias(0, 8), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 11, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "6", title: "Which notes mention the Anki backlog?", date: dias(1, 19), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
@@ -84,7 +84,7 @@ const unreadListeners = new Set<() => void>();
 const settingsListeners = new Set<() => void>();
 
 const plugin = {
-  manifest: { version: PREVIEW_VERSION, id: "axxa-agent" },
+  manifest: { version: PREVIEW_VERSION, id: "corvus" },
   // VAULT de mentira, com forma de verdade: é dele que sai a lista de notas do
   // "+" e do `[[`. Com `app: {}` o buscador não tinha o que buscar — e um
   // buscador vazio "passa" em qualquer teste.
@@ -163,14 +163,14 @@ const plugin = {
             `tokens_out: ${c.tokensOut}`,
             `message_count: ${c.messageCount}`,
             "tags:",
-            "  - axxa",
+            "  - corvus",
             "---",
             "",
             `# ${c.title}`,
             "",
             "## You",
             "",
-            "<!-- axxa: ts=1758900000000 -->",
+            "<!-- corvus: ts=1758900000000 -->",
             "faz um resumo disso pra mim",
             "",
             "## Assistant",
@@ -326,7 +326,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     elevenModel: "eleven_multilingual_v2",
     elevenVoice: "",
     elevenVoices: [],
-    skillsPath: "axxa-ai/skills",
+    skillsPath: "corvus-ai/skills",
     // O padrão de uma conta nova: programa desligado, tier 1. Com eles
     // ausentes, o preview mostrava a cota de quem já ligou tudo.
     openaiDataSharing: false,
@@ -424,7 +424,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     settingsListeners.forEach((cb) => cb());
   },
   seedExampleSkills: async () => {
-    const p = "axxa-ai/skills/Resumo TL;DR.md";
+    const p = "corvus-ai/skills/Resumo TL;DR.md";
     if (SKILL_FILES.has(p)) return 0;
     SKILL_FILES.set(
       p,
@@ -442,7 +442,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     await plugin.reloadSkills();
     return 1;
   },
-} as unknown as AxxaPlugin;
+} as unknown as CorvusPlugin;
 
 /** Modelo padrão de cada provider — o que o motor tira do settings. */
 const FAKE_DEFAULT_MODEL: Record<string, string> = {
@@ -547,7 +547,7 @@ const session = {
     if (!plugin.providerCredential(provider)) {
       st.addMessage({
         type: "ai-response",
-        content: "AXXA: no API key configured for this provider.",
+        content: "Corvus: no API key configured for this provider.",
         isError: true,
         errorCode: "no-key",
       });
@@ -728,7 +728,7 @@ if (scenario === "thread") {
         { id: "t3", name: "vault_list", arguments: { folder: "TASKS" }, result: "4 items", ok: true },
         { id: "t4", name: "vault_list", arguments: { folder: "DAILY" }, result: "8 items", ok: true },
         { id: "t5", name: "vault_list", arguments: { folder: "NUTRITION 1.0" }, result: "12 items", ok: true },
-        { id: "t6", name: "vault_list", arguments: { folder: "axxa-ai" }, result: "1 item", ok: true },
+        { id: "t6", name: "vault_list", arguments: { folder: "corvus-ai" }, result: "1 item", ok: true },
         { id: "t7", name: "vault_read", arguments: { path: "PROJECTS/FRAMEWORKS.md" }, result: "# Frameworks…", ok: true },
         { id: "t8", name: "vault_search", arguments: { query: "spaced repetition" }, result: ["4 notes matched:", "Learning/Spaced repetition.md"].join("\n"), ok: true },
         { id: "t9", name: "vault_edit", arguments: { path: "PROJECTS/FRAMEWORKS.md" }, result: "edited", ok: true },
@@ -764,7 +764,7 @@ const FAKE_NOTES = [
  *  dizer que criar funcionava sem nunca ter escrito nada. */
 const SKILL_FILES = new Map<string, string>([
   [
-    "axxa-ai/skills/Daily note.md",
+    "corvus-ai/skills/Daily note.md",
     [
       "---",
       'name: "Daily note"',
@@ -778,7 +778,7 @@ const SKILL_FILES = new Map<string, string>([
     ].join("\n"),
   ],
   [
-    "axxa-ai/skills/Summarize.md",
+    "corvus-ai/skills/Summarize.md",
     [
       "---",
       'name: "Summarize"',
@@ -817,10 +817,10 @@ function skillFiles() {
 
 /** O que o plugin "gerou" — a lista de artefatos do "+". */
 const FAKE_ARTIFACTS = [
-  { path: "axxa-ai/generation/images/1731-gato-de-oculos.png", basename: "1731-gato-de-oculos", extension: "png", stat: { mtime: 900 } },
-  { path: "axxa-ai/generation/images/1731-gato-de-oculos.md", basename: "1731-gato-de-oculos", extension: "md", stat: { mtime: 901 } },
-  { path: "axxa-ai/generation/audio/1730-resumo-falado.mp3", basename: "1730-resumo-falado", extension: "mp3", stat: { mtime: 800 } },
-  { path: "axxa-ai/generation/video/1729-clipe.mp4", basename: "1729-clipe", extension: "mp4", stat: { mtime: 700 } },
+  { path: "corvus-ai/generation/images/1731-gato-de-oculos.png", basename: "1731-gato-de-oculos", extension: "png", stat: { mtime: 900 } },
+  { path: "corvus-ai/generation/images/1731-gato-de-oculos.md", basename: "1731-gato-de-oculos", extension: "md", stat: { mtime: 901 } },
+  { path: "corvus-ai/generation/audio/1730-resumo-falado.mp3", basename: "1730-resumo-falado", extension: "mp3", stat: { mtime: 800 } },
+  { path: "corvus-ai/generation/video/1729-clipe.mp4", basename: "1729-clipe", extension: "mp4", stat: { mtime: 700 } },
 ];
 
 /** Conteúdo de exemplo do modal de aprovação (?s=confirm). */
@@ -843,7 +843,7 @@ if (scenario === "confirm") {
     const caso =
       tipo === "ts"
         ? {
-            path: "axxa-ai/review.ts",
+            path: "corvus-ai/review.ts",
             content: TS_DEMO,
           }
         : tipo === "txt"
@@ -875,8 +875,8 @@ if (scenario === "settings") {
   // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro
   // do mesmo painel, pra dar pra olhar o desenho das abas.
   void (async () => {
-    const { AxxaSettingsTab } = await import("./src/ui/SettingsTab");
-    const tab = new AxxaSettingsTab(
+    const { CorvusSettingsTab } = await import("./src/ui/SettingsTab");
+    const tab = new CorvusSettingsTab(
       {} as never,
       plugin as never
     ) as unknown as { containerEl: HTMLElement; display: () => void };
@@ -893,7 +893,7 @@ if (scenario === "settings") {
     const inner = document.createElement("div");
     inner.className = "vertical-tab-content";
     tab.containerEl = document.createElement("div");
-    tab.containerEl.className = "axxa-settings-preview";
+    tab.containerEl.className = "corvus-settings-preview";
     inner.appendChild(tab.containerEl);
     tabContent.appendChild(inner);
     content.appendChild(tabContent);
@@ -902,8 +902,8 @@ if (scenario === "settings") {
     tab.display();
   })();
 } else if (host) {
-  createRoot(host).render(<AxxaApp plugin={plugin} session={session} />);
-  // O mesmo que a AxxaView faz no aparelho: um ouvinte de tato na raiz. Sem
+  createRoot(host).render(<CorvusApp plugin={plugin} session={session} />);
+  // O mesmo que a CorvusView faz no aparelho: um ouvinte de tato na raiz. Sem
   // isto o preview mostrava só os pulsos "com nome" e escondia os toques.
   void import("./src/ui/haptics").then(({ hapticsOn, setHapticsEnabled }) => {
     setHapticsEnabled(true);

@@ -66,7 +66,7 @@ export function SearchSheet({
         autoFocus={open}
         onChange={onChange}
       />
-      <div className="axxa-search-results">{children}</div>
+      <div className="corvus-search-results">{children}</div>
     </Sheet>
   );
 }

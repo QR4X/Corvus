@@ -9,7 +9,7 @@ import {
 } from "../src/ui/settings/tree";
 import { isControlKey } from "../src/ui/settings/values";
 import { PROVIDERS } from "../src/core/providersMeta";
-import type { AxxaSettings } from "../src/main";
+import type { CorvusSettings } from "../src/main";
 
 // A árvore é o que o Obsidian 1.13 desenha e indexa na busca, e o que o
 // display() desenha antes do 1.13. Estes testes cobram as regras que o
@@ -32,7 +32,7 @@ const noop: RowRender = () => {};
 function fakeUi(
   over: {
     isMobile?: boolean;
-    settings?: Partial<AxxaSettings>;
+    settings?: Partial<CorvusSettings>;
     creds?: string[];
   } = {}
 ): SettingsUi {
@@ -44,7 +44,7 @@ function fakeUi(
     elevenApiKey: "",
     openaiDataSharing: false,
     ...over.settings,
-  } as AxxaSettings;
+  } as CorvusSettings;
   return {
     isMobile: over.isMobile ?? false,
     settings: () => s,
@@ -234,7 +234,7 @@ describe("o que a busca acha", () => {
 describe("abas", () => {
   it("Mobile só existe no celular", () => {
     const tem = (ui: SettingsUi) =>
-      groupsOf(ui).some((g) => g.cls?.includes("axxa-set-tab-mobile"));
+      groupsOf(ui).some((g) => g.cls?.includes("corvus-set-tab-mobile"));
     expect(tem(fakeUi({ isMobile: false }))).toBe(false);
     expect(tem(fakeUi({ isMobile: true }))).toBe(true);
   });
@@ -242,8 +242,8 @@ describe("abas", () => {
   it("todo grupo (menos a barra de abas) sabe a sua aba, e toda linha também", () => {
     const tree = buildSettingsTree(fakeUi({ isMobile: true }));
     for (const g of tree.items as unknown as Group[]) {
-      if (g.cls?.includes("axxa-set-navgroup")) continue;
-      const tab = /axxa-set-tab-(\w+)/.exec(g.cls ?? "")?.[1];
+      if (g.cls?.includes("corvus-set-navgroup")) continue;
+      const tab = /corvus-set-tab-(\w+)/.exec(g.cls ?? "")?.[1];
       expect(tab, g.heading ?? g.cls).toBeTruthy();
       for (const r of g.items) expect(tree.places.get(r)?.tab).toBe(tab);
     }
@@ -262,12 +262,12 @@ describe("abas", () => {
     const css = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
     for (const t of TABS) {
       expect(css, t.id).toContain(
-        `.axxa-settings-root:not([data-axxa-tab="${t.id}"]) .axxa-set-tab-${t.id}`
+        `.corvus-settings-root:not([data-corvus-tab="${t.id}"]) .corvus-set-tab-${t.id}`
       );
     }
     for (const p of PROVIDERS) {
       expect(css, p.id).toContain(
-        `.axxa-settings-root:not([data-axxa-prov="${p.id}"]) .axxa-set-prov-${p.id}`
+        `.corvus-settings-root:not([data-corvus-prov="${p.id}"]) .corvus-set-prov-${p.id}`
       );
     }
   });

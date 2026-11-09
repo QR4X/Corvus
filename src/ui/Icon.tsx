@@ -32,7 +32,7 @@ export function Icon({
   return (
     <span
       ref={ref}
-      className={className ? `axxa-icon ${className}` : "axxa-icon"}
+      className={className ? `corvus-icon ${className}` : "corvus-icon"}
       aria-hidden="true"
     />
   );

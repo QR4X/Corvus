@@ -1,6 +1,6 @@
 // src/agent/conversation.ts
 // Montagem do SYSTEM PROMPT e do history — antes copiada em 4 lugares do
-// AxxaApp (streamReply / runAgentTurn / regenerate / continue). Centralizado
+// CorvusApp (streamReply / runAgentTurn / regenerate / continue). Centralizado
 // aqui, puro e testável.
 
 import type { ProviderMessage, MessageAttachment } from "../providers/base";

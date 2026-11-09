@@ -9,7 +9,7 @@ Apply with: gh release edit <tag> --title "..." --notes-file <this file, filled 
 
 One or two sentences: what is better for the user now.
 
-<img src="https://raw.githubusercontent.com/axxalab/axxa-agent/main/assets/screenshots/<image>.jpg" width="320" alt="Alt text that works as a caption">
+<img src="https://raw.githubusercontent.com/QR4X/M.I.L.A/main/assets/screenshots/<image>.jpg" width="320" alt="Alt text that works as a caption">
 
 ### 🌟 Highlights
 - **Name**: one-sentence benefit.
@@ -25,5 +25,5 @@ One or two sentences: what is better for the user now.
 
 ---
 **Update:** Settings → Community plugins → Check for updates · **BRAT testers:** update as usual
-**Bug?** [Report it](https://github.com/axxalab/axxa-agent/issues/new?template=bug_report.yml) · **Questions:** [Discussions](https://github.com/axxalab/axxa-agent/discussions)
-**Full changelog:** https://github.com/axxalab/axxa-agent/compare/<previous>...<version>
+**Bug?** [Report it](https://github.com/QR4X/M.I.L.A/issues/new?template=bug_report.yml) · **Questions:** [Discussions](https://github.com/QR4X/M.I.L.A/discussions)
+**Full changelog:** https://github.com/QR4X/M.I.L.A/compare/<previous>...<version>

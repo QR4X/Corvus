@@ -299,7 +299,7 @@ export class GeminiProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      console.error("[axxa] Gemini image gen network error:", err);
+      console.error("[corvus] Gemini image gen network error:", err);
       throw new ProviderError("Connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
@@ -307,7 +307,7 @@ export class GeminiProvider implements Provider {
         (res.json as ErroNoFio | undefined)?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
-      console.error("[axxa] Gemini image gen failed:", res.status, res.json ?? res.text);
+      console.error("[corvus] Gemini image gen failed:", res.status, res.json ?? res.text);
       if (res.status === 401 || res.status === 403) {
         throw new ProviderError("Invalid Gemini API key.", "invalid-key");
       }
@@ -396,7 +396,7 @@ export class GeminiProvider implements Provider {
         throw: false,
       });
     } catch (err) {
-      console.error("[axxa] Imagen network error:", err);
+      console.error("[corvus] Imagen network error:", err);
       throw new ProviderError("Connection failed.", "network");
     }
     if (res.status < 200 || res.status >= 300) {
@@ -404,7 +404,7 @@ export class GeminiProvider implements Provider {
         (res.json as ErroNoFio | undefined)?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
-      console.error("[axxa] Imagen gen failed:", res.status, res.json ?? res.text);
+      console.error("[corvus] Imagen gen failed:", res.status, res.json ?? res.text);
       if (res.status === 401 || res.status === 403) {
         throw new ProviderError("Invalid Gemini API key.", "invalid-key");
       }

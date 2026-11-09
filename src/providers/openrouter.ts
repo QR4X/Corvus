@@ -79,8 +79,8 @@ const OPENROUTER_KEY_ENDPOINT = "https://openrouter.ai/api/v1/key";
 // OpenRouter usa esses headers só pra ATRIBUIÇÃO (aparece no dashboard/ranking
 // deles) — não é telemetria nossa. Referer = URL pública real do plugin.
 const APP_HEADERS = {
-  "HTTP-Referer": "https://github.com/axxalab/axxa-agent",
-  "X-Title": "AXXA Agent",
+  "HTTP-Referer": "https://github.com/QR4X/M.I.L.A",
+  "X-Title": "Corvus",
 };
 
 /**

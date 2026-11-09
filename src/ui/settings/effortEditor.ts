@@ -5,7 +5,7 @@
 // antiga tinha uma aba pra editar (v0.1.73). A aba sumiu no redesign da 0.4.0
 // e os ajustes ficaram só no data.json. Volta aqui como um editor por nível,
 // aberto da aba Chat. Os rótulos e limites vêm da casca antiga
-// (`git show 0.3.0:src/components/settings/AxxaSettingsTab.ts`).
+// (`git show 0.3.0:src/components/settings/CorvusSettingsTab.ts`).
 //
 // A tela é a mais BAIXA possível (pedido do Rafael): um slider por ajuste,
 // nome e valor numa linha só em cima dele, e nenhum texto de explicação na
@@ -280,7 +280,7 @@ export class EffortLevelModal extends Modal {
   }
 
   onOpen(): void {
-    this.modalEl.addClass("axxa-effort-modal");
+    this.modalEl.addClass("corvus-effort-modal");
     this.titleEl.setText(tr("{level} effort", { level: tr(EFFORT_LABELS[this.level]) }));
     this.desenhar();
     this.montarRestaurar();
@@ -304,9 +304,9 @@ export class EffortLevelModal extends Modal {
     this.fecharDica();
     if (mesma) return;
     const el = topo.createDiv({
-      cls: "axxa-esf-dica",
+      cls: "corvus-esf-dica",
       text: tr(campo.desc),
-      attr: { id: `axxa-esf-dica-${campo.key}`, role: "note" },
+      attr: { id: `corvus-esf-dica-${campo.key}`, role: "note" },
     });
     botao.setAttribute("aria-expanded", "true");
     this.dica = { el, botao };
@@ -353,7 +353,7 @@ export class EffortLevelModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     this.linhas = [];
-    const lista = contentEl.createDiv({ cls: "axxa-esf" });
+    const lista = contentEl.createDiv({ cls: "corvus-esf" });
     for (const campo of CAMPOS_DE_ESFORCO) {
       this.linhas.push(
         campo.tipo === "chave" ? this.linhaDeChave(lista, campo) : this.linhaDeNumero(lista, campo)
@@ -372,7 +372,7 @@ export class EffortLevelModal extends Modal {
    */
   private montarRestaurar(): void {
     const restaurar = this.modalEl.createEl("button", {
-      cls: "axxa-esf-restaurar clickable-icon",
+      cls: "corvus-esf-restaurar clickable-icon",
       attr: {
         type: "button",
         "aria-label": tr("Restore {level}'s defaults", {
@@ -380,7 +380,7 @@ export class EffortLevelModal extends Modal {
         }),
       },
     });
-    setIcon(restaurar.createSpan({ cls: "axxa-esf-restaurar-ico" }), "rotate-ccw");
+    setIcon(restaurar.createSpan({ cls: "corvus-esf-restaurar-ico" }), "rotate-ccw");
     restaurar.createSpan({ text: tr("Restore") });
     restaurar.addEventListener("click", () => void this.restaurarTudo());
     this.restaurarEl = restaurar;
@@ -446,23 +446,23 @@ export class EffortLevelModal extends Modal {
    *  ANTES do valor: escondido, o lugar dele fica entre os dois, e o valor
    *  continua encostado na ponta direita, alinhado com o fim do slider. */
   private topo(pai: HTMLElement, campo: CampoDeEsforco, padraoVisivel: string) {
-    const topo = pai.createDiv({ cls: "axxa-esf-topo" });
-    setIcon(topo.createSpan({ cls: "axxa-esf-ico" }), campo.icone);
+    const topo = pai.createDiv({ cls: "corvus-esf-topo" });
+    setIcon(topo.createSpan({ cls: "corvus-esf-ico" }), campo.icone);
     const nome = tr(campo.name);
-    topo.createSpan({ cls: "axxa-esf-nome", text: nome });
+    topo.createSpan({ cls: "corvus-esf-nome", text: nome });
     const info = topo.createEl("button", {
-      cls: "axxa-esf-info clickable-icon",
+      cls: "corvus-esf-info clickable-icon",
       attr: {
         type: "button",
         "aria-label": tr("What is {name}?", { name: nome }),
         "aria-expanded": "false",
-        "aria-controls": `axxa-esf-dica-${campo.key}`,
+        "aria-controls": `corvus-esf-dica-${campo.key}`,
       },
     });
     setIcon(info, "info");
     info.addEventListener("click", () => this.alternarDica(info, topo, campo));
     const volta = topo.createEl("button", {
-      cls: "axxa-esf-volta clickable-icon",
+      cls: "corvus-esf-volta clickable-icon",
       attr: {
         type: "button",
         "aria-label": tr("Back to the {level} default ({value})", {
@@ -472,7 +472,7 @@ export class EffortLevelModal extends Modal {
       },
     });
     setIcon(volta, "rotate-ccw");
-    const valorEl = topo.createSpan({ cls: "axxa-esf-valor" });
+    const valorEl = topo.createSpan({ cls: "corvus-esf-valor" });
     return { topo, valorEl, volta };
   }
 
@@ -480,15 +480,15 @@ export class EffortLevelModal extends Modal {
     const padrao = DEFAULT_EFFORT_CONFIGS[this.level][campo.key] as number;
     const mostrar = campo.mostrar ?? String;
     const salvo = () => this.editado()[campo.key] as number | undefined;
-    const linha = pai.createDiv({ cls: "axxa-esf-linha" });
+    const linha = pai.createDiv({ cls: "corvus-esf-linha" });
     const { valorEl, volta } = this.topo(linha, campo, mostrar(padrao));
 
     // As paradas valem pela vida da tela: um valor antigo fora delas ganha a
     // sua (ver paradasCom) e continua alcançável depois de mexer.
     const paradas = paradasCom(campo, salvo() ?? padrao);
     const slider = linha.createEl("input", {
-      // `axxa-slider`: só anda pelo botão (ver o CSS) — todo slider do plugin.
-      cls: "slider axxa-slider axxa-esf-slider",
+      // `corvus-slider`: só anda pelo botão (ver o CSS) — todo slider do plugin.
+      cls: "slider corvus-slider corvus-esf-slider",
       attr: {
         type: "range",
         min: "0",
@@ -543,7 +543,7 @@ export class EffortLevelModal extends Modal {
   private linhaDeChave(pai: HTMLElement, campo: CampoDeEsforco): LinhaViva {
     const padrao = DEFAULT_EFFORT_CONFIGS[this.level][campo.key] as boolean;
     const salvo = () => this.editado()[campo.key] as boolean | undefined;
-    const linha = pai.createDiv({ cls: "axxa-esf-linha is-chave" });
+    const linha = pai.createDiv({ cls: "corvus-esf-linha is-chave" });
     const { topo, valorEl, volta } = this.topo(linha, campo, padrao ? tr("on") : tr("off"));
     valorEl.remove(); // o próprio interruptor é o valor
     const chave = new ToggleComponent(topo);

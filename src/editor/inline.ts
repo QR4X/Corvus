@@ -10,7 +10,7 @@
 // anota), então o Usage e o teto de gasto enxergam essas chamadas também.
 
 import { Notice, SuggestModal, type App, type Editor, type EditorPosition } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import type { ProviderMessage } from "../providers/base";
 import { modeloSalvoPara } from "../core/modeloPadrao";
@@ -80,7 +80,7 @@ const ROTULO: Record<AcaoNoTexto, string> = {
  * escrevia, o resultado não atropela nada: vai pra área de transferência.
  */
 export async function acaoNoTexto(
-  plugin: AxxaPlugin,
+  plugin: CorvusPlugin,
   editor: Editor,
   acao: AcaoNoTexto,
   opts: { idioma?: string } = {}
@@ -192,7 +192,7 @@ export class IdiomaModal extends SuggestModal<string> {
     private readonly escolher: (idioma: string) => void
   ) {
     super(app);
-    this.modalEl.addClass("axxa-language-modal");
+    this.modalEl.addClass("corvus-language-modal");
     this.setPlaceholder(tr("Translate into…"));
   }
 

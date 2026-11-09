@@ -357,24 +357,24 @@ describe("o cartão de uso da home", () => {
     expect(CARD).not.toMatch(/total\.chats === 0\)\s*return/);
     expect(CARD).not.toMatch(/return <RagLine/);
     // O índice continua sendo o rodapé do cartão, não uma linha solta.
-    expect(CARD).toContain('className="axxa-usage-foot"');
+    expect(CARD).toContain('className="corvus-usage-foot"');
   });
 });
 
 describe("o desenho da página de uso", () => {
   it("o relatório mora na barra — flutuando, ele cobria a lista", () => {
-    expect(VIEW).not.toContain("axxa-fab");
-    expect(VIEW).toContain("axxa-topbar-action");
+    expect(VIEW).not.toContain("corvus-fab");
+    expect(VIEW).toContain("corvus-topbar-action");
     // A mesma pílula do "New" das folhas: uma regra só pras duas.
     expect(CSS).toMatch(
-      /button\.axxa-sheet-action,\s*\.axxa-root button\.axxa-topbar-action\s*\{/
+      /button\.corvus-sheet-action,\s*\.corvus-root button\.corvus-topbar-action\s*\{/
     );
   });
 
   it("as pílulas dos filtros ficam do tamanho delas", () => {
     // Justificadas, a que sobrava sozinha na fileira virava uma barra da
     // largura da tela.
-    expect(bloco(".axxa-root .axxa-usage-dim button.axxa-choice {")).toContain(
+    expect(bloco(".corvus-root .corvus-usage-dim button.corvus-choice {")).toContain(
       "flex: 0 0 auto"
     );
   });
@@ -382,13 +382,13 @@ describe("o desenho da página de uso", () => {
   it("cada dimensão é UMA fileira, que rola de lado — nunca quebra", () => {
     // Quebrando, cada modelo novo empurrava a página e a mesma dimensão virava
     // duas, três linhas.
-    const b = bloco(".axxa-root .axxa-usage-dim .axxa-choices {");
+    const b = bloco(".corvus-root .corvus-usage-dim .corvus-choices {");
     expect(b).toContain("flex-wrap: nowrap");
     expect(b).toContain("overflow-x: auto");
     // Sangra até a borda da tela e devolve o respiro por dentro: a pílula
     // cortada na beirada é o aviso de que tem mais.
-    expect(b).toContain("margin: 0 calc(var(--axxa-gutter) * -1)");
-    expect(b).toContain("padding: 0 var(--axxa-gutter)");
+    expect(b).toContain("margin: 0 calc(var(--corvus-gutter) * -1)");
+    expect(b).toContain("padding: 0 var(--corvus-gutter)");
     // Sem degradê: ele apagava justamente a pílula que avisava.
     expect(b).not.toMatch(/mask-image/);
   });
@@ -397,23 +397,23 @@ describe("o desenho da página de uso", () => {
     // "RECEIV…" num telefone de 360px. Quem decide é a largura do QUADRO
     // (container query), não a da tela: a página também abre numa barra
     // lateral estreita.
-    expect(bloco(".axxa-root .axxa-usage.is-hero .axxa-mod {")).toContain(
+    expect(bloco(".corvus-root .corvus-usage.is-hero .corvus-mod {")).toContain(
       "container-type: inline-size"
     );
     const i = SEM_COMENTARIO.search(/@container \(max-width: [\d.]+px\)/);
     expect(i, "a regra do quadro estreito sumiu").toBeGreaterThan(-1);
     // Até o fim da regra de dentro — a primeira `}` depois da `@container`.
     const regra = SEM_COMENTARIO.slice(i, SEM_COMENTARIO.indexOf("}", i));
-    expect(regra).toContain(".axxa-mod-title.has-icon .axxa-icon");
+    expect(regra).toContain(".corvus-mod-title.has-icon .corvus-icon");
     expect(regra).toContain("display: none");
   });
 
   it("as listas esticam — o bloco de seção encolhe os filhos", () => {
     // Encolhida, a tabela perdia a borda direita e o valor colava no nome.
     expect(CSS).toContain(
-      ".axxa-root .axxa-home-block > .axxa-usage-list {"
+      ".corvus-root .corvus-home-block > .corvus-usage-list {"
     );
-    expect(bloco(".axxa-root .axxa-home-block > .axxa-usage-list {")).toContain(
+    expect(bloco(".corvus-root .corvus-home-block > .corvus-usage-list {")).toContain(
       "align-self: stretch"
     );
   });
@@ -421,20 +421,20 @@ describe("o desenho da página de uso", () => {
   it("o ícone do módulo é medido pelo token, não pelo atributo", () => {
     // `svg.svg-icon { width: var(--icon-size) }` no Obsidian passa por cima do
     // `size` do <Icon>; com os 18px de sempre, "PER CHAT" cortava.
-    expect(bloco(".axxa-root .axxa-mod-title.has-icon {")).toMatch(
+    expect(bloco(".corvus-root .corvus-mod-title.has-icon {")).toMatch(
       /--icon-size:\s*\d+px/
     );
   });
 
   it("recado em cima de cartão é muted, nunca faint", () => {
     for (const sel of [
-      ".axxa-root .axxa-usage-line {",
-      ".axxa-root .axxa-usage-sub {",
-      ".axxa-root .axxa-usage-sep {",
-      ".axxa-root .axxa-usage-approx {",
-      ".axxa-root .axxa-usage-row-sub {",
-      ".axxa-root .axxa-usage-row-pct {",
-      ".axxa-root .axxa-usage-dim-label {",
+      ".corvus-root .corvus-usage-line {",
+      ".corvus-root .corvus-usage-sub {",
+      ".corvus-root .corvus-usage-sep {",
+      ".corvus-root .corvus-usage-approx {",
+      ".corvus-root .corvus-usage-row-sub {",
+      ".corvus-root .corvus-usage-row-pct {",
+      ".corvus-root .corvus-usage-dim-label {",
     ]) {
       const b = bloco(sel);
       expect(b, sel).toContain("var(--text-muted)");
@@ -466,13 +466,13 @@ describe("o desenho da página de uso", () => {
   });
 
   it("os grupos de filtro respiram mais entre si do que até as pílulas", () => {
-    // A classe COLADA na do bloco de seção: `.axxa-home-block` (gap de 8px)
+    // A classe COLADA na do bloco de seção: `.corvus-home-block` (gap de 8px)
     // vem depois no arquivo e, com o mesmo peso, ganhava — medido no preview,
     // o espaço entre os grupos era 8px com a regra pedindo outra coisa.
-    const entreGrupos = bloco(".axxa-root .axxa-home-block.axxa-usage-filters {");
-    expect(entreGrupos).toContain("gap: var(--axxa-5)");
-    expect(bloco(".axxa-root .axxa-usage-dim {")).toContain("gap: var(--axxa-2)");
-    expect(bloco(".axxa-root .axxa-usage-dim .axxa-choices {")).toContain(
+    const entreGrupos = bloco(".corvus-root .corvus-home-block.corvus-usage-filters {");
+    expect(entreGrupos).toContain("gap: var(--corvus-5)");
+    expect(bloco(".corvus-root .corvus-usage-dim {")).toContain("gap: var(--corvus-2)");
+    expect(bloco(".corvus-root .corvus-usage-dim .corvus-choices {")).toContain(
       "gap: 10px"
     );
   });

@@ -9,7 +9,7 @@
 
 import { useCallback, useMemo } from "react";
 import { resolverIdioma } from "../i18n";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import {
   ehFree,
@@ -58,7 +58,7 @@ function icones(curtos: readonly string[]): string[] {
   return [...todos];
 }
 
-export function useAssistant(plugin: AxxaPlugin) {
+export function useAssistant(plugin: CorvusPlugin) {
   const s = plugin.settings;
   /** O idioma do app — e o único em que ela responde (ver prompt.ts). */
   const idioma = idiomaDoApp(resolverIdioma(s.language));

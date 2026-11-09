@@ -22,7 +22,7 @@ import type {
   NoteAttachment,
   ProviderMessage,
 } from "../providers/base";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import { buscarContextoDoVault } from "./vaultLookup";
 import { loadAgentMd } from "./agentMd";
 
@@ -33,7 +33,7 @@ export interface AbortRef {
 
 /** Tudo que um turno precisa saber da sessão — montado pela ChatSession. */
 export interface EngineCtx {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   t: ReturnType<typeof getTranslations>;
   abortRef: AbortRef;
   activeProviderId: string;

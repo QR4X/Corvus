@@ -19,7 +19,7 @@
 //     a mesma árvore (ui/settings/legacy.ts).
 //
 // A barra de abas e o trilho de providers NÃO são páginas do Obsidian: trocar
-// de aba só troca um atributo do container (`data-axxa-tab`), e o CSS esconde
+// de aba só troca um atributo do container (`data-corvus-tab`), e o CSS esconde
 // os grupos das outras abas. Nada é redesenhado, nada perde o foco — e a busca
 // continua achando tudo, porque pra ela nenhuma linha está escondida.
 //
@@ -39,7 +39,7 @@ import {
   setIcon,
 } from "obsidian";
 import type { SettingDefinitionItem } from "obsidian";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import {
   PROVIDERS,
   providerConfigured,
@@ -130,7 +130,7 @@ interface DefinitionLookup {
   getElementForDefinition?: (def: unknown) => HTMLElement | null | undefined;
 }
 
-export class AxxaSettingsTab extends PluginSettingTab {
+export class CorvusSettingsTab extends PluginSettingTab {
   /** Sobrevivem ao redesenho: reabrir as settings volta pra mesma aba. */
   private tab: TabId = "providers";
   private provider = "openai";
@@ -176,7 +176,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
   constructor(
     app: App,
-    private readonly plugin: AxxaPlugin
+    private readonly plugin: CorvusPlugin
   ) {
     super(app, plugin);
     // Aparece nos resultados da busca das settings, ao lado de cada linha.
@@ -195,7 +195,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       // Sem try/catch, um erro aqui derrubaria o `onload` do plugin inteiro
       // (o addSettingTab chama isto). Com a lista vazia, o 1.13 volta a
       // chamar o `display()`.
-      console.error("[axxa] settings: a árvore falhou — a aba cai no display()", err);
+      console.error("[corvus] settings: a árvore falhou — a aba cai no display()", err);
       return [];
     }
   }
@@ -406,12 +406,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
   /** A classe e os atributos de que o CSS das abas depende. */
   private prepareRoot(): void {
     const el = this.containerEl;
-    el.addClass("axxa-settings-root");
+    el.addClass("corvus-settings-root");
     const tabs = tabsFor(Platform.isMobile);
     if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
     if (!PROVIDER_FIELDS[this.provider]) this.provider = PROVIDERS[0].id;
-    el.dataset.axxaTab = this.tab;
-    el.dataset.axxaProv = this.provider;
+    el.dataset.corvusTab = this.tab;
+    el.dataset.corvusProv = this.provider;
   }
 
   private blurbOf(id: TabId): string {
@@ -430,19 +430,19 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     const el = row.settingEl;
     el.empty();
-    el.addClass("axxa-set-block", "axxa-set-navrow");
-    const nav = el.createDiv({ cls: "axxa-seg axxa-settings-nav" });
+    el.addClass("corvus-set-block", "corvus-set-navrow");
+    const nav = el.createDiv({ cls: "corvus-seg corvus-settings-nav" });
     for (const t of tabsFor(Platform.isMobile)) {
       const active = t.id === this.tab;
       const btn = nav.createEl("button", {
         text: tr(t.label),
-        cls: active ? "axxa-seg-item is-active" : "axxa-seg-item",
+        cls: active ? "corvus-seg-item is-active" : "corvus-seg-item",
         attr: { type: "button", "aria-pressed": String(active), "data-tab": t.id },
       });
       btn.onclick = () => this.setTab(t.id);
     }
     const blurb = el.createEl("p", {
-      cls: "axxa-settings-blurb",
+      cls: "corvus-settings-blurb",
       text: this.blurbOf(this.tab),
     });
     this.tabBarEl = nav;
@@ -462,10 +462,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
     if (!tabsFor(Platform.isMobile).some((t) => t.id === id)) return;
     const changed = id !== this.tab;
     this.tab = id;
-    this.containerEl.dataset.axxaTab = id;
+    this.containerEl.dataset.corvusTab = id;
     if (this.tabBarEl) {
       for (const btn of Array.from(
-        this.tabBarEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+        this.tabBarEl.querySelectorAll<HTMLElement>(".corvus-seg-item")
       )) {
         const active = btn.dataset.tab === id;
         btn.toggleClass("is-active", active);
@@ -506,12 +506,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private renderRail(row: Setting): () => void {
     const el = row.settingEl;
     el.empty();
-    el.addClass("axxa-set-block", "axxa-set-railrow");
-    const sub = el.createDiv({ cls: "axxa-seg axxa-settings-subnav" });
+    el.addClass("corvus-set-block", "corvus-set-railrow");
+    const sub = el.createDiv({ cls: "corvus-seg corvus-settings-subnav" });
     for (const p of PROVIDERS) {
       const active = p.id === this.provider;
       const btn = sub.createEl("button", {
-        cls: "axxa-seg-item" + (active ? " is-active" : ""),
+        cls: "corvus-seg-item" + (active ? " is-active" : ""),
         // O LOGO no lugar do nome: com seis providers, nome + logo não cabem
         // em uma linha, e o logo identifica mais rápido. O nome fica no
         // aria-label, no tooltip e no título do cartão logo abaixo.
@@ -523,11 +523,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
           "data-provider": p.id,
         },
       });
-      const mark = btn.createSpan({ cls: "axxa-seg-logo" });
+      const mark = btn.createSpan({ cls: "corvus-seg-logo" });
       setIcon(mark, p.icon);
       // Bolinha de conexão: vazada = sem credencial, cinza cheio = tem mas
       // nunca testou, verde = testou e respondeu, vermelho = recusou.
-      mark.createSpan({ cls: "axxa-seg-dot" });
+      mark.createSpan({ cls: "corvus-seg-dot" });
       btn.onclick = () => this.setProvider(p.id);
     }
     this.railEl = sub;
@@ -543,10 +543,10 @@ export class AxxaSettingsTab extends PluginSettingTab {
     if (!PROVIDER_FIELDS[id]) return;
     const old = this.provider;
     this.provider = id;
-    this.containerEl.dataset.axxaProv = id;
+    this.containerEl.dataset.corvusProv = id;
     if (this.railEl) {
       for (const btn of Array.from(
-        this.railEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+        this.railEl.querySelectorAll<HTMLElement>(".corvus-seg-item")
       )) {
         const active = btn.dataset.provider === id;
         btn.toggleClass("is-active", active);
@@ -587,15 +587,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private syncReady(): void {
     if (!this.railEl) return;
     for (const btn of Array.from(
-      this.railEl.querySelectorAll<HTMLElement>(".axxa-seg-item")
+      this.railEl.querySelectorAll<HTMLElement>(".corvus-seg-item")
     )) {
       const id = btn.dataset.provider;
       if (!id) continue;
       btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
       const health = this.healthOf(id);
-      const dot = btn.querySelector<HTMLElement>(".axxa-seg-dot");
+      const dot = btn.querySelector<HTMLElement>(".corvus-seg-dot");
       if (dot) {
-        dot.className = `axxa-seg-dot is-${health}`;
+        dot.className = `corvus-seg-dot is-${health}`;
         dot.setAttribute("aria-hidden", "true");
       }
       btn.setAttribute(
@@ -692,11 +692,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
         )
         .onClick(() => void this.testConnection(providerId));
     });
-    row.nameEl.addClass("axxa-conn-name");
-    row.nameEl.querySelector(".axxa-conn-dot")?.remove();
-    row.nameEl.prepend(row.nameEl.createSpan({ cls: `axxa-conn-dot is-${st.state}` }));
+    row.nameEl.addClass("corvus-conn-name");
+    row.nameEl.querySelector(".corvus-conn-dot")?.remove();
+    row.nameEl.prepend(row.nameEl.createSpan({ cls: `corvus-conn-dot is-${st.state}` }));
     row.descEl.removeClass("is-unknown", "is-testing", "is-ok", "is-fail");
-    row.descEl.addClass("axxa-conn-desc", `is-${st.state}`);
+    row.descEl.addClass("corvus-conn-desc", `is-${st.state}`);
   }
 
   /**
@@ -812,7 +812,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
           : tr("No models returned — check the key or the endpoint.")
       );
     } catch (err) {
-      console.error("[axxa] scanModels falhou:", err);
+      console.error("[corvus] scanModels falhou:", err);
       new Notice(
         tr("Fetch failed: {error}", {
           error: err instanceof Error ? err.message : String(err),
@@ -862,8 +862,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
   private paintHint(row: Setting, text: string): void {
     const el = row.settingEl;
     el.empty();
-    el.addClass("axxa-set-block", "axxa-set-hint");
-    el.createEl("p", { cls: "axxa-settings-hint", text });
+    el.addClass("corvus-set-block", "corvus-set-hint");
+    el.createEl("p", { cls: "corvus-settings-hint", text });
   }
 
   // ── o catálogo ────────────────────────────────────────────────────────────
@@ -873,12 +873,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // O filtro é remontado junto com a lista (a cada toque nele e a cada
     // modelo marcado). O novo nasce onde o thumb do velho estava, e desliza
     // de lá — não do primeiro item.
-    const velho = el.querySelector<HTMLElement>(".axxa-models-filter");
+    const velho = el.querySelector<HTMLElement>(".corvus-models-filter");
     const thumb = velho ? thumbOf(velho) : null;
     el.empty();
-    el.addClass("axxa-set-block", "axxa-set-catalog");
+    el.addClass("corvus-set-block", "corvus-set-catalog");
     if (providerId !== this.provider) return;
-    this.drawModels(el.createDiv({ cls: "axxa-models" }), providerId, thumb);
+    this.drawModels(el.createDiv({ cls: "corvus-models" }), providerId, thumb);
   }
 
   /** A lista de modelos — o único pedaço que os toggles e o filtro remontam. */
@@ -899,7 +899,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     if (models.length === 0) {
       list.createEl("p", {
-        cls: "axxa-models-empty",
+        cls: "corvus-models-empty",
         text:
           this.fetchingFor === providerId
             ? tr("Fetching…")
@@ -908,12 +908,12 @@ export class AxxaSettingsTab extends PluginSettingTab {
       return;
     }
 
-    const head = list.createDiv({ cls: "axxa-models-head" });
+    const head = list.createDiv({ cls: "corvus-models-head" });
     head.createSpan({
       text: models.length === 1 ? tr("1 model") : tr("{n} models", { n: models.length }),
     });
     head.createSpan({
-      cls: "axxa-models-legend",
+      cls: "corvus-models-legend",
       text: tr("Show · Favorite ({n}/{max})", { n: favs.length, max: FAVORITE_LIMIT }),
     });
 
@@ -933,13 +933,13 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // modelos do chat — e a razão é a mesma: quem já escolheu os seus cinco
     // não devia caçá-los dentro de um catálogo de oitenta a cada visita.
     if (favs.length > 0) {
-      const sec = list.createDiv({ cls: "axxa-models-fav" });
-      const cab = sec.createDiv({ cls: "axxa-models-fav-head" });
-      const ico = cab.createSpan({ cls: "axxa-models-fav-ico" });
+      const sec = list.createDiv({ cls: "corvus-models-fav" });
+      const cab = sec.createDiv({ cls: "corvus-models-fav-head" });
+      const ico = cab.createSpan({ cls: "corvus-models-fav-ico" });
       setIcon(ico, "star");
       cab.createSpan({ text: tr("Favorites") });
       cab.createSpan({
-        cls: "axxa-model-section-count",
+        cls: "corvus-model-section-count",
         text: `${favs.length}/${FAVORITE_LIMIT}`,
       });
       for (const m of [...favs].sort()) this.modelRow(sec, providerId, m, redraw);
@@ -958,7 +958,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
 
     if (groups.length > 1 || gratis.length > 0) {
-      const filter = list.createDiv({ cls: "axxa-seg axxa-models-filter" });
+      const filter = list.createDiv({ cls: "corvus-seg corvus-models-filter" });
       seedThumb(filter, thumb);
       const items = [
         { id: "all", label: tr("All"), icon: "layers" },
@@ -970,7 +970,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
       for (const it of items) {
         const active = it.id === this.kind;
         const btn = filter.createEl("button", {
-          cls: "axxa-seg-item" + (active ? " is-active" : ""),
+          cls: "corvus-seg-item" + (active ? " is-active" : ""),
           attr: {
             type: "button",
             "aria-pressed": String(active),
@@ -978,11 +978,11 @@ export class AxxaSettingsTab extends PluginSettingTab {
             title: it.label,
           },
         });
-        const mark = btn.createSpan({ cls: "axxa-seg-ico" });
+        const mark = btn.createSpan({ cls: "corvus-seg-ico" });
         setIcon(mark, it.icon);
         // Só o ATIVO mostra o rótulo: sete papéis com nome não cabem numa
         // linha, e a regra do segmented aqui é nunca quebrar em duas.
-        if (active) btn.createSpan({ cls: "axxa-seg-label", text: it.label });
+        if (active) btn.createSpan({ cls: "corvus-seg-label", text: it.label });
         btn.onclick = () => {
           this.kind = it.id;
           redraw();
@@ -1017,15 +1017,15 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const key = `${providerId}:v:${chave}`;
       const closed = key !== this.openVendor;
       const sec = list.createEl("button", {
-        cls: closed ? "axxa-model-vendor is-closed" : "axxa-model-vendor",
+        cls: closed ? "corvus-model-vendor is-closed" : "corvus-model-vendor",
         attr: { type: "button", "aria-expanded": String(!closed) },
       });
-      setIcon(sec.createSpan({ cls: "axxa-model-vendor-ico" }), modelLogo(exemplo));
-      sec.createSpan({ cls: "axxa-model-vendor-name", text: nome });
-      sec.createSpan({ cls: "axxa-model-section-count", text: String(total) });
-      setIcon(sec.createSpan({ cls: "axxa-model-section-chev" }), "chevron-down");
+      setIcon(sec.createSpan({ cls: "corvus-model-vendor-ico" }), modelLogo(exemplo));
+      sec.createSpan({ cls: "corvus-model-vendor-name", text: nome });
+      sec.createSpan({ cls: "corvus-model-section-count", text: String(total) });
+      setIcon(sec.createSpan({ cls: "corvus-model-section-chev" }), "chevron-down");
       const body = list.createDiv({
-        cls: closed ? "axxa-model-vendor-body is-closed" : "axxa-model-vendor-body",
+        cls: closed ? "corvus-model-vendor-body is-closed" : "corvus-model-vendor-body",
       });
       vendors.push({ key, sec, body });
       sec.onclick = () => {
@@ -1047,29 +1047,29 @@ export class AxxaSettingsTab extends PluginSettingTab {
       const orfa = fam.id === "other";
       const closed = key !== this.openFam;
       const sec = host.createEl("button", {
-        cls: closed ? "axxa-model-section is-closed" : "axxa-model-section",
+        cls: closed ? "corvus-model-section is-closed" : "corvus-model-section",
         attr: { type: "button", "aria-expanded": String(!closed) },
       });
-      const mark = sec.createSpan({ cls: "axxa-model-section-ico" });
+      const mark = sec.createSpan({ cls: "corvus-model-section-ico" });
       setIcon(mark, orfa ? g.icon : fam.icon);
       sec.createSpan({
-        cls: "axxa-model-section-name",
+        cls: "corvus-model-section-name",
         text: orfa ? g.label : fam.label,
       });
       // Em "All" a família sozinha é ambígua (GPT-5 em chat e em reasoning),
       // então o papel vem junto.
       if (this.kind === "all" && !orfa) {
-        sec.createSpan({ cls: "axxa-model-section-role", text: g.label });
+        sec.createSpan({ cls: "corvus-model-section-role", text: g.label });
       }
       sec.createSpan({
-        cls: "axxa-model-section-count",
+        cls: "corvus-model-section-count",
         text: String(fam.models.length),
       });
-      const chev = sec.createSpan({ cls: "axxa-model-section-chev" });
+      const chev = sec.createSpan({ cls: "corvus-model-section-chev" });
       setIcon(chev, "chevron-down");
 
       const wrap = host.createDiv({
-        cls: closed ? "axxa-model-fam is-closed" : "axxa-model-fam",
+        cls: closed ? "corvus-model-fam is-closed" : "corvus-model-fam",
       });
       for (const m of fam.models) this.modelRow(wrap, providerId, m, redraw);
 
@@ -1085,22 +1085,22 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // por fabricante, nos providers de muitos.
     if (this.kind === "free") {
       const nota = this.notaGratis(providerId);
-      if (nota) list.createEl("p", { cls: "axxa-models-free-note", text: nota });
+      if (nota) list.createEl("p", { cls: "corvus-models-free-note", text: nota });
       if (gratis.length === 0) {
         list.createEl("p", {
-          cls: "axxa-models-empty",
+          cls: "corvus-models-empty",
           text: tr("Nothing free in this catalog."),
         });
         return;
       }
       if (!multi) {
-        const wrap = list.createDiv({ cls: "axxa-model-fam" });
+        const wrap = list.createDiv({ cls: "corvus-model-fam" });
         for (const m of gratis) this.modelRow(wrap, providerId, m, redraw);
         return;
       }
       for (const v of soltosPorFabricante(gratis)) {
         const body = fabricanteSec(v.fabricante.chave, v.fabricante.nome, v.models.length, v.models[0]);
-        const wrap = body.createDiv({ cls: "axxa-model-fam" });
+        const wrap = body.createDiv({ cls: "corvus-model-fam" });
         for (const m of v.models) this.modelRow(wrap, providerId, m, redraw);
       }
       return;
@@ -1130,7 +1130,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
         v.secoes[0].family.models[0]
       );
       if (v.secoes.length === 1) {
-        const wrap = body.createDiv({ cls: "axxa-model-fam" });
+        const wrap = body.createDiv({ cls: "corvus-model-fam" });
         for (const m of v.secoes[0].family.models) this.modelRow(wrap, providerId, m, redraw);
         continue;
       }
@@ -1201,9 +1201,9 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const shown = this.s.activeModels[providerId] ?? [];
     const favs = this.s.favoriteModels?.[providerId] ?? [];
 
-    const row = host.createDiv({ cls: "axxa-model-row" });
-    const info = row.createDiv({ cls: "axxa-model-info" });
-    const title = info.createDiv({ cls: "axxa-model-name" });
+    const row = host.createDiv({ cls: "corvus-model-row" });
+    const info = row.createDiv({ cls: "corvus-model-info" });
+    const title = info.createDiv({ cls: "corvus-model-name" });
     title.createSpan({ text: prettyModelName(m) });
     // A etiqueta separa DE GRAÇA SEMPRE de DE GRAÇA ATÉ UM LIMITE (ver
     // usage/freeTag.ts). Chamar as duas de "free" faz a segunda parecer a
@@ -1211,18 +1211,18 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const tag = this.tagGratis(providerId, m);
     if (tag) {
       title.createSpan({
-        cls: `axxa-tag is-free is-${tag.kind}`,
+        cls: `corvus-tag is-free is-${tag.kind}`,
         text: tag.label,
         attr: { title: tag.detail },
       });
     }
-    info.createDiv({ cls: "axxa-model-id", text: m });
+    info.createDiv({ cls: "corvus-model-id", text: m });
 
-    const actions = row.createDiv({ cls: "axxa-model-actions" });
+    const actions = row.createDiv({ cls: "corvus-model-actions" });
 
     const isShown = shown.includes(m);
     const showBtn = actions.createEl("button", {
-      cls: isShown ? "axxa-model-toggle is-on" : "axxa-model-toggle",
+      cls: isShown ? "corvus-model-toggle is-on" : "corvus-model-toggle",
       text: tr("Show"),
       attr: {
         type: "button",
@@ -1238,7 +1238,7 @@ export class AxxaSettingsTab extends PluginSettingTab {
 
     const isFav = favs.includes(m);
     const favBtn = actions.createEl("button", {
-      cls: isFav ? "axxa-model-toggle is-fav" : "axxa-model-toggle",
+      cls: isFav ? "corvus-model-toggle is-fav" : "corvus-model-toggle",
       attr: {
         type: "button",
         "aria-pressed": String(isFav),
@@ -1311,14 +1311,14 @@ export class AxxaSettingsTab extends PluginSettingTab {
     const { items, value, ouvir } = opts;
     const atual = items.find((i) => i.value === value);
     const btn = row.controlEl.createEl("button", {
-      cls: "axxa-pick",
+      cls: "corvus-pick",
       attr: {
         type: "button",
         "aria-haspopup": "menu",
         "aria-label": `${row.nameEl.textContent ?? ""}: ${atual?.label ?? value}`,
       },
     });
-    const ico = btn.createSpan({ cls: "axxa-pick-ico" });
+    const ico = btn.createSpan({ cls: "corvus-pick-ico" });
     if (atual?.glyph) {
       ico.addClass("is-glyph");
       ico.setText(atual.glyph);
@@ -1327,8 +1327,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     }
     // Um valor que a lista não conhece (gravado por uma versão antiga, ou um
     // modelo que saiu do catálogo) aparece cru em vez de sumir.
-    btn.createSpan({ cls: "axxa-pick-label", text: atual?.label ?? value });
-    setIcon(btn.createSpan({ cls: "axxa-pick-chev" }), "chevrons-up-down");
+    btn.createSpan({ cls: "corvus-pick-label", text: atual?.label ?? value });
+    setIcon(btn.createSpan({ cls: "corvus-pick-chev" }), "chevrons-up-down");
     btn.onclick = (ev) =>
       openActions(
         ev,
@@ -1379,8 +1379,8 @@ export class AxxaSettingsTab extends PluginSettingTab {
     // anterior, cada edição somaria mais um na frente do nome. E o ícone nasce
     // DENTRO do nome (createSpan do próprio elemento) — o global criaria no
     // documento da janela principal, e no desktop as settings são outra janela.
-    row.nameEl.querySelector(".axxa-effort-ico")?.remove();
-    const ico = row.nameEl.createSpan({ cls: "axxa-effort-ico" });
+    row.nameEl.querySelector(".corvus-effort-ico")?.remove();
+    const ico = row.nameEl.createSpan({ cls: "corvus-effort-ico" });
     setIcon(ico, EFFORT_ICONS[level]);
     row.nameEl.prepend(ico);
     const editado = nivelEditado(s.effortConfigs, level);

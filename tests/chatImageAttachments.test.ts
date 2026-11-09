@@ -19,7 +19,7 @@ import {
   GENERATION_DIR,
   persistLocalImage,
 } from "../src/ui/attachSources";
-import type AxxaPlugin from "../src/main";
+import type CorvusPlugin from "../src/main";
 
 // O envio chama streamReply (rede); aqui ele é no-op pra testar o caminho que
 // vai do composer até a mensagem no store.
@@ -46,7 +46,7 @@ function setup() {
       defaultMode: "chat",
       defaultEffort: "med",
       language: "en",
-      chatsPath: ".axxa/chats",
+      chatsPath: ".corvus/chats",
       instagramReelsEnabled: false,
     },
     onSettingsChange: () => () => {},
@@ -58,7 +58,7 @@ function setup() {
     clearChatUnread: vi.fn(),
     unreadSet: () => new Set<string>(),
   };
-  session = new ChatSession(plugin as unknown as AxxaPlugin);
+  session = new ChatSession(plugin as unknown as CorvusPlugin);
   return { plugin };
 }
 
@@ -175,20 +175,20 @@ describe("persistLocalImage (novo helper)", () => {
           writeBinary: vi.fn(async (p: string) => writes.push(p)),
         },
       },
-    } as unknown as AxxaPlugin["app"];
+    } as unknown as CorvusPlugin["app"];
     const out = await persistLocalImage(app, {
       ...IMAGEM,
       mimeType: "image/jpeg",
       dataUrl: "data:image/jpeg;base64,QUJD",
     });
-    expect(out.path).toMatch(/^axxa-ai\/generation\/images\/.+\.jpg$/);
+    expect(out.path).toMatch(/^corvus-ai\/generation\/images\/.+\.jpg$/);
     expect(writes).toHaveLength(1);
   });
 
   it("URL externa não grava nada (passa igual)", async () => {
     const app = {
       vault: { adapter: { writeBinary: vi.fn(async () => undefined) } },
-    } as unknown as AxxaPlugin["app"];
+    } as unknown as CorvusPlugin["app"];
     const externa = { type: "image" as const, dataUrl: "https://x.com/a.png" };
     await expect(persistLocalImage(app, externa)).resolves.toBe(externa);
   });
@@ -196,7 +196,7 @@ describe("persistLocalImage (novo helper)", () => {
   it("falha de escrita não derruba o envio (anexo fica sem path)", async () => {
     const app = {
       vault: { adapter: { writeBinary: vi.fn(async () => { throw new Error("cheio"); }) } },
-    } as unknown as AxxaPlugin["app"];
+    } as unknown as CorvusPlugin["app"];
     const out = await persistLocalImage(app, IMAGEM);
     expect(out.path).toBeUndefined();
   });
@@ -224,7 +224,7 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
           readBinary: vi.fn(async () => new TextEncoder().encode("XYZ").buffer),
         },
       },
-    } as unknown as AxxaPlugin["app"];
+    } as unknown as CorvusPlugin["app"];
     const out = await fromStoredAttachments(app, [
       { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
       { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
@@ -251,7 +251,7 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
           }),
         },
       },
-    } as unknown as AxxaPlugin["app"];
+    } as unknown as CorvusPlugin["app"];
     const out = await fromStoredAttachments(app, [
       { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "p.png" },
     ]);

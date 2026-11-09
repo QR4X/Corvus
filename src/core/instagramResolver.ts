@@ -108,7 +108,7 @@ export async function resolveInstagramVideoUrl(
       }
     }
   } catch (err) {
-    console.warn("[M.I.L.A] Instagram GraphQL query_hash fehlgeschlagen:", err);
+    console.warn("[Corvus] Instagram GraphQL query_hash fehlgeschlagen:", err);
   }
 
   // 2. Versuch: Direct GraphQL Query ID
@@ -155,7 +155,7 @@ export async function resolveInstagramVideoUrl(
       }
     }
   } catch (err) {
-    console.warn("[M.I.L.A] Instagram GraphQL query_id fehlgeschlagen:", err);
+    console.warn("[Corvus] Instagram GraphQL query_id fehlgeschlagen:", err);
   }
 
   // 3. Versuch: Fallback Web Resolver (v3.igdownloader.app)
@@ -187,7 +187,7 @@ export async function resolveInstagramVideoUrl(
       }
     }
   } catch (err) {
-    console.warn("[M.I.L.A] Instagram Fallback Resolver fehlgeschlagen:", err);
+    console.warn("[Corvus] Instagram Fallback Resolver fehlgeschlagen:", err);
   }
 
   throw new ProviderError(

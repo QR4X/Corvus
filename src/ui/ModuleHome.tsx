@@ -12,7 +12,7 @@
 // e Vault Q&A abrem com busca, porque ali o que se procura é assunto.
 
 import { useMemo, useState } from "react";
-import type AxxaPlugin from "../main";
+import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import { isChatMode } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
@@ -75,7 +75,7 @@ export function ModuleHome({
   onNewChat,
   onOpenSkills,
 }: {
-  plugin: AxxaPlugin;
+  plugin: CorvusPlugin;
   session: ChatSession;
   modulo: string;
   /** Sai desta tela — volta pra home. */
@@ -112,35 +112,35 @@ export function ModuleHome({
   const podeCriar = isChatMode(modulo);
 
   return (
-    <div className="axxa-chat">
-      <header className="axxa-topbar is-bare">
+    <div className="corvus-chat">
+      <header className="corvus-topbar is-bare">
         {/* Seta, não hambúrguer: o menu mora na home, e esta tela é um lugar
             DENTRO dela. Antes daqui só se saía pelo menu — um lugar que só
             tem porta lateral. */}
         <button
           type="button"
-          className="axxa-icon-btn"
+          className="corvus-icon-btn"
           aria-label={tr("Back")}
           onClick={onBack}
         >
           <Icon name="arrow-left" />
         </button>
-        <span className="axxa-brand axxa-topbar-brand">
+        <span className="corvus-brand corvus-topbar-brand">
           {moduleLabel(modulo)}
         </span>
       </header>
 
-      <div className="axxa-messages axxa-home">
+      <div className="corvus-messages corvus-home">
 
         {ehAgent && (
-          <section className="axxa-home-block">
-            <span className="axxa-section-label">{tr("Skills")}</span>
+          <section className="corvus-home-block">
+            <span className="corvus-section-label">{tr("Skills")}</span>
             {/* O que o agente sabe fazer é o que ele TEM à mão — por isso as
                 skills abrem a home dele, do mesmo jeito que os aparelhos
                 abrem a tela de Code na referência. */}
             <button
               type="button"
-              className="axxa-home-pill"
+              className="corvus-home-pill"
               onClick={onOpenSkills}
             >
               <Icon name="plus" size={18} />
@@ -161,11 +161,11 @@ export function ModuleHome({
         />
 
         {ehAgent && (
-          <div className="axxa-home-headrow">
-            <span className="axxa-section-label">{tr("Sessions")}</span>
+          <div className="corvus-home-headrow">
+            <span className="corvus-section-label">{tr("Sessions")}</span>
             <button
               type="button"
-              className="axxa-home-filter"
+              className="corvus-home-filter"
               aria-label={tr("Filter sessions by period")}
               onClick={(e) =>
                 openActions(
@@ -194,7 +194,7 @@ export function ModuleHome({
         )}
 
         {visiveis.length === 0 && (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name={moduleIcon(modulo)} size={42} />
             <p>
               {minhas.length === 0
@@ -207,11 +207,11 @@ export function ModuleHome({
         )}
 
         {/* DENTRO do scroller, grudado na base com `sticky`. Fora dele ele
-            precisaria de um ancestral posicionado — e `.axxa-chat` não é
+            precisaria de um ancestral posicionado — e `.corvus-chat` não é
             posicionado: foi assim que o composer `absolute` foi parar colado
             no header do aparelho (ver o bloco do composer no CSS). */}
         {podeCriar && (
-          <button type="button" className="axxa-fab" onClick={onNewChat}>
+          <button type="button" className="corvus-fab" onClick={onNewChat}>
             <Icon name="plus" size={20} />
             <span>{moduleFabLabel(modulo)}</span>
           </button>
@@ -245,7 +245,7 @@ export function ModuleHome({
             }}
           />
         ) : (
-          <div className="axxa-home-empty">
+          <div className="corvus-home-empty">
             <Icon name="search" size={42} />
             <p>
               {query.trim()

@@ -11,7 +11,7 @@
 //
 // 1. ELA É UM MODAL ACIMA DO TECLADO, SEMPRE — e sobe pelo MESMO mecanismo do
 //    composer do chat, que já funcionava: ela é `absolute` colada na base da
-//    `.axxa-root`, e a raiz encolhe junto com a gaveta quando o teclado abre.
+//    `.corvus-root`, e a raiz encolhe junto com a gaveta quando o teclado abre.
 //    Sem conta nenhuma.
 //
 //    Isso custou quatro tentativas erradas, e todas erraram igual: eu tentava
@@ -203,7 +203,7 @@ export function AssistantPanel({
   };
 
   const cabecalho = (
-    <div className="axxa-assist-head">
+    <div className="corvus-assist-head">
       <Icon name="sparkles" size={16} />
       <span>{tr(TITULO[para])}</span>
       {/* Quem escreve, e a troca — no lugar onde se percebe que precisa
@@ -211,7 +211,7 @@ export function AssistantPanel({
       {modelo && modelo.opcoes.length > 1 && (
         <button
           type="button"
-          className="axxa-assist-modelo"
+          className="corvus-assist-modelo"
           title={tr("Writing with {model}", { model: modelo.atual })}
           onClick={(e) =>
             openActions(
@@ -238,7 +238,7 @@ export function AssistantPanel({
       )}
       <button
         type="button"
-        className="axxa-icon-btn"
+        className="corvus-icon-btn"
         aria-label={tr("Close")}
         onClick={() => {
           // Fechar não cancela: o que está a caminho continua e o resultado
@@ -256,7 +256,7 @@ export function AssistantPanel({
   /**
    * A camada sai da FOLHA por um portal, e isto não é arrumação de código.
    *
-   * `.axxa-sheet` tem `transform` e `will-change: transform` — e um ancestral
+   * `.corvus-sheet` tem `transform` e `will-change: transform` — e um ancestral
    * transformado vira o bloco de contenção de todo `position: fixed` que
    * estiver dentro dele. O modal, sendo filho do formulário, não era fixo à
    * TELA: era fixo à folha, e ainda por cima recortado pelo `overflow: hidden`
@@ -267,9 +267,9 @@ export function AssistantPanel({
    * É a mesma armadilha que fazia o teclado ser ignorado: preso à folha, a
    * conta de `--keyboard-height` (que é sobre a tela) não queria dizer nada.
    *
-   * O portal leva a camada pra `.axxa-root`, que não tem transform nenhum —
+   * O portal leva a camada pra `.corvus-root`, que não tem transform nenhum —
    * então `fixed` volta a ser fixo de verdade, e o CSS continua no escopo
-   * `.axxa-root` de sempre.
+   * `.corvus-root` de sempre.
    */
   /**
    * O campo toma o foco ao abrir — e é isso que chama o teclado.
@@ -287,7 +287,7 @@ export function AssistantPanel({
   const ancora = useRef<HTMLSpanElement>(null);
   const [raiz, setRaiz] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setRaiz(ancora.current?.closest<HTMLElement>(".axxa-root") ?? null);
+    setRaiz(ancora.current?.closest<HTMLElement>(".corvus-root") ?? null);
   }, []);
 
   // `raiz` na lista NÃO é enfeite: no primeiro render ela é null, então o
@@ -299,10 +299,10 @@ export function AssistantPanel({
 
   const camada = (dentro: ReactNode) => {
     const layer = (
-      <div className="axxa-assist-layer">
+      <div className="corvus-assist-layer">
         {/* Tocar fora fecha — mas não cancela o que está a caminho (ver o X). */}
         <div
-          className="axxa-scrim"
+          className="corvus-scrim"
           onClick={() => {
             if (run.fase !== "rodando") limparRun(chave);
             onFechar();
@@ -323,19 +323,19 @@ export function AssistantPanel({
 
   if (indisponivel)
     return camada(
-      <div className="axxa-assist">
+      <div className="corvus-assist">
         {cabecalho}
-        <p className="axxa-assist-note">{indisponivel}</p>
+        <p className="corvus-assist-note">{indisponivel}</p>
       </div>
     );
 
   return camada(
-    <div className={perguntando ? "axxa-assist is-grill" : "axxa-assist"}>
+    <div className={perguntando ? "corvus-assist is-grill" : "corvus-assist"}>
       {cabecalho}
 
       {/* A pergunta dela é FALA, não rótulo: sem caixa, no tamanho do texto —
           o que vem abaixo é a resposta. */}
-      {perguntando && <p className="axxa-assist-ask">{run.pergunta}</p>}
+      {perguntando && <p className="corvus-assist-ask">{run.pergunta}</p>}
 
       {/* As pastilhas: a resposta em um toque. Elas mandam NA HORA, sem passar
           pelo campo — parar pra digitar depois de escolher seria cobrar duas
@@ -344,12 +344,12 @@ export function AssistantPanel({
           com o mesmo texto e no mesmo lugar: saída que muda de nome e de
           posição não é saída. */}
       {perguntando && !digitando && (
-        <div className="axxa-assist-opcoes">
+        <div className="corvus-assist-opcoes">
           {run.opcoes.map((o) => (
             <button
               key={o}
               type="button"
-              className="axxa-assist-opcao"
+              className="corvus-assist-opcao"
               disabled={ocupado}
               onClick={() => responder(o, "guiado")}
             >
@@ -358,7 +358,7 @@ export function AssistantPanel({
           ))}
           <button
             type="button"
-            className="axxa-assist-opcao is-escrever"
+            className="corvus-assist-opcao is-escrever"
             disabled={ocupado}
             onClick={() => setDigitando(true)}
           >
@@ -371,10 +371,10 @@ export function AssistantPanel({
       {/* A caixa só aparece quando é ela que responde: na frase do OBJETIVO
           (antes da primeira pergunta) e quando a pessoa pede pra digitar. */}
       {(!perguntando || digitando) && (
-      <div className="axxa-assist-box">
+      <div className="corvus-assist-box">
         <textarea
           ref={campoRef}
-          className="axxa-assist-campo"
+          className="corvus-assist-campo"
           value={texto}
           rows={perguntando ? 2 : 3}
           placeholder={
@@ -384,7 +384,7 @@ export function AssistantPanel({
           disabled={ocupado}
           onChange={(e) => setTexto(e.currentTarget.value)}
         />
-        <div className="axxa-assist-acoes">
+        <div className="corvus-assist-acoes">
           {/* Enquanto escreve, a fileira de ações dá lugar à ESPERA — a mesma
               das conversas: o asterisco que respira, o relógio e o verbo que
               troca. Um botão desligado escrito "Writing…" não diz há quanto
@@ -399,7 +399,7 @@ export function AssistantPanel({
               {!perguntando && !partirDoVazio && (
                 <button
                   type="button"
-                  className="axxa-assist-guiado"
+                  className="corvus-assist-guiado"
                   disabled={!texto.trim()}
                   onClick={() => responder(texto, "guiado")}
                 >
@@ -412,7 +412,7 @@ export function AssistantPanel({
               {digitando && (
                 <button
                   type="button"
-                  className="axxa-assist-guiado"
+                  className="corvus-assist-guiado"
                   onClick={() => {
                     setDigitando(false);
                     setTexto("");
@@ -424,7 +424,7 @@ export function AssistantPanel({
               )}
               <button
                 type="button"
-                className="axxa-assist-cta"
+                className="corvus-assist-cta"
                 disabled={!texto.trim() && !partirDoVazio && !perguntando}
                 onClick={() =>
                   responder(texto, perguntando ? "guiado" : "direto")
@@ -442,14 +442,14 @@ export function AssistantPanel({
       {/* Que dá pra sair só é dito ENQUANTO ela escreve: no resto do tempo
           seria papel de parede. */}
       {ocupado && (
-        <p className="axxa-assist-note">
+        <p className="corvus-assist-note">
           <Icon name="check" size={14} />
           <span>{tr("You can close this — it keeps writing.")}</span>
         </p>
       )}
 
       {run.fase === "erro" && (
-        <p className="axxa-assist-erro" role="status">
+        <p className="corvus-assist-erro" role="status">
           <Icon name="info" size={14} />
           <span>{run.erro}</span>
         </p>
@@ -486,7 +486,7 @@ export function AssistantSpark({
   return (
     <button
       type="button"
-      className={ocupado ? "axxa-assist-spark is-busy" : "axxa-assist-spark"}
+      className={ocupado ? "corvus-assist-spark is-busy" : "corvus-assist-spark"}
       aria-label={rotulo}
       title={rotulo}
       onMouseDown={(e) => e.preventDefault()}
@@ -503,7 +503,7 @@ export function AssistantSpark({
  * O campo com o botão dentro.
  *
  * `position: relative` no invólucro e o botão por cima; o respiro pra ele vem
- * de uma classe no próprio campo (ver `.axxa-has-spark`), senão o texto passa
+ * de uma classe no próprio campo (ver `.corvus-has-spark`), senão o texto passa
  * por baixo do botão exatamente quando fica comprido.
  */
 export function ComAssistente({
@@ -526,7 +526,7 @@ export function ComAssistente({
 }) {
   return (
     <>
-      <span className="axxa-spark-wrap">
+      <span className="corvus-spark-wrap">
         {children}
         {!aberto && (
           <AssistantSpark onClick={onAbrir} ocupado={ocupado} titulo={titulo} />

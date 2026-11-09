@@ -1,7 +1,7 @@
 // src/components/_shared/chatPersistence.ts
 // Persistência de chats no Vault — Módulo 4.1+4.2
 //
-// Cada conversa vira um arquivo .md em `.axxa/chats/chat/[id].md` com:
+// Cada conversa vira um arquivo .md em `.corvus/chats/chat/[id].md` com:
 //   - Frontmatter YAML com metadata (id, title, date, provider, model, effort, tokens)
 //   - Body markdown legível: `## You` / `## Assistant` blocks
 //
@@ -187,7 +187,7 @@ export interface ChatSummary {
   preview: string;
 }
 
-const TAG_LIST = ["axxa-chat"];
+const TAG_LIST = ["corvus-chat"];
 
 /** Cria a pasta (e ancestrais) se não existir. */
 export async function ensureFolder(adapter: DataAdapter, path: string): Promise<void> {
@@ -251,7 +251,7 @@ function b64decode(s: string): string {
 }
 
 function renderFrontmatter(chat: ChatData): string {
-  const tags = TAG_LIST.concat([`axxa-mode-${chat.mode}`])
+  const tags = TAG_LIST.concat([`corvus-mode-${chat.mode}`])
     .map((t) => `  - ${t}`)
     .join("\n");
   // tools_used: resumo legível das ações do agent (RAG indexa frontmatter →
@@ -290,18 +290,18 @@ function renderBody(chat: ChatData): string {
       if (m.timestamp) meta.push(`ts=${m.timestamp}`);
       if (m.reaction) meta.push(`reaction=${m.reaction}`);
       if (m.isError) meta.push("error=true");
-      const metaLine = meta.length > 0 ? `<!-- axxa: ${meta.join(" ")} -->\n` : "";
+      const metaLine = meta.length > 0 ? `<!-- corvus: ${meta.join(" ")} -->\n` : "";
       // Ações do agent — base64 num comentário (precisão pro replay; invisível
       // no preview). O resumo legível vai no frontmatter tools_used.
       const stepsLine =
         m.agentSteps && m.agentSteps.length > 0
-          ? `\n\n<!-- axxa-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
+          ? `\n\n<!-- corvus-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
           : "";
       // Anexos do user — base64 no mesmo comentário (descritores pequenos;
       // a imagem mora num arquivo do vault, ver toStoredAttachments).
       const attsLine =
         m.attachments && m.attachments.length > 0
-          ? `\n\n<!-- axxa-att: ${b64encode(JSON.stringify(m.attachments))} -->`
+          ? `\n\n<!-- corvus-att: ${b64encode(JSON.stringify(m.attachments))} -->`
           : "";
       return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}${attsLine}\n`;
     })
@@ -316,7 +316,7 @@ function parseMessageMeta(content: string): {
   reaction?: "like" | "dislike" | null;
   isError?: boolean;
 } {
-  const match = content.match(/^\s*<!--\s*axxa:\s*([^>]+?)\s*-->\s*\n?/);
+  const match = content.match(/^\s*<!--\s*corvus:\s*([^>]+?)\s*-->\s*\n?/);
   if (!match) return { cleanContent: content };
   const meta = match[1];
   const cleanContent = content.slice(match[0].length);
@@ -413,11 +413,11 @@ function extractAgentSteps(content: string): {
   content: string;
   agentSteps?: AIToolStep[];
 } {
-  // v0.1.228: sem âncora `$` — o marcador `axxa-steps:` é único das nossas
+  // v0.1.228: sem âncora `$` — o marcador `corvus-steps:` é único das nossas
   // escritas, então achá-lo em qualquer posição é seguro e mais robusto a
   // hand-edits (texto após o comentário não impede mais a detecção). Remove
   // só o trecho do comentário, preservando o resto do content.
-  const re = /\n*<!--\s*axxa-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const re = /\n*<!--\s*corvus-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
   const m = content.match(re);
   if (!m || m.index === undefined) return { content };
   try {
@@ -434,7 +434,7 @@ function extractAttachments(content: string): {
   content: string;
   attachments?: MessageAttachmentStored[];
 } {
-  const re = /\n*<!--\s*axxa-att:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const re = /\n*<!--\s*corvus-att:\s*([A-Za-z0-9+/=]+)\s*-->/;
   const m = content.match(re);
   if (!m || m.index === undefined) return { content };
   try {
