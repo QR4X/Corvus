@@ -1,18 +1,8 @@
-// src/providers/elevenlabs.ts
-// ElevenLabs — TTS, e o único caminho pra VOZ PRÓPRIA: quem clona a própria voz
-// lá (no site/app deles) vê ela aparecer aqui na lista, como qualquer outra.
-// A OpenAI não expõe voz custom pela API; é por isso que este arquivo existe.
-//
-// Não é um `Provider` do motor de propósito: aquele contrato é de CHAT
-// (stream, tools, modelos). Aqui são duas chamadas — listar vozes e falar —
-// e ambas por `requestUrl`, que fura o CORS do WebView mobile.
-
 import { requestUrl } from "obsidian";
 import { ProviderError } from "./base";
 
 const API = "https://api.elevenlabs.io/v1";
 
-/** Modelos deles, do mais caprichado ao mais rápido. */
 export const ELEVEN_MODELS: { id: string; label: string }[] = [
   { id: "eleven_multilingual_v2", label: "Multilingual v2 — best quality" },
   { id: "eleven_turbo_v2_5", label: "Turbo v2.5 — faster, cheaper" },
@@ -22,7 +12,7 @@ export const ELEVEN_MODELS: { id: string; label: string }[] = [
 export interface ElevenVoice {
   id: string;
   name: string;
-  /** "cloned" / "professional" = voz do próprio usuário. */
+
   category?: string;
 }
 
@@ -36,7 +26,6 @@ function fail(status: number, fallback: string): never {
   throw new ProviderError(fallback, "unknown");
 }
 
-/** Vozes da conta — inclui as clonadas, que é o ponto. */
 export async function elevenVoices(apiKey: string): Promise<ElevenVoice[]> {
   if (!apiKey?.trim()) {
     throw new ProviderError("ElevenLabs key not configured.", "no-key");
@@ -66,7 +55,6 @@ export async function elevenVoices(apiKey: string): Promise<ElevenVoice[]> {
     }));
 }
 
-/** Fala o texto com a voz escolhida. Devolve mp3 cru. */
 export async function elevenSpeak(opts: {
   apiKey: string;
   voiceId: string;

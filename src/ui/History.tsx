@@ -1,15 +1,3 @@
-// src/ui/History.tsx
-// O HISTÓRICO inteiro — todas as conversas, de todos os modos, com as mesmas
-// abas da home e busca.
-//
-// Ele existe porque a home passou a mostrar só as ÚLTIMAS quatro. Quatro é o
-// que responde "onde eu estava"; a vigésima terceira conversa não responde
-// pergunta nenhuma ali — mas responde aqui, onde se PROCURA, e por isso esta
-// tela tem campo de busca e a home não.
-//
-// A aba escolhida vem junto da home: quem filtrou por Agent e pediu pra ver
-// tudo quer todo o Agent, não tudo de novo.
-
 import { useMemo, useState } from "react";
 import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
@@ -52,16 +40,12 @@ export function History({
   const esperandoId = useChatStore((s) => s.waitingChatId);
 
   const abas = moduleSegments(chats);
-  // A aba pode chegar na sentinela (ninguém escolheu nada ainda) ou num modo
-  // que ficou sem conversa. Cai no mesmo critério da home: o modo de quem se
-  // mexeu por último — e, se nem isso, na primeira aba que existir.
+
   const atual = abas.some((s) => s.id === aba)
     ? aba
     : (abas.find((x) => x.id === defaultSegment(chats, plugin.settings.defaultMode))
         ?.id ?? abas[0]?.id ?? SEGMENT_ALL);
 
-  // Aba primeiro, busca depois: a busca procura DENTRO do que está sendo
-  // mostrado, senão a aba viraria mentira na tela.
   const doSeg = useMemo(() => filterSegment(chats, atual), [chats, atual]);
   const busca = useMemo(() => searchChats(doSeg, query), [doSeg, query]);
   const visiveis = busca.hits;
@@ -77,17 +61,13 @@ export function History({
         >
           <Icon name="arrow-left" />
         </button>
-        {/* O nome da tela ao lado da seta, como o nome do app na home: quem
-            leva de volta e o que se está vendo moram na mesma barra. Como
-            título dentro da página ele ocupava uma linha inteira pra dizer
-            uma palavra. */}
+        {}
         <span className="corvus-brand corvus-topbar-brand">{tr("History")}</span>
       </header>
 
       <div className="corvus-messages corvus-home">
 
-        {/* Com um módulo só em uso, o trilho teria uma aba: um controle que
-            não controla nada. */}
+        {}
         {abas.length > 1 && (
           <Segmented
             options={abas.map((s) => ({
@@ -105,8 +85,7 @@ export function History({
           />
         )}
 
-        {/* A pílula aqui é GATILHO: quem toca vai pra folha de busca, onde o
-            teclado não cobre o resultado (ver SearchSheet.tsx). */}
+        {}
         <SearchField
           value={query}
           placeholder={tr("Search")}
@@ -137,8 +116,7 @@ export function History({
         )}
       </div>
 
-      {/* Regex, como nas outras buscas do app — e sem anunciar isso: termo
-          comum também é regex válida (ver modules.searchChats). */}
+      {}
       <SearchSheet
         open={buscando}
         title={tr("Search chats")}
@@ -155,8 +133,7 @@ export function History({
             session={session}
             chats={visiveis}
             onOpen={(c) => {
-              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
-              // folha ainda aberta por cima seria um fantasma.
+
               setBuscando(false);
               onOpenChat(c);
             }}

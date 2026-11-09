@@ -1,42 +1,41 @@
 # Scripts
 
-Geradores e utilitários. Os arquivos `*.generated.ts` são **auto-gerados** —
-não editar à mão; rode o script.
+Generators and developer utilities. Files matching `*.generated.ts` are
+auto-generated — do not edit them by hand; run the corresponding script instead.
 
-| Script | Gera | Quando rodar |
+| Script | Generates | When to run |
 |---|---|---|
-| `genLogos.mjs` | `src/components/_shared/brandLogos.ts` | ao adicionar/trocar SVG em `assets/svg/` |
-| `collect-hot.mjs` | `src/providers/hotData.generated.ts` | **semanal** (popularidade dos modelos) |
-| `deploy.mjs` | copia o build pro vault de teste | manual, no dev |
-| `lote.mjs` | nada — conta as modificações desde a última beta e a última estável | depois de cada `fix`/`feat`/`perf` (`npm run lote`): 3 → beta, 10 → release |
+| `genLogos.mjs` | `src/ui/brandLogos.ts` | when adding or replacing SVGs in `assets/svg/` |
+| `collect-hot.mjs` | `src/providers/hotData.generated.ts` | weekly (model popularity) |
+| `deploy.mjs` | copies the build output into a test vault | manually during development |
+| `batch.mjs` | counts modifications since the last beta and stable release | after each `fix`/`feat`/`perf` (`npm run batch`): 3 → beta, 10 → release |
 
-## Coleta de popularidade ("hot") — automação semanal
+## Model popularity collection ("hot") — weekly automation
 
-`collect-hot.mjs` busca **dado real** de popularidade e regenera a tabela que
-alimenta o rating 🔥 dos modelos (`src/providers/dataCollect.ts`).
+`collect-hot.mjs` fetches real popularity data and regenerates the table that
+drives the model popularity score (`src/providers/dataCollect.ts`).
 
-**Fontes:**
-- **Open models** → HuggingFace Hub API (`downloads` por org). Público, estável,
-  sem key. É dado real de adoção.
-- **Closed models** (gpt/claude/gemini/…) → baseline curado dentro do próprio
-  script (`CLOSED`), porque não existe API pública de uso pra eles. Editar a
-  lista `CLOSED` quando a linha de frente mudar.
+**Sources:**
+- **Open models** → HuggingFace Hub API (`downloads` per organization). Public,
+  stable, no API key required.
+- **Closed models** (`gpt`/`claude`/`gemini`/…) → curated baseline inside the
+  script (`CLOSED`), since no public usage API exists for them. Update `CLOSED`
+  when flagship models change.
 
-**Design pra automação:** o script é **idempotente** — mesmo dado de entrada
-gera um arquivo **idêntico** (sem timestamp; o histórico do git é o registro).
-Logo, se a popularidade não mudou, não há diff e não há commit.
+**Automation design:** the script is idempotent — identical input produces an
+identical output file (no timestamp; git history is the record). If popularity
+has not changed, there is no diff and no commit.
 
-### Contrato pro agente (rodar toda quinta)
+### Weekly run command
 
 ```bash
 node scripts/collect-hot.mjs
-# commita SÓ se o dado mudou:
 git diff --quiet src/providers/hotData.generated.ts \
   || git commit -am "chore(data): weekly hot ranking update"
 ```
 
-Pode ser ligado num GitHub Action (`schedule: cron "0 9 * * 4"` = quinta 09:00
-UTC) ou no agente externo do dev. O `npm run collect:hot` é um atalho.
+This runs via GitHub Actions (`schedule: cron "0 9 * * 4"` = Thursday 09:00 UTC)
+or via `npm run collect:hot`.
 
-> Ao adicionar uma família de modelo nova, registre o padrão em `HF_FAMILIES`
-> (se for open, com o `org` do HuggingFace) ou em `CLOSED` (se for fechado).
+> When adding a new model family, register its pattern in `HF_FAMILIES`
+> (for open models, with its HuggingFace `org`) or in `CLOSED` (for closed models).

@@ -1,8 +1,3 @@
-// tests/notePicker.test.ts
-// Achar a nota certa num vault grande. O ranking é a diferença entre "anexar
-// FRAMEWORKS.md" e "rolar uma lista de 400 arquivos" — e o parser do `[[`
-// decide quando a lista abre e quando ela some.
-
 import { describe, it, expect } from "vitest";
 import { rankNotes, wikilinkQuery, type NoteLike } from "../src/ui/notePicker";
 

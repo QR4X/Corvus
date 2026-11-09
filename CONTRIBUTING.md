@@ -5,7 +5,7 @@ and focused pull requests are welcome.
 
 ## Reporting a bug
 
-Open an [issue](https://github.com/QR4X/M.I.L.A/issues) with:
+Open an [issue](https://github.com/QR4X/Corvus/issues) with:
 
 - your Obsidian version, platform (desktop / iOS / Android) and the plugin version;
 - the provider and model you were using, if the bug involves a conversation;
@@ -17,10 +17,10 @@ your `data.json`. Keys live in your OS keychain and are not needed to reproduce 
 ## Setting up
 
 ```bash
-npm install --legacy-peer-deps   # obsidian × codemirror have a peer-dependency conflict
-npm run build                    # typecheck + production bundle into output/
-npm test                         # vitest
-npm run lint                     # the same eslint-plugin-obsidianmd the community review runs
+npm install --legacy-peer-deps
+npm run build
+npm test
+npm run lint
 ```
 
 `npm run preview` serves the UI against Obsidian's **real** `app.css`, extracted from
@@ -52,9 +52,7 @@ inside the app.
   `src/providers/_shared.ts`, because streaming needs it (NVIDIA NIM streams through
   Node's `https` on desktop instead). Prefer adding to those
   layers over new network calls from UI code.
-- **UI text is English.** There is an i18n layer in `src/i18n/` (with a pt-BR locale),
-  but most UI strings are still written inline — moving them there is welcome. Code
-  comments are in Portuguese; that is fine to keep.
+- **UI text and code are 100% English.** Route user-facing strings through `src/i18n/`. Do not add code comments.
 - Keep the bundle small. `npm run build` prints `main.js` and `styles.css` sizes against
   their budgets; a PR that grows them should say why.
 
@@ -65,14 +63,14 @@ inside the app.
 - Add or update tests when you change behaviour.
 - Releases are cut by the maintainer: the version is bumped in `manifest.json`,
   `package.json` and `versions.json`, the tag is pushed first, and `main` only after the
-  GitHub Release exists (see the header of `.github/workflows/release.yml`).
+  GitHub Release exists (see `.github/workflows/release.yml`).
 - Test builds don't bump anything: a tag with a hyphen (e.g. `0.9.20-beta.1`, higher than
   the current stable) publishes a GitHub **pre-release** whose bundled `manifest.json`
   carries that version. Testers get it through [BRAT](https://github.com/TfTHacker/obsidian42-brat);
   the Obsidian directory keeps serving the stable version from `main`'s `manifest.json`.
   Changes accumulate on `main` and ship together in the next stable release.
 - Cadence: every **3** modifications get a test build, and **10** since the last stable
-  get a release. A modification is a `fix`, `feat` or `perf` commit; `npm run lote` counts
+  get a release. A modification is a `fix`, `feat` or `perf` commit; `npm run batch` counts
   them and prints the next tag. Test builds need the tests and the build (the tag's
   workflow runs both); the full lint pass — `npm run lint`, the `strict` type-check mirror
   and the CSS stylelint — runs before a release.

@@ -1,20 +1,13 @@
-// tests/obsidian-stub.ts
-// Stub mínimo da API do Obsidian pros testes (aliasado via vitest.config.ts).
-// Só precisa cobrir o que os módulos sob teste tocam no carregamento/execução.
-// Expanda conforme novos testes exercitarem mais da API.
-
 export function normalizePath(path: string): string {
-  // Versão simplificada: colapsa barras e tira a inicial/ final, como o real.
+
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
 
 export function parseYaml(_input: string): unknown {
-  // Os testes que dependem de YAML real devem injetar o próprio parser ou
-  // testar a camada acima. Aqui devolvemos objeto vazio só pra não quebrar.
+
   return {};
 }
 
-/** Todo aviso mostrado, em ordem — o teste zera e confere (`__avisos.length = 0`). */
 export const __avisos: string[] = [];
 export class Notice {
   constructor(public message?: string) {
@@ -24,10 +17,6 @@ export class Notice {
   hide() {}
 }
 
-// requestUrl: por padrão falha (nenhum teste deve bater na rede de verdade).
-// Testes que exercitam providers via requestUrl (NIM) injetam uma impl com
-// __setRequestUrl — como o provider importa ESTA função e ela lê __impl em
-// tempo de chamada, o override funciona sem precisar de vi.mock + alias.
 let __requestUrlImpl: ((opts: unknown) => Promise<unknown>) | null = null;
 export function __setRequestUrl(
   fn: ((opts: unknown) => Promise<unknown>) | null
@@ -39,13 +28,11 @@ export async function requestUrl(opts: unknown): Promise<unknown> {
   throw new Error("requestUrl não mockado — use __setRequestUrl no teste.");
 }
 
-// Classes/funcs comuns como no-ops, pra imports não quebrarem o load.
 export class Plugin {}
 export class PluginSettingTab {}
 export class ItemView {}
 export class Modal {}
-// A lista de escolha do Obsidian (o "Translate selection…" usa): o mínimo pra
-// construir e consultar as sugestões num teste.
+
 export class SuggestModal<T> {
   modalEl = {
     classes: new Set<string>(),
@@ -72,14 +59,13 @@ export class TFolder {}
 export class Component {}
 export const MarkdownRenderer = { render: async () => {} };
 export function setIcon(): void {}
-// O idioma do Obsidian (o "auto" da interface segue ele).
+
 export function getLanguage(): string {
   return "en";
 }
-// Mutável nos testes: por padrão "desktop"; vire isMobile=true pra testar o
-// caminho mobile (ex: arquivo de índice separado).
+
 export const Platform = { isMobile: false };
-// O caminho de um link sem o "#seção" / "#^bloco", como o real.
+
 export function getLinkpath(linktext: string): string {
   return linktext.replace(/#.*$/, "");
 }

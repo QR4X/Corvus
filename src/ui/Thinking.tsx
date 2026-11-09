@@ -1,21 +1,8 @@
-// src/ui/Thinking.tsx
-// A linha de "pensando" enquanto a rodada acontece.
-//
-// Três coisas, na linguagem da referência:
-//   - um asterisco em ACENTO que respira: cresce, encolhe e volta com OUTRA
-//     forma (três desenhos que se revezam girando)
-//   - o tempo decorrido, que é o que responde "travou?" sem precisar perguntar
-//   - o status real: a chamada da ferramenta em execução ou a espera pela resposta
-//
-// O texto some no primeiro pedaço da resposta: a partir daí quem mostra que
-// tem coisa acontecendo é o próprio texto aparecendo.
-
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import type { ActivityMeta } from "../store/chat";
 import { tr } from "../i18n/tr";
 
-/** "7s", "59s", "1m 12s" — curto o bastante pra caber antes do verbo. */
 export function elapsedLabel(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   if (s < 60) return `${s}s`;
@@ -34,13 +21,6 @@ export function thinkingStatus(activity?: ActivityMeta): string {
   return "Waiting for model response";
 }
 
-/**
- * O asterisco que respira. Três formas empilhadas, cada uma com a sua vez.
- *
- * Exportado porque a espera é a MESMA em toda parte: o chat esperando o modelo
- * e a assistente escrevendo um skill são a mesma coisa acontecendo, e duas
- * animações diferentes pra isso ensinariam que são coisas diferentes.
- */
 export function ThinkingGlyph() {
   return (
     <span className="corvus-thinking-glyph" aria-hidden="true">
@@ -80,11 +60,11 @@ export function ThinkingGlyph() {
 }
 
 export function ThinkingLine({
-  /** Quantas ações já aconteceram nesta rodada (0 = nada pra abrir). */
+
   count,
-  /** Quando a rodada começou (ms). */
+
   since,
-  /** A operação real que está em andamento, se houver. */
+
   activity,
   onOpen,
 }: {
@@ -122,13 +102,6 @@ export function ThinkingLine({
   );
 }
 
-/**
- * A mesma espera, sem o botão em volta.
- *
- * O `Thinking` de cima é um BOTÃO: ele abre a folha dos passos do agente. Onde
- * não há passos pra abrir — a assistente escrevendo um skill — sobra o que
- *  importa: o glifo, o relógio e um status honesto.
- */
 export function ThinkingInline({ since }: { since: number }) {
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {

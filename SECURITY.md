@@ -6,7 +6,7 @@ Only the latest stable release, the one the Obsidian community directory serves,
 
 ## Reporting a vulnerability
 
-Please report privately through GitHub: **Security → Report a vulnerability** on this repository ([direct link](https://github.com/QR4X/M.I.L.A/security/advisories/new)). Don't open a public issue for a security problem.
+Please report privately through GitHub: **Security → Report a vulnerability** on this repository ([direct link](https://github.com/QR4X/Corvus/security/advisories/new)). Don't open a public issue for a security problem.
 
 In scope:
 

@@ -1,8 +1,3 @@
-// tests/follow.test.ts
-// A regra do "acompanhar o fim". É decisão de um número só, e é ela que
-// decide entre "a tela me arrancou de onde eu estava lendo" e "a resposta
-// ficou pronta e ninguém me avisou".
-
 import { describe, it, expect } from "vitest";
 import {
   FOLLOW_SLACK,
@@ -55,7 +50,7 @@ describe("shouldFollow", () => {
   });
 
   it("depois da NOSSA rolagem continua seguindo (é isso que evita o falso solto)", () => {
-    const depois = el(2000 - 600); // scrollTop = scrollHeight - clientHeight
+    const depois = el(2000 - 600); 
     expect(shouldFollow(depois)).toBe(true);
   });
 });
@@ -79,21 +74,19 @@ describe("shouldShowJump", () => {
   });
 });
 
-// A conta que decide de verdade: o texto novo já empurrou o fim, então a
-// pergunta tem que ser sobre a altura ANTERIOR.
 describe("wasAtBottom", () => {
   const ALTURA = 2000;
   const VISIVEL = 600;
-  const NO_FIM = ALTURA - VISIVEL; // 1400
+  const NO_FIM = ALTURA - VISIVEL; 
 
   it("estava colado: segue", () => {
     expect(wasAtBottom(ALTURA, NO_FIM, VISIVEL)).toBe(true);
   });
 
   it("estava colado e chegaram 400px de texto: CONTINUA seguindo", () => {
-    // a altura cresceu, mas a pergunta é sobre a anterior
+
     expect(wasAtBottom(ALTURA, NO_FIM, VISIVEL)).toBe(true);
-    // e a conta ingênua (altura nova) diria que não
+
     expect(shouldFollow({ scrollTop: NO_FIM, scrollHeight: 2400, clientHeight: VISIVEL })).toBe(false);
   });
 
@@ -107,7 +100,7 @@ describe("wasAtBottom", () => {
   });
 
   it("primeira medida (altura anterior 0) não trava a tela", () => {
-    // com 0 a distância é negativa → clamp em 0 → conta como fim
+
     expect(wasAtBottom(0, 0, VISIVEL)).toBe(true);
   });
 
@@ -116,10 +109,6 @@ describe("wasAtBottom", () => {
   });
 });
 
-// O caso que quebrou no aparelho: com o dedo na tela, arrastos CURTOS (menores
-// que a folga) precisam acumular. Antes, cada pedaço de texto que chegava
-// colava a tela no fim de novo e o deslocamento voltava a zero — dava a
-// sensação de conversa grudada, impossível de subir.
 describe("decideScroll — o dedo manda", () => {
   const CH = 600;
 
@@ -136,25 +125,25 @@ describe("decideScroll — o dedo manda", () => {
   });
 
   it("arrasto curto durante o gesto solta assim que passa a folga", () => {
-    // altura atual 2400, visível 600 → fim em 1800
+
     const perto = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1760, clientHeight: CH });
     const longe = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1700, clientHeight: CH });
     expect(perto.seguindo).toBe(true);
     expect(longe.seguindo).toBe(false);
-    // e em NENHUM dos dois a tela desce sozinha
+
     expect(perto.pin).toBe(false);
     expect(longe.pin).toBe(false);
   });
 
   it("oito passos de 35px acumulam em vez de voltar pro fim", () => {
-    let scrollTop = 1400; // no fim, com altura 2000
+    let scrollTop = 1400; 
     let alturaAnterior = 2000;
     let alturaAtual = 2000;
     for (let i = 0; i < 8; i++) {
       scrollTop -= 35;
-      alturaAtual += 60; // texto novo chegando no meio do arrasto
+      alturaAtual += 60; 
       const { pin } = decideScroll({ gesto: true, alturaAnterior, alturaAtual, scrollTop, clientHeight: CH });
-      // a única coisa que importa: NUNCA desce durante o gesto
+
       expect(pin).toBe(false);
       alturaAnterior = alturaAtual;
     }

@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { arrayBufferToDataUrl } from "../src/rag/embeddings";
 
-// A imagem vai pro provider de embedding como data URL. A conversão monta a
-// string binária em pedaços de 32K (string gigante estoura a pilha); estes
-// testes prendem o resultado ao base64 de referência do Node, com os 256
-// valores de byte e mais de um pedaço — foi trocado o jeito de chamar o
-// fromCharCode na 0.9.15 (apply → spread) e o resultado não pode mudar.
-
 function bytes(n: number): Uint8Array {
   const b = new Uint8Array(n);
   for (let i = 0; i < n; i++) b[i] = (i * 31 + 7) & 255;

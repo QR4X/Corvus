@@ -1,39 +1,17 @@
-// src/usage/freeTag.ts
-// A etiqueta "free" de um modelo — o que a lista de modelos mostra ao lado do
-// nome, e o que ela SIGNIFICA em cada caso.
-//
-// Havia um só rótulo pra duas coisas muito diferentes:
-//
-//   - de graça SEMPRE (um `:free` do OpenRouter, um modelo local do Ollama):
-//     não existe fatura, ponto;
-//   - de graça ATÉ UM LIMITE, e só se você tiver ligado o data-sharing no
-//     painel da OpenAI (Data controls): passou da cota do dia, é cobrado
-//     normal.
-//
-// Chamar as duas de "free" faz a segunda parecer a primeira — e a conta chega.
-// Aqui elas viram etiquetas diferentes, e a da OpenAI carrega o NÚMERO, que é
-// a única parte que interessa: 250k/dia não é o mesmo que 2,5M/dia.
-//
-// A cota depende do tier da conta (1–2 vs 3–5), então a etiqueta é montada com
-// as settings da pessoa, e não com uma tabela fixa.
-
 import { openaiFreeAllowance, openaiFreeTierForModel } from "./freeTokens";
-import { localeDaInterface, tr } from "../i18n/tr";
+import { uiLocale, tr } from "../i18n/tr";
 
 export interface FreeTag {
-  /** `always` = sem fatura. `daily` = cota diária já valendo. `offer` = de graça
-   *  sob uma condição da conta que a gente não enxerga (OpenAI: data-sharing
-   *  desligado; Gemini: projeto sem cobrança) — uma oferta, não um fato. */
+
   kind: "always" | "daily" | "offer";
-  /** Tokens/dia da cota (só em `daily` e `offer`). */
+
   perDay?: number;
-  /** O que aparece na etiqueta. */
+
   label: string;
-  /** A frase inteira, pro title/tooltip. */
+
   detail: string;
 }
 
-/** 250000 → "250k"; 2500000 → "2.5M". O número é o recado; o resto é ruído. */
 export function compactTokens(n: number): string {
   if (n >= 1_000_000) {
     const m = n / 1_000_000;
@@ -43,23 +21,12 @@ export function compactTokens(n: number): string {
   return String(n);
 }
 
-/**
- * O modelo é grátis DE VERDADE?
- *
- * Quando o fetch trouxe a lista do provider — pelo preço zero no OpenRouter,
- * pela marca "Free Endpoint" do catálogo da NVIDIA no NIM —, ela é a verdade,
- * e o nome não conta: o OpenRouter tem grátis sem `:free` no id, e no NIM
- * 61 dos 81 modelos da API NÃO são do tier grátis, embora nada no id diga.
- * Sem lista (ninguém buscou ainda), vale o palpite do motor. O "_" do
- * catálogo da NVIDIA é o "." da API — os dois lados são comparados assim.
- */
 export function gratisDeVerdade(
   model: string,
   livres: readonly string[] | undefined,
   palpite: boolean
 ): boolean {
-  // A variante ":free" do OpenRouter é a grátis declarada — inclusive a dos
-  // embeddings, que não vêm na lista do catálogo de chat.
+
   if (/:free$/i.test(model)) return true;
   if (!livres || livres.length === 0) return palpite;
   const igual = (s: string) => s.toLowerCase().replace(/_/g, ".");
@@ -67,21 +34,10 @@ export function gratisDeVerdade(
   return livres.some((l) => igual(l) === alvo);
 }
 
-/** 1000 → "1,000": o número da cota é o recado, e lido de relance. */
 function milhar(n: number): string {
-  return n.toLocaleString(localeDaInterface());
+  return n.toLocaleString(uiLocale());
 }
 
-/**
- * O modelo do Gemini tem tier GRÁTIS? (ai.google.dev › Pricing, out/2026)
- *
- * O tier grátis é de quem usa um projeto SEM cobrança ativada — e aí o Google
- * pode usar o que você manda pra melhorar os produtos dele. Mesmo assim, nem
- * todo modelo entra: os que geram imagem (o Nano Banana incluído), o 3.1 Pro
- * preview, Omni, Veo e Lyria são só pagos. Têm tier grátis os Flash (2.5 e
- * 3.x, Lite, Live e TTS), o 2.5 Pro, os embeddings, o Gemma. Modelo que não
- * casa com nada conhecido: não diz que é grátis.
- */
 export function geminiTemTierGratis(model: string): boolean {
   const id = (model || "").toLowerCase().replace(/^(models|google)\//, "");
   if (/(image|imagen|veo|lyria|omni)/.test(id)) return false;
@@ -98,20 +54,19 @@ export function freeTag(
   provider: string,
   model: string,
   opts: {
-    /** O modelo é grátis de verdade (ver gratisDeVerdade). */
+
     free: boolean;
-    /** Data-sharing ligado no painel da OpenAI. */
+
     dataSharing: boolean;
-    /** Usage tier da conta OpenAI (1–5). */
+
     tier: number;
-    /** A cota diária dos grátis na chave (OpenRouter), quando o fetch soube. */
+
     cota?: { limit: number; remaining?: number };
   }
 ): FreeTag | null {
   const pool = provider === "openai" ? openaiFreeTierForModel(model) : null;
   if (pool) {
-    // O tier decide a cota; sem data-sharing a conta é a do tier mesmo assim,
-    // porque o que a etiqueta diz então é "é isto que você GANHARIA".
+
     const allow = openaiFreeAllowance(Math.max(opts.tier, 1), true);
     const perDay = pool === "mini" ? allow.miniPerDay : allow.bigPerDay;
     const qtd = compactTokens(perDay);
@@ -126,9 +81,7 @@ export function freeTag(
         ),
       };
     }
-    // O "+" é o que separa a oferta do fato: ele lê como "isto você GANHARIA".
-    // Sem ele, a etiqueta de quem não ligou o programa fica igual à de quem
-    // ligou — e a fatura desmente a tela no fim do mês.
+
     return {
       kind: "offer",
       perDay,
@@ -140,7 +93,6 @@ export function freeTag(
     };
   }
 
-  // O Gemini decide pelo modelo e pela conta — não pelo "free" do motor.
   if (provider === "gemini") {
     if (!geminiTemTierGratis(model)) return null;
     return {
@@ -152,8 +104,7 @@ export function freeTag(
     };
   }
   if (!opts.free) return null;
-  // Grátis, mas cada casa com a sua regra — e a regra é o que deixa claro o
-  // que "free" quer dizer ali.
+
   if (provider === "openrouter") {
     const c = opts.cota;
     const frase = c

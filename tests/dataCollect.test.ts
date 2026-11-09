@@ -5,9 +5,7 @@ import {
   hotLabel,
 } from "../src/providers/dataCollect";
 
-// "Hot" = popularidade (baseline curado + uso local). Sem telemetria.
-
-afterEach(() => registerLocalUsage({})); // limpa o overlay de uso local
+afterEach(() => registerLocalUsage({})); 
 
 describe("getHotLevel — baseline curado (sem uso local)", () => {
   it("modelos populares ficam quentes (nível ≥ 2)", () => {
@@ -23,13 +21,13 @@ describe("getHotLevel — baseline curado (sem uso local)", () => {
   });
 
   it("nível 3 (em alta) NÃO vem só do baseline — precisa de uso local", () => {
-    // teto do baseline puro fica em nível 2
+
     expect(getHotLevel("openai", "gpt-4o").level).toBe(2);
   });
 });
 
 describe("getHotLevel — overlay de uso local", () => {
-  it("uso local pesado empurra pro nível 3 + marca usedLocally", () => {
+  it("uso local pesado empurra pro nível 3 + mark usedLocally", () => {
     registerLocalUsage({ "gpt-4o": 50, "claude-3-haiku": 2 });
     const h = getHotLevel("openai", "gpt-4o");
     expect(h.level).toBe(3);
@@ -45,7 +43,7 @@ describe("getHotLevel — overlay de uso local", () => {
 
   it("normaliza pelo máximo (o mais usado = 1.0)", () => {
     registerLocalUsage({ "modelo-a": 100, "modelo-b": 1 });
-    // 'a' (top) deve esquentar mais que 'b'
+
     const a = getHotLevel("openai", "modelo-a").score;
     const b = getHotLevel("openai", "modelo-b").score;
     expect(a).toBeGreaterThan(b);

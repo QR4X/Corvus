@@ -1,31 +1,17 @@
-// src/editor/inline.ts
-// As ações NO TEXTO: reescrever, corrigir, traduzir a seleção e continuar
-// escrevendo do cursor. O resultado entra direto na nota, numa transação só
-// do editor — Ctrl/Cmd+Z desfaz como qualquer outra edição. Sem conversa no
-// meio: quem seleciona um parágrafo e pede "corrige" quer o parágrafo
-// corrigido, não um chat sobre ele.
-//
-// O modelo é o padrão de quem usa (o provider padrão e o modelo salvo pra
-// ele). A conta entra no livro do dia como qualquer pedido (o getProvider
-// anota), então o Usage e o teto de gasto enxergam essas chamadas também.
-
 import { Notice, SuggestModal, type App, type Editor, type EditorPosition } from "obsidian";
 import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import type { ProviderMessage } from "../providers/base";
-import { modeloSalvoPara } from "../core/modeloPadrao";
-import { marca, tr } from "../i18n/tr";
+import { modeloSalvoPara } from "../core/defaultModel";
+import { mark, tr } from "../i18n/tr";
 
 export type AcaoNoTexto = "rewrite" | "fix" | "translate" | "continue";
 
-/** Quanto do texto ANTES do cursor vai como contexto do "continue". */
 const CONTEXTO_CONTINUAR = 6000;
 
 const SO_O_TEXTO =
   "Reply with ONLY the resulting text: no preface, no explanation, no quotes around it, no code fences.";
 
-/** As instruções de cada ação. Em inglês (o modelo lê melhor), mas pedindo
- *  pra manter o IDIOMA do texto — exceto, claro, na tradução. */
 export function mensagensDaAcao(
   acao: AcaoNoTexto,
   texto: string,
@@ -49,8 +35,6 @@ export function mensagensDaAcao(
   ];
 }
 
-/** Tira o que o modelo às vezes põe em volta mesmo pedindo pra não pôr: a
- *  cerca de código e as aspas que embrulham a resposta inteira. */
 export function limparResposta(bruta: string): string {
   let s = bruta.replace(/\r\n/g, "\n").trim();
   const cerca = /^```[\w-]*\n([\s\S]*?)\n```$/.exec(s);
@@ -60,25 +44,18 @@ export function limparResposta(bruta: string): string {
   return s;
 }
 
-/** Como juntar a continuação ao que já está escrito: espaço quando a frase
- *  continua na mesma linha, nada quando um dos lados já tem branco. */
 export function emendar(antes: string, continuacao: string): string {
   if (!antes || /\s$/.test(antes) || /^\s/.test(continuacao)) return continuacao;
   return ` ${continuacao}`;
 }
 
 const ROTULO: Record<AcaoNoTexto, string> = {
-  rewrite: marca("Rewriting with {model}…"),
-  fix: marca("Fixing with {model}…"),
-  translate: marca("Translating with {model}…"),
-  continue: marca("Writing with {model}…"),
+  rewrite: mark("Rewriting with {model}…"),
+  fix: mark("Fixing with {model}…"),
+  translate: mark("Translating with {model}…"),
+  continue: mark("Writing with {model}…"),
 };
 
-/**
- * Roda uma ação no editor. A seleção (ou o cursor, no "continue") é lida
- * ANTES da chamada; se a pessoa mexeu naquele trecho enquanto o modelo
- * escrevia, o resultado não atropela nada: vai pra área de transferência.
- */
 export async function acaoNoTexto(
   plugin: CorvusPlugin,
   editor: Editor,
@@ -132,7 +109,7 @@ export async function acaoNoTexto(
     if (!resultado) throw new Error(tr("the model returned nothing"));
 
     if (acao === "continue") {
-      // O cursor ainda está onde estava? (a pessoa pode ter seguido digitando)
+
       const antesAgora = editor.getRange({ line: 0, ch: 0 }, de);
       if (!antesAgora.endsWith(entrada.slice(-200))) {
         await copiar(resultado);
@@ -146,7 +123,7 @@ export async function acaoNoTexto(
       return;
     }
     editor.replaceRange(resultado, de, ate);
-    // A seleção passa a ser o texto novo: dá pra aplicar outra ação em cima.
+
     const fim = editor.offsetToPos(editor.posToOffset(de) + resultado.length);
     editor.setSelection(de, fim);
   } catch (err) {
@@ -165,27 +142,23 @@ async function copiar(texto: string): Promise<void> {
   }
 }
 
-/** Os idiomas do "Translate selection…": os mais pedidos primeiro, e
- *  qualquer outro digitado vale (o modelo entende o nome). */
 export const IDIOMAS = [
-  marca("English"),
-  marca("Portuguese (Brazil)"),
-  marca("Spanish"),
-  marca("French"),
-  marca("German"),
-  marca("Italian"),
-  marca("Japanese"),
-  marca("Chinese (Simplified)"),
-  marca("Korean"),
-  marca("Russian"),
-  marca("Arabic"),
-  marca("Hindi"),
-  marca("Dutch"),
-  marca("Portuguese (Portugal)"),
+  mark("English"),
+  mark("Portuguese (Brazil)"),
+  mark("Spanish"),
+  mark("French"),
+  mark("German"),
+  mark("Italian"),
+  mark("Japanese"),
+  mark("Chinese (Simplified)"),
+  mark("Korean"),
+  mark("Russian"),
+  mark("Arabic"),
+  mark("Hindi"),
+  mark("Dutch"),
+  mark("Portuguese (Portugal)"),
 ];
 
-/** A escolha do idioma: a lista do Obsidian, com busca — e o que se digitar
- *  e não estiver na lista vira a primeira opção. */
 export class IdiomaModal extends SuggestModal<string> {
   constructor(
     app: App,
@@ -198,15 +171,14 @@ export class IdiomaModal extends SuggestModal<string> {
 
   getSuggestions(busca: string): string[] {
     const q = busca.trim().toLowerCase();
-    // Acha pelo nome que está na tela (o traduzido) e pelo inglês — que é o
-    // que segue pro modelo, seja qual for o idioma da interface.
+
     const nomes = (l: string) => [l.toLowerCase(), tr(l).toLowerCase()];
     const achados = IDIOMAS.filter((l) => nomes(l).some((n) => n.includes(q)));
     return q && !achados.some((l) => nomes(l).includes(q)) ? [busca.trim(), ...achados] : achados;
   }
 
   renderSuggestion(idioma: string, el: HTMLElement): void {
-    // Os da lista aparecem no idioma da interface; o digitado, como veio.
+
     el.setText(IDIOMAS.includes(idioma) ? tr(idioma) : idioma);
   }
 

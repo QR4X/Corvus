@@ -4,16 +4,6 @@ import { PASSOS_SKILL } from "../src/ui/SkillSheet";
 import { PASSOS_PROJETO } from "../src/ui/ProjectSheet";
 import { SKILL_DRAFT_VAZIO } from "../src/skills/skillFile";
 
-// Criar um skill é uma FILA de telas, uma pergunta por vez. Um formulário de
-// sete blocos num celular é uma parede: a pessoa rola, vê tudo vazio de uma vez
-// e fecha.
-//
-// O pé da fila é meia dúzia de ternários, e cada um deles já errou uma vez em
-// algum formulário deste app. Aqui eles são casos.
-
-// A fila REAL: nada de 5 ou 6 escritos à mão aqui. Quando um passo entra ou
-// sai — e já aconteceu, quando "Look" virou Color e Icon —, o que muda é a
-// lista, não vinte números espalhados por este arquivo.
 const TOTAL = PASSOS_SKILL.length;
 const ULTIMO = TOTAL - 1;
 
@@ -22,13 +12,7 @@ const pe = (atual: number, problema: string | null = null, total = TOTAL) =>
 
 describe("os botões da fila", () => {
   it("a seta de cima RECUA um passo, e só sai quando não há passo atrás", () => {
-    // Há um voltar só na tela: a seta da barra. Ela anda pra trás, que é o que
-    // qualquer pessoa espera de uma seta apontando pra esquerda — e no
-    // primeiro passo, onde não há degrau atrás, sair É andar pra trás.
-    //
-    // Isto já foi um `‹ Back` no pé enquanto a seta saía do formulário. Dois
-    // voltares na mesma tela querendo dizer coisas diferentes é como se
-    // chamam armadilhas, e um toque errado custava o que a pessoa digitou.
+
     expect(pe(0).voltar).toBe("sair");
     expect(pe(1).voltar).toBe("passo");
     expect(pe(ULTIMO).voltar).toBe("passo");
@@ -48,23 +32,20 @@ describe("os botões da fila", () => {
   });
 
   it("um índice além do fim não inventa um passo que não existe", () => {
-    // Acontece se a lista de passos encolher com o estado do passo já em pé.
+
     expect(pe(TOTAL + 4).primario).toBe("submit");
   });
 });
 
 describe("a linha de status", () => {
   it("o que FALTA só aparece onde há o que salvar", () => {
-    // "Give it a name." na tela do prompt é um aviso sobre uma pergunta que a
-    // fila ainda não fez — e a pessoa lê como erro do que acabou de escrever.
+
     expect(pe(0, "Give it a name.").status).toBe(null);
     expect(pe(ULTIMO, "Give it a name.").status).toBe("problema");
   });
 
   it("pronto no meio do caminho vira ATALHO de concluir", () => {
-    // O caso de quem pediu ajuda à assistente no primeiro passo e recebeu o
-    // skill inteiro preenchido: o resto é enfeite, e ninguém deve atravessar a
-    // fila inteira pra sair de uma coisa que já está pronta.
+
     expect(pe(0).status).toBe("atalho");
     expect(pe(ULTIMO - 1).status).toBe("atalho");
   });
@@ -74,8 +55,7 @@ describe("a linha de status", () => {
   });
 
   it("problema e atalho nunca aparecem juntos", () => {
-    // São a mesma pergunta ("posso acabar?") com as duas respostas possíveis,
-    // e é por isso que dividem o mesmo lugar.
+
     for (let i = 0; i <= TOTAL; i++)
       for (const prob of [null, "falta algo"]) {
         const s = peDoWizard({ atual: i, total: TOTAL, problema: prob }).status;
@@ -85,8 +65,7 @@ describe("a linha de status", () => {
   });
 
   it("o botão de concluir só se oferece quando dá", () => {
-    // Ele não fica APAGADO: botão apagado não diz o que falta. Ele continua
-    // clicável e explica — `pronto` é só o tom.
+
     expect(pe(ULTIMO, "falta").pronto).toBe(false);
     expect(pe(ULTIMO).pronto).toBe(true);
   });
@@ -94,11 +73,7 @@ describe("a linha de status", () => {
 
 describe("os passos cobrem o skill", () => {
   it("uma pergunta por tela: um passo por campo, nem mais nem menos", () => {
-    // Os dois lados importam. Um campo do rascunho SEM passo é um campo que só
-    // existe ao editar — invisível pra quem cria, e é quem cria que precisa
-    // dele. E um passo com DOIS campos dentro deixa de ser uma pergunta por
-    // tela, que é a regra inteira do wizard: cor e ícone já dividiram um passo
-    // chamado "Look" com o argumento de serem "a mesma decisão", e não eram.
+
     const ids = PASSOS_SKILL.map((p) => p.id as string).sort();
     expect(ids).toEqual([...Object.keys(SKILL_DRAFT_VAZIO)].sort());
   });
@@ -106,9 +81,7 @@ describe("os passos cobrem o skill", () => {
   it("nenhum passo repetido, e o prompt vem primeiro", () => {
     const ids = PASSOS_SKILL.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
-    // O corpo é o skill: sem ele o parser descarta a nota. E é nele que a
-    // assistente devolve a coisa inteira — começar por outro lugar seria
-    // desperdiçar a única resposta que pode encerrar a fila.
+
     expect(ids[0]).toBe("body");
   });
 
@@ -121,9 +94,7 @@ describe("os passos cobrem o skill", () => {
 });
 
 describe("o wizard de PROJETO", () => {
-  // Criar um projeto é a mesma fila de telas que a de skills — e nela a
-  // assistente deixa de trabalhar escondida: notas e instruções ganham um
-  // passo cada, à vista.
+
   it("uma pergunta por tela: nome, notas, instruções, cor e ícone", () => {
     expect(PASSOS_PROJETO.map((p) => p.id)).toEqual([
       "name",
@@ -135,14 +106,12 @@ describe("o wizard de PROJETO", () => {
   });
 
   it("o nome vem primeiro — é nele que o ✨ monta o projeto inteiro", () => {
-    // E é o nome que a assistente usa pra procurar notas e escrever as
-    // instruções nos passos seguintes.
+
     expect(PASSOS_PROJETO[0].id).toBe("name");
   });
 
   it("as notas vêm ANTES das instruções", () => {
-    // As instruções se escrevem melhor olhando pras notas escolhidas: a
-    // assistente recebe as duas.
+
     const ids = PASSOS_PROJETO.map((p) => p.id as string);
     expect(ids.indexOf("notes")).toBeLessThan(ids.indexOf("instructions"));
   });

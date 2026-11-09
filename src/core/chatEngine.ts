@@ -1,9 +1,3 @@
-// src/core/chatEngine.ts
-// Motor de CHAT (stream): [Vault Q&A → busca híbrida no vault] → "Pensando…" →
-// provider.streamChat → trata erro/abort. Sem React: recebe um `EngineCtx` e
-// opera direto no store (src/store/chat.ts). Chamado pela ChatSession
-// (src/core/session.ts). A lógica é a mesma do app antigo (useChatEngine).
-
 import { useChatStore } from "../store/chat";
 import type { getProvider } from "../providers";
 import { semCredencial, describeProviderError } from "./helpers";
@@ -26,12 +20,10 @@ import type CorvusPlugin from "../main";
 import { buscarContextoDoVault } from "./vaultLookup";
 import { loadAgentMd } from "./agentMd";
 
-/** Ref mutável do AbortController do turno em andamento (null = ocioso). */
 export interface AbortRef {
   current: AbortController | null;
 }
 
-/** Tudo que um turno precisa saber da sessão — montado pela ChatSession. */
 export interface EngineCtx {
   plugin: CorvusPlugin;
   t: ReturnType<typeof getTranslations>;
@@ -39,25 +31,16 @@ export interface EngineCtx {
   activeProviderId: string;
   activeProvider: ReturnType<typeof getProvider>;
   activeModel: string;
-  /** "chat" | "vault-qa" | "agent" */
+
   activeMode: string;
-  /** Buscar nas notas antes de responder. Vem do interruptor da conversa (ver
-   *  core/vaultContext.ts), e não do modo: modo é escolha grossa demais pra
-   *  uma coisa que muda de mensagem pra mensagem. */
+
   useVault: boolean;
   apiKeyFor: (providerId: string) => string;
   effort: string;
-  /** Instrução extra de estilo pro system prompt ("" = nenhuma). */
+
   resolveStyleInstruction: () => string;
 }
 
-/**
- * Um turno de chat: lê a história ATUAL do store (não captura via closure),
- * faz a busca no vault quando o modo é vault-qa, streama a resposta e
- * registra erros como mensagens `isError` (efêmeras — não persistem).
- * `userAttachments`: notas/imagens anexadas — notas viram bloco de contexto
- * no system prompt; o resto é filtrado por capability em storeMessagesToProvider.
- */
 export async function streamReply(
   ctx: EngineCtx,
   userText: string,
@@ -87,8 +70,6 @@ export async function streamReply(
     endStreamTimer,
   } = useChatStore.getState();
 
-  // Pre-flight: sem API key (ou sem o endereço do Ollama) não adianta nem
-  // mostrar "Pensando..." — emite direto a bolha de erro acionável.
   const falta = semCredencial(
     activeProviderId,
     apiKeyFor(activeProviderId),
@@ -105,11 +86,8 @@ export async function streamReply(
     return;
   }
 
-  // Config completo do effort atual (com overrides do usuário).
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
-  // Notas como contexto (ver core/vaultLookup.ts). Quem decide é o
-  // interruptor da conversa, não o modo.
   const vaultContextBlock = useVault
     ? await buscarContextoDoVault({
         plugin,
@@ -121,7 +99,6 @@ export async function streamReply(
       })
     : "";
 
-  // "Pensando..." — vira done quando o primeiro token chega.
   const commentId = addMessage({
     type: "ai-comment",
     content: "",
@@ -142,14 +119,13 @@ export async function streamReply(
   let reasoningBuf = "";
 
   try {
-    // Notas anexadas viram bloco no system prompt (o LLM "vê" o conteúdo).
+
     let noteContextBlock = "";
     if (userAttachments) {
       const noteAtts = userAttachments.filter(
         (a): a is NoteAttachment => a.type === "note"
       );
-      // O montador é o MESMO que o cartão de projeto usa pra contar os tokens
-      // de entrada (ver blocoDeNotasAnexadas): o número de lá é o texto daqui.
+
       noteContextBlock = blocoDeNotasAnexadas(noteAtts);
     }
     const agentMdBlock = await loadAgentMd(
@@ -198,7 +174,7 @@ export async function streamReply(
           updateActivity(commentId, { phase: "done" });
           responseId = addMessage({ type: "ai-response", content: token });
           setStreamingMessageId(responseId);
-          // Flush do raciocínio bufferizado antes do 1º token de conteúdo.
+
           if (reasoningBuf) {
             useChatStore.getState().appendReasoning(responseId, reasoningBuf);
             reasoningBuf = "";
@@ -214,8 +190,7 @@ export async function streamReply(
       },
       controller.signal,
       (reasoningDelta) => {
-        // Reasoning costuma vir ANTES do conteúdo (R1). Buffera até a
-        // ai-response existir; depois acumula direto na mensagem.
+
         if (responseId !== null) {
           useChatStore.getState().appendReasoning(responseId, reasoningDelta);
         } else {
@@ -248,10 +223,6 @@ export async function streamReply(
       }
     }
 
-    // Heurística de truncamento: output ≈ teto de tokens → "Continuar". O
-    // teto é o que FOI pro provider: modelo que pensa recebe um piso bem acima
-    // do nível (ver paramPolicy) — comparar com o do nível acusaria corte em
-    // toda resposta dele.
     const tetoEnviado = resolveMaxTokens(
       activeProviderId,
       activeModel,
@@ -276,7 +247,7 @@ export async function streamReply(
           failedText: t.ai.interrupted,
         });
       } else {
-        // Stop com resposta PARCIAL: marca truncated.
+
         useChatStore.getState().setTruncated(responseId, true);
       }
     } else {

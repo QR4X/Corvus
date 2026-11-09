@@ -1,30 +1,3 @@
-// src/ui/settings/tree.ts
-// A ÁRVORE das settings: todas as linhas, a aba de cada uma e como cada uma se
-// desenha. É a fonte única dos dois caminhos:
-//
-//   • Obsidian 1.13+ → `getSettingDefinitions()` devolve isto e o Obsidian
-//                      desenha (cartões nativos + busca global das settings);
-//   • 1.11.4–1.12.x  → o `display()` desenha a MESMA árvore (ver legacy.ts).
-//
-// As abas (Providers, Chat, …) e os providers NÃO são páginas do Obsidian:
-// cada grupo leva a classe da sua aba (`corvus-set-tab-chat`) e do seu provider
-// (`corvus-set-prov-openai`), e o CSS esconde o que não é a aba ativa pelos
-// atributos `data-corvus-tab`/`data-corvus-prov` do container. Esconder por CSS, e
-// não pelo `visible` da API, é o que deixa TODA linha na busca: no 1.13
-// `visible: false` tira a linha da busca junto.
-//
-// Sem DOM aqui: a árvore é montada no `onload` (addSettingTab → update()) e
-// nos testes, em node. Quem desenha são as funções `render` que a aba entrega
-// (SettingsUi).
-//
-// Regras que o desenhista do 1.13 cobra (app.js 1.13.7):
-//   • `name` sempre string — um nome que não é string quebra a busca inteira;
-//   • título de grupo único, e dentro do grupo linhas com chave única
-//     (`ctrl:<key>` pra control, `name:<nome>` pro resto) — repetido vira
-//     "duplicate setting key" e reaproveita a linha errada no redesenho;
-//   • a busca mostra SÓ o nome. Por isso as linhas `render` levam o nome longo
-//     ("OpenAI API key") e o render troca pro curto na tela ("API key").
-
 import type {
   Setting,
   SettingDefinition,
@@ -43,9 +16,9 @@ import {
 } from "../../core/effort";
 import { CHAT_MODES } from "../../core/session";
 import { MODULES, STARTUP_DASHBOARD } from "../modules";
-import { QUANT_ITENS } from "./indice";
+import { QUANT_ITENS } from "./searchIndex";
 import { LOCALES } from "../../i18n";
-import { marca, tr } from "../../i18n/tr";
+import { mark, tr } from "../../i18n/tr";
 import { PERMISSION_ICONS, PERMISSION_LABELS } from "../../agent/permissions";
 import type { PermissionLevel } from "../../agent/types";
 import { ELEVEN_MODELS } from "../../providers/elevenlabs";
@@ -66,44 +39,42 @@ export type TabId =
 export interface TabDef {
   id: TabId;
   label: string;
-  /** Uma linha explicando o que mora aqui. */
+
   blurb: string;
   mobileOnly?: boolean;
 }
 
-// Rótulo e linha só MARCADOS (marca): a barra de abas traduz na hora de
-// desenhar (tr), porque o idioma pode mudar com o app aberto.
 export const TABS: TabDef[] = [
   {
     id: "providers",
-    label: marca("Providers"),
-    blurb: marca("Your keys and the model each provider uses. Keys stay on this device."),
+    label: mark("Providers"),
+    blurb: mark("Your keys and the model each provider uses. Keys stay on this device."),
   },
   {
     id: "chat",
-    label: marca("Chat"),
-    blurb: marca("What every new conversation starts with."),
+    label: mark("Chat"),
+    blurb: mark("What every new conversation starts with."),
   },
-  { id: "vault", label: marca("Vault"), blurb: marca("Where the plugin writes in your vault.") },
+  { id: "vault", label: mark("Vault"), blurb: mark("Where the plugin writes in your vault.") },
   {
     id: "rag",
-    label: marca("Q&A"),
-    blurb: marca("Vault Q&A: the local index that grounds answers in your notes."),
+    label: mark("Q&A"),
+    blurb: mark("Vault Q&A: the local index that grounds answers in your notes."),
   },
   {
     id: "agent",
-    label: marca("Agent"),
-    blurb: marca("What the agent may do to your notes without asking."),
+    label: mark("Agent"),
+    blurb: mark("What the agent may do to your notes without asking."),
   },
   {
     id: "extensions",
-    label: marca("Extensions"),
-    blurb: marca("Optional extensions and link-based media tools."),
+    label: mark("Extensions"),
+    blurb: mark("Optional extensions and link-based media tools."),
   },
   {
     id: "mobile",
-    label: marca("Mobile"),
-    blurb: marca("Options that only exist on the phone."),
+    label: mark("Mobile"),
+    blurb: mark("Options that only exist on the phone."),
     mobileOnly: true,
   },
 ];
@@ -135,10 +106,9 @@ export const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField
   ollama: { model: "ollamaModel" },
 };
 
-/** Idiomas oferecidos pro ditado. Vazio = deixa o modelo detectar. */
 export const SPEECH_LANGS: [string, string][] = [
-  // Só o Auto se traduz: cada idioma aparece no nome dele mesmo.
-  ["", marca("Auto (detect)")],
+
+  ["", mark("Auto (detect)")],
   ["pt", "Português"],
   ["en", "English"],
   ["es", "Español"],
@@ -148,70 +118,61 @@ export const SPEECH_LANGS: [string, string][] = [
   ["ja", "日本語"],
 ];
 
-/** Uma opção de um menu de ESCOLHA (ver `escolha` abaixo e SettingsTab.paintPick). */
 export interface PickItem {
   value: string;
   label: string;
   icon?: string;
-  /** Texto curto no lugar do ícone (o código de um idioma). */
+
   glyph?: string;
 }
 
-/** Os modelos de ditado — o que os separa é rapidez contra precisão. */
 const STT_ICONS: Record<string, string> = {
   "gpt-4o-mini-transcribe": "zap",
   "gpt-4o-transcribe": "sparkles",
   "whisper-1": "history",
 };
 
-/** As qualidades de leitura da OpenAI: com intenção, limpa, barata. */
 const TTS_ICONS: Record<string, string> = {
   "gpt-4o-mini-tts": "sparkles",
   "tts-1-hd": "gem",
   "tts-1": "zap",
 };
 
-/** As da ElevenLabs: a melhor, a mais rápida, a mais rápida de todas. */
 const ELEVEN_ICONS: Record<string, string> = {
   eleven_multilingual_v2: "sparkles",
   eleven_turbo_v2_5: "fast-forward",
   eleven_flash_v2_5: "zap",
 };
 
-/** "alloy" → "Alloy": o nome de uma voz é nome próprio. */
 export function nomeProprio(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** A linha desenhada à mão. Pode devolver a limpeza (roda antes de redesenhar). */
 export type RowRender = (row: Setting, group: SettingGroup) => void | (() => void);
 
-/** Onde uma linha mora — o que a busca precisa pra abrir a aba certa. */
 export interface Place {
   tab: TabId;
   provider?: string;
 }
 
-/** O que a árvore pede à aba: estado pra decidir visibilidade e os desenhos. */
 export interface SettingsUi {
   readonly isMobile: boolean;
   settings(): CorvusSettings;
   hasCredential(providerId: string): boolean;
-  /** Quantos modelos do catálogo da OpenAI ganhariam cota com o data-sharing. */
+
   freeOfferCount(): number;
   nav: RowRender;
   rail: RowRender;
-  /** Chave de API — ou o endpoint, no Ollama. */
+
   credential(providerId: string): RowRender;
   connection(providerId: string): RowRender;
   newChatModel(providerId: string): RowRender;
   fetchModels(providerId: string): RowRender;
   catalog(providerId: string): RowRender;
   freeOffer: RowRender;
-  /** Menu de escolha com ícone, no lugar de um <select>. `items` é chamado a
-   *  cada desenho — listas que mudam (vozes, modelos) chegam frescas. */
+
   pick(key: TextKey, items: () => PickItem[], tab: TabId): RowRender;
-  /** A linha de um nível de esforço, que abre o editor dele. */
+
   effortLevel(level: EffortLevel): RowRender;
   assistantModel: RowRender;
   ttsProvider: RowRender;
@@ -228,7 +189,7 @@ export interface SettingsUi {
 
 export interface SettingsTree {
   items: SettingDefinitionItem[];
-  /** Linha/grupo → aba (e provider). Por identidade: é o objeto que a busca devolve. */
+
   places: WeakMap<object, Place>;
 }
 
@@ -238,9 +199,8 @@ interface RowExtras {
   aliases?: string[];
 }
 
-const KEY_ALIASES = ["key", "token", "chave", "credential", "credencial"];
+const KEY_ALIASES = ["key", "token", "credential"];
 
-/** O rótulo curto na tela, o longo na busca (o 1.13 escreve o nome ANTES do render). */
 function shownAs(name: string, render: RowRender): RowRender {
   return (row, group) => {
     row.setName(name);
@@ -257,10 +217,6 @@ function toggle(
   return { name, desc, control: { type: "toggle", key }, ...more };
 }
 
-// Não há mais `dropdown`: todo menu das settings é de ESCOLHA (o balão com
-// ícone — ver `escolha` e SettingsTab.pickButton). O <select> nativo abre, no
-// Android, a caixa do sistema, sem ícone e longe do que foi tocado.
-
 function text(
   name: string,
   desc: string,
@@ -270,7 +226,6 @@ function text(
   return { name, desc, control: { type: "text", key }, ...more };
 }
 
-/** Linha `render`. `shown` = o nome curto da tela (null = o mesmo da busca). */
 function custom(
   name: string,
   shown: string | null,
@@ -286,29 +241,21 @@ function custom(
   };
 }
 
-/**
- * Um render que explode não derruba a aba: no 1.13 o desenhista chama o render
- * sem try/catch, e um erro numa linha pararia o desenho de todas as de baixo.
- */
 function guarded(render: RowRender): RowRender {
   return (row, group) => {
     try {
       return render(row, group);
     } catch (err) {
-      console.error("[corvus] settings: uma linha falhou ao desenhar", err);
+      console.error("[corvus] settings: a row failed to draw", err);
       row.setDesc(tr("This setting failed to draw — see the developer console."));
     }
   };
 }
 
-/** Recado curto — o que falta pra linha de cima funcionar. Fora da busca. */
 function hintRow(render: RowRender, visible?: () => boolean): SettingDefinition {
   return { name: "", render, searchable: false, ...(visible ? { visible } : {}) };
 }
 
-// Os textos da árvore passam pelo tr() AQUI, na montagem: ela é montada em
-// tempo de execução (no addSettingTab e a cada troca de idioma — ver
-// SettingsTab.retraduzir), nunca no import.
 export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   const items: SettingDefinitionItem[] = [];
   const places = new WeakMap<object, Place>();
@@ -340,12 +287,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     items.push(g);
   }
 
-  /**
-   * Menu de ESCOLHA com ícone — o balão do ⋯ das conversas no lugar do
-   * <select> nativo, que no Android abre a caixa do sistema (rádio, sem ícone,
-   * longe do que foi tocado). É uma linha `render`, então o nome precisa ser
-   * único no grupo (o 1.13 chaveia por ele): `shown` é o curto da tela.
-   */
   function escolha(
     at: Place,
     name: string,
@@ -358,12 +299,10 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     return custom(name, shown, desc, ui.pick(key, itens, at.tab), more);
   }
 
-  // ── a barra de abas: sempre à vista, sem cartão ──────────────────────────
   group(null, { cls: "corvus-set-flat corvus-set-navgroup" }, [
     { name: "", render: ui.nav, searchable: false },
   ]);
 
-  // ── Providers ────────────────────────────────────────────────────────────
   group({ tab: "providers" }, { cls: "corvus-set-flat corvus-set-railgroup" }, [
     { name: "", render: ui.rail, searchable: false },
   ]);
@@ -387,26 +326,24 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
             tr("Endpoint"),
             tr("Local server address. Ollama needs no key."),
             ui.credential(p.id),
-            { aliases: ["url", "server", "servidor", "endereço"] }
+            { aliases: ["url", "server", "address"] }
           ),
       custom(
         tr("{provider} connection", { provider: p.name }),
         tr("Connection"),
         "",
         ui.connection(p.id),
-        { aliases: ["test", "testar", "conexão"] }
+        { aliases: ["test", "connection"] }
       ),
       custom(
         tr("{provider} model for new chats", { provider: p.name }),
         tr("Model for new chats"),
         tr("Used when this provider is selected and nothing else was picked."),
         ui.newChatModel(p.id),
-        { aliases: ["modelo", "default model"] }
+        { aliases: ["model", "default model"] }
       ),
     ]);
 
-    // A cota diária é um programa DA OPENAI; prometê-la nos outros seria
-    // inventar desconto.
     if (p.id === "openai") {
       group(at, { heading: tr("Free daily tokens") }, [
         toggle(
@@ -415,14 +352,10 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
             "Their switch, in Data controls on platform.openai.com. Turning it on there gives your account a daily quota at no cost; telling us here is what makes this list show the real numbers."
           ),
           "openaiDataSharing",
-          // "tier" também: com o interruptor desligado a linha do tier some da
-          // busca (no 1.13 `visible` falso tira dela), e quem procura "tier"
-          // precisa cair aqui, no que faz ela aparecer.
-          { aliases: ["free", "grátis", "quota", "cota", "data controls", "tier"] }
+
+          { aliases: ["free", "quota", "data controls", "tier"] }
         ),
-        // O tier só muda a cota de quem COMPARTILHA: com o interruptor
-        // desligado não há cota nenhuma, e um seletor de tier ali seria uma
-        // escolha que não faz nada. Aparece quando o interruptor liga.
+
         escolha(
           at,
           tr("Usage tier"),
@@ -431,8 +364,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
             "Tiers 1–2 get 250k tokens/day on the big models and 2.5M/day on mini and nano. Tier 3 and up get 1M and 10M."
           ),
           "openaiTier",
-          // O número do tier no lugar do ícone, e a cota dele no rótulo: é o
-          // que decide a escolha.
+
           () =>
             [1, 2, 3, 4, 5].map((n) => ({
               value: String(n),
@@ -444,7 +376,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
             })),
           {
             visible: () => s().openaiDataSharing === true,
-            aliases: ["tier", "quota", "cota"],
+            aliases: ["tier", "quota"],
           }
         ),
         hintRow(
@@ -462,23 +394,20 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ]);
     }
 
-    // Sem título: um "Models" por provider repetiria a chave do grupo. A
-    // primeira linha já diz o que é o cartão.
     group(at, {}, [
       custom(
         tr("{provider} models", { provider: p.name }),
         tr("Models"),
         tr("Fetch what this provider offers today, then choose what shows up where."),
         ui.fetchModels(p.id),
-        { aliases: ["modelos", "catalog", "catálogo", "favorites", "favoritos"] }
+        { aliases: ["models", "catalog", "favorites"] }
       ),
       { name: "", render: ui.catalog(p.id), searchable: false },
     ]);
   }
 
-  // ── Chat ─────────────────────────────────────────────────────────────────
   const chat: Place = { tab: "chat" };
-  // Os menus desta aba são todos de ESCOLHA com ícone (ver `escolha`).
+
   group(chat, {}, [
     escolha(
       chat,
@@ -501,7 +430,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: tr(MODULES[m].label),
           icon: MODULES[m].icon,
         })),
-      { aliases: ["modo"] }
+      { aliases: ["mode"] }
     ),
     escolha(
       chat,
@@ -530,8 +459,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           "start",
           "boot",
           "on open",
-          "abrir ao iniciar",
-          "início",
           "dashboard",
         ],
       }
@@ -548,7 +475,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: tr(EFFORT_LABELS[l]),
           icon: EFFORT_ICONS[l],
         })),
-      { aliases: ["esforço", "reasoning"] }
+      { aliases: ["effort", "reasoning"] }
     ),
     escolha(
       chat,
@@ -560,20 +487,15 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       "language",
       () =>
         LOCALES.map((l) =>
-          // O Auto não é um idioma: ganha o desenho de "idiomas", e os de
-          // verdade o código (EN, PT). Só ele se traduz — cada idioma
-          // aparece no nome dele mesmo.
+
           l.id === "auto"
             ? { value: l.id, label: tr(l.label), icon: "languages" }
             : { value: l.id, label: l.label, glyph: l.id.slice(0, 2).toUpperCase() }
         ),
-      { aliases: ["idioma", "língua", "portuguese", "português"] }
+      { aliases: ["language", "locale", "english"] }
     ),
   ]);
 
-  // O que cada nível de esforço FAZ — tokens, voltas do agente, temperatura,
-  // quanto do vault entra. O motor sempre leu isto (effortConfigs); a tela
-  // sumiu na 0.4.0 e voltou: uma linha por nível, que abre o editor dele.
   group(
     chat,
     { heading: tr("Effort levels") },
@@ -586,10 +508,8 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         {
           aliases: [
             "effort",
-            "esforço",
             "tokens",
             "temperature",
-            "temperatura",
             "agent",
           ],
         }
@@ -597,9 +517,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     )
   );
 
-  // O orçamento do dia: o limite em dólar e o que acontece quando ele chega.
-  // A conta sai dos preços públicos (ver usage/gastoDoDia.ts), e o Left today
-  // da tela de Uso mostra o quanto sobra.
   group(chat, { heading: tr("Daily spending") }, [
     custom(
       tr("Daily limit"),
@@ -608,7 +525,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "In dollars, for paid models, counted from public token prices. You get a heads-up at 80% and at 100%. Empty means no limit."
       ),
       ui.spendLimit,
-      { aliases: ["budget", "orçamento", "gasto", "limite", "spending", "cost", "custo"] }
+      { aliases: ["budget", "limit", "spending", "cost"] }
     ),
     toggle(
       tr("Stop paid models at the limit"),
@@ -616,13 +533,13 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "When today's spending reaches the limit, paid models pause until midnight. Free and local models keep working, and so do models without a public price."
       ),
       "travarNoLimite",
-      { aliases: ["budget", "orçamento", "travar", "pause", "block"] }
+      { aliases: ["budget", "limit", "pause", "block"] }
     ),
   ]);
 
   group(chat, { heading: tr("Assistant") }, [
     custom(tr("Assistant model"), tr("Model"), "", ui.assistantModel, {
-      aliases: ["modelo", "assistente", "skills", "projects"],
+      aliases: ["model", "assistant", "skills", "projects"],
     }),
     toggle(
       tr("Let it see your note names"),
@@ -630,15 +547,13 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "So it can suggest which notes to attach to a project. Only the paths are sent — never what is inside them. Off by default."
       ),
       "assistantSeesVault",
-      { aliases: ["notes", "notas", "privacy", "privacidade"] }
+      { aliases: ["notes", "privacy"] }
     ),
   ]);
 
-  // Voz: duas coisas diferentes, na ordem em que a pessoa decide — FALAR COM
-  // o chat (ditado) e OUVIR o chat (leitura). Ligo? por quem? com que voz?
   const voiceOn = () => s().voiceEnabled;
   const ttsOn = () => s().ttsEnabled;
-  // Tudo que não é "eleven" lê pela OpenAI — o mesmo critério de sempre.
+
   const openaiReads = () => s().ttsEnabled && s().ttsProvider !== "eleven";
   const elevenReads = () => s().ttsEnabled && s().ttsProvider === "eleven";
 
@@ -649,19 +564,14 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Puts a microphone in the composer: you speak, the words land in the box, and you send when you are happy with them."
       ),
       "voiceEnabled",
-      // "voice" tem de achar os DOIS interruptores de voz: as linhas com
-      // "Voice" no nome só existem com a leitura ligada (e escondida, a busca
-      // do 1.13 não vê a linha).
+
       {
         aliases: [
           "voice",
           "speech to text",
           "dictation",
-          "ditado",
           "microphone",
-          "microfone",
-          "voz",
-        ],
+          ],
       }
     ),
     hintRow(
@@ -682,7 +592,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: prettyModelName(m),
           icon: STT_ICONS[m] ?? "ear",
         })),
-      { visible: voiceOn, aliases: ["transcription", "transcrição", "whisper"] }
+      { visible: voiceOn, aliases: ["transcription", "whisper"] }
     ),
     escolha(
       chat,
@@ -692,22 +602,21 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Naming your language beats letting it guess — short takes are where guessing goes wrong."
       ),
       "voiceLanguage",
-      // Vazio = deixa o modelo detectar: esse ganha um desenho, os idiomas
-      // ganham o código.
+
       () =>
         SPEECH_LANGS.map(([value, label]) =>
           value
             ? { value, label, glyph: value.toUpperCase() }
             : { value, label: tr(label), icon: "wand-sparkles" }
         ),
-      { visible: voiceOn, aliases: ["idioma", "language"] }
+      { visible: voiceOn, aliases: ["language", "spoken language"] }
     ),
     toggle(
       tr("Read answers out loud"),
       tr("Adds a Listen button under every answer."),
       "ttsEnabled",
       {
-        aliases: ["voice", "text to speech", "tts", "listen", "ouvir", "voz", "read aloud"],
+        aliases: ["voice", "text to speech", "tts", "listen", "read aloud"],
       }
     ),
     custom(
@@ -717,7 +626,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "OpenAI voices are ready to use. ElevenLabs sounds better and is the only one that can read in YOUR voice — clone it in their app and it shows up in the list below."
       ),
       ui.ttsProvider,
-      { visible: ttsOn, aliases: ["elevenlabs", "voz", "tts"] }
+      { visible: ttsOn, aliases: ["elevenlabs", "voice", "tts"] }
     ),
     hintRow(
       ui.hint(tr("Add your OpenAI key in Providers to hear anything.")),
@@ -735,11 +644,9 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: nomeProprio(v),
           icon: "audio-lines",
         })),
-      { visible: openaiReads, aliases: ["voz"] }
+      { visible: openaiReads, aliases: ["voice"] }
     ),
-    // Duas "Quality" no mesmo grupo (OpenAI e ElevenLabs): linha `render` é
-    // chaveada pelo nome, então o nome da busca é o longo e a tela mostra o
-    // curto. De quebra, a busca deixou de achar duas linhas iguais.
+
     escolha(
       chat,
       tr("OpenAI voice quality"),
@@ -754,17 +661,16 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: m,
           icon: TTS_ICONS[m] ?? "audio-lines",
         })),
-      { visible: openaiReads, aliases: ["quality", "qualidade"] }
+      { visible: openaiReads, aliases: ["quality"] }
     ),
     custom(
       tr("Test OpenAI voice"),
       tr("Test"),
       tr("Plays one short line with the settings above."),
       ui.testVoice,
-      { visible: openaiReads, aliases: ["play sample", "testar voz"] }
+      { visible: openaiReads, aliases: ["play sample", "test voice"] }
     ),
-    // A marca entra como variável: "ElevenLabs key" sozinha já é a chave do
-    // "(needs …)" de ui/readAloud.ts, que no meio da frase vai em minúscula.
+
     custom(
       tr("{provider} key", { provider: "ElevenLabs" }),
       null,
@@ -781,7 +687,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Fetch what your account has — the stock voices and any you cloned, including your own."
       ),
       ui.elevenFetch,
-      { visible: elevenReads, aliases: ["clone", "cloned", "vozes", "elevenlabs"] }
+      { visible: elevenReads, aliases: ["clone", "cloned", "voices", "elevenlabs"] }
     ),
     custom(
       tr("ElevenLabs voice"),
@@ -790,7 +696,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Cloned ones are marked — that is the one that sounds like you. Tap ▶ in the list to hear any of them."
       ),
       ui.elevenVoice,
-      { visible: () => elevenReads() && s().elevenVoices.length > 0, aliases: ["voz"] }
+      { visible: () => elevenReads() && s().elevenVoices.length > 0, aliases: ["voice"] }
     ),
     hintRow(
       ui.hint(tr("No voices loaded yet — hit Fetch voices.")),
@@ -808,18 +714,17 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: tr(m.label),
           icon: ELEVEN_ICONS[m.id] ?? "audio-lines",
         })),
-      { visible: elevenReads, aliases: ["quality", "qualidade"] }
+      { visible: elevenReads, aliases: ["quality"] }
     ),
     custom(
       tr("Test ElevenLabs voice"),
       tr("Test"),
       tr("Plays one short line with the settings above."),
       ui.testVoice,
-      { visible: elevenReads, aliases: ["play sample", "testar voz"] }
+      { visible: elevenReads, aliases: ["play sample", "test voice"] }
     ),
   ]);
 
-  // ── Vault ────────────────────────────────────────────────────────────────
   group({ tab: "vault" }, {}, [
     text(
       tr("Chats folder"),
@@ -827,28 +732,25 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Each chat is a .md file under <folder>/<mode>/. The default is visible so file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices. A folder starting with a dot stays out of the explorer, search and graph — and out of those syncs."
       ),
       "chatsPath",
-      { aliases: ["pasta", "conversas", "path"] }
+      { aliases: ["folder", "chats", "path"] }
     ),
     text(
       tr("Skills folder"),
       tr("Each skill is a .md note (frontmatter + prompt body)."),
       "skillsPath",
-      { aliases: ["pasta", "path"] }
+      { aliases: ["folder", "path"] }
     ),
-    // Era a única pasta do plugin sem campo: aparecia só como texto na linha
-    // do índice. Trocar não MOVE o índice (seria copiar megabytes no meio de
-    // uma digitação): a pasta nova começa vazia e a antiga fica onde estava.
+
     text(
       tr("Index folder"),
       tr(
         "Where the Vault Q&A index lives. Changing it starts a fresh index there — the current one stays in the old folder, and switching back loads it again."
       ),
       "ragIndexPath",
-      { aliases: ["pasta", "path", "index", "índice", "rag", "embeddings"] }
+      { aliases: ["folder", "path", "index", "rag", "embeddings"] }
     ),
   ]);
 
-  // ── Vault Q&A ────────────────────────────────────────────────────────────
   const rag: Place = { tab: "rag" };
   group(rag, {}, [
     custom(
@@ -858,9 +760,9 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Needs the key of that model's provider. Without an index, Vault Q&A falls back to keyword search. Fetch models on a provider to list the embedding models your account has."
       ),
       ui.embeddingModel,
-      { aliases: ["embeddings", "rag", "modelo"] }
+      { aliases: ["embeddings", "rag", "model"] }
     ),
-    // As duas voltaram pra tela (sumiram na 0.4.0; o motor continuou lendo).
+
     escolha(
       rag,
       tr("Index precision"),
@@ -870,7 +772,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ),
       "ragQuantProfile",
       () => QUANT_ITENS.map((i) => ({ ...i, label: tr(i.label) })),
-      { aliases: ["quantization", "quantização", "precisão", "int8", "memory", "memória"] }
+      { aliases: ["quantization", "precision", "int8", "memory"] }
     ),
     toggle(
       tr("Search the index in pieces"),
@@ -878,20 +780,19 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Reads the index about 4 MB at a time instead of all at once — keeps memory low on big vaults, which matters on the phone. The catch: every index update then rebuilds it whole and re-embeds the vault, which costs tokens."
       ),
       "ragStreamShards",
-      { aliases: ["shards", "pedaços", "memory", "memória", "streamed"] }
+      { aliases: ["shards", "pieces", "memory", "streamed"] }
     ),
     toggle(
       tr("Auto re-index on note changes"),
       tr("Re-embeds only changed notes (costs tokens). Only runs once an index exists."),
       "ragAutoReindex",
-      { aliases: ["reindex", "índice", "indice"] }
+      { aliases: ["reindex", "index"] }
     ),
     custom(tr("Index"), null, "", ui.index, {
-      aliases: ["índice", "indice", "index vault", "rag"],
+      aliases: ["index", "index vault", "rag"],
     }),
   ]);
 
-  // ── Agent ────────────────────────────────────────────────────────────────
   group({ tab: "agent" }, {}, [
     escolha(
       { tab: "agent" },
@@ -907,13 +808,13 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           label: tr(PERMISSION_LABELS[l]),
           icon: PERMISSION_ICONS[l],
         })),
-      { aliases: ["permissão", "permissions", "yolo", "confirm", "confirmar"] }
+      { aliases: ["permissions", "yolo", "confirm"] }
     ),
     toggle(
       tr("Show diff before applying edits"),
       tr("Preview every change the agent wants to write."),
       "agentDiffApproval",
-      { aliases: ["diff", "preview", "aprovação"] }
+      { aliases: ["diff", "preview", "approval"] }
     ),
     text(
       tr("Agent instructions file"),
@@ -921,7 +822,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Vault path to an instructions file read fresh on every turn (default: AGENT.md). Falls back to agent.md or CLAUDE.md if empty."
       ),
       "agentInstructionsPath",
-      { aliases: ["agent.md", "claude.md", "instructions", "instruções", "regras"] }
+      { aliases: ["agent.md", "claude.md", "instructions", "rules"] }
     ),
     toggle(
       tr("Web access"),
@@ -929,7 +830,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "Let the agent search the web and open public pages when a task needs it. In Ask and Vault, each request shows you the address or the search first; local addresses are always refused."
       ),
       "agentWeb",
-      { aliases: ["web", "internet", "search", "busca", "url", "fetch"] }
+      { aliases: ["web", "internet", "search", "url", "fetch"] }
     ),
     custom(
       tr("{provider} key", { provider: "Tavily" }),
@@ -942,7 +843,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     ),
   ]);
 
-  // ── Extensions ───────────────────────────────────────────────────────────
   group({ tab: "extensions" }, { heading: tr("Instagram Reels") }, [
     toggle(
       tr("Instagram Reels transcription"),
@@ -972,7 +872,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     ),
   ]);
 
-  // ── Mobile (só no celular) ───────────────────────────────────────────────
   if (ui.isMobile) {
     group({ tab: "mobile" }, {}, [
       toggle(
@@ -981,7 +880,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           "Keeps the screen awake while the AI is writing a reply, like a video. It may sleep again as soon as the reply is done."
         ),
         "keepAwakeWhileWriting",
-        { aliases: ["wake lock", "screen on", "stay awake", "tela acesa", "não apagar"] }
+        { aliases: ["wake lock", "screen on", "stay awake"] }
       ),
       toggle(
         tr("Fullscreen"),
@@ -989,7 +888,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           "Fullscreen hides the drawer chrome and the global navbar while Corvus is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck."
         ),
         "mobileFullscreen",
-        { aliases: ["tela cheia", "full screen"] }
+        { aliases: ["full screen"] }
       ),
       toggle(
         tr("Haptics"),
@@ -997,7 +896,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           "A short buzz on every tap. Android only — iPhone doesn't let a plugin touch the Taptic Engine."
         ),
         "hapticsEnabled",
-        { aliases: ["vibration", "vibração", "vibrate"] }
+        { aliases: ["vibration", "vibrate"] }
       ),
     ]);
   }

@@ -5,6 +5,6 @@
   "minAppVersion": "1.11.4",
   "description": "Chat with AI, ask your vault and let an agent edit your notes, built mobile-first. Semantic search (RAG) cites sources. Works with OpenAI GPT, Claude, Gemini, OpenRouter, NVIDIA NIM or local Ollama LLMs. Bring your own API key.",
   "author": "QR4X",
-  "authorUrl": "https://github.com/QR4X/M.I.L.A",
+  "authorUrl": "https://github.com/QR4X/Corvus",
   "isDesktopOnly": false
 }

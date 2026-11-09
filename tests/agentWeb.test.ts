@@ -6,9 +6,6 @@ import { getToolDefinition } from "../src/agent/toolSchemas";
 import { agentActivitySpec } from "../src/core/helpers";
 import type { ToolContext } from "../src/agent/types";
 
-// As ferramentas de web do agente: o que elas recusam (endereço local, coisa
-// que não é texto), o que devolvem pro modelo, e quando perguntam.
-
 const ctx = (tavily = ""): ToolContext =>
   ({ app: {}, vectorIndex: null, embed: { openaiApiKey: "", openrouterApiKey: "" }, web: { tavilyApiKey: tavily } }) as unknown as ToolContext;
 

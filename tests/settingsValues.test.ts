@@ -9,13 +9,6 @@ import {
 } from "../src/ui/settings/values";
 import type { CorvusSettings } from "../src/main";
 
-// No Obsidian 1.13 quem desenha as linhas `control` é o próprio Obsidian, e o
-// gravador padrão dele faz `saveData(settings)` — que mandaria as chaves de API
-// em texto puro pro data.json. A aba troca esse gravador por `writeControl`, e
-// estes testes seguram as duas promessas dele: grava SEMPRE pelo
-// `saveSettings()` (quem manda as chaves pro keychain) e NUNCA aceita uma
-// chave de API como control.
-
 function fakeSettings(over: Partial<CorvusSettings> = {}): CorvusSettings {
   return {
     openaiApiKey: "sk-segredo",

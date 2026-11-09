@@ -15,8 +15,7 @@ describe("chatAlert", () => {
   });
 
   it("quem está esperando VOCÊ fala mais alto", () => {
-    // Não é gosto: uma conversa parada num pedido de aprovação é a única que
-    // não anda sozinha. As outras duas andam.
+
     expect(chatAlert({ esperando: true, rodando: true, naoLida: true })).toBe(
       "waiting"
     );
@@ -26,7 +25,7 @@ describe("chatAlert", () => {
   });
 
   it("respondendo ganha de não lida", () => {
-    // Se está respondendo AGORA, "New reply" seria notícia velha.
+
     expect(chatAlert({ esperando: false, rodando: true, naoLida: true })).toBe(
       "running"
     );
@@ -71,9 +70,7 @@ describe("alertCount", () => {
   });
 
   it("quem está só RESPONDENDO não entra na conta", () => {
-    // O número no menu é um chamado. Uma conversa trabalhando não está
-    // chamando ninguém — marcar por causa dela é convidar pra ver uma coisa
-    // que ainda não aconteceu.
+
     expect(
       alertCount(chats, "agent", { esperando: null, naoLidas: new Set() })
     ).toBe(0);

@@ -1,16 +1,7 @@
-// src/core/agentMd.ts
-// Suporte a AGENT.md (equivalente ao CLAUDE.md do Claude Code):
-// Uma nota no vault com instruções globais que é lida a cada turno
-// do chat e do agente.
-
 import { TFile, normalizePath, type App } from "obsidian";
 
 export const DEFAULT_AGENT_MD_PATH = "AGENT.md";
 
-/**
- * Nomes de arquivos candidatos caso o usuário não configure um caminho
- * ou use o padrão. Ordem de prioridade.
- */
 export const AGENT_MD_CANDIDATES: readonly string[] = [
   "AGENT.md",
   "agent.md",
@@ -21,9 +12,6 @@ export const AGENT_MD_CANDIDATES: readonly string[] = [
   ".corvus/AGENT.md",
 ];
 
-/**
- * Template inicial sugerido ao criar um AGENT.md vazio pelo comando.
- */
 export const TEMPLATE_AGENT_MD = `# Agent Instructions
 
 <!-- Instructions in this note are loaded on every reply by Corvus / Corvus (like CLAUDE.md). -->
@@ -33,9 +21,6 @@ export const TEMPLATE_AGENT_MD = `# Agent Instructions
 - Use [[wikilinks]] to link relevant notes in this vault.
 `;
 
-/**
- * Verifica se um objeto representa um TFile (suporta mocks em testes).
- */
 export function isTFile(file: unknown): file is TFile {
   return (
     file instanceof TFile ||
@@ -46,9 +31,6 @@ export function isTFile(file: unknown): file is TFile {
   );
 }
 
-/**
- * Extrai o corpo do AGENT.md, removendo frontmatter se presente.
- */
 export function parseAgentMd(raw: string): string {
   if (!raw || !raw.trim()) return "";
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -58,9 +40,6 @@ export function parseAgentMd(raw: string): string {
   return raw.trim();
 }
 
-/**
- * Determina a lista de caminhos a inspecionar para achar o AGENT.md.
- */
 export function candidatePaths(customPath?: string): string[] {
   const custom = customPath?.trim();
   const list: string[] = [];
@@ -76,9 +55,6 @@ export function candidatePaths(customPath?: string): string[] {
   return list;
 }
 
-/**
- * Localiza o caminho existente do AGENT.md no vault.
- */
 export async function resolveAgentMdPath(
   app: App,
   customPath?: string
@@ -94,17 +70,11 @@ export async function resolveAgentMdPath(
       if (typeof app.vault.adapter?.exists === "function") {
         if (await app.vault.adapter.exists(p)) return p;
       }
-    } catch {
-      // continua para o próximo candidato
-    }
+    } catch { void 0; }
   }
   return null;
 }
 
-/**
- * Lê o conteúdo do AGENT.md no vault, fresco a cada turno ("lido a cada vez").
- * Devolve string vazia se o arquivo não existir ou estiver em branco.
- */
 export async function loadAgentMd(
   app: App,
   customPath?: string
@@ -130,9 +100,6 @@ export async function loadAgentMd(
   return "";
 }
 
-/**
- * Abre ou cria o AGENT.md no vault (para o comando da paleta).
- */
 export async function openOrCreateAgentMd(
   app: App,
   customPath?: string
@@ -172,7 +139,7 @@ export async function openOrCreateAgentMd(
         await leaf.openFile(file);
       }
     } catch (err) {
-      console.error("[corvus] erro ao abrir AGENT.md no editor:", err);
+      console.error("[corvus] failed to open AGENT.md in editor:", err);
     }
   }
   return file;

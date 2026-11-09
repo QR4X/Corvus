@@ -1,14 +1,12 @@
 # SVG source assets
 
-Arquivos SVG crus usados na UI do Corvus. São **fonte**: o
-`scripts/genLogos.mjs` os embute no `main.js` no build (o plugin distribui só
-`main.js` + `manifest.json` + `styles.css`).
+Raw SVG files used in the Corvus UI. These are source assets:
+`scripts/genLogos.mjs` embeds them into `main.js` during the build (the plugin
+distributes only `main.js`, `manifest.json` and `styles.css`).
 
-A PASTA não é distribuída — o CONTEÚDO dela é, inline. Por isso os logos dos
-providers, que vêm do [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT),
-estão creditados no [NOTICE.md](../../NOTICE.md) da raiz: a licença MIT exige que
-o aviso acompanhe a distribuição, e a distribuição é o `main.js`.
+The folder itself is not distributed, but its content is inlined. Therefore,
+the provider logos from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT)
+are credited in [NOTICE.md](../../NOTICE.md) at the repository root.
 
-Fluxo: solte os `.svg` aqui → eu registro via `addIcon()` em
-`src/components/_shared/` (mono) ou inline como componente/CSS (colorido) →
-usado pelo `<Icon name="..." />`.
+Workflow: drop `.svg` files here, register them via `addIcon()` in
+`src/ui/brandLogos.ts`, and render them with `<Icon name="..." />`.

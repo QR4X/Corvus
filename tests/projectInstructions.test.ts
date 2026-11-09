@@ -4,12 +4,6 @@ import {
   buildAgentSystemPrompt,
 } from "../src/agent/conversation";
 
-// As instruções de um PROJETO: o que o modelo deve saber em toda conversa
-// daquele assunto. A regra que este arquivo protege é uma só — elas SOMAM ao
-// prompt do app, nunca substituem. Persona é "seja outro assistente";
-// instrução de projeto é "neste assunto, faça assim". Trocar o base por ela
-// levaria junto as regras da casa, que ninguém pediu pra perder.
-
 describe("instruções de projeto no chat", () => {
   it("entram depois do head, sem apagar o base", () => {
     expect(
@@ -49,8 +43,7 @@ describe("instruções de projeto no chat", () => {
 
 describe("instruções de projeto no agente", () => {
   it("vêm depois do prompt do agente e antes das notas", () => {
-    // Antes das notas porque o bloco de notas é DADO; instrução é regra, e
-    // regra lida depois do dado chega tarde.
+
     const r = buildAgentSystemPrompt(
       undefined,
       "AGENTE",

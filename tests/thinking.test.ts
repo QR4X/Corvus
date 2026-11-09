@@ -1,6 +1,3 @@
-// tests/thinking.test.ts
-// Status da operação e relógio enquanto ainda não há resposta.
-
 import { describe, it, expect } from "vitest";
 import { elapsedLabel, thinkingStatus } from "../src/ui/Thinking";
 

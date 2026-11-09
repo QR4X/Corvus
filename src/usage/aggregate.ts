@@ -1,51 +1,41 @@
-// src/usage/aggregate.ts
-// Agrega usage de todos os chats salvos no vault — base pra Usage tab.
-//
-// Lê via listAllChats (que já parsa frontmatter de todos os modos),
-// calcula custo via getPricing+calculateCost, e devolve breakdown
-// por provider / modelo / modo / dia + chats ordenados por custo.
-
 import { type ChatSummary } from "../core/chatPersistence";
 import { calculateCost, getPricing, type ModelPricing } from "./pricing";
 
-/** Bucket de agregação — totais e flag de "algum modelo sem preço". */
 export interface UsageBucket {
   chats: number;
   tokensIn: number;
   tokensOut: number;
-  cost: number; // USD, 0 se tudo free
-  /** true se algum chat dentro do bucket tem modelo sem pricing conhecido */
+  cost: number; 
+
   hasUnknownCost: boolean;
 }
 
-/** Row de uma conversa, com cost já calculado. */
 export interface ChatUsageRow {
   id: string;
   title: string;
   date: string;
-  /** YYYY-MM-DD extraído de date (UTC). */
+
   day: string;
   provider: string;
   model: string;
   mode: string;
   tokensIn: number;
   tokensOut: number;
-  cost: number | null; // null = pricing unknown
+  cost: number | null; 
   messages: number;
   filePath: string;
 }
 
-/** Resultado completo da agregação. */
 export interface UsageAggregate {
   total: UsageBucket;
   byProvider: Record<string, UsageBucket>;
   byModel: Record<string, UsageBucket>;
   byMode: Record<string, UsageBucket>;
-  /** YYYY-MM-DD → bucket. Ordenar por chave pra heatmap. */
+
   byDay: Record<string, UsageBucket>;
-  /** Chats sorted by cost desc (pra "top 10 caras"). null cost vai pro fim. */
+
   chats: ChatUsageRow[];
-  /** Período coberto. */
+
   periodStart: string | null;
   periodEnd: string | null;
 }
@@ -80,14 +70,6 @@ function bump(bucket: UsageBucket, row: ChatUsageRow): void {
   }
 }
 
-/**
- * Constrói ChatUsageRow a partir de ChatSummary + pricing lookup.
- * Cost vira null quando o pricing do modelo não cobre os tokens existentes.
- *
- * `pricingCache` (opcional) memoiza getPricing por `${provider}::${model}` —
- * pricing é estático, então em vaults grandes evita refazer o lookup linear
- * por chat (v0.1.228).
- */
 function summaryToRow(s: ChatSummary, pricingCache?: Map<string, ModelPricing>): ChatUsageRow {
   let pricing: ModelPricing;
   if (pricingCache) {
@@ -97,8 +79,7 @@ function summaryToRow(s: ChatSummary, pricingCache?: Map<string, ModelPricing>):
   } else {
     pricing = getPricing(s.provider, s.model);
   }
-  // Saneia tokens: ChatSummary vem de frontmatter parseado e pode trazer
-  // NaN/undefined, que envenenaria todos os totais via bump() (v0.1.228).
+
   const tokensIn = Number.isFinite(s.tokensIn) ? s.tokensIn : 0;
   const tokensOut = Number.isFinite(s.tokensOut) ? s.tokensOut : 0;
   const cost = calculateCost(pricing, tokensIn, tokensOut);
@@ -118,10 +99,6 @@ function summaryToRow(s: ChatSummary, pricingCache?: Map<string, ModelPricing>):
   };
 }
 
-/**
- * Filtra chats pelo período (`periodDays`). 0/undefined = sem filtro.
- * Compara via `date` ISO no chat. Default cutoff: hoje - periodDays.
- */
 function filterByPeriod(rows: ChatUsageRow[], periodDays?: number): ChatUsageRow[] {
   if (!periodDays || periodDays <= 0) return rows;
   const cutoffMs = Date.now() - periodDays * 24 * 60 * 60 * 1000;
@@ -131,17 +108,11 @@ function filterByPeriod(rows: ChatUsageRow[], periodDays?: number): ChatUsageRow
   });
 }
 
-/**
- * Agrega summaries JÁ CARREGADOS — zero IO (v0.1.103). Permite reaproveitar
- * uma única passada de listAllChats em quem precisa de recentes + stats
- * (ex.: dashboard da StarterScreen), em vez de reler o disco.
- */
 export function aggregateFromSummaries(
   summaries: ChatSummary[],
   periodDays = 0
 ): UsageAggregate {
-  // Memo de pricing por `${provider}::${model}` — escopo da agregação,
-  // descartado ao fim (sem cache stale entre chamadas) (v0.1.228).
+
   const pricingCache = new Map<string, ModelPricing>();
   const rawRows = summaries.map((s) => summaryToRow(s, pricingCache));
   const rows = filterByPeriod(rawRows, periodDays);
@@ -158,11 +129,11 @@ export function aggregateFromSummaries(
   for (const row of rows) {
     bump(total, row);
 
-    const p = row.provider || "(desconhecido)";
+    const p = row.provider || "(unknown)";
     byProvider[p] ??= emptyBucket();
     bump(byProvider[p], row);
 
-    const m = row.model || "(desconhecido)";
+    const m = row.model || "(unknown)";
     byModel[m] ??= emptyBucket();
     bump(byModel[m], row);
 
@@ -170,7 +141,7 @@ export function aggregateFromSummaries(
     byMode[mode] ??= emptyBucket();
     bump(byMode[mode], row);
 
-    const day = row.day || "(sem data)";
+    const day = row.day || "(no date)";
     byDay[day] ??= emptyBucket();
     bump(byDay[day], row);
 
@@ -180,7 +151,6 @@ export function aggregateFromSummaries(
     }
   }
 
-  // Ordena chats por custo desc. null cost vai pro fim.
   const sortedChats = [...rows].sort((a, b) => {
     if (a.cost == null && b.cost == null) return 0;
     if (a.cost == null) return 1;
@@ -200,7 +170,6 @@ export function aggregateFromSummaries(
   };
 }
 
-/** Helper UI: ordena entries dum Record<string, UsageBucket> por cost desc. */
 export function sortBucketEntries(
   buckets: Record<string, UsageBucket>
 ): Array<[string, UsageBucket]> {

@@ -11,9 +11,6 @@ import {
 import { estimateTokens } from "../src/core/tokens";
 import type { Project } from "../src/projects";
 
-// O CARTÃO de projeto responde três perguntas sem abrir o projeto: está vivo?
-// do que se trata? quanto já tem?
-
 const AGORA = new Date("2026-09-29T12:00:00Z").getTime();
 const dias = (n: number) => new Date(AGORA - n * 86_400_000).toISOString();
 
@@ -89,8 +86,7 @@ describe("do que se trata?", () => {
 
 describe("quanto já tem?", () => {
   it("conta só as conversas que EXISTEM", () => {
-    // `chatIds` guarda id de conversa apagada também, e um "3 chats" que abre
-    // em dois seria o cartão mentindo.
+
     const r = resumoDoProjeto(
       projeto({ chatIds: ["a", "apagada", "b"] }),
       [
@@ -108,7 +104,7 @@ describe("quanto custa abrir uma conversa aqui? (tokens de entrada)", () => {
   const nota = (path: string, content: string) => ({ path, content });
 
   it("é o texto que o projeto SOMA ao prompt — instruções e notas inteiras", () => {
-    // Os mesmos montadores que o envio usa: o número é o texto que sai.
+
     const notas = [nota("Tese/Kuhn.md", "Paradigma.".repeat(35))];
     const instr = "Responda em português.";
     const texto =
@@ -128,12 +124,11 @@ describe("quanto custa abrir uma conversa aqui? (tokens de entrada)", () => {
   });
 
   it("o bloco de notas é o MESMO de antes da extração", () => {
-    // O montador saiu de dentro do chatEngine pra ser compartilhado; o texto
-    // que vai pro modelo não pode ter mudado no caminho.
+
     expect(
       blocoDeNotasAnexadas([nota("A.md", "um"), nota("B.md", "dois")])
     ).toBe(
-      "\n\n[Notas anexadas pelo usuário]\n\n### A.md\n\num\n\n---\n\n### B.md\n\ndois"
+      "\n\n[Notes attached by user]\n\n### A.md\n\num\n\n---\n\n### B.md\n\ndois"
     );
     expect(blocoDeNotasAnexadas([])).toBe("");
     expect(blocoDeInstrucoes("  Seja breve.  ")).toBe("\n\nSeja breve.");

@@ -32,8 +32,7 @@ describe("projectProblema", () => {
   });
 
   it("nome repetido é erro de gente, e por isso é erro", () => {
-    // Dois "Thesis" na lista e não há como saber em qual deles está a nota
-    // pinada ontem.
+
     const d = { ...PROJECT_DRAFT_VAZIO, name: " thesis " };
     expect(projectProblema(d, [proj()])).toMatch(/already/i);
   });
@@ -53,17 +52,14 @@ describe("projectColor", () => {
 
 describe("o rascunho vazio", () => {
   it("nasce com um ícone e uma cor que existem na grade", () => {
-    // Sem isso a folha abriria sem nada marcado, e a primeira escolha da
-    // pessoa seria desfazer um estado que ninguém escolheu.
+
     expect(PROJECT_ICONS).toContain(PROJECT_DRAFT_VAZIO.icon);
     expect(PROJECT_COLORS).toContain(PROJECT_DRAFT_VAZIO.color);
   });
 });
 
 describe("nomeDaCopia", () => {
-  // Nome repetido é barrado na folha (ver projectProblema, acima): uma cópia
-  // que nascesse com o nome do original deixaria dois "Thesis" na lista —
-  // exatamente o que aquela regra impede na mão.
+
   it("a primeira cópia não leva número", () => {
     expect(nomeDaCopia("Thesis", [proj()])).toBe("Thesis copy");
   });

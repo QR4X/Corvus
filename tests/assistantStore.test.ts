@@ -8,18 +8,13 @@ import {
 } from "../src/assistant/store";
 import { lerOpcoes } from "../src/assistant/parse";
 
-// A rodada da assistente vive FORA da árvore do React. É isso que faz fechar o
-// painel — ou a folha, ou trocar de nível — não cancelar a resposta: num modelo
-// free uma volta leva de cinco a vinte segundos, e ninguém fica olhando um
-// botão por vinte segundos.
-
 const espera = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => _resetRuns());
 
 describe("a rodada sobrevive a quem pediu", () => {
   it("segue até o fim mesmo sem ninguém olhando", async () => {
-    // Nenhum assinante: é o caso de quem fechou o painel no segundo seguinte.
+
     let resolver!: (r: { draft: unknown }) => void;
     comecarRodada(
       "skill",
@@ -34,8 +29,7 @@ describe("a rodada sobrevive a quem pediu", () => {
   });
 
   it("o resultado ESPERA ser consumido", async () => {
-    // Quem aplica é o formulário, que pode não estar montado quando a resposta
-    // chega. Até ele voltar, o rascunho fica.
+
     comecarRodada("project", [], async () => ({ draft: { name: "Tese" } }));
     await espera();
     expect(lerRun("project").resultado).toEqual({ name: "Tese" });
@@ -53,7 +47,7 @@ describe("a rodada sobrevive a quem pediu", () => {
   });
 
   it("um throw solto não deixa a rodada travada em 'rodando'", async () => {
-    // Sem isto a tela ficaria com um botão escrito "Writing…" que nunca volta.
+
     comecarRodada("skill", [], async () => {
       throw new Error("caiu a rede");
     });
@@ -63,7 +57,7 @@ describe("a rodada sobrevive a quem pediu", () => {
   });
 
   it("uma rodada nova substitui a anterior do mesmo tipo", async () => {
-    // Duas respostas do mesmo tipo disputariam os mesmos campos.
+
     comecarRodada("skill", [], async () => ({ draft: "velho" }));
     await espera();
     comecarRodada("skill", [], async () => ({ draft: "novo" }));
@@ -82,7 +76,7 @@ describe("a rodada sobrevive a quem pediu", () => {
 
 describe("o interrogatório", () => {
   it("a pergunta entra na conversa", async () => {
-    // Sem isso, na rodada seguinte o modelo não sabe o que perguntou e repete.
+
     comecarRodada(
       "skill",
       [{ quem: "pessoa", texto: "um resumo" }],
@@ -105,14 +99,13 @@ describe("lerOpcoes", () => {
   });
 
   it("corta em TRÊS — a quarta pastilha é nossa", () => {
-    // A quarta é o "eu escrevo", e ela precisa existir em toda pergunta com o
-    // mesmo texto e no mesmo lugar: saída que muda de nome não é saída.
+
     const r = lerOpcoes({ options: ["a", "b", "c", "d", "e"] });
     expect(r).toEqual(["a", "b", "c"]);
   });
 
   it("pastilha com frase dentro é cortada", () => {
-    // Quatro pastilhas numa tela de 375px têm que caber em duas fileiras.
+
     expect(lerOpcoes({ options: ["x".repeat(80)] })[0]).toHaveLength(30);
   });
 

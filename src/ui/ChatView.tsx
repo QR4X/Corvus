@@ -1,11 +1,3 @@
-// src/ui/ChatView.tsx
-// A tela do chat: barra do topo (menu · título · nova conversa), o corpo
-// (StarterScreen enquanto vazio, timeline depois) e o composer. O MODO se
-// escolhe na tela inicial; provider e modelo ficam nos pills do composer e
-// somem quando a sessão trava (1º envio) — o effort continua livre sempre.
-//
-// O histórico de conversas NÃO mora aqui: é o menu lateral (Drawer.tsx).
-
 import {
   memo,
   useCallback,
@@ -109,24 +101,22 @@ import { ThinkingLine } from "./Thinking";
 import type { ComposerInject } from "./App";
 import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
-// O limite de favoritos é UM número, e ele mora onde se marca o favorito.
-import { FAVORITE_LIMIT } from "./SettingsTab";
-import { texto } from "../core/texto";
-import { localeDaInterface, marca, tr } from "../i18n/tr";
 
-/** Título da folha do "+" em cada nível. */
+import { FAVORITE_LIMIT } from "./SettingsTab";
+import { texto } from "../core/text";
+import { uiLocale, mark, tr } from "../i18n/tr";
+
 const PLUS_SHEET_TITLE: Record<string, string> = {
-  root: marca("Add context"),
-  notes: marca("Attach note"),
-  skills: marca("Use a skill"),
-  artifacts: marca("Attach artifact"),
+  root: mark("Add context"),
+  notes: mark("Attach note"),
+  skills: mark("Use a skill"),
+  artifacts: mark("Attach artifact"),
 };
 
-/** Título da folha de modelos em cada nível. */
 const MODEL_SHEET_TITLE: Record<string, string> = {
-  root: marca("Select model"),
-  list: marca("All models"),
-  effort: marca("Effort"),
+  root: mark("Select model"),
+  list: mark("All models"),
+  effort: mark("Effort"),
 };
 
 export function ChatView({
@@ -139,42 +129,35 @@ export function ChatView({
   plugin: CorvusPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
-  /** Volta pra home do módulo desta conversa. */
+
   onBackHome: () => void;
   onUseSkill: (skill: Skill) => void;
 }) {
   const messages = useChatStore((s) => s.messages);
-  // `isLoading` diz que ALGUMA conversa está respondendo — pode não ser esta.
-  // Desde que dá pra sair do chat no meio da resposta, a tela precisa da
-  // pergunta certa: "quem responde é quem eu estou vendo?". Sem isso, abrir
-  // outra conversa mostrava nela o botão de parar e o indicador de pensando,
-  // como se ela é que estivesse trabalhando.
+
   const respondendoAlguem = useChatStore((s) => s.isLoading);
   const turnChatId = useChatStore((s) => s.turnChatId);
   const loadingChat = useChatStore((s) => s.loadingChat);
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const currentChatId = useChatStore((s) => s.currentChatId);
-  /** É ESTA conversa que está respondendo agora. */
+
   const isLoading = respondendoAlguem && turnChatId === currentChatId;
-  /** Outra conversa está respondendo — só uma de cada vez, por ora. */
+
   const outraRespondendo = respondendoAlguem && !isLoading;
 
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
-  // Anexos pendentes (nota, imagem, texto colado) — chips acima do campo.
+
   const attachments = useChatStore((s) => s.attachments);
   const addAttachment = useChatStore((s) => s.addAttachment);
   const removeAttachment = useChatStore((s) => s.removeAttachment);
-  // Mensagem escrita durante a resposta, esperando a vez.
+
   const queued = useChatStore((s) => s.queued);
   const pushQueued = useChatStore((s) => s.pushQueued);
   const removeQueued = useChatStore((s) => s.removeQueued);
-  // Lido do store pra re-renderizar quando a sessão trava/destrava.
+
   const locked = useChatStore((s) => s.sessionProvider) !== null;
   const cfg = session.config;
 
-  // O rascunho é do CHAT, não da tela: ele mora no store (ver drafts lá) pra
-  // sobreviver a sair pra Projects/Skills e pra não vazar de uma conversa pra
-  // outra.
   const draftKey = currentChatId ?? NEW_CHAT_DRAFT;
   const draft = useChatStore((s) => s.drafts[draftKey] ?? "");
   const writeDraft = useChatStore((s) => s.setDraft);
@@ -188,85 +171,55 @@ export function ChatView({
       ),
     [draftKey, writeDraft]
   );
-  /** Qual bottom sheet do composer está aberta. */
+
   const [sheet, setSheet] = useState<"model" | "effort" | "plus" | null>(
     null
   );
-  /** Provider que a folha de modelos está MOSTRANDO — não é o da sessão até
-   *  alguém tocar num modelo. Dá pra espiar o catálogo de outro provider sem
-   *  trocar nada por engano. */
+
   const [pickProvider, setPickProvider] = useState(cfg.provider);
-  /** Nível da folha de modelos: os favoritos, ou a lista inteira. */
-  /** O que foi digitado na busca da folha de modelos. */
+
   const [modelQuery, setModelQuery] = useState("");
-  /** Aba de categoria aberta no catálogo ("" = a primeira que existir). */
+
   const [modelTab, setModelTab] = useState("");
   const [modelView, setModelView] = useState<"root" | "list" | "effort">(
     "root"
   );
-  /** O que já foi reconhecido nesta gravação (parcial ou final). */
+
   const [liveText, setLiveText] = useState("");
-  /** `[[` aberto no rascunho: onde começou e o que já foi digitado. */
+
   const [mention, setMention] = useState<{ start: number; query: string } | null>(
     null
   );
-  /** Nível da folha do "+": a raiz, ou uma das listas. */
+
   const [plusView, setPlusView] = useState<
     "root" | "notes" | "skills" | "artifacts"
   >("root");
   const [noteQuery, setNoteQuery] = useState("");
-  /** Três seletores nativos: galeria, câmera e PDF. São inputs separados
-   *  porque `capture` muda o comportamento do aparelho — o mesmo input não
-   *  pode ser as duas coisas. */
+
   const imageRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
-  /** Ações do agente abertas na folha (null = fechada) e qual delas está
-   *  aberta no segundo nível. */
+
   const [tools, setTools] = useState<TurnAction[] | null>(null);
   const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLElement>(null);
-  /** A função que publica a altura do composer — chamada pelo observer e por
-   *  todo render. */
+
   const publicarRef = useRef<(() => void) | null>(null);
-  /** O campo estava em foco quando a folha abriu? Só aí faz sentido devolver
-   *  o foco quando ela fecha (quem abriu a folha sem estar escrevendo não quer
-   *  o teclado subindo do nada). */
+
   const focoAntesDaFolha = useRef(false);
-  /** rAF da medida de altura em voo (0 = nenhuma agendada). */
+
   const medindoRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Skill "Use" / sugestão: entra no rascunho, abaixo do que já estava
-  // escrito. Sem texto, é só o pedido de foco — é como o painel abre uma
-  // conversa nova já pronta pra escrever.
-  //
-  // `useLayoutEffect`, não `useEffect`: no celular o teclado só sobe se o
-  // foco acontecer DENTRO do toque que o pediu. Efeito comum roda depois da
-  // pintura, ou seja, depois que o toque acabou — a tela abria com o campo
-  // aceso e o teclado fechado, que é o pior dos dois mundos.
   useLayoutEffect(() => {
     if (!inject) return;
     if (inject.text) {
       setDraft((d) => (d.trim() ? `${d}\n\n${inject.text}` : inject.text));
     }
     textareaRef.current?.focus({ preventScroll: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `setDraft` troca junto com `draftKey`, ou seja, ao mudar de conversa. Listá-lo injetaria o texto de novo na conversa nova.
   }, [inject]);
 
-  // Composer cresce com o texto. Mede com height:0 (altura definida) — com
-  // `auto` o textarea é um flex item e pode ser medido esticado, o que fazia
-  // o composer abrir tomando meia tela.
-  //
-  // O TETO vem de composerSize: 40% do que dá pra ver, não da tela inteira. E
-  // o cálculo refaz quando a tela muda (teclado abrindo, aparelho girando) —
-  // antes ele só dependia do texto, então uma altura calculada pra outra
-  // largura ficava congelada depois de girar.
-  // useLayoutEffect, não useEffect + rAF: a medida acontece ANTES da pintura,
-  // então não existe o frame em que o campo aparece com a altura antiga. (E o
-  // rAF simplesmente não roda quando a janela está oculta, o que deixava a
-  // altura congelada ao voltar pro app.)
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -276,19 +229,13 @@ export function ChatView({
         readKeyboardHeight(document),
         window.visualViewport?.height
       );
-      // UMA fonte de verdade: o CSS lê esta var no max-height, então JS e CSS
-      // não podem mais discordar sobre o teto.
+
       el.style.setProperty("--corvus-composer-max", `${max}px`);
-      // Zera pra medir o conteúdo e só então fixa a altura: sem o zero, o
-      // scrollHeight devolve a altura ATUAL e o campo nunca encolhe.
+
       el.setCssStyles({ height: "0px" });
       el.style.height = `${Math.min(el.scrollHeight, max)}px`;
     };
-    // Medir custa um layout do documento INTEIRO. Por tecla, numa conversa de
-    // 120 mensagens, isso media 46ms — digitar travava. Por FRAME, o layout é
-    // o que ia acontecer de qualquer jeito, e teclas seguidas se juntam numa
-    // medida só. A primeira medida (e as de resize, que são raras) continuam
-    // síncronas, pra altura nunca aparecer errada num quadro.
+
     if (!el.style.height) fit();
     else if (!medindoRef.current) {
       medindoRef.current = window.requestAnimationFrame(() => {
@@ -312,10 +259,6 @@ export function ChatView({
     []
   );
 
-  // As narrações ("Listed root — 7 items") de uma rodada JÁ TERMINADA saem da
-  // conversa e vão pra folha, junto das tool calls: elas são o passo a passo,
-  // e passo a passo é auditoria. A que ainda está rodando FICA — é ela que diz
-  // que tem coisa acontecendo.
   const { hiddenIds, actionsByResponse } = useMemo(() => {
     const hiddenIds = new Set<string>();
     const actionsByResponse = new Map<string, TurnAction[]>();
@@ -349,9 +292,6 @@ export function ChatView({
     return { hiddenIds, actionsByResponse };
   }, [messages]);
 
-  // A rodada EM CURSO: tudo que já aconteceu desde a última fala do usuário,
-  // sem resposta ainda. Vira UMA linha "pensando" — não uma pilha de
-  // narrações, que é o que empurrava a conversa pra fora da tela.
   const liveTurn = useMemo(() => {
     const bucket: TurnAction[] = [];
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -370,8 +310,6 @@ export function ChatView({
         action.kind === "activity" && action.activity.phase === "pending"
     )?.activity;
 
-  // O indicador some quando o TEXTO começa a sair: a partir daí quem mostra
-  // que tem coisa acontecendo é a própria resposta aparecendo.
   const ultima = messages[messages.length - 1];
   const jaEscrevendo =
     ultima?.type === "ai-response" &&
@@ -379,30 +317,20 @@ export function ChatView({
     ultima.content.length > 0;
   const pensandoAgora = (isLoading || liveTurn.length > 0) && !jaEscrevendo;
 
-  // Quando esta espera começou — é daqui que sai o relógio da linha. Em ref
-  // pra não reiniciar a cada render; zera quando a espera acaba.
   const desdeRef = useRef(0);
   if (pensandoAgora && desdeRef.current === 0) desdeRef.current = Date.now();
   if (!pensandoAgora && desdeRef.current !== 0) desdeRef.current = 0;
   const pensandoDesde = desdeRef.current || Date.now();
-  // O rótulo é a ação MAIS RECENTE — é ela que está acontecendo agora.
-  // ── acompanhar o fim, ou deixar a pessoa ler ────────────────────────────
-  // A tela só corre atrás do texto novo enquanto o usuário está no fim. Subiu
-  // pra reler? Fica parado onde ele deixou até ele voltar — antes, cada pedaço
-  // de resposta o arrancava de volta pro rodapé.
+
   const [seguindo, setSeguindo] = useState(true);
-  /** Em ref também: os observers são registrados uma vez e não podem ler um
-   *  `seguindo` velho. */
+
   const seguindoRef = useRef(true);
   seguindoRef.current = seguindo;
-  /** Resposta que terminou LONGE dos olhos — é ela que acende. */
+
   const [avisoId, setAvisoId] = useState<string | null>(null);
 
-  /** Altura da conversa na última vez que olhamos — é ela que diz se o
-   *  usuário estava no fim ANTES do texto novo entrar. */
   const alturaAnteriorRef = useRef(0);
-  /** Tem dedo (ou roda) mexendo na rolagem agora? Enquanto tem, a tela NÃO
-   *  desce sozinha. */
+
   const gestoRef = useRef(false);
 
   const stickToBottom = () => {
@@ -410,33 +338,14 @@ export function ChatView({
     if (el) el.scrollTop = el.scrollHeight;
   };
 
-  /**
-   * O coração disto: decide, a cada mudança, se a tela desce ou fica.
-   *
-   * Roda no observer de conteúdo, no effect das mensagens e na rolagem — as
-   * três levam à MESMA conta, feita sobre o DOM na hora. Não há estado
-   * paralelo pra dessincronizar, e não depende do evento de scroll chegar.
-   */
-  /**
-   * Ponto onde a timeline deve abrir, enquanto ele ainda não foi alcançado.
-   *
-   * Não dá pra posicionar de primeira: no instante em que as mensagens entram
-   * no DOM o markdown ainda não foi renderizado (ele é atrasado de propósito),
-   * então a caixa tem quase nenhuma altura e qualquer alvo vira zero. O alvo
-   * fica guardado aqui e é reaplicado a cada mutação até caber — aí se apaga.
-   */
   const retomarRef = useRef<
     | { scroll: number; desde: number }
     | { messageId: string; desde: number }
     | null
   >(null);
 
-  /** Depois disto, desiste do alvo. Uma conversa curta NUNCA alcança o ponto
-   *  (não há o que rolar), e sem prazo o alvo ficaria pendurado pra sempre —
-   *  bloqueando a timeline de voltar a acompanhar o fim. */
   const RETOMAR_MS = 1500;
 
-  /** Tenta pousar no alvo. Devolve true quando conseguiu (e limpa o alvo). */
   const aplicarRetomada = () => {
     const alvo = retomarRef.current;
     const el = scrollRef.current;
@@ -449,12 +358,10 @@ export function ChatView({
         retomarRef.current = null;
         return false;
       }
-      // 12px de folga: mensagem colada no topo parece cortada.
+
       const destino = Math.max(0, msg.offsetTop - 12);
       el.scrollTop = destino;
-      // Só aceita quando o conteúdo já é alto o bastante pra realmente pousar
-      // ali — senão o navegador limita e a gente "acerta" no lugar errado.
-      // Passado o prazo, aceita o que deu: é o mais perto que dá.
+
       if (!desistiu && Math.abs(el.scrollTop - destino) > 2) return false;
     } else {
       const destino = alvo.scroll;
@@ -471,8 +378,7 @@ export function ChatView({
   const reavaliar = () => {
     const el = scrollRef.current;
     if (!el) return;
-    // Com um alvo pendente, a timeline NÃO segue o fim: ela está tentando
-    // pousar onde a leitura parou, e grudar embaixo desfaria isso.
+
     if (retomarRef.current) {
       aplicarRetomada();
       alturaAnteriorRef.current = el.scrollHeight;
@@ -494,10 +400,8 @@ export function ChatView({
     if (noFim) setAvisoId(null);
   };
 
-  /** Volta pro fim e volta a acompanhar (o toque no aviso e o envio). */
   const voltarPraBaixo = () => {
-    // Ir pro fim de propósito desiste de qualquer alvo pendente — quem mandou
-    // agora foi a pessoa.
+
     retomarRef.current = null;
     gestoRef.current = false;
     seguindoRef.current = true;
@@ -512,16 +416,10 @@ export function ChatView({
     const el = scrollRef.current;
     if (!el) return;
     alturaAnteriorRef.current = el.scrollHeight;
-    // Conteúdo mudando: o markdown é renderizado com atraso (throttle), então
-    // a altura cresce DEPOIS do render do React — o effect de `messages`
-    // sozinho chegaria cedo demais.
+
     const obs = new MutationObserver(reavaliar);
     obs.observe(el, { childList: true, subtree: true, characterData: true });
 
-    // ── o gesto ────────────────────────────────────────────────────────────
-    // O dedo sai da tela mas a inércia continua: quem diz que o gesto acabou é
-    // a rolagem PARAR, não o touchend. Por isso o cronômetro reinicia a cada
-    // evento de rolagem enquanto ele está armado.
     let assentar = 0;
     const comecarGesto = () => {
       gestoRef.current = true;
@@ -537,23 +435,16 @@ export function ChatView({
       }, 320);
     };
     const aoRolar = () => {
-      // Onde a leitura está, pra a sessão poder guardar isso se a conversa
-      // sair da tela no meio de uma resposta. Escrito com `setState` direto:
-      // ninguém assina este campo, então não redesenha nada.
+
       useChatStore.setState({
         viewScrollTop: el.scrollTop,
         viewChatId: useChatStore.getState().currentChatId,
       });
-      // Rolando com o cronômetro armado = inércia viva: adia o veredito.
+
       if (assentar) terminarGesto();
       reavaliar();
     };
 
-    // `capture: true` de propósito: se um filho (a imagem do anexo, ou um
-    // handler do Obsidian nela) parar a propagação, o listener de bolha nunca
-    // dispara — e sem o gesto armado a tela volta a colar no fim sozinha, o
-    // bug de "não dá pra subir". Em captura, o gesto é registrado ANTES de
-    // qualquer filho ver o evento.
     const captura = { passive: true, capture: true } as const;
     el.addEventListener("scroll", aoRolar, { passive: true });
     el.addEventListener("touchstart", comecarGesto, captura);
@@ -582,26 +473,21 @@ export function ChatView({
       el.removeEventListener("pointerdown", mouseDown, captura);
       window.removeEventListener("pointerup", mouseUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- a intenção é rodar SÓ quando a conversa troca; incluir o resto das deps reabriria a rolagem a cada token que chega.
   }, []);
 
   useEffect(reavaliar, [messages, streamingId]);
 
-  // O composer flutua sobre a conversa, então a área de mensagens precisa
-  // saber a altura dele pra reservar espaço embaixo. Ela MUDA o tempo todo
-  // (anexo, fila, campo crescendo, modo de voz), então é medida, não chutada.
   useEffect(() => {
     const el = composerRef.current;
     const raiz = el?.closest(".corvus-root") as HTMLElement | null;
     if (!el || !raiz) return;
     const publicar = () => {
-      // A ALTURA dele: é o quanto a conversa precisa avançar por baixo (margem
-      // negativa) e devolver por dentro (padding).
+
       raiz.style.setProperty(
         "--corvus-composer-h",
         `${Math.max(0, Math.round(el.getBoundingClientRect().height))}px`
       );
-      // Cresceu embaixo de quem estava no fim: desce junto.
+
       reavaliar();
     };
     publicarRef.current = publicar;
@@ -609,24 +495,14 @@ export function ChatView({
     const obs = new ResizeObserver(publicar);
     obs.observe(el);
     return () => obs.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- depende só do id da conversa de propósito: reagir às mensagens re-rodaria isto no meio do streaming.
   }, []);
 
-  // O observer só entrega no ciclo de pintura — com a janela oculta ele não
-  // roda, e a reserva ficava velha. Medir também a CADA render cobre o que
-  // muda por estado (anexo, fila, modo de voz) sem depender disso.
   useLayoutEffect(() => {
     publicarRef.current?.();
   });
 
-  // Trocar de conversa (ou abrir uma nova) começa no fim, acompanhando: o
-  // estado de leitura era da conversa anterior. Sem isto, abrir outro chat
-  // depois de ter subido pra ler deixava a tela parada no meio dele.
   useEffect(() => {
-    // A sessão pode ter pedido pra abrir num ponto — voltando de uma resposta
-    // que rodou fora da tela, ou entrando numa conversa que respondeu sem
-    // você ver. Aí o fim é o lugar errado: a resposta nova começa ACIMA dele,
-    // e cair no fim obriga a subir procurando onde ela começou.
+
     const { resumeScroll, resumeMessageId } = useChatStore.getState();
     if (resumeScroll !== null || resumeMessageId !== null) {
       useChatStore.getState().setResume({});
@@ -638,14 +514,11 @@ export function ChatView({
         resumeMessageId !== null
           ? { messageId: resumeMessageId, desde: Date.now() }
           : { scroll: resumeScroll as number, desde: Date.now() };
-      // Tenta agora e continua tentando a cada mutação, conforme o markdown
-      // vai ganhando altura (ver `aplicarRetomada`).
+
       window.requestAnimationFrame(() => aplicarRetomada());
       return;
     }
-    // Sem pedido explícito, mas é a MESMA conversa de antes: a timeline está
-    // remontando (você foi na home, ou em Projects, e voltou). Volta pro ponto
-    // em que a leitura estava — ir pro fim aqui é desfazer o que você leu.
+
     const { viewChatId, viewScrollTop } = useChatStore.getState();
     if (currentChatId && viewChatId === currentChatId && viewScrollTop > 0) {
       gestoRef.current = false;
@@ -658,12 +531,8 @@ export function ChatView({
     }
     retomarRef.current = null;
     voltarPraBaixo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- roda no fim do turno, não a cada mudança das deps que o lint quer listar.
   }, [currentChatId]);
 
-  // Terminou de responder enquanto a pessoa estava lendo lá em cima: a
-  // mensagem acende e o aviso aparece. Sem isso, a resposta fica pronta e
-  // ninguém avisa — o usuário volta do nada pra conferir.
   const respondendoRef = useRef(false);
   useEffect(() => {
     const respondendoAgora = isLoading || streamingId !== null;
@@ -676,7 +545,7 @@ export function ChatView({
       .find((m) => m.type === "ai-response");
     if (!ultima) return;
     setAvisoId(ultima.id);
-    // O aviso é visual E tátil: quem está lendo não está olhando pro rodapé.
+
     commit();
   }, [isLoading, streamingId, messages]);
 
@@ -686,23 +555,17 @@ export function ChatView({
     avisoId !== null
   );
 
-  // Teclado abrindo: a área da conversa encolhe, então reancora no fim
-  // depois da animação (o inset em si é do useKeyboardInset).
   const onComposerFocus = () => {
     if (!seguindoRef.current) return;
     stickToBottom();
     window.setTimeout(stickToBottom, 350);
   };
 
-  /** Reavalia se o cursor está dentro de um `[[` aberto. Roda a cada digitada
-   *  e a cada movimento do cursor — sair de dentro do link fecha a lista. */
   const conferirMencao = (el: HTMLTextAreaElement) => {
     const achou = wikilinkQuery(el.value, el.selectionStart ?? el.value.length);
     setMention(achou);
   };
 
-  /** Escolher na lista do `[[`: troca o que foi digitado pelo wikilink E
-   *  anexa a nota — citar sem mandar o conteúdo junto seria só um texto. */
   const escolherMencao = (n: NoteLike) => {
     const el = textareaRef.current;
     if (!el || !mention) return;
@@ -713,8 +576,7 @@ export function ChatView({
     setDraft(novo);
     setMention(null);
     void anexarNota(n.path);
-    // O cursor vai pra DEPOIS do link, senão a pessoa continua digitando
-    // dentro do que acabou de inserir. Depois do commit do React.
+
     const fim = antes.length + link.length;
     window.setTimeout(() => {
       el.focus({ preventScroll: true });
@@ -722,9 +584,6 @@ export function ChatView({
     }, 0);
   };
 
-  /** Tocou num provider que ainda não está ligado. O primeiro toque explica
-   *  em uma linha; o segundo, já que a pessoa insistiu, abre o caminho — sem
-   *  transformar cada toque errado num modal. */
   const aoTocarBloqueado = async (
     id: string,
     motivo: string,
@@ -748,9 +607,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  /** PDF: vai como anexo mesmo quando o modelo não lê — nesse caso o motor
-   *  registra o arquivo na conversa em vez de mandar, e o aviso já apareceu na
-   *  linha do menu. */
   const anexarPdf = (file: File) => {
     const leitor = new FileReader();
     leitor.onload = () => {
@@ -762,8 +618,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     leitor.readAsDataURL(file);
   };
 
-  /** Link: busca a página e anexa o TEXTO dela. Sem isto, colar uma URL só
-   *  dava ao modelo o endereço — e ele não navega. */
   const anexarLink = async () => {
     const digitado = await new PromptModal(plugin.app, {
       title: tr("Attach link"),
@@ -778,8 +632,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
     const aviso = new Notice(tr("Fetching {url}…", { url }), 0);
     try {
-      // `requestUrl` do Obsidian: sem CORS, que é o que faz isso funcionar no
-      // celular.
+
       const res = await requestUrl({ url });
       const texto = htmlToText(res.text ?? "");
       if (!texto) {
@@ -794,8 +647,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  /** Artefato: o que o plugin gerou volta pra conversa. Imagem vira anexo de
-   *  imagem de verdade (o modelo VÊ); o resto entra como referência. */
   const anexarArtefato = async (a: ArtifactLike) => {
     try {
       if (isImageExt(a.extension) && modeloVeImagem) {
@@ -812,7 +663,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       addAttachment({
         type: "note",
         path: a.path,
-        content: `Arquivo gerado pelo plugin: ${a.path}`,
+        content: `File generated by plugin: ${a.path}`,
       });
     } catch {
       new Notice(tr("Could not read that file."));
@@ -846,10 +697,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  /** Colar. Três coisas que o campo faz:
-   *   - link de Instagram Reel vira anexo com transkript automático
-   *   - imagem da área de transferência (print) vira anexo
-   *   - bloco grande vira anexo em vez de virar parede de texto */
   const aoColar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const dados = e.clipboardData;
     if (!dados) return;
@@ -880,7 +727,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  /** Anexa uma nota do vault (lida agora — é o conteúdo que vai no prompt). */
   const anexarNota = async (path: string) => {
     const nota = await readNote(plugin.app, path);
     if (!nota) {
@@ -890,8 +736,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     addAttachment({ type: "note", path: nota.path, content: nota.content });
   };
 
-  /** Imagem do aparelho: vira data URL, que é o formato que os providers
-   *  multimodais aceitam. */
   const anexarImagem = (file: File) => {
     const leitor = new FileReader();
     leitor.onload = () => {
@@ -908,27 +752,20 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     leitor.readAsDataURL(file);
   };
 
-  // Identidade ESTÁVEL: uma arrow nova a cada render derrubaria o memo da
-  // MessageRow, que é o ponto todo do item.
   const abrirAcoes = useCallback((acoes: TurnAction[]) => {
     setTools(acoes);
-    // Lista de UM item é uma parada a mais sem informação: abre direto no
-    // detalhe.
+
     setToolAt(acoes.length === 1 ? 0 : null);
   }, []);
 
   const submit = async () => {
     const text = draft.trim();
     if (!text) return;
-    // Mandar (ou enfileirar) é dizer "acabei de ler, estou aqui embaixo": a
-    // tela volta pro fim, senão a mensagem recém-escrita — e o chip da fila —
-    // nascem fora do campo de visão.
+
     voltarPraBaixo();
-    // Escrever durante a resposta não pode ser um clique no vazio: a mensagem
-    // entra na FILA e sai sozinha quando a rodada terminar.
+
     if (outraRespondendo) {
-      // O motor roda um turno por vez. Enfileirar aqui mandaria o texto pra a
-      // fila da OUTRA conversa — some da tela e aparece onde ninguém pediu.
+
       new Notice(tr("Another chat is still answering — try again in a moment."));
       return;
     }
@@ -939,35 +776,27 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       return;
     }
     commit();
-    // A chave é lida AGORA: o 1º envio de uma conversa nova ganha um id no meio
-    // do send, e limpar depois apagaria o rascunho da conversa errada.
+
     const chave = draftKey;
-    // Limpa NA HORA. `send()` só resolve quando a rodada INTEIRA termina — se
-    // a limpeza esperar por isso, o texto fica no campo durante toda a
-    // resposta e, quando ela acaba, apaga o que a pessoa escreveu no meio.
+
     writeDraft(chave, "");
     const foi = await session.send(text);
-    // Devolve se o envio nem engatou (sem key na 1ª mensagem, por exemplo).
-    // Essa desistência é síncrona, então a volta é imediata — e só acontece se
-    // o campo continuar vazio, pra não passar por cima de outra frase.
+
     if (!foi && !(useChatStore.getState().drafts[chave] ?? "").trim()) {
       writeDraft(chave, text);
     }
   };
 
-  // Abrir uma sheet tira o foco do campo — senão o teclado sobe por cima dela.
   const openSheet = (which: "model" | "effort" | "plus") => {
     const campo = textareaRef.current;
     focoAntesDaFolha.current =
       campo != null && campo.ownerDocument.activeElement === campo;
     textareaRef.current?.blur();
-    // A folha de modelos abre sempre no provider da sessão, e no primeiro nível.
+
     if (which === "model") {
       setPickProvider(cfg.provider);
       setModelView("root");
-      // A busca nasce zerada a cada abertura, como a das notas no "+": a folha
-      // abre pra ESCOLHER, e um filtro herdado da última vez esconde modelos
-      // sem que ninguém tenha pedido isso.
+
       setModelQuery("");
       setModelTab("");
     }
@@ -979,8 +808,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   };
   const closeSheet = () => {
     setSheet(null);
-    // Volta pra onde a pessoa estava: escolher um modelo no meio de uma frase
-    // não pode custar um toque a mais pra continuar escrevendo.
+
     if (focoAntesDaFolha.current) {
       focoAntesDaFolha.current = false;
       window.setTimeout(
@@ -990,59 +818,36 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  // A lista de notas do "+" (e, mais pra frente, do `[[`). Só calcula quando a
-  // folha está aberta nesse nível — varrer o vault a cada render seria caro
-  // num vault grande.
   const notasAchadas = useMemo(() => {
     if (sheet !== "plus" || plusView !== "notes") return [];
     return rankNotes(vaultNotes(plugin.app), noteQuery);
   }, [sheet, plusView, noteQuery, plugin.app]);
 
-  /** Sugestões do `[[` — poucas, porque elas cobrem a conversa. */
   const mentionHits = useMemo(
     () => (mention ? rankNotes(vaultNotes(plugin.app), mention.query, 6) : []),
     [mention, plugin.app]
   );
 
-  /** O que ESTE modelo aceita como entrada. Imagem e PDF não somem do menu
-   *  quando ele não lê — aparecem indisponíveis, que é diferente de não
-   *  existir. */
   const caps = getModelCapabilities(cfg.provider, cfg.model);
   const modeloVeImagem =
     caps.vision ||
     getModelCard(cfg.provider, cfg.model).category === "chat-vision";
   const modeloLePdf = caps.pdf === true;
 
-  /** O que o próprio plugin gerou (imagens, áudio, vídeo). */
   const artefatos = useMemo(() => {
     if (sheet !== "plus" || plusView !== "artifacts") return [];
     return rankArtifacts(vaultArtifacts(plugin.app));
   }, [sheet, plusView, plugin.app]);
 
-  // Os dois blocos do cartão de modelos. Favoritar já implica Show, então o
-  // segundo bloco tira os favoritos pra ninguém aparecer duas vezes.
   const favorites = (
     plugin.settings.favoriteModels?.[pickProvider] ?? []
   ).slice(0, 5);
-  /** O catálogo que a última busca trouxe deste provider — a segunda metade
-   *  da lista (ver mergeModelOptions). As identidades são as das settings, e
-   *  as settings TROCAM o array a cada edição (SettingsTab, alinharOllama):
-   *  por isso os dois lados vão separados pro ListaDeModelos, que junta dentro
-   *  do `useMemo` que ele já tinha. Passar a lista já juntada (array novo a
-   *  cada render) invalidava aquele memo — e aí o filtro e o agrupamento
-   *  rodavam a cada tecla digitada, com o catálogo inteiro na mão. */
+
   const ativosDoProvider = session.modelOptions(pickProvider);
   const catalogoDoProvider = plugin.settings.discoveredModels?.[pickProvider] ?? [];
   const todosOsModelos = mergeModelOptions(ativosDoProvider, catalogoDoProvider);
   const rest = todosOsModelos.filter((m) => !favorites.includes(m));
 
-  // ── modo de voz ─────────────────────────────────────────────────────────
-  // O gravador mora em useVoice; aqui fica só o GESTO do botão (segurar pra
-  // gravar, arrastar pra cancelar, pra cima pra travar) e o rascunho.
-  // O texto reconhecido aparece ACIMA do dock enquanto se fala (é o que a
-  // referência faz) e só vira rascunho quando a gravação termina. Antes ele ia
-  // direto pro textarea — que fica colapsado durante a gravação, então ninguém
-  // via nada enquanto falava.
   const voice = useVoice({
     apiKey: () => {
       const cred = getTranscriptionCredential(plugin.settings);
@@ -1051,8 +856,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     model: () => plugin.settings.voiceModel,
     language: () => plugin.settings.voiceLanguage,
     onTranscript: setLiveText,
-    // Acabou a gravação: o texto entra no rascunho, depois do que já estava
-    // escrito. Quem avisa é o hook, num aviso só — ver `onFinal`.
+
     onFinal: (texto) => {
       setLiveText("");
       if (!texto) return;
@@ -1064,14 +868,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     onCancel: () => setLiveText(""),
   });
 
-  // Um CLIQUE começa a gravar; o dock cuida do resto (✕ joga fora, ✓ usa o
-  // texto). O gesto de segurar/arrastar saiu: dependia de o microfone abrir
-  // antes do dedo sair, e essa corrida travava a tela no aparelho.
-  //
-  // A troca começa NO CLIQUE, não quando o gravador fica pronto: abrir o
-  // microfone ocupa a thread principal, e a animação de altura é main-thread —
-  // disparada junto, ela era atropelada e virava um pulo. Assim ela roda
-  // enquanto o microfone abre, e o dock já aparece (onda parada) de imediato.
   const [arming, setArming] = useState(false);
   const startVoice = async () => {
     if (arming || voice.state !== "idle") return;
@@ -1088,24 +884,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     if (voice.state === "idle") setArming(false);
   }, [voice.state]);
 
-  // Trocar de NÍVEL zera a busca: o que foi digitado era pergunta pra a lista
-  // anterior. Trocar de PROVIDER não zera: a busca agora mora na própria folha,
-  // à vista — a armadilha era a busca INVISÍVEL que escondia modelos. Com o
-  // campo na tela, manter o texto é o que deixa comparar o mesmo nome entre
-  // dois providers sem digitar tudo de novo.
   useEffect(() => {
     setModelQuery("");
     setModelTab("");
   }, [modelView]);
 
-  // A folha abre com o catálogo que já foi buscado NESTE aparelho. Se ninguém
-  // buscou ainda, busca agora e em silêncio: quem abriu a folha quer escolher
-  // um modelo, não caçar um botão nas Settings. Sem chave (ou sem endereço, no
-  // Ollama) não há o que perguntar, e uma falha de rede não vira aviso — ficam
-  // os modelos marcados, que é o que a folha mostrava antes.
-  //
-  // Uma tentativa por provider e por sessão: sem isso, um provider que responde
-  // erro (chave vencida, servidor fora) faria um pedido novo a cada abertura.
   const catalogosTentados = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (sheet !== "model") return;
@@ -1113,22 +896,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     if (!plugin.providerCredential(pickProvider)) return;
     if (catalogosTentados.current.has(pickProvider)) return;
     catalogosTentados.current.add(pickProvider);
-    // Chegando: o `saveSettings` do scan avisa a árvore (App assina
-    // `onSettingsChange`) e a folha redesenha com o catálogo.
+
     void plugin.scanModels(pickProvider).catch(() => {});
   }, [sheet, pickProvider, plugin]);
 
-  /**
-   * Marca/desmarca um favorito SEM sair da folha.
-   *
-   * Antes isso só existia em Settings, e o caminho era: sair do chat, achar a
-   * aba, achar o provider, achar o modelo. Quem descobre que usa um modelo
-   * toda hora descobre isso AQUI, na hora de escolher — que é onde a marca
-   * deve poder ser feita.
-   *
-   * O limite é o mesmo das Settings, e o aviso também: cinco por provider,
-   * porque cinco é o que cabe no atalho sem ele virar lista.
-   */
   const alternarFavorito = async (model: string) => {
     const atuais = plugin.settings.favoriteModels?.[pickProvider] ?? [];
     const tem = atuais.includes(model);
@@ -1149,7 +920,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     await plugin.saveSettings();
   };
 
-  /** Tocar num modelo comita as DUAS coisas: o provider da folha e o modelo. */
   const chooseModel = (model: string) => {
     if (pickProvider !== cfg.provider) session.setProvider(pickProvider);
     session.setModel(model);
@@ -1162,11 +932,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   return (
     <div className="corvus-chat">
       <header className="corvus-topbar">
-        {/* Só a seta. O menu tem UMA porta, e ela é a home — que fica a um
-            toque daqui. Duas portas pro mesmo lugar na mesma barra gastavam
-            a única coisa escassa desta tela, que é largura: a seta, o
-            hambúrguer, o título e o botão de nova conversa disputavam a mesma
-            linha, e o título perdia. */}
+        {}
         <button
           type="button"
           className="corvus-icon-btn"
@@ -1177,12 +943,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         </button>
         <div className="corvus-topbar-title">
           <span className="corvus-topbar-name">
-            {/* Sem conversa gravada, o título é O QUE VAI SER CRIADO — e isso
-                muda com o modo escolhido logo abaixo: "New chat", "New
-                question", "New session". É a mesma palavra que o botão de
-                criar usa em cada módulo (moduleFabLabel), porque é a mesma
-                coisa sendo nomeada. Um "New chat" fixo desmentia o trilho:
-                você escolhia Agent e a barra continuava falando de chat. */}
+            {}
             {currentChatId
               ? currentChatTitle || tr("Untitled")
               : tr(moduleFabLabel(cfg.mode))}
@@ -1220,15 +981,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               glow={m.id === avisoId}
               actions={actionsByResponse.get(m.id)}
               onOpenTools={abrirAcoes}
-              idioma={localeDaInterface()}
+              idioma={uiLocale()}
             />
           ))
         )}
 
-        {/* O "pensando": UMA linha — o asterisco que respira, o tempo e o
-            verbo da vez. Enquanto a rodada corre é ela que diz que tem coisa
-            acontecendo; quando a resposta chega ela sai e o chip da mensagem
-            assume. O que rodou fica a um toque, na folha. */}
+        {}
         {pensandoAgora && (
           <ThinkingLine
             count={liveTurn.length}
@@ -1243,12 +1001,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         )}
       </div>
 
-      {/* Composer: UM bloco só — campo em cima, barra de controles embaixo,
-          sem régua horizontal separando nada. */}
+      {}
       <section className="corvus-composer" ref={composerRef}>
-          {/* Quem subiu pra ler precisa de um caminho de volta — e de saber que
-              a resposta ficou pronta lá embaixo. Ancorado no composer (que é
-              position: relative), flutuando logo acima dele. */}
+          {}
           {mostrarAviso && (
             <button
               type="button"
@@ -1259,9 +1014,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               {avisoId ? tr("Answer ready") : tr("Jump to latest")}
             </button>
           )}
-          {/* `[[` — as notas aparecem ACIMA do campo, como no editor do
-              Obsidian. Escolher insere o link e anexa a nota. Fica dentro do
-              composer pra subir junto com ele quando o teclado abre. */}
+          {}
           {mention && mentionHits.length > 0 && (
             <div className="corvus-mention">
               {mentionHits.map((n) => (
@@ -1269,8 +1022,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   key={n.path}
                   type="button"
                   className="corvus-mention-row"
-                  // mousedown antes do blur: o blur fecharia a lista antes do
-                  // clique chegar.
+
                   onMouseDown={(e) => {
                     e.preventDefault();
                     escolherMencao(n);
@@ -1283,14 +1035,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               ))}
             </div>
           )}
-          {/* A TROCA: o composer de texto desce e o dock de áudio sobe no
-              lugar. As duas linhas do grid (1fr/0fr) animam a altura — é o que
-              faz um encolher enquanto o outro cresce, em vez de um sumir e o
-              outro aparecer. */}
-          {/* Os anexos e a fila ficam ACIMA do cartão, não dentro dele: o
-              cartão é onde se escreve, e o que vai junto da mensagem é outra
-              coisa. Cada um mostra a MINIATURA de verdade quando tem o que
-              mostrar; senão, o emoji do que ele é. */}
+          {}
+          {}
           {(attachments.length > 0 || queued.length > 0) && (
             <div className="corvus-pills-row">
               {queued.map((q, i) => (
@@ -1348,9 +1094,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           >
             <div className="corvus-swap-row">
             <div className="corvus-input">
-              {/* O que vai junto da mensagem. Fica ACIMA do texto porque é
-                  contexto do que está sendo escrito — e cada um sai com um
-                  toque, senão anexar vira armadilha. */}
+              {}
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -1365,16 +1109,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 onPaste={aoColar}
                 onBlur={() => setMention(null)}
                 onKeyDown={(e) => {
-                  // Com a lista do `[[` aberta, Esc fecha ela — não o teclado.
+
                   if (e.key === "Escape" && mention) {
                     e.preventDefault();
                     setMention(null);
                     return;
                   }
                   if (e.key !== "Enter") return;
-                  // Enter com a lista aberta ESCOLHE (é o que o editor do
-                  // Obsidian faz) — mandar a mensagem no meio de um `[[` seria
-                  // mandar o link pela metade.
+
                   if (mention && mentionHits.length > 0) {
                     e.preventDefault();
                     escolherMencao(mentionHits[0]);
@@ -1385,12 +1127,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     void submit();
                     return;
                   }
-                  // Acento/IME/teclado de swipe compõem texto e mandam Enter no
-                  // meio: enviar aí cortaria a palavra. `isComposing` é o sinal
-                  // padrão pra isso.
+
                   if (e.nativeEvent.isComposing) return;
-                  // No celular Enter é quebra de linha e quem envia é o botão;
-                  // no desktop é o contrário, com Shift+Enter pra quebrar.
+
                   if (!Platform.isMobile && !e.shiftKey) {
                     e.preventDefault();
                     void submit();
@@ -1398,7 +1137,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 }}
               />
 
-              {/* + à esquerda, o modelo ao lado, e à direita voz e enviar. */}
+              {}
               <div className="corvus-input-bar">
                 <button
                   type="button"
@@ -1408,7 +1147,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 >
                   <Icon name="plus" size={22} />
                 </button>
-                {/* Seletores nativos: galeria, câmera e PDF. */}
+                {}
                 <input
                   ref={imageRef}
                   type="file"
@@ -1467,9 +1206,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
                 {isLoading ? (
                   <>
-                    {/* Com texto escrito durante a resposta, aparece um segundo
-                        botão: enfileirar. Sem ele o celular não teria como —
-                        o lugar do enviar está ocupado pelo parar. */}
+                    {}
                     {draft.trim() && (
                       <button
                         type="button"
@@ -1497,8 +1234,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     className="corvus-send"
                     aria-label={tr("Send")}
                     disabled={!draft.trim()}
-                    // Sem isto o toque tira o foco do campo e o Android fecha o
-                    // teclado a cada mensagem enviada.
+
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => void submit()}
                   >
@@ -1518,11 +1254,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           </div>
       </section>
 
-      {/* Bottom sheets do composer — modelo · effort. */}
-      {/* Dois níveis na MESMA folha, como o app da Claude: em cima os
-          favoritos (o atalho), e "Show list" é uma linha que abre a lista
-          inteira aqui dentro — com seta pra voltar. Sem favorito não há de
-          onde descer, então a lista já vem no primeiro nível. */}
+      {}
+      {}
       <Sheet
         title={tr(MODEL_SHEET_TITLE[modelView])}
         open={sheet === "model"}
@@ -1547,18 +1280,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           />
         )}
 
-        {/* A busca mora na PRIMEIRA tela da folha, não só no nível "All
-            models": quem abriu quer escolher um modelo, e chegar na busca por
-            um nível a mais era um toque em cada troca. O campo não abre o
-            teclado sozinho (ver SheetSearch) — a folha abre pra escolher.
-            Digitando, o resultado aparece AQUI (a lista inteira, filtrada). */}
+        {}
         {modelView === "root" && !locked && (
           <SheetSearch
             value={modelQuery}
             placeholder={tr("Search models")}
-            // Só conta quando há busca: `filterModels` sem texto devolveria
-            // uma cópia da lista inteira a cada render — e a folha de modelos
-            // é desenhada mesmo fechada, a cada tecla do rascunho.
+
             found={
               modelQuery.trim()
                 ? filterModels(todosOsModelos, modelQuery, prettyModelName).length
@@ -1588,9 +1315,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           (modelView === "root" && !locked && modelQuery.trim().length > 0) ? (
           <ListaDeModelos
             provider={pickProvider}
-            /* TUDO, favoritos inclusive. Com `rest` (o que não é favorito), a
-               linha SUMIA sob o dedo ao ser favoritada — ela passava a
-               pertencer ao outro nível. "All models" promete todos. */
+
             models={ativosDoProvider}
             catalogo={catalogoDoProvider}
             atual={pickProvider === cfg.provider ? cfg.model : ""}
@@ -1601,7 +1326,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             favoritos={favorites}
             onFavorito={(m) => void alternarFavorito(m)}
             onPick={chooseModel}
-            /* Na raiz o campo já está acima; aqui ele não se repete. */
+
             busca={modelView !== "root"}
           />
         ) : (
@@ -1616,9 +1341,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 </SheetNote>
               </SheetGroup>
             ) : favorites.length > 0 ? (
-              /* Só os favoritos aqui. O primeiro nível é o ATALHO — cinco
-                 linhas que se lê de um golpe. O catálogo inteiro mora um
-                 nível abaixo, onde há espaço pra ele. */
+
               <SheetGroup>
                 {favorites.map((m) => (
                   <ModelRow
@@ -1646,11 +1369,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 </SheetNote>
               </SheetGroup>
             )}
-            {/* Navegação num cartão só, abaixo dos modelos: a lista inteira e
-                o effort. Os dois abrem OUTRO nível desta mesma folha. */}
+            {}
             <SheetGroup>
-              {/* Sem depender de favoritos: é ele que leva ao catálogo, e
-                  quem não marcou favorito precisa MAIS dele, não menos. */}
+              {}
               {!locked && rest.length > 0 && (
                 <SheetNavRow
                   icon="list"
@@ -1665,14 +1386,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 note={tr(EFFORT_LABELS[effort] ?? cfg.effort)}
                 onClick={() => setModelView("effort")}
               />
-              {/* As SUAS notas como contexto. Mora aqui porque esta folha é
-                  onde se decide COMO a resposta vai ser feita — modelo,
-                  esforço e agora a fonte. Como pílula no composer ela
-                  disputava largura com o modelo e o "+", e uma barra com dois
-                  interruptores parecidos convida ao toque errado.
-                  Ao contrário do modelo e do modo, este não trava no primeiro
-                  envio: "agora olha minhas notas" é pedido legítimo no meio da
-                  conversa. */}
+              {}
               <SheetToggleRow
                 icon="library"
                 title={tr("Use my notes")}
@@ -1685,12 +1399,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         )}
       </Sheet>
 
-      {/* O "+" abre o que dá pra ACRESCENTAR à conversa. Hoje são as skills —
-          o mesmo atalho da tela inicial, alcançável no meio do papo. */}
-      {/* O "+": três caminhos grandes em cima (nota, câmera, imagem) e o
-          resto em lista — PDF, link, skill, artefato. Desenho da referência:
-          cartões vazados na fileira, e as linhas num cartão cheio com brasão
-          redondo e seta. */}
+      {}
+      {}
       <Sheet
         title={tr(PLUS_SHEET_TITLE[plusView])}
         open={sheet === "plus"}
@@ -1804,9 +1514,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             </SheetTiles>
 
             <SheetGroup>
-              {/* A nota aberta, a um toque: é a que a pessoa mais quer
-                  anexar, e achá-la na busca era o caminho mais longo. Some
-                  quando já está anexada. */}
+              {}
               {(() => {
                 const aberta = sheet === "plus" ? notaAberta(plugin.app) : null;
                 if (!aberta || attachments.some((a) => a.type === "note" && a.path === aberta.path)) {
@@ -1877,8 +1585,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         )}
       </Sheet>
 
-      {/* O que o agente fez: lista numa folha, e cada ação abre a sua com
-          argumentos e resultado — o mesmo vai-e-volta da folha de modelos. */}
+      {}
       <Sheet
         title={
           toolAt !== null && tools
@@ -1902,8 +1609,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           <ToolDetail
             action={tools[toolAt]}
             app={plugin.app}
-            // A folha guarda uma CÓPIA das ações de quando abriu; o Undo feito
-            // aqui dentro tem que aparecer nela também, não só na conversa.
+
             onUndone={(id) =>
               setTools((ts) =>
                 ts
@@ -1961,7 +1667,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   );
 }
 
-/** Linha de modelo: brasão da família + nome + o que ele faz. */
 function ModelRow({
   provider,
   model,
@@ -1973,9 +1678,9 @@ function ModelRow({
   provider: string;
   model: string;
   selected: boolean;
-  /** Está entre os favoritos deste provider. */
+
   favorito?: boolean;
-  /** Marcar/desmarcar. Ausente = a linha não mostra estrela. */
+
   onFavorito?: () => void;
   onClick: () => void;
 }) {
@@ -1984,14 +1689,7 @@ function ModelRow({
     <SheetRow
       title={prettyModelName(model)}
       note={card.goodFor ?? card.description}
-      /* O logo de QUEM FEZ o modelo.
-         Esta lista nasceu SEM ícone de propósito — na época, o que havia pra
-         pôr ali era um lucide genérico, e ícone genérico numa lista é
-         decoração: ocupa a coluna e não responde nada. Com os logos de marca
-         (ver providers/modelLogo.ts) ele deixa de ser enfeite e vira a única
-         coisa que se acha sem ler, numa lista onde os nomes são todos parecidos
-         ("Sonnet 4.6", "Sonnet 4", "Haiku 4.5"). Onde não temos a marca, cai no
-         brasão da família, que também diz algo. */
+
       icon={modelLogo(model)}
       selected={selected}
       action={
@@ -2009,15 +1707,6 @@ function ModelRow({
   );
 }
 
-/**
- * A lista de modelos da folha: busca em cima (quando a lista é grande) e os
- * modelos separados por natureza.
- *
- * O agrupamento entra porque o catálogo de um provider traz, na mesma pilha,
- * coisas que não conversam — geradores de imagem, vozes, embeddings. Elas
- * continuam ali (o app usa modelo de imagem pra gerar imagem), só param de
- * disputar espaço com o que se está escolhendo.
- */
 function ListaDeModelos({
   provider,
   models,
@@ -2033,9 +1722,9 @@ function ListaDeModelos({
   busca = true,
 }: {
   provider: string;
-  /** O que está marcado pra este provider (o atual incluso). */
+
   models: string[];
-  /** O que a última busca de catálogo trouxe — vai junto e DEPOIS. */
+
   catalogo: string[];
   atual: string;
   query: string;
@@ -2045,14 +1734,10 @@ function ListaDeModelos({
   favoritos: string[];
   onFavorito: (m: string) => void;
   onPick: (m: string) => void;
-  /** Desenha o campo de busca. `false` quando quem chamou já pôs um acima —
-   *  dois campos para a mesma busca divergem na primeira mudança. */
+
   busca?: boolean;
 }) {
-  // A junção mora AQUI, com as duas listas como dependência: elas vêm das
-  // settings (identidade trocada a cada edição), então este memo acerta. Se a
-  // lista já viesse juntada de fora, ela seria um array novo por render e o
-  // filtro/agrupamento abaixo rodariam em toda tecla.
+
   const lista = useMemo(
     () => mergeModelOptions(models, catalogo),
     [models, catalogo]
@@ -2065,11 +1750,9 @@ function ListaDeModelos({
     () => groupModels(provider, filtrados),
     [provider, filtrados]
   );
-  // Aba pedida, ou a primeira que existir — a busca pode ter esvaziado a que
-  // estava aberta, e aí insistir nela mostraria uma tela vazia com resultados
-  // logo ao lado.
+
   const ativa = grupos.find((g) => g.label === aba) ?? grupos[0];
-  // Abaixo disto a busca é um campo pedindo pra filtrar o que já cabe na tela.
+
   const BUSCA_A_PARTIR_DE = 8;
   return (
     <>
@@ -2117,9 +1800,6 @@ function ListaDeModelos({
   );
 }
 
-/** O pill do modelo. O LOGO do provider no lugar do chevron: a seta dizia
- *  "isto abre" (que o toque já ensina na primeira vez), enquanto o logo diz
- *  QUEM está respondendo — que é a informação que muda. */
 function Pill({
   label,
   logo,
@@ -2128,8 +1808,7 @@ function Pill({
 }: {
   label: string;
   logo?: string;
-  /** Pílula que LIGA e DESLIGA (o contexto das notas). `undefined` = pílula
-   *  comum, que abre alguma coisa. */
+
   active?: boolean;
   onClick: () => void;
 }) {
@@ -2137,8 +1816,7 @@ function Pill({
     <button
       type="button"
       className={active ? "corvus-pill is-on" : "corvus-pill"}
-      // `aria-pressed` só quando ela é interruptor: numa pílula que abre uma
-      // folha, "pressionada" não quer dizer nada.
+
       aria-pressed={active === undefined ? undefined : active}
       onClick={onClick}
     >
@@ -2154,14 +1832,10 @@ function activityText(a: ActivityMeta): string {
   return a.failedText ?? tr("Failed");
 }
 
-/** O que o agente fez numa rodada: a chamada de tool OU a narração dela. As
- *  duas coisas moram na mesma folha porque, pra quem lê, são a mesma pergunta:
- *  "o que ele fez aí?". */
 export type TurnAction =
   | { kind: "step"; step: AIToolStep }
   | { kind: "activity"; activity: ActivityMeta }
-  /** O raciocínio do modelo. Mesma natureza: texto gerado que interessa ter,
-   *  não ter na frente. */
+
   | { kind: "reasoning"; text: string };
 
 function actionTitle(a: TurnAction): string {
@@ -2182,10 +1856,6 @@ function actionFailed(a: TurnAction): boolean {
   return false;
 }
 
-/** O ícone DIZ o que a ação foi — olho pra leitura, radar pra busca, lixeira
- *  pra apagar. Um check repetido em toda linha não informava nada: o estado já
- *  está na etiqueta "failed" e no detalhe. O mapa é o MESMO que o motor usa na
- *  narração (agentActivitySpec), então a folha e a timeline não divergem. */
 function actionIcon(a: TurnAction): string {
   if (a.kind === "reasoning") return "brain";
   if (a.kind === "activity") {
@@ -2197,7 +1867,6 @@ function actionIcon(a: TurnAction): string {
   return agentActivitySpec(a.step.name, a.step.arguments ?? {}).iconPending;
 }
 
-/** Resumo de uma linha dos argumentos — o suficiente pra reconhecer a ação. */
 function toolSummary(step: AIToolStep): string {
   const args = Object.entries(step.arguments ?? {});
   if (args.length === 0) return step.ok ? tr("done") : tr("failed");
@@ -2206,11 +1875,6 @@ function toolSummary(step: AIToolStep): string {
   return `${chave}: ${texto}`.slice(0, 80);
 }
 
-/**
- * O chip "Undo" da resposta: desfaz tudo o que o agente mudou na rodada.
- * Só existe enquanto sobra mudança desfazível — e só na sessão em que ela
- * aconteceu (o desfazer mora na memória; ver agent/undo.ts).
- */
 function UndoChip({
   plugin,
   actions,
@@ -2244,8 +1908,6 @@ function UndoChip({
   );
 }
 
-/** Detalhe de uma ação: o que foi pedido e o que voltou — e, se ela mudou o
- *  vault e ainda dá, o botão de desfazer só ela. */
 function ToolDetail({
   action,
   app,
@@ -2340,7 +2002,6 @@ function ToolDetail({
   );
 }
 
-/** Ouvir a resposta. O motor já tinha o TTS; faltava o botão. */
 function ReadAloudButton({
   plugin,
   text,
@@ -2370,10 +2031,6 @@ function ReadAloudButton({
   );
 }
 
-/** Uma linha da conversa. `memo` de propósito: sem ele, cada TECLA do
- *  composer re-renderizava a conversa inteira — medido em 2,33ms com 5
- *  mensagens contra 8,23ms com 120. O que muda numa mensagem já pronta é
- *  só o que vem por prop, então comparar props basta. */
 const MessageRow = memo(function MessageRow({
   msg,
   plugin,
@@ -2385,13 +2042,12 @@ const MessageRow = memo(function MessageRow({
   msg: ChatMessage;
   plugin: CorvusPlugin;
   streaming: boolean;
-  /** Terminou enquanto o usuário lia lá em cima: acende uma vez. */
+
   glow?: boolean;
-  /** Tudo que o agente fez nesta rodada — narrações + tool calls. */
+
   actions?: TurnAction[];
   onOpenTools?: (actions: TurnAction[]) => void;
-  /** O idioma da interface: a linha é memo, e sem ele no props uma troca de
-   *  idioma deixava "Ran 3 actions" e "Listen" no idioma velho até reabrir. */
+
   idioma?: string;
 }) {
   switch (msg.type) {
@@ -2471,8 +2127,7 @@ const MessageRow = memo(function MessageRow({
           {msg.truncated && <small className="corvus-msg-note">{tr("truncated")}</small>}
           {actions && actions.length > 0 && (
             <div className="corvus-tools-row">
-              {/* O que o agente FEZ vira um chip: quem quer ver abre a folha, e
-                  quem não quer não leva um <details> no meio da leitura. */}
+              {}
               <button
                 type="button"
                 className="corvus-tools-chip"
@@ -2485,9 +2140,7 @@ const MessageRow = memo(function MessageRow({
                 </span>
                 <Icon name="chevron-right" size={15} />
               </button>
-              {/* E o que ele MUDOU volta com um toque: a rodada inteira, da
-                  última mudança pra primeira. Some quando não sobra nada pra
-                  desfazer (ou a sessão em que ela aconteceu acabou). */}
+              {}
               <UndoChip plugin={plugin} actions={actions} />
             </div>
           )}
@@ -2511,8 +2164,7 @@ const MessageRow = memo(function MessageRow({
             {msg.activity && msg.content ? ` — ${msg.content}` : ""}
           </span>
           {msg.activity?.detail && (
-            // Mesmo caminho de tudo o mais: abre na folha. Um <details> aqui
-            // empurrava a conversa toda pra baixo no meio de uma rodada.
+
             <button
               type="button"
               className="corvus-tools-chip is-inline"

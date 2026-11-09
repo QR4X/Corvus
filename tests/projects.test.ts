@@ -34,7 +34,7 @@ describe("constantes do picker", () => {
   it("cores: 'default' é a primeira + sem duplicatas", () => {
     expect(PROJECT_COLORS[0]).toBe("default");
     expect(new Set(PROJECT_COLORS).size).toBe(PROJECT_COLORS.length);
-    // as demais são hex
+
     for (const c of PROJECT_COLORS.slice(1)) {
       expect(c).toMatch(/^#[0-9a-f]{6}$/i);
     }

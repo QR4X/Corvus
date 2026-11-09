@@ -7,18 +7,6 @@ import {
   shouldMigrate,
 } from "../src/core/vaultPaths";
 
-/**
- * A regra de quando MEXER nos arquivos de alguém.
- *
- * Mover arquivo de conversa é a operação mais perigosa deste app: é a única
- * coisa que ele guarda que não se refaz. Por isso a decisão é uma função pura,
- * testada, e cada "não" dela vale mais que o "sim".
- *
- * Desde que o default das conversas virou pasta VISÍVEL (pra file-sync copiar
- * entre aparelhos), as migrações vão em DUAS direções: chats pro visível, e o
- * índice do RAG (cache, se refaz) pra oculta.
- */
-
 describe("para onde o app leva o que migra", () => {
   it("conversas vão pra pasta VISÍVEL; o índice vai pra oculta", () => {
     const chats = HIDDEN_MOVES.filter((m) => m.campo === "chatsPath");
@@ -40,9 +28,7 @@ describe("para onde o app leva o que migra", () => {
     expect(legados).toContain("corvus-ai/chats");
     expect(legados).toContain(`${CORVUS_HIDDEN}/chats`);
     expect(legados).toContain("corvus-ai/index");
-    // Skills, mídia gerada e relatórios ficam VISÍVEIS de propósito: skill é
-    // nota que a pessoa edita, e mídia escondida não dá pra embutir numa nota
-    // (o Obsidian não resolve link pra fora do índice).
+
     expect(legados).not.toContain("corvus-ai/skills");
     expect(legados).not.toContain("corvus-ai/generation");
     expect(legados).not.toContain("corvus-ai/reports");
@@ -54,7 +40,7 @@ describe("isHiddenPath", () => {
     expect(isHiddenPath(".corvus/chats/agent/x.md")).toBe(true);
     expect(isHiddenPath("notas/.rascunho/x.md")).toBe(true);
     expect(isHiddenPath("corvus-ai/chats/x.md")).toBe(false);
-    // Ponto NO MEIO do nome não esconde nada — só no começo.
+
     expect(isHiddenPath("notas/plano.v2/x.md")).toBe(false);
   });
 });
@@ -73,8 +59,7 @@ describe("shouldMigrate", () => {
   });
 
   it("caminho ESCOLHIDO pela pessoa não se mexe", () => {
-    // Quem apontou as conversas pra outro lugar tomou uma decisão. Migrar por
-    // cima dela é desfazer o que ela pediu.
+
     expect(
       shouldMigrate({ ...base, caminhoAtual: "Arquivo/minhas-conversas" })
     ).toBe(false);
@@ -89,8 +74,7 @@ describe("shouldMigrate", () => {
   });
 
   it("destino JÁ existe: não passa por cima", () => {
-    // Ou a migração já rodou, ou há coisa lá. Escrever por cima podia
-    // sobrescrever conversa — e conversa não se refaz.
+
     expect(shouldMigrate({ ...base, destinoExiste: true })).toBe(false);
   });
 

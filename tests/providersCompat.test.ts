@@ -15,10 +15,6 @@ import { anthropicProvider } from "../src/providers/anthropic";
 import { contextoDoOllama, ollamaProvider, tokensDoPedido } from "../src/providers/ollama";
 import type { ProviderRequest } from "../src/providers/base";
 
-// O que cada nível de esforço vira em cada provider — conferido contra a
-// documentação de cada um (out/2026). Cada caso aqui era um HTTP 400 (ou uma
-// resposta vazia) antes da 0.9.22.
-
 const pedido = (model: string, extra: Partial<ProviderRequest> = {}): ProviderRequest => ({
   model,
   messages: [{ role: "user", content: "Oi" }],
@@ -146,9 +142,9 @@ describe("modelos que pensam antes de responder", () => {
     expect(resolveMaxTokens("anthropic", "claude-opus-5-5", 2048, "med")).toBe(16000);
     expect(resolveMaxTokens("gemini", "gemini-2.5-pro", 6000, "high")).toBe(32000);
     expect(resolveMaxTokens("anthropic", "claude-fable-5-1", 16000, "xhigh")).toBe(64000);
-    // sem nível (assistente, títulos): o piso base
+
     expect(resolveMaxTokens("anthropic", "claude-opus-5-5", 1200)).toBe(pisoPensando());
-    // o teto do modelo continua mandando: no NIM, o DeepSeek R1 fica nos 8k
+
     expect(resolveMaxTokens("nim", "deepseek-ai/deepseek-r1", 512, "low")).toBe(8192);
   });
 
@@ -165,14 +161,14 @@ describe("o nível vira o 'quanto pensar' de cada provider", () => {
     expect(de("claude-opus-5-5", "low")).toEqual({ campo: "output_config", valor: { effort: "low" } });
     expect(de("claude-opus-5-5", "xhigh")?.valor).toEqual({ effort: "xhigh" });
     expect(de("claude-opus-5-5", "max")?.valor).toEqual({ effort: "max" });
-    // Sonnet 4.6 tem max, não tem xhigh
+
     expect(de("claude-sonnet-4-6", "xhigh")?.valor).toEqual({ effort: "high" });
     expect(de("claude-sonnet-4-6", "max")?.valor).toEqual({ effort: "max" });
-    // Opus 4.5: só até high
+
     expect(de("claude-opus-4-5-20251101", "max")?.valor).toEqual({ effort: "high" });
-    // Mythos Preview: max sim, xhigh não
+
     expect(de("claude-mythos-preview", "xhigh")?.valor).toEqual({ effort: "high" });
-    // sem o controle: nada (mandar seria 400)
+
     expect(de("claude-haiku-4-5-20251001", "low")).toBeNull();
     expect(de("claude-sonnet-4-5-20250929", "low")).toBeNull();
   });
@@ -278,9 +274,9 @@ describe("Ollama — a janela (num_ctx) cabe o que vai", () => {
   it("o menor degrau que cabe prompt + resposta, sem passar do modelo", () => {
     expect(contextoDoOllama(2000, 2000, 131072)).toBe(8192);
     expect(contextoDoOllama(9000, 2000, 131072)).toBe(16384);
-    expect(contextoDoOllama(30000, 16000, 131072)).toBe(65536); // resposta conta até 8k
-    expect(contextoDoOllama(9000, 2000, 4096)).toBe(4096); // modelo pequeno: o máximo dele
-    expect(contextoDoOllama(90000, 2000)).toBe(32768); // sem saber o modelo: até 32k
+    expect(contextoDoOllama(30000, 16000, 131072)).toBe(65536); 
+    expect(contextoDoOllama(9000, 2000, 4096)).toBe(4096); 
+    expect(contextoDoOllama(90000, 2000)).toBe(32768); 
   });
 
   it("estima o pedido: texto, ferramentas e imagens", () => {
@@ -303,9 +299,9 @@ describe("Ollama — a janela (num_ctx) cabe o que vai", () => {
       return { status: 200, json: { message: { content: "ok" }, done: true }, text: "", headers: {} };
     });
     await ollamaProvider.chat(pedido("gpt-oss:20b", { effort: "low" }), "http://localhost:11434");
-    // gpt-oss pensa: o Low (512) sobe pro piso de 16k
+
     expect(chat.options?.num_predict).toBe(16000);
-    // prompt mínimo + até 8k da resposta = pouco mais de 8k → degrau de 16k
+
     expect(chat.options?.num_ctx).toBe(16384);
   });
 

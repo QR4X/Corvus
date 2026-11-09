@@ -2,12 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import { embedItems, embedOllama } from "../src/rag/embeddings";
 import { inferEmbeddingSpec, pareceEmbeddingDoOllama, registerDiscoveredEmbeddings } from "../src/rag/types";
-import { EMBEDDING_PROVIDERS } from "../src/rag/descobertos";
+import { EMBEDDING_PROVIDERS } from "../src/rag/discovered";
 import { ollamaProvider } from "../src/providers/ollama";
-
-// O Vault Q&A sem nuvem: os embeddings do Ollama de quem usa — descobrir os
-// modelos, embedar pelo /api/embed (e pelo antigo /api/embeddings), e o spec
-// que diz "local" e não inventa preço.
 
 afterEach(() => {
   __setRequestUrl(null);
@@ -46,7 +42,7 @@ describe("os modelos de embedding do Ollama", () => {
     });
     const lista = await ollamaProvider.listEmbeddingModels("http://localhost:11434");
     expect(lista).toEqual(["meu-embed-custom", "nomic-embed-text:latest", "x-encoder"]);
-    // quem o nome já resolveu não vai pro /api/show
+
     expect(pedidos.filter((u) => u.endsWith("/api/show"))).toHaveLength(2);
   });
 });

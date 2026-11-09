@@ -1,88 +1,60 @@
-// src/ui/modules.ts
-// Os MÓDULOS do app — chat, vault-qa e agent — num lugar só.
-//
-// Eles já existiam como `ChatMode` no motor (e como PASTA no vault: uma
-// conversa mora em `corvus-ai/chats/<modo>/<id>.md`, então o módulo dela é o
-// caminho, não um campo qualquer). O que não existia era um lugar onde o
-// módulo se descrevesse: o rótulo estava escrito à mão na tela inicial, de
-// novo no ChatView, e a gaveta mostrava o id cru ("vault-qa") pro usuário.
-// Três cópias que já discordavam entre si.
-//
-// Aqui fica a descrição, e as contas de lista que a gaveta precisa. Tudo puro:
-// recebe as conversas, devolve o recorte.
-
 import { CHAT_MODES, isChatMode, type ChatMode } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
-import { marca, tr } from "../i18n/tr";
+import { mark, tr } from "../i18n/tr";
 
 export interface ModuleMeta {
-  /** `ChatMode` pros três que o motor conhece; um id qualquer pros que só
-   *  existem no disco (ver `modulesInUse`). */
+
   id: string;
-  /** Nome humano. Nunca mostre o id pro usuário. */
+
   label: string;
-  /** O nome que cabe numa aba estreita: num segmented de quatro colunas de
-   *  telefone, "Vault Q&A" não cabe — e cortado no meio ele não diz nada. */
+
   short: string;
   icon: string;
-  /** Uma linha dizendo o que o módulo faz — usada na tela inicial. */
+
   tagline: string;
-  /** Placeholder do campo de texto naquele módulo. */
+
   placeholder: string;
-  /** O que a home diz quando não há nenhuma conversa ainda. */
+
   emptyLine: string;
-  /** Rótulo do botão flutuante da home. O Agent chama de sessão porque é o
-   *  que ele roda: uma sessão de trabalho no vault, não um bate-papo. */
+
   fabLabel: string;
 }
 
-// tagline, placeholder, emptyLine e fabLabel são chaves do i18n (marca): quem
-// mostra o campo direto passa por tr(); as funções abaixo já devolvem traduzido.
 export const MODULES: Record<ChatMode, ModuleMeta> = {
   chat: {
     id: "chat",
     label: "Chat",
     short: "Chat",
     icon: "message-circle",
-    tagline: marca("Just you and the model. Your notes stay out of it."),
-    placeholder: marca("Message the model…"),
-    emptyLine: marca("Ask anything. Your chats show up here."),
-    fabLabel: marca("New chat"),
+    tagline: mark("Just you and the model. Your notes stay out of it."),
+    placeholder: mark("Message the model…"),
+    emptyLine: mark("Ask anything. Your chats show up here."),
+    fabLabel: mark("New chat"),
   },
   "vault-qa": {
     id: "vault-qa",
     label: "Vault Q&A",
     short: "Vault",
     icon: "library",
-    tagline: marca("Answers grounded in your notes, found by local search."),
-    placeholder: marca("Ask something about your notes…"),
-    emptyLine: marca("Ask about your notes. The answers land here."),
-    fabLabel: marca("New question"),
+    tagline: mark("Answers grounded in your notes, found by local search."),
+    placeholder: mark("Ask something about your notes…"),
+    emptyLine: mark("Ask about your notes. The answers land here."),
+    fabLabel: mark("New question"),
   },
   agent: {
     id: "agent",
     label: "Agent",
     short: "Agent",
     icon: "bot",
-    tagline: marca("Reads and edits your vault — every change asks first."),
-    placeholder: marca("Tell the agent what to do in your vault…"),
-    emptyLine: marca("Put the agent to work in your vault. Runs show up here."),
-    fabLabel: marca("New session"),
+    tagline: mark("Reads and edits your vault — every change asks first."),
+    placeholder: mark("Tell the agent what to do in your vault…"),
+    emptyLine: mark("Put the agent to work in your vault. Runs show up here."),
+    fabLabel: mark("New session"),
   },
 };
 
-/** Na ordem em que aparecem no menu e na tela inicial. */
 export const MODULE_LIST: ModuleMeta[] = CHAT_MODES.map((m) => MODULES[m]);
 
-/**
- * Os módulos que o menu deve mostrar: os três do motor MAIS qualquer outro
- * que apareça nas conversas gravadas.
- *
- * Sem isso, uma conversa com modo desconhecido — gravada por uma versão mais
- * nova, ou numa pasta criada na mão dentro de `corvus-ai/chats/` — ficaria
- * INALCANÇÁVEL: o menu só teria portas pros modos que esta versão conhece, e
- * o arquivo estaria lá, invisível. O menu lista o que os dados dizem.
- */
 export function modulesInUse(chats: readonly ChatSummary[]): ModuleMeta[] {
   const extras = new Map<string, ModuleMeta>();
   for (const c of chats) {
@@ -101,17 +73,11 @@ export function modulesInUse(chats: readonly ChatSummary[]): ModuleMeta[] {
   return [...MODULE_LIST, ...extras.values()];
 }
 
-/**
- * Nome humano de um modo. Um modo DESCONHECIDO (conversa gravada por uma
- * versão futura, ou pasta criada na mão) devolve o próprio id em vez de
- * sumir: melhor o usuário ver "pesquisa" do que ver nada.
- */
 export function moduleLabel(id: string | undefined | null): string {
   if (isChatMode(id)) return MODULES[id].label;
   return (id ?? "").trim() || "Chat";
 }
 
-/** Ícone do modo; desconhecido cai num genérico em vez de quebrar o Lucide. */
 export function moduleIcon(id: string | undefined | null): string {
   return isChatMode(id) ? MODULES[id].icon : "message-square";
 }
@@ -120,34 +86,21 @@ export function modulePlaceholder(id: string | undefined | null): string {
   return tr(isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder);
 }
 
-/** O que uma busca devolveu, e COMO devolveu. */
 export interface Busca {
   hits: ChatSummary[];
-  /** A expressão foi lida como regex (o caso normal). */
+
   regex: boolean;
-  /** A expressão não compila como regex — caiu em busca literal. */
+
   invalida: boolean;
 }
 
-/**
- * Busca nas conversas por título e modelo, com REGEX.
- *
- * A expressão é sempre tentada como regex primeiro: um termo comum como
- * "readme" também é uma regex válida e casa consigo mesmo, então quem só quer
- * procurar palavra não perde nada, e quem quer `^draft|changelog$` ganha tudo.
- *
- * Quando a expressão não compila — e ela não compila O TEMPO TODO enquanto
- * está sendo digitada, em cada `(` solto — a busca NÃO fica sem resposta: cai
- * em busca literal e avisa. Um campo que zera a lista no meio da digitação
- * parece quebrado.
- */
 export function searchChats(
   chats: readonly ChatSummary[],
   query: string
 ): Busca {
   const q = query.trim();
   if (!q) return { hits: [...chats], regex: false, invalida: false };
-  // O título vazio procura pelo que a lista MOSTRA no lugar dele.
+
   const semTitulo = tr("Untitled");
   const alvo = (c: ChatSummary) => `${c.title || semTitulo} ${c.model}`;
   let re: RegExp | null = null;
@@ -168,19 +121,10 @@ export function searchChats(
   };
 }
 
-/** Rótulo do botão flutuante da home daquele módulo. */
 export function moduleFabLabel(id: string | undefined | null): string {
   return tr(isChatMode(id) ? MODULES[id].fabLabel : MODULES.chat.fabLabel);
 }
 
-/**
- * Idade em uma palavra curta: "53m", "10h", "3d" — e a data quando passa de
- * um mês. É o que vai na ponta direita de cada cartão.
- *
- * Diferente de `relativeDay`, que é frase ("Yesterday") pra a linha do menu:
- * no cartão o espaço é de três caracteres e o que importa é a ordem de
- * grandeza, não a data exata.
- */
 export function relativeShort(iso: string, agora: number = Date.now()): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
@@ -195,18 +139,12 @@ export function relativeShort(iso: string, agora: number = Date.now()): string {
   return iso.slice(0, 10);
 }
 
-/** Frase da home quando o módulo ainda não tem conversa nenhuma. */
 export function moduleEmptyLine(id: string | undefined | null): string {
   if (isChatMode(id)) return tr(MODULES[id].emptyLine);
-  // Módulo que só existe no disco: o texto explica por que não há botão.
+
   return tr("Chats saved here by another version. This one can't start new ones.");
 }
 
-/**
- * As conversas de um módulo, na ordem em que já vieram (o plugin mantém tudo
- * ordenado por data decrescente). Não reordena: reordenar aqui seria uma
- * segunda verdade sobre "mais recente".
- */
 export function chatsOfModule(
   chats: readonly ChatSummary[],
   mode: string
@@ -214,10 +152,9 @@ export function chatsOfModule(
   return chats.filter((c) => c.mode === mode);
 }
 
-/** O que a linha do módulo mostra sem precisar entrar nele. */
 export interface ModuleStats {
   count: number;
-  /** Data da conversa mais recente (ISO), ou undefined se não houver nenhuma. */
+
   last?: string;
 }
 
@@ -227,19 +164,12 @@ export function moduleStats(
 ): ModuleStats {
   const minhas = chatsOfModule(chats, mode);
   if (minhas.length === 0) return { count: 0 };
-  // Mais recente = maior data. Não confia na ordem de quem passou a lista.
+
   let last = minhas[0].date;
   for (const c of minhas) if (c.date > last) last = c.date;
   return { count: minhas.length, last };
 }
 
-/**
- * "Today" / "Yesterday" / "5 days ago" / a data, pra datas velhas.
- *
- * A comparação é por DIA DO CALENDÁRIO local, não por 24 horas corridas: às
- * 00:30 a conversa das 23:50 é "Yesterday", e dizer "0 days ago" seria
- * tecnicamente certo e humanamente errado.
- */
 export function relativeDay(iso: string, agora: number = Date.now()): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -252,15 +182,6 @@ export function relativeDay(iso: string, agora: number = Date.now()): string {
   return iso.slice(0, 10);
 }
 
-/**
- * O id de "ainda não escolhi".
- *
- * Já foi uma aba de verdade ("All", que mostrava tudo misturado). Deixou de
- * ser: nem a home nem o histórico têm essa aba — uma lista que mistura os
- * três modos não é a lista de nada. O valor sobreviveu como SENTINELA: é com
- * ele que a aba nasce, antes de a pessoa tocar em alguma, e cada tela o troca
- * pelo modo que faz sentido nela.
- */
 export const SEGMENT_ALL = "all";
 
 export interface ModuleSegment {
@@ -269,19 +190,6 @@ export interface ModuleSegment {
   count: number;
 }
 
-/**
- * As abas do histórico: os módulos QUE TÊM conversa, e só.
- *
- * Sem "All": uma lista que mistura os três modos não é a lista de nada — a
- * pergunta de quem abre o histórico é "onde estava aquela conversa", e ela já
- * vem com o modo na cabeça. É a mesma regra da home, que também mostra um
- * modo de cada vez.
- *
- * Módulo sem nenhuma conversa fica de fora pelo mesmo motivo de sempre: aba
- * que só leva a uma lista vazia não é filtro, é porta pra lugar nenhum. E os
- * módulos que só existem no disco entram — é por aqui que uma conversa
- * gravada por outra versão continua alcançável.
- */
 export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
   const segs: ModuleSegment[] = [];
   for (const m of modulesInUse(chats)) {
@@ -291,14 +199,6 @@ export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
   return segs;
 }
 
-/**
- * Em que modo a home abre.
- *
- * No de quem se mexeu por ÚLTIMO — é a resposta literal de "continuar de onde
- * parou". Conversa de módulo desconhecido não conta: ela não tem aba ali (a
- * home tem os três modos e só), e abrir numa aba que não existe seria abrir
- * em lugar nenhum. Sem nenhuma conversa, vale o modo padrão das settings.
- */
 export function defaultSegment(
   chats: readonly ChatSummary[],
   padrao: string | undefined | null
@@ -306,46 +206,23 @@ export function defaultSegment(
   let melhor: ChatSummary | null = null;
   for (const c of chats) {
     if (!isChatMode(c.mode)) continue;
-    // Não confia na ordem de quem passou a lista: compara as datas.
+
     if (!melhor || c.date > melhor.date) melhor = c;
   }
   if (melhor && isChatMode(melhor.mode)) return melhor.mode;
   return isChatMode(padrao) ? padrao : "chat";
 }
 
-/**
- * O modo da conversa NOVA que abre JUNTO do painel (settings › Chat › "Start
- * with a new chat"). Vazio, ausente ou um id desconhecido devolve null — e aí o
- * painel abre como sempre, o dashboard. Um valor inválido não pode prender
- * ninguém numa tela que não existe.
- */
 export function startupMode(valor: string | undefined | null): ChatMode | null {
   return isChatMode(valor) ? valor : null;
 }
 
-/**
- * O valor de `startupChatMode` que abre o painel na DASHBOARD (a home do
- * Corvus), sem iniciar conversa nenhuma.
- */
 export const STARTUP_DASHBOARD = "dashboard";
 
-/**
- * O painel deve abrir JUNTO com o Obsidian? Vale para a dashboard e para os
- * modos de conversa. Vazio, ausente ou desconhecido = false: o Corvus fica
- * fechado e o Obsidian abre as notas, como sempre.
- */
 export function startupOpensPanel(valor: string | undefined | null): boolean {
   return valor === STARTUP_DASHBOARD || isChatMode(valor);
 }
 
-/**
- * A lista que aquela aba mostra.
- *
- * A sentinela ainda devolve tudo — não porque exista uma aba "All", mas
- * porque quem chamar com ela não escolheu nada ainda, e devolver vazio
- * pareceria uma lista que sumiu. Na prática as telas trocam a sentinela por
- * um modo antes de chegar aqui.
- */
 export function filterSegment(
   chats: readonly ChatSummary[],
   seg: string
@@ -353,7 +230,6 @@ export function filterSegment(
   return seg === SEGMENT_ALL ? [...chats] : chatsOfModule(chats, seg);
 }
 
-/** Resumo de uma linha pra a linha do módulo no menu. */
 export function moduleHint(stats: ModuleStats, agora?: number): string {
   if (stats.count === 0) return tr("No chats yet");
   const quantos =

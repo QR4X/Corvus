@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        One feature per request, please. If you are still exploring an idea, start in [Discussions > Ideas](https://github.com/QR4X/M.I.L.A/discussions/categories/ideas).
+        One feature per request, please. If you are still exploring an idea, start in [Discussions > Ideas](https://github.com/QR4X/Corvus/discussions/categories/ideas).
   - type: checkboxes
     id: checks
     attributes:

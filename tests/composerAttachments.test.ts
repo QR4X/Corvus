@@ -1,11 +1,3 @@
-// tests/composerAttachments.test.ts
-// O caminho do anexo escolhido no composer até o payload do provider.
-//
-// O que o `+` faz é só escrever no store; quem consome é o envio. Este teste
-// segue esse trilho inteiro sem UI: store → storeMessagesToProvider → payload
-// da OpenAI. Sem ele, dava pra "anexar" uma imagem que nunca sairia do
-// aparelho e o chip continuaria bonitinho na tela.
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { useChatStore } from "../src/store/chat";
 import { storeMessagesToProvider } from "../src/agent/conversation";
@@ -69,7 +61,7 @@ describe("do store até o payload", () => {
       { type: "text", text: "olha esse print" },
       { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
     ]);
-    // e a mensagem ANTIGA continua texto puro
+
     expect(payload[0].content).toBe("antiga");
   });
 
@@ -78,9 +70,9 @@ describe("do store até o payload", () => {
       [{ type: "user" as const, content: "resume" }],
       [NOTA]
     );
-    // o anexo viaja junto da mensagem…
+
     expect(provider[0].attachments).toEqual([NOTA]);
-    // …mas o payload da OpenAI não tem parte de imagem pra ela
+
     const payload = toOpenAIMessages(provider) as Array<{ content: unknown }>;
     expect(payload[0].content).toBe("resume");
   });

@@ -1,7 +1,3 @@
-// scripts/deploy.mjs
-// Copia os 3 arquivos de /output para a pasta de plugins do Vault Obsidian.
-// Substitui o `cp` Unix do prompt original — funciona em Windows, macOS e Linux.
-
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,15 +8,13 @@ const FILES = ["main.js", "manifest.json", "styles.css"];
 function readConfig() {
   if (!fs.existsSync(CONFIG_FILE)) {
     console.error(`
-[deploy] ${CONFIG_FILE} não encontrado.
+[deploy] ${CONFIG_FILE} not found.
 
-Crie esse arquivo na raiz do projeto com o caminho do seu Vault:
+Create this file at the project root with the path to your Obsidian vault:
 
   {
-    "vaultPath": "C:\\\\Users\\\\rafae\\\\Obsidian\\\\MeuVault"
+    "vaultPath": "/path/to/MyVault"
   }
-
-(Esse arquivo é local — está no .gitignore e não vai pro repo.)
 `);
     process.exit(1);
   }
@@ -29,15 +23,15 @@ Crie esse arquivo na raiz do projeto com o caminho do seu Vault:
   try {
     config = JSON.parse(raw);
   } catch (err) {
-    console.error(`[deploy] ${CONFIG_FILE} não é um JSON válido: ${err.message}`);
+    console.error(`[deploy] ${CONFIG_FILE} is not valid JSON: ${err.message}`);
     process.exit(1);
   }
   if (!config.vaultPath) {
-    console.error(`[deploy] "vaultPath" não definido em ${CONFIG_FILE}.`);
+    console.error(`[deploy] "vaultPath" is not defined in ${CONFIG_FILE}.`);
     process.exit(1);
   }
   if (!fs.existsSync(config.vaultPath)) {
-    console.error(`[deploy] vaultPath não existe: ${config.vaultPath}`);
+    console.error(`[deploy] vaultPath does not exist: ${config.vaultPath}`);
     process.exit(1);
   }
   return config;
@@ -51,7 +45,7 @@ function copyToVault(vaultPath) {
     const src = path.join("output", file);
     const dest = path.join(targetDir, file);
     if (!fs.existsSync(src)) {
-      console.error(`[deploy] ${src} não existe. Rode 'npm run build' primeiro.`);
+      console.error(`[deploy] ${src} does not exist. Run 'npm run build' first.`);
       process.exit(1);
     }
     fs.copyFileSync(src, dest);
@@ -62,5 +56,5 @@ function copyToVault(vaultPath) {
 
 const config = readConfig();
 const targetDir = copyToVault(config.vaultPath);
-console.log(`\n[deploy] Concluído em ${targetDir}`);
-console.log("[deploy] Reative o plugin no Obsidian: Settings -> Community Plugins -> toggle off/on.");
+console.log(`\n[deploy] Completed in ${targetDir}`);
+console.log("[deploy] Reload the plugin in Obsidian: Settings -> Community plugins -> toggle off/on.");

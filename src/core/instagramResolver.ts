@@ -1,16 +1,3 @@
-// src/core/instagramResolver.ts
-// Extraktion und Transkription von Instagram-Reels & Videos.
-//
-// Funktionsweise:
-// 1. Extrahiert den Shortcode aus der URL (z. B. reel/C8xyz...).
-// 2. Ruft die Medien-URL über Obsidians natives `requestUrl` ab.
-//    - Primär: Öffentliche Instagram Web GraphQL API (wie in SN-Koarashi/ig-helper).
-//    - Fallback: Öffentliche Web-Resolver (wie in @bochilteam/scraper).
-// 3. Lädt den Audio-/Video-Stream als Binärpuffer in den Speicher.
-// 4. Übergibt die Bytes an transcribeAudio() (Whisper STT).
-//
-// Alles läuft rein im Client/Plugin ohne eigenen Server und ohne Binaries (ffmpeg/yt-dlp).
-
 import { requestUrl } from "obsidian";
 import {
   transcribeAudio,
@@ -24,16 +11,11 @@ import type { NoteAttachment } from "../providers/base";
 export { getTranscriptionCredential };
 export type { TranscribeCredential, TranscribeCredentialSettings };
 
-/** Standard Instagram Web App ID (öffentlich für Web-Clients). */
 export const IG_APP_ID = "936619743392459";
 
-/** Mobile User-Agent für Instagram-Anfragen. */
 export const IG_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1 Instagram 307.0.0.34.111";
 
-/**
- * Prüft, ob ein Text eine Instagram Reel- oder Video-URL enthält.
- */
 export function isInstagramUrl(url: string): boolean {
   if (!url || typeof url !== "string") return false;
   return /instagram\.com\/(?:reel|reels|p|share\/reel)\/([A-Za-z0-9_-]+)/i.test(
@@ -41,18 +23,12 @@ export function isInstagramUrl(url: string): boolean {
   );
 }
 
-/**
- * Extrahiert den Shortcode (z. B. "C8xyz_123") aus einer Instagram-URL.
- */
 export function extractInstagramShortcode(url: string): string | null {
   if (!url || typeof url !== "string") return null;
   const m = url.trim().match(/instagram\.com\/(?:reel|reels|p|share\/reel)\/([A-Za-z0-9_-]+)/i);
   return m ? m[1] : null;
 }
 
-/**
- * Sucht die erste Instagram-URL in einem beliebigem Text (z. B. Prompt).
- */
 export function findInstagramUrlInText(text: string): string | null {
   if (!text || typeof text !== "string") return null;
   const m = text.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|share\/reel)\/[A-Za-z0-9_-]+[^\s]*/i);
@@ -65,10 +41,6 @@ export interface InstagramMediaInfo {
   caption?: string;
 }
 
-/**
- * Löst eine Instagram-URL zu einer direkten Medien-URL (.mp4) auf.
- * Nutzt primär die öffentliche GraphQL Web-API von Instagram.
- */
 export async function resolveInstagramVideoUrl(
   urlOrShortcode: string
 ): Promise<InstagramMediaInfo> {
@@ -77,7 +49,6 @@ export async function resolveInstagramVideoUrl(
     throw new ProviderError("Ungültige Instagram Reel-URL oder Shortcode.", "unknown");
   }
 
-  // 1. Versuch: Direct GraphQL Query Hash
   try {
     const graphUrl = `https://www.instagram.com/graphql/query/?query_hash=2c4c2e343a8f64c625ba02b2aa12c7f8&variables=${encodeURIComponent(
       JSON.stringify({ shortcode })
@@ -111,7 +82,6 @@ export async function resolveInstagramVideoUrl(
     console.warn("[Corvus] Instagram GraphQL query_hash fehlgeschlagen:", err);
   }
 
-  // 2. Versuch: Direct GraphQL Query ID
   try {
     const queryIdUrl = `https://www.instagram.com/graphql/query/?query_id=9496392173716084&variables=${encodeURIComponent(
       JSON.stringify({
@@ -158,7 +128,6 @@ export async function resolveInstagramVideoUrl(
     console.warn("[Corvus] Instagram GraphQL query_id fehlgeschlagen:", err);
   }
 
-  // 3. Versuch: Fallback Web Resolver (v3.igdownloader.app)
   try {
     const fullUrl = `https://www.instagram.com/reel/${shortcode}/`;
     const formBody = `recaptchaToken=&q=${encodeURIComponent(fullUrl)}&t=media&lang=en`;
@@ -196,9 +165,6 @@ export async function resolveInstagramVideoUrl(
   );
 }
 
-/**
- * Lädt die Videodaten über requestUrl herunter.
- */
 export async function downloadInstagramMedia(videoUrl: string): Promise<Uint8Array> {
   const res = await requestUrl({
     url: videoUrl,
@@ -238,9 +204,6 @@ export interface ReelTranscriptResult {
   caption?: string;
 }
 
-/**
- * Hauptfunktion: URL auflösen -> Video laden -> Whisper STT transkribieren.
- */
 export async function transcribeInstagramReel(
   reelUrl: string,
   opts: TranscribeReelOptions
@@ -272,9 +235,6 @@ export async function transcribeInstagramReel(
   };
 }
 
-/**
- * Erstellt ein fertiges NoteAttachment für den Chat aus dem Transkript.
- */
 export function reelAttachment(result: ReelTranscriptResult): NoteAttachment {
   const parts: string[] = [`Quelle: ${result.url}`];
   if (result.caption) {

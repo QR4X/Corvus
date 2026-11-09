@@ -44,8 +44,7 @@ const chat = (over: Partial<ChatSummary>): ChatSummary =>
 
 describe("MODULES", () => {
   it("descreve TODOS os modos do motor — nenhum fica sem nome", () => {
-    // Se alguém criar um quarto modo em session.ts e esquecer daqui, a gaveta
-    // mostraria o id cru pro usuário. Este teste é o alarme.
+
     for (const m of CHAT_MODES) {
       expect(MODULES[m]).toBeTruthy();
       expect(MODULES[m].label.length).toBeGreaterThan(0);
@@ -62,15 +61,14 @@ describe("MODULES", () => {
   });
 
   it("modo desconhecido mostra o próprio id em vez de sumir", () => {
-    // Conversa gravada por uma versão futura, ou pasta criada na mão.
+
     expect(moduleLabel("pesquisa")).toBe("pesquisa");
     expect(moduleIcon("pesquisa")).toBe("message-square");
     expect(modulePlaceholder("pesquisa")).toBe(MODULES.chat.placeholder);
   });
 
   it("a home vazia de cada módulo convida com as palavras dele", () => {
-    // Uma frase genérica em três lugares diferentes faria as três homes
-    // parecerem a mesma tela sem conteúdo.
+
     const frases = CHAT_MODES.map((m) => MODULES[m].emptyLine);
     expect(new Set(frases).size).toBe(CHAT_MODES.length);
     expect(moduleEmptyLine("agent")).toBe(MODULES.agent.emptyLine);
@@ -83,8 +81,7 @@ describe("MODULES", () => {
   });
 
   it("modulesInUse põe no menu o módulo que só existe no disco", () => {
-    // Sem isto, a conversa gravada num modo que esta versão não conhece
-    // ficaria invisível: nenhuma porta levaria até ela.
+
     const vistos = modulesInUse([
       chat({ mode: "chat" }),
       chat({ mode: "research" }),
@@ -128,8 +125,7 @@ describe("chatsOfModule", () => {
 
 describe("moduleStats", () => {
   it("conta e acha a mais recente MESMO fora de ordem", () => {
-    // A gaveta recebe a lista já ordenada, mas depender disso seria uma
-    // segunda verdade sobre "mais recente".
+
     const st = moduleStats(
       [
         chat({ mode: "agent", date: "2026-09-01T00:00:00.000Z" }),
@@ -149,10 +145,7 @@ describe("moduleStats", () => {
 });
 
 describe("relativeDay", () => {
-  // Dia de CALENDÁRIO LOCAL é o que a função compara — e é o que a pessoa
-  // percebe. Então o teste também fala em hora local: escrever "…T09:00Z" aqui
-  // faz o resultado depender do fuso de quem roda o teste (foi exatamente
-  // assim que este arquivo falhou da primeira vez, em UTC-3).
+
   const local = (a: number, m: number, d: number, h = 10, min = 0) =>
     new Date(a, m - 1, d, h, min).toISOString();
   const emPonto = (a: number, m: number, d: number, h = 10, min = 0) =>
@@ -166,8 +159,7 @@ describe("relativeDay", () => {
   });
 
   it("conta DIA de calendário, não 24 horas corridas", () => {
-    // 23:50 de ontem tem menos de 24h, mas é ontem — dizer "Today" ali é o
-    // tipo de erro que faz a lista parecer mentirosa.
+
     const meiaNoiteEMeia = emPonto(2026, 9, 15, 0, 30);
     expect(relativeDay(local(2026, 9, 14, 23, 50), meiaNoiteEMeia)).toBe(
       "Yesterday"
@@ -227,8 +219,7 @@ describe("searchChats", () => {
   });
 
   it("expressão quebrada NÃO zera a lista: cai em literal e avisa", () => {
-    // Acontece o tempo todo enquanto se digita — cada `(` solto passa por
-    // aqui. Um campo que apaga tudo no meio da digitação parece defeito.
+
     const r = searchChats(lista, "Draft (");
     expect(r.invalida).toBe(true);
     expect(r.regex).toBe(false);
@@ -320,8 +311,7 @@ describe("moduleSegments", () => {
   ];
 
   it("NÃO existe aba de 'tudo junto'", () => {
-    // Uma lista que mistura os três modos não é a lista de nada: quem abre o
-    // histórico já vem com o modo na cabeça.
+
     const ids = moduleSegments(usadas).map((s) => s.id);
     expect(ids).not.toContain(SEGMENT_ALL);
     expect(ids).toEqual(["chat", "agent"]);
@@ -334,8 +324,7 @@ describe("moduleSegments", () => {
   });
 
   it("módulo SEM conversa não vira aba", () => {
-    // Aba que só leva a uma lista vazia não é filtro, é porta pra lugar
-    // nenhum: quem quer começar naquele modo usa os cartões de baixo.
+
     expect(moduleSegments(usadas).map((s) => s.id)).not.toContain("vault-qa");
   });
 
@@ -345,8 +334,7 @@ describe("moduleSegments", () => {
   });
 
   it("modo que só existe no disco também ganha aba", () => {
-    // Mesma razão de `modulesInUse`: sem a aba, as conversas gravadas por
-    // outra versão ficariam inalcançáveis.
+
     const segs = moduleSegments([...usadas, chat({ id: "d", mode: "research" })]);
     expect(segs.map((s) => s.id)).toContain("research");
   });
@@ -363,8 +351,6 @@ describe("filterSegment", () => {
   ];
 
   it("a sentinela devolve tudo, na ordem em que veio", () => {
-    // Ela não é uma aba: é o valor de "ninguém escolheu ainda". Devolver vazio
-    // aí pareceria uma lista que sumiu.
 
     expect(filterSegment(usadas, SEGMENT_ALL).map((c) => c.id)).toEqual([
       "a",
@@ -377,8 +363,7 @@ describe("filterSegment", () => {
   });
 
   it("não devolve a mesma lista por referência", () => {
-    // A tela filtra a cada render; devolver o array original convidaria a
-    // ordenar/cortar por cima do que o plugin mantém.
+
     expect(filterSegment(usadas, SEGMENT_ALL)).not.toBe(usadas);
   });
 });
@@ -394,8 +379,7 @@ describe("defaultSegment", () => {
   });
 
   it("não confia na ordem da lista", () => {
-    // A home recebe a lista já ordenada, mas "já ordenada" é um contrato de
-    // outro módulo: quem decide aqui compara as datas.
+
     const chats = [
       chat({ id: "a", mode: "chat", date: "2026-09-01T10:00:00.000Z" }),
       chat({ id: "b", mode: "agent", date: "2026-09-20T10:00:00.000Z" }),
@@ -404,8 +388,7 @@ describe("defaultSegment", () => {
   });
 
   it("conversa de módulo desconhecido não escolhe a aba", () => {
-    // Ela não TEM aba na home (lá são os três modos e só) — abrir nela seria
-    // abrir em lugar nenhum. Quem a alcança é o histórico.
+
     const chats = [
       chat({ id: "a", mode: "vault-qa", date: "2026-09-10T10:00:00.000Z" }),
       chat({ id: "z", mode: "research", date: "2026-09-30T10:00:00.000Z" }),
@@ -431,8 +414,7 @@ describe("startupMode", () => {
   });
 
   it("vazio, ausente ou desconhecido devolve null (abre no dashboard)", () => {
-    // Um valor inválido no data.json não pode prender ninguém numa tela que
-    // não existe.
+
     expect(startupMode("")).toBeNull();
     expect(startupMode(undefined)).toBeNull();
     expect(startupMode(null)).toBeNull();

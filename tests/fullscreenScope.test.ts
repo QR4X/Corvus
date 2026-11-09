@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 
 import { fullscreenOn, isChatScreen, isDrawerOnScreen, isRightDrawer } from "../src/ui/fullscreenScope";
 
-/** Fake mínimo de Element pro classList que o helper consulta. */
 const drawerEl = (...classes: string[]) =>
   ({ classList: { contains: (c: string) => classes.includes(c) } }) as Element;
 
@@ -22,7 +21,7 @@ describe("isRightDrawer — fullscreen NÃO pode valer no drawer esquerdo", () =
     expect(isRightDrawer(drawerEl("workspace-drawer", "mod-left"))).toBe(false);
   });
 
-  it("sem marca de lado, não trava o modo (a Corvus só monta no direito)", () => {
+  it("sem mark de lado, não trava o modo (a Corvus só monta no direito)", () => {
     expect(isRightDrawer(drawerEl("workspace-drawer"))).toBe(true);
   });
 
@@ -76,15 +75,15 @@ describe("fullscreenOn — a conversa liga o modo SEM tocar na setting", () => {
   });
 });
 
-describe("isChatScreen — a marca da conversa vem do DOM", () => {
+describe("isChatScreen — a mark da conversa vem do DOM", () => {
   const rootEl = (...classes: string[]) =>
     ({ classList: { contains: (c: string) => classes.includes(c) } }) as Element;
 
-  it("com a marca `corvus-chat-open`, é conversa", () => {
+  it("com a mark `corvus-chat-open`, é conversa", () => {
     expect(isChatScreen(rootEl("corvus-root", "corvus-chat-open"))).toBe(true);
   });
 
-  it("sem a marca (painel, histórico, uso) não é conversa", () => {
+  it("sem a mark (painel, histórico, uso) não é conversa", () => {
     expect(isChatScreen(rootEl("corvus-root"))).toBe(false);
   });
 

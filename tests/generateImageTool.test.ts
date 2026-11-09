@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TOOL_DEFINITIONS, getToolDefinition } from "../src/agent/toolSchemas";
 
-// A tool generate_image (v0.1.167) deixa o agente pedir imagem inline sem trocar
-// de modelo. É NÃO-destrutiva (o ImageGenModal é a confirmação) e tem prompt obrig.
 describe("generate_image tool", () => {
   it("está registrada em TOOL_DEFINITIONS", () => {
     expect(TOOL_DEFINITIONS.some((t) => t.name === "generate_image")).toBe(true);

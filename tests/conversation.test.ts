@@ -71,9 +71,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(buildAgentSystemPrompt("PIRATA", "AGENT")).toBe("PIRATA\n\nAGENT");
   });
   it("as notas entram no FIM, com o mesmo sufixo que o chat usa", () => {
-    // Mesmo texto de apresentação nos dois: dois jeitos de apresentar os
-    // trechos dariam ao agente uma leitura diferente do vault sem ninguém ter
-    // decidido isso.
+
     const r = buildAgentSystemPrompt(undefined, "AGENT", {
       suffix: "SUFIXO",
       block: "BLOCO",
@@ -104,9 +102,9 @@ describe("storeMessagesToProvider", () => {
   });
   const msgs = [
     { type: "user", content: "oi" },
-    { type: "ai-comment", content: "pensando…" }, // descartado
+    { type: "ai-comment", content: "pensando…" }, 
     { type: "ai-response", content: "olá" },
-    { type: "ai-response", content: "[Erro] x", isError: true }, // descartado
+    { type: "ai-response", content: "[Erro] x", isError: true }, 
     { type: "user", content: "de novo" },
   ];
 
@@ -127,7 +125,7 @@ describe("storeMessagesToProvider", () => {
       content: "de novo",
       attachments: att,
     });
-    // a primeira user-msg NÃO recebe attachments
+
     expect(out[0]).not.toHaveProperty("attachments");
   });
 
@@ -185,7 +183,7 @@ describe("storeMessagesToProvider", () => {
       undefined,
       true
     );
-    // assistant(tool_calls) + tool(result) — sem assistant de texto no fim
+
     expect(out.filter((m) => m.role === "assistant")).toHaveLength(1);
     expect(out.some((m) => m.role === "tool")).toBe(true);
   });
@@ -225,11 +223,11 @@ describe("storeMessagesToProvider", () => {
       { type: "user", content: "cria a.md" },
       { type: "ai-response", content: "Feito!", agentSteps: stepsFixture },
     ]);
-    // Nenhuma msg role:"tool" e nenhum toolCalls — portável em todo provider.
+
     expect(out.some((m) => m.role === "tool")).toBe(false);
     expect(out.some((m) => "toolCalls" in m)).toBe(false);
     expect(out[0]).toEqual({ role: "user", content: "cria a.md" });
-    // A resposta vira UM assistant cujo texto preserva a memória das ações.
+
     expect(out).toHaveLength(2);
     expect(out[1].role).toBe("assistant");
     expect(out[1].content).toContain("Feito!");
@@ -247,7 +245,7 @@ describe("flattenAgentResponse", () => {
     ]);
     expect(r.startsWith("Pronto.")).toBe(true);
     expect(r).toContain("1. vault_read(n.md) → ok — conteúdo");
-    expect(r).toContain("2. vault_delete(x.md) → ERRO — boom");
+    expect(r).toContain("2. vault_delete(x.md) → ERROR — boom");
   });
 
   it("sem texto final → só o bloco de memória", () => {
@@ -271,7 +269,7 @@ describe("flattenAgentResponse", () => {
       { id: "1", name: "vault_read", arguments: { path: longArg }, result: longRes, ok: true },
     ]);
     expect(r).toContain("…");
-    // a linha da ação não contém newline interno além do separador do bloco
+
     const actionLine = r.split("\n").find((l) => l.startsWith("1."))!;
     expect(actionLine.length).toBeLessThan(280);
   });

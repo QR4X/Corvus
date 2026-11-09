@@ -1,17 +1,7 @@
-// src/providers/vendors.ts
-// O FABRICANTE de um modelo nos providers que revendem os de todo mundo
-// (OpenRouter, NVIDIA NIM). Lá o id carrega a casa no prefixo
-// (`anthropic/claude-opus-4.8`, `meta/llama-3.3-70b-instruct`) e a lista
-// ganha um nível a mais: fabricante → classe → modelo. Nos providers de uma
-// casa só (OpenAI, Anthropic, Gemini) esse nível não diria nada.
-
 import { tr } from "../i18n/tr";
 
-/** Os providers cuja lista é de VÁRIOS fabricantes. */
 export const PROVIDERS_MULTI_FABRICANTE = new Set(["openrouter", "nim"]);
 
-/** Prefixos diferentes pra mesma casa: o OpenRouter escreve `meta-llama`, o
- *  NIM escreve `meta`; o NIM tem `deepseek-ai`, o OpenRouter `deepseek`. */
 const APELIDOS: Record<string, string> = {
   "meta-llama": "meta",
   "deepseek-ai": "deepseek",
@@ -26,7 +16,6 @@ const APELIDOS: Record<string, string> = {
   "google-deepmind": "google",
 };
 
-/** O nome de cada casa como ela se escreve. */
 const NOMES: Record<string, string> = {
   openrouter: "OpenRouter",
   openai: "OpenAI",
@@ -76,8 +65,6 @@ const NOMES: Record<string, string> = {
   thinkingmachines: "Thinking Machines",
 };
 
-/** As casas grandes primeiro (é por elas que se procura); o resto em ordem
- *  alfabética depois. */
 const ORDEM = [
   "openrouter",
   "openai",
@@ -99,13 +86,12 @@ const ORDEM = [
 ];
 
 export interface Fabricante {
-  /** A chave canônica ("meta" pra `meta` e `meta-llama`); "" sem prefixo. */
+
   chave: string;
-  /** O nome de exibição ("Meta"; "Other" sem prefixo). */
+
   nome: string;
 }
 
-/** "some-new-lab" → "Some New Lab": casa nova não fica sem nome. */
 function titulo(slug: string): string {
   return slug
     .split(/[-_]/)
@@ -114,7 +100,6 @@ function titulo(slug: string): string {
     .join(" ");
 }
 
-/** O fabricante de um id `vendor/modelo`. */
 export function fabricante(id: string): Fabricante {
   const s = (id || "").trim().toLowerCase();
   const barra = s.indexOf("/");
@@ -124,8 +109,6 @@ export function fabricante(id: string): Fabricante {
   return { chave, nome: NOMES[chave] ?? titulo(chave) };
 }
 
-/** Ordena fabricantes: os grandes na ordem da lista, os outros por nome, e
- *  "Other" (sem prefixo) por último. */
 export function compararFabricantes(a: Fabricante, b: Fabricante): number {
   if (!a.chave !== !b.chave) return a.chave ? -1 : 1;
   const ia = ORDEM.indexOf(a.chave);

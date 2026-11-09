@@ -12,18 +12,10 @@ import {
   isTransientError,
 } from "../src/agent/tools";
 
-// As tools do agent MODIFICAM/APAGAM arquivos do vault — o sandboxing de path
-// (anti traversal) é segurança crítica. Aqui um vault em memória exercita o
-// boundary real + os comportamentos das tools.
-//
-// O falso é a API DE VAULT, não o adapter: é por ela que as tools passam
-// agora, e é ela que carrega as duas garantias que o adapter não dá — apagar
-// vai pra lixeira, mover reescreve os links.
-
 function makeApp() {
   const files = new Map<string, string>();
   const nos = new Map<string, TFile | TFolder>();
-  /** O que foi pra lixeira, e o que foi renomeado — é o que os testes conferem. */
+
   const lixeira: string[] = [];
   const renomeados: Array<[string, string]> = [];
 
@@ -94,8 +86,6 @@ function makeApp() {
       files.delete(p);
     },
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { app: { vault, fileManager } as any, files, lixeira, renomeados } as {
     app: unknown;
     files: Map<string, string>;
@@ -103,9 +93,6 @@ function makeApp() {
     renomeados: Array<[string, string]>;
   };
 }
-
-/** Contexto padrão das tools nos testes: storage do app vazio de propósito. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeCtx(app: unknown, appDataPaths: string[] = []): any {
   return { app, vectorIndex: null, appDataPaths, embed: {} };
 }
@@ -115,9 +102,9 @@ describe("path sandboxing (segurança — anti traversal)", () => {
     "../secret.md",
     "../../etc/passwd",
     "notes/../../escape.md",
-    "C:\\Windows\\System32", // backslash → vira ":" depois do normalize
+    "C:\\Windows\\System32", 
     "drive:/x",
-    "a/" + "b/".repeat(40) + "deep.md", // > 32 níveis
+    "a/" + "b/".repeat(40) + "deep.md", 
     "",
   ];
   for (const p of malicious) {
@@ -125,7 +112,7 @@ describe("path sandboxing (segurança — anti traversal)", () => {
       const { app, files } = makeApp();
       const ctx = makeCtx(app);
       await expect(toolVaultRead(ctx, { path: p })).rejects.toThrow();
-      // nunca deve ter escrito/criado nada
+
       expect(files.size).toBe(0);
     });
   }
@@ -139,16 +126,14 @@ describe("path sandboxing (segurança — anti traversal)", () => {
 });
 
 describe("pasta oculta é proibida PRO AGENTE", () => {
-  // O caminho que chega no sandbox foi escolhido por um modelo que acabou de
-  // ler notas — e nota é dado de fora. O storage do plugin (.corvus) escreve por
-  // outro caminho, direto no adapter, e não passa por aqui.
+
   const proibidos = [
-    ".obsidian/plugins/x/main.js", // vira código rodando no próximo restart
+    ".obsidian/plugins/x/main.js", 
     ".obsidian/app.json",
-    ".corvus/chats/algum.md", // nosso storage: injeção não reescreve histórico
+    ".corvus/chats/algum.md", 
     ".git/config",
     ".trash/nota.md",
-    "notes/.obsidian/x.json", // oculta no MEIO do caminho conta igual
+    "notes/.obsidian/x.json", 
     "a/.git/config",
   ];
   for (const p of proibidos) {
@@ -158,7 +143,7 @@ describe("pasta oculta é proibida PRO AGENTE", () => {
   }
 
   it("nota comum com ponto no NOME continua passando", () => {
-    // A trava é de PASTA oculta, não de ponto em qualquer lugar.
+
     expect(normalizePath("notas/v1.2.md")).toBe("notas/v1.2.md");
     expect(normalizePath("Dr. Silva/consulta.md")).toBe("Dr. Silva/consulta.md");
   });
@@ -183,15 +168,13 @@ describe("pasta oculta é proibida PRO AGENTE", () => {
 });
 
 describe("storage VISÍVEL do app (chat folder) é proibido PRO AGENTE", () => {
-  // Desde que o default das conversas virou `corvus/chats` (pasta SEM ponto, pro
-  // sync de arquivos copiar), a trava de pasta oculta não cobre mais o nosso
-  // storage. Quem fecha a porta agora é o `appDataPaths` configurado.
+
   it("normalizePath barra o prefixo exato e tudo abaixo dele", () => {
     const pastas = ["corvus/chats", ".corvus/index"];
     for (const p of ["corvus/chats", "corvus/chats/chat/c1.md", "corvus/chats/agent/x.md", ".corvus/index/embeddings.json"]) {
       expect(() => normalizePath(p, pastas)).toThrow(/off limits/i);
     }
-    // Fora das pastas do app o mesmo caminho passa; fora do prefixo, também.
+
     expect(normalizePath("corvus/notas/plano.md", pastas)).toBe("corvus/notas/plano.md");
     expect(normalizePath("corvus-chats/qualquer.md", pastas)).toBe("corvus-chats/qualquer.md");
   });
@@ -287,8 +270,7 @@ describe("toolVaultMove / Delete", () => {
     );
   });
   it("mover passa pelo fileManager — é ele que reescreve os [[links]]", () => {
-    // Com `adapter.rename`, o arquivo chegava no destino e todo link que
-    // apontava pro caminho antigo apodrecia em silêncio.
+
     const fonte = readFileSync(resolve(__dirname, "../src/agent/tools.ts"), "utf8");
     expect(fonte).toContain("app.fileManager.renameFile(");
     expect(fonte).not.toMatch(/await adapter\.rename\(/);
@@ -300,8 +282,7 @@ describe("toolVaultMove / Delete", () => {
     await toolVaultCreate(ctx, { path: "a.md", content: "1" });
     const msg = await toolVaultDelete(ctx, { path: "a.md" });
     expect(files.has("a.md")).toBe(false);
-    // A garantia: passou por trashFile, então obedece a preferência
-    // "Deleted files" de quem usa — e dá pra desfazer.
+
     expect(lixeira).toEqual(["a.md"]);
     expect(msg).toMatch(/trash/i);
     await expect(toolVaultDelete(ctx, { path: "nope.md" })).rejects.toThrow(
@@ -310,9 +291,7 @@ describe("toolVaultMove / Delete", () => {
   });
 
   it("nenhuma tool do agente chama o adapter", async () => {
-    // O adapter é legítimo só na pasta OCULTA do app (chatPersistence), onde a
-    // API de Vault não enxerga. Aqui ele significaria apagar sem lixeira e
-    // escrever sem avisar o metadataCache.
+
     const fonte = readFileSync(resolve(__dirname, "../src/agent/tools.ts"), "utf8");
     const semComentario = fonte
       .replace(/\/\/.*$/gm, "")

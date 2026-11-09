@@ -1,8 +1,3 @@
-// tests/composerSize.test.ts
-// O teto de altura do campo. A conta errada (40% de innerHeight) só aparece
-// com o teclado aberto — que é justamente quando ninguém está olhando pro
-// código. Aqui ela fica presa por número.
-
 import { describe, it, expect } from "vitest";
 import { composerMaxHeight, readKeyboardHeight } from "../src/ui/composerSize";
 
@@ -12,9 +7,9 @@ describe("composerMaxHeight", () => {
   });
 
   it("com teclado: 40% do que SOBRA, não da tela inteira", () => {
-    // 812 de tela, 320 de teclado → 492 visíveis → 196
+
     expect(composerMaxHeight(812, 320)).toBe(196);
-    // e é bem menor que a conta antiga
+
     expect(composerMaxHeight(812, 320)).toBeLessThan(
       Math.round(812 * 0.4)
     );
@@ -26,7 +21,7 @@ describe("composerMaxHeight", () => {
   });
 
   it("visualViewport menor que a conta do teclado manda", () => {
-    // teclado não reportado (0), mas o viewport já encolheu
+
     expect(composerMaxHeight(812, 0, 400)).toBe(160);
   });
 

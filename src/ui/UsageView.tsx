@@ -1,24 +1,3 @@
-// src/ui/UsageView.tsx
-// A página de USO: o cartão da home aberto, com o recorte na sua mão.
-//
-// O cartão responde "quanto, como e com quê" de relance e cabe em três linhas.
-// Esta tela existe pras perguntas que não cabem ali e que sempre chegam
-// depois: "quanto foi só o Opus?", "e no Agent?", "e na semana passada?".
-//
-// Ela não recalcula nada por conta própria — filtra as conversas e entrega a
-// mesma agregação de sempre (usage/aggregate), a mesma do relatório. Dois
-// caminhos pra mesma conta acabariam discordando, e é justamente aqui, onde
-// se confere dinheiro, que discordar custa a confiança da tela inteira.
-//
-// O recorte é aplicado ANTES de somar: com ele aplicado no fim, o total diria
-// uma coisa e a tabela outra.
-//
-// O DESENHO é o do resto do app, peça por peça: o número grande e os módulos
-// são os do cartão da home; o período é o segmented da home; os filtros são
-// as pílulas das folhas (com a contagem em expoente, como as categorias de
-// ícone); e cada modelo leva o anel da fatia que o cartão já usa — aqui com o
-// logo dentro, porque a página tem o espaço que o cartão não tem.
-
 import { useMemo, useState, type CSSProperties } from "react";
 import { Notice } from "obsidian";
 import type CorvusPlugin from "../main";
@@ -69,31 +48,25 @@ import { PROVIDERS } from "../core/providersMeta";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { modelLogo } from "../providers/modelLogo";
 import { LeftToday } from "./LeftToday";
-import { marca, tr } from "../i18n/tr";
+import { mark, tr } from "../i18n/tr";
 
-/** Janelas do período, em dias (0 = tudo). O id é o número em texto. */
 const PERIODOS = [
-  { id: "0", label: marca("All time") },
-  { id: "7", label: marca("7 days") },
-  { id: "30", label: marca("30 days") },
-  { id: "90", label: marca("90 days") },
+  { id: "0", label: mark("All time") },
+  { id: "7", label: mark("7 days") },
+  { id: "30", label: mark("30 days") },
+  { id: "90", label: mark("90 days") },
 ];
 
-/** Quantas conversas a lista do topo mostra. */
 const TOPO = 10;
 
-/** A partir de quantas opções a lista inteira ganha busca. Com poucas, o
- *  campo seria uma linha a mais pra ler antes de chegar no que se procura. */
 const BUSCA_A_PARTIR = 8;
 
-/** Como o passo do gráfico se chama na tela. */
 const PASSO: Record<Passo, string> = {
-  day: marca("Daily"),
-  week: marca("Weekly"),
-  month: marca("Monthly"),
+  day: mark("Daily"),
+  week: mark("Weekly"),
+  month: mark("Monthly"),
 };
 
-/** Os filtros de lista: o que cada dimensão marca, como se chama e se desenha. */
 type Dimensao = "providers" | "models" | "modes";
 
 export function UsageView({
@@ -106,26 +79,20 @@ export function UsageView({
 }: {
   plugin: CorvusPlugin;
   session: ChatSession;
-  /** O recorte. Mora no App: abrir uma conversa daqui desmonta esta tela, e
-   *  a volta tem que achar o recorte onde ele estava. */
+
   filtro: UsageFilter;
   onFiltro: (f: UsageFilter) => void;
   onBack: () => void;
-  /** Uma conversa da lista foi aberta — a tela troca pra ela. */
+
   onOpenChat: () => void;
 }) {
   const chats = useChatSummaries(plugin);
   const [salvando, setSalvando] = useState(false);
-  /** A lista inteira de uma dimensão (o "See all"). A dimensão fica guardada
-   *  mesmo com a folha fechada: ela desce DESLIZANDO, e o conteúdo tem que
-   *  continuar lá durante a descida em vez de sumir no primeiro quadro. */
+
   const [lista, setLista] = useState<Dimensao>("models");
   const [listaAberta, setListaAberta] = useState(false);
   const [buscaLista, setBuscaLista] = useState("");
 
-  // As opções saem das conversas INTEIRAS, não do recorte: se elas
-  // encolhessem junto, marcar um provider apagaria os outros da lista e não
-  // haveria como desmarcar.
   const porProvider = useMemo(() => opcoes(chats, "provider"), [chats]);
   const porModelo = useMemo(() => opcoes(chats, "model"), [chats]);
   const porModo = useMemo(() => opcoes(chats, "mode"), [chats]);
@@ -140,9 +107,9 @@ export function UsageView({
   const dimensoes: Array<{
     chave: Dimensao;
     titulo: string;
-    /** O título da lista inteira ("Models"). */
+
     plural: string;
-    /** O campo de busca da lista inteira ("Search models"). */
+
     busca: string;
     ops: Opcao[];
     nome: (id: string) => string;
@@ -157,8 +124,7 @@ export function UsageView({
       nome: (id) => PROVIDERS.find((p) => p.id === id)?.name ?? id,
       icone: providerIcon,
     },
-    // O nome do APP, nunca o id da API: "claude-sonnet-4-6" é como o
-    // provider chama; no resto do app ele é "Sonnet 4.6".
+
     {
       chave: "models",
       titulo: tr("Model"),
@@ -180,15 +146,13 @@ export function UsageView({
   ];
   const visiveis = dimensoes.filter((d) => valeFiltrar(d.ops, f[d.chave]));
   const naLista = dimensoes.find((d) => d.chave === lista) ?? dimensoes[1];
-  // O relatório do "See all": o recorte da página MENOS o filtro da própria
-  // dimensão (ver semADimensao) — a mesma soma de sempre, só recortada.
+
   const aggLista = useMemo(
     () => aggregateFromSummaries(aplicar(chats, semADimensao(f, lista)), 0),
     [chats, f, lista]
   );
   const mLista = metricaDa(aggLista.total);
 
-  // A série do gráfico: o mesmo `byDay` do recorte, no passo que couber.
   const serie = useMemo((): { colunas: Coluna[]; passo: Passo } => {
     const j = janelaDoGrafico(f.days, agg.byDay);
     if (!j) return { colunas: [], passo: "day" };
@@ -205,9 +169,7 @@ export function UsageView({
         : aggLista.byMode,
     aggLista.total
   );
-  // De QUÊ é o relatório: o período e os filtros das outras dimensões, que
-  // continuam valendo nele. Sem isto, os números da folha não batem com
-  // nada que a pessoa consiga apontar.
+
   const escopo = [
     f.days === 0 ? tr("All time") : tr("Last {n} days", { n: f.days }),
     ...dimensoes
@@ -230,8 +192,7 @@ export function UsageView({
   const salvarRelatorio = async () => {
     setSalvando(true);
     try {
-      // O relatório é do RECORTE, não do vault inteiro: foi o recorte que a
-      // pessoa montou, e é dele que ela quer o documento.
+
       const r = await saveUsageMarkdown(
         plugin.app,
         agg,
@@ -240,7 +201,7 @@ export function UsageView({
       );
       new Notice(tr("Report saved: {path}", { path: r.path }));
     } catch (err) {
-      console.error("[corvus] salvar report falhou:", err);
+      console.error("[corvus] failed to save report:", err);
       new Notice(
         tr("Could not save the report: {error}", {
           error: err instanceof Error ? err.message : String(err),
@@ -270,10 +231,7 @@ export function UsageView({
           <Icon name="arrow-left" />
         </button>
         <span className="corvus-brand corvus-topbar-brand">{tr("Usage")}</span>
-        {/* O relatório é a SAÍDA desta tela, e mora na barra, como o "New"
-            das folhas: ele cria uma nota, e no app accent é o que cria.
-            Flutuando embaixo, ele cobria justamente a lista que a pessoa
-            tinha rolado pra ler. */}
+        {}
         <button
           type="button"
           className="corvus-topbar-action corvus-topbar-end"
@@ -288,23 +246,19 @@ export function UsageView({
       </header>
 
       <div className="corvus-messages corvus-home corvus-usage-page">
-        {/* O que sobra HOJE vem antes de tudo: é a pergunta do dia a dia
-            ("ainda dá pra usar?"), e não depende do período nem dos filtros
-            — cota é do dia de cada provider. */}
+        {}
         <LeftToday plugin={plugin} />
 
-        {/* O período é a régua de tudo o que vem DEPOIS dele — o total, a
-            média, os modelos e a lista mudam com ele. */}
+        {}
         <Segmented
           options={PERIODOS.map((p) => ({ ...p, label: tr(p.label) }))}
           value={String(f.days)}
           label={tr("Period")}
-          // Período é UM: duas janelas ao mesmo tempo não querem dizer nada.
+
           onChange={(id) => setF({ ...f, days: Number(id) })}
         />
 
-        {/* A resposta da pergunta que a pessoa acabou de fazer com o
-            recorte. */}
+        {}
         <section className="corvus-usage is-hero" aria-label={tr("Totals")}>
           <span className="corvus-usage-meta">
             <span className="corvus-usage-big">
@@ -324,8 +278,7 @@ export function UsageView({
               </span>
             )}
           </span>
-          {/* Quantas conversas, e ONDE elas caíram: "All time" sozinho não
-              diz se o total é de um mês ou de dois anos. */}
+          {}
           <span className="corvus-usage-sub">
             {contagem(agg.total.chats)}
             {!vazio && (
@@ -336,8 +289,7 @@ export function UsageView({
             )}
           </span>
           <div className="corvus-mods">
-            {/* As setas são as do cartão de projeto: o que SOBE sai daqui
-                pro modelo, o que DESCE volta dele. */}
+            {}
             <Modulo
               icone="arrow-up-from-line"
               rotulo={tr("Sent")}
@@ -365,25 +317,14 @@ export function UsageView({
           </div>
         </section>
 
-        {/* Os MESMOS dois números do cartão acima, agora ao longo do tempo:
-            ele diz quanto, e isto diz quando. Por isso vem colado nele, e não
-            no fim da página com as tabelas.
-            Com uma coluna só não há série — um gráfico de uma barra é o total
-            desenhado de novo, e o total já está logo ali em cima. */}
+        {}
         {serie.colunas.length > 1 && picoDa(serie.colunas) > 0 ? (
           <GraficoNoTempo colunas={serie.colunas} passo={serie.passo} />
         ) : (
-          /* Sem série pra desenhar, o lugar dela NÃO some: a seção vira o
-             próprio vazio, com a forma do gráfico apagada atrás e o motivo
-             escrito por cima. Sumindo, a página inteira se remonta quando o
-             recorte muda, e quem mexeu no filtro não descobre que existe um
-             gráfico ali — só vê a tela encurtar. */
+
           <GraficoVazio
             motivo={
-              /* Nenhuma repete o vazio da PÁGINA, que fica logo abaixo e já
-                 dá a saída ("Try a longer period or fewer filters"): dizer a
-                 mesma frase duas vezes na mesma tela ensina a não ler
-                 nenhuma das duas. */
+
               chats.length === 0
                 ? tr("Your tokens land here as you chat.")
                 : agg.total.chats === 0
@@ -399,8 +340,7 @@ export function UsageView({
           <section className="corvus-home-block corvus-usage-filters">
             <div className="corvus-home-headrow">
               <span className="corvus-section-label">{tr("Filter")}</span>
-              {/* Limpa os filtros de LISTA; o período fica — ele tem o
-                  seletor dele, lá em cima, e não é isto que o botão diz. */}
+              {}
               {marcados(f) > 0 && (
                 <button
                   type="button"
@@ -414,8 +354,7 @@ export function UsageView({
             </div>
             {visiveis.map((d) => (
               <div key={d.chave} className="corvus-usage-dim">
-                {/* As TRÊS mais usadas à vista; o resto mora na lista do "See
-                    all" — o mesmo "See all N ›" da home, na linha do nome. */}
+                {}
                 <div className="corvus-usage-dim-head">
                   <span className="corvus-usage-dim-label">{d.titulo}</span>
                   {d.ops.length > A_VISTA && (
@@ -439,7 +378,7 @@ export function UsageView({
                         type="button"
                         className={on ? "corvus-choice is-on" : "corvus-choice"}
                         aria-pressed={on}
-                        // Lido em voz alta, "GPT 5 13" não diz o que é o 13.
+
                         aria-label={`${nome}, ${contagem(o.count)}`}
                         onClick={() =>
                           setF({ ...f, [d.chave]: alternar(f[d.chave], o.id) })
@@ -470,7 +409,7 @@ export function UsageView({
           </div>
         ) : (
           <>
-            {/* "O caro é qual?", sem abrir conversa nenhuma. */}
+            {}
             <section className="corvus-home-block">
               <span className="corvus-section-label">{tr("By model")}</span>
               <div className="corvus-usage-list">
@@ -505,10 +444,7 @@ export function UsageView({
         )}
       </div>
 
-      {/* O "See all" é um RELATÓRIO da dimensão inteira, não um seletor: as
-          mesmas linhas do "By model" (o anel da fatia, conversas, tokens,
-          valor e %), sem check e sem nada com cara de toque. Filtrar é nas
-          pílulas; aqui se lê. */}
+      {}
       <Sheet
         title={naLista.plural}
         open={listaAberta}
@@ -557,26 +493,10 @@ export function UsageView({
   );
 }
 
-/** "1 chat", "13 chats". */
 function contagem(n: number): string {
   return n === 1 ? tr("1 chat") : tr("{n} chats", { n });
 }
 
-/**
- * O gráfico de tokens no tempo: uma coluna por dia (ou semana, ou mês), com o
- * que ENTROU embaixo e o que SAIU em cima.
- *
- * Empilhado, e não dois gráficos lado a lado, porque as duas séries são
- * partes da mesma coisa: a coluna inteira é o que aquele dia custou em
- * tokens, e a divisão diz de quem foi. Com duas escalas separadas, a altura
- * de uma não poderia ser comparada com a da outra — e é justamente isso que
- * se quer olhar.
- *
- * As duas cores são a MESMA do app em dois tons, não duas cores diferentes:
- * é uma medida só partida em duas, o acento é escolhido por quem usa (e pode
- * ser qualquer um), e tom claro/escuro é o canal que sobrevive a qualquer
- * daltonismo. Quem diz qual é qual é a legenda, que está sempre lá.
- */
 function GraficoNoTempo({
   colunas,
   passo,
@@ -584,10 +504,7 @@ function GraficoNoTempo({
   colunas: Coluna[];
   passo: Passo;
 }) {
-  /** A coluna que a linha de baixo está lendo. Enquanto ninguém escolhe, é a
-   *  mais alta: é ela que define a altura de todas as outras, então é a que
-   *  explica o desenho. Chave que não existe mais (o período mudou debaixo da
-   *  escolha) volta sozinha pro pico. */
+
   const [escolhida, setEscolhida] = useState<string | null>(null);
   const pico = picoDa(colunas);
   const alta = colunas.reduce((a, b) => (b.total > a.total ? b : a));
@@ -600,8 +517,7 @@ function GraficoNoTempo({
         <span className="corvus-chart-step">{tr(PASSO[passo])}</span>
       </div>
       <div className="corvus-chart">
-        {/* A legenda existe SEMPRE: dois tons da mesma cor se distinguem, mas
-            só ela diz qual dos dois é o quê. */}
+        {}
         <div className="corvus-chart-legend">
           <span className="corvus-chart-key">
             <span className="corvus-chart-swatch is-in" aria-hidden="true" />
@@ -611,8 +527,7 @@ function GraficoNoTempo({
             <span className="corvus-chart-swatch is-out" aria-hidden="true" />
             {tr("Received")}
           </span>
-          {/* O topo da escala. Sem ele, altura é só forma: dá pra comparar as
-              colunas entre si e com mais nada. */}
+          {}
           <span className="corvus-chart-peak">
             {tr("peak {n}", { n: formatCompact(pico) })}
           </span>
@@ -638,9 +553,7 @@ function GraficoNoTempo({
                   : "corvus-chart-col"
               }
               aria-pressed={c.inicio === alvo.inicio}
-              // O mesmo texto da linha de baixo: no computador sai ao passar o
-              // mouse, no leitor de tela sai ao chegar na coluna, e no celular
-              // o toque leva ele pra linha — o número nunca depende do hover.
+
               aria-label={tr("{when}: {sent} sent, {received} received", {
                 when: c.titulo,
                 sent: formatCompact(c.entrada),
@@ -653,10 +566,7 @@ function GraficoNoTempo({
               })}
               onClick={() => setEscolhida(c.inicio)}
             >
-              {/* A pilha é separada da coluna porque a coluna é o ALVO DO
-                  DEDO (toda a altura, toda a faixa) e a pilha é o desenho —
-                  que tem largura de teto pra não virar um bloco gordo quando
-                  são poucas. */}
+              {}
               <span className="corvus-chart-stack">
                 <span
                   className="corvus-chart-air"
@@ -664,10 +574,7 @@ function GraficoNoTempo({
                 />
                 {c.saida > 0 && (
                   <span
-                    // `has-in` no lugar de um `:has(+ .is-in)` no CSS: quem
-                    // sabe se existe barra de entrada é este render, e saber
-                    // aqui custa uma comparação em vez de uma invalidação de
-                    // seletor no navegador.
+
                     className={
                       c.entrada > 0
                         ? "corvus-chart-bar is-out has-in"
@@ -686,9 +593,7 @@ function GraficoNoTempo({
             </button>
           ))}
         </div>
-        {/* As pontas do eixo. Rótulo em toda coluna não caberia, e não é o que
-            se lê num gráfico deste tamanho: o que se lê é a forma, e o de
-            quando ela começa e termina. */}
+        {}
         <div className="corvus-chart-axis">
           <span>{colunas[0].rotulo}</span>
           <span>{colunas[colunas.length - 1].rotulo}</span>
@@ -705,13 +610,6 @@ function GraficoNoTempo({
   );
 }
 
-/**
- * Uma linha de relatório: o anel da fatia com o logo dentro, o nome, e o
- * valor na ponta. É a do "By model" e a do "See all" de qualquer dimensão.
- *
- * Sem dinheiro na página, o valor vira o volume — e o preço desce pra linha
- * de apoio, onde "free" e "no public price" continuam distintos.
- */
 function LinhaDeFatia({
   r,
   m,
@@ -720,7 +618,7 @@ function LinhaDeFatia({
 }: {
   r: Fatia;
   m: Metrica;
-  /** O nome do APP ("Sonnet 4.6", "OpenAI", "Vault Q&A"). */
+
   nome: string;
   icone: string;
 }) {
@@ -765,27 +663,8 @@ function LinhaDeFatia({
   );
 }
 
-/**
- * As alturas do gráfico FANTASMA — o desenho que ocupa o lugar enquanto não
- * há série.
- *
- * Fixas, e não sorteadas: sorteio muda a cada redesenho e a tela pisca. E
- * irregulares de propósito, sem subir nem descer, pra não se parecer com uma
- * tendência — é uma forma, não um dado.
- */
 const FANTASMA = [22, 34, 26, 42, 30, 47, 26, 38, 30, 44, 25, 35];
 
-/**
- * O gráfico quando não há o que desenhar.
- *
- * Ele fica, apagado, em vez de a seção sumir: o lugar do gráfico é parte do
- * que a página ensina, e quem apertou um filtro precisa entender que apagou
- * a série — não que a tela encolheu sozinha.
- *
- * As colunas de mentira ficam no cinza de "não usei" (o mesmo do calendário
- * da home), nunca nas cores das séries: fantasma na cor do dado seria dado
- * inventado.
- */
 function GraficoVazio({ motivo }: { motivo: string }) {
   return (
     <section className="corvus-home-block" aria-label={tr("Tokens over time")}>
@@ -793,7 +672,7 @@ function GraficoVazio({ motivo }: { motivo: string }) {
         <span className="corvus-section-label">{tr("Over time")}</span>
       </div>
       <div className="corvus-chart is-empty">
-        {/* A legenda fica: é ela que diz o que este lugar vai mostrar. */}
+        {}
         <div className="corvus-chart-legend">
           <span className="corvus-chart-key">
             <span className="corvus-chart-swatch is-in" aria-hidden="true" />
@@ -820,11 +699,6 @@ function GraficoVazio({ motivo }: { motivo: string }) {
   );
 }
 
-/**
- * Uma opção SEM conversa no recorte — no relatório mesmo assim, no fim e
- * apagada: "usei esse modelo, só não nesse período" também é informação, e
- * sem ela a lista não bateria com o "See all N" que a abriu.
- */
 function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
   return (
     <div className="corvus-usage-row is-idle">
@@ -847,11 +721,6 @@ function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
   );
 }
 
-/**
- * Uma conversa da lista do topo — o mesmo desenho do cartão de conversa da
- * home (logo do provider, título, apoio, a ponta à direita), e abre do mesmo
- * jeito: lista de conversa que não abre a conversa é uma armadilha.
- */
 function LinhaDeConversa({
   c,
   m,
@@ -888,11 +757,6 @@ function LinhaDeConversa({
   );
 }
 
-/**
- * Um módulo — o do cartão da home, com um ícone no rótulo: aqui os três são
- * parentes (entra, sai, média), e é o desenho que diz qual é qual antes da
- * palavra.
- */
 function Modulo({
   icone,
   rotulo,

@@ -43,12 +43,12 @@ describe("opcoes", () => {
   });
 
   it("valor vazio não vira opção", () => {
-    // Uma opção sem nome não diz nada e ainda ocupa uma linha da lista.
+
     expect(opcoes([chat({ model: "" })], "model")).toEqual([]);
   });
 
   it("empate resolve pelo nome — ordem estável", () => {
-    // Lista que troca de ordem sozinha a cada abertura parece defeito.
+
     const empate = [chat({ id: "a", model: "zzz" }), chat({ id: "b", model: "aaa" })];
     expect(opcoes(empate, "model").map((o) => o.id)).toEqual(["aaa", "zzz"]);
   });
@@ -79,8 +79,7 @@ describe("aplicar", () => {
   });
 
   it("lista vazia é 'sem restrição', não 'nenhum'", () => {
-    // O estado inicial da página é "mostre tudo": obrigar a marcar todos os
-    // providers pra ver tudo seria trabalho por nada.
+
     expect(aplicar(chats, { ...FILTRO_VAZIO, providers: [] })).toHaveLength(3);
   });
 
@@ -124,14 +123,13 @@ describe("aplicar", () => {
   });
 
   it("data ilegível fica de fora de um filtro por período", () => {
-    // Dizer que ela caiu dentro seria inventar uma data que o arquivo não tem.
+
     const r = aplicar([chat({ date: "sei lá" })], { ...FILTRO_VAZIO, days: 7 });
     expect(r).toHaveLength(0);
   });
 
   it("sem período, a data ilegível continua passando", () => {
-    // Ela existe e gastou tokens: sumir dela sem ninguém ter filtrado nada
-    // esconderia gasto.
+
     const r = aplicar([chat({ date: "sei lá" })], FILTRO_VAZIO);
     expect(r).toHaveLength(1);
   });

@@ -24,9 +24,6 @@ import type {
   UsageBucket,
 } from "../src/usage/aggregate";
 
-// A PÁGINA de uso: as contas que não são soma (a soma é do aggregate) e as
-// regras de desenho que já quebraram uma vez.
-
 const balde = (over: Partial<UsageBucket> = {}): UsageBucket => ({
   chats: 1,
   tokensIn: 100,
@@ -52,7 +49,6 @@ const linha = (over: Partial<ChatUsageRow> = {}): ChatUsageRow => ({
   ...over,
 });
 
-/** Um agregado montado à mão: o total é a soma dos modelos. */
 function agregado(
   modelos: Record<string, UsageBucket>,
   chats: ChatUsageRow[] = []
@@ -83,7 +79,7 @@ describe("a unidade da página", () => {
   it("dinheiro quando houve dinheiro, tokens quando não", () => {
     expect(metricaDa(balde({ cost: 0.01 }))).toBe("cost");
     expect(metricaDa(balde({ cost: 0 }))).toBe("tokens");
-    // Só modelo sem preço público: não há dinheiro CONHECIDO pra mostrar.
+
     expect(metricaDa(balde({ cost: 0, hasUnknownCost: true }))).toBe("tokens");
   });
 
@@ -111,8 +107,7 @@ describe("By model", () => {
       })
     );
     expect(r.map((m) => m.id)).toEqual(["claude-sonnet-4-6", "gpt-5"]);
-    // A fatia é do dinheiro, mesmo o GPT tendo 90x mais tokens: é o que o
-    // valor ao lado dela diz.
+
     expect(r.map((m) => m.pct)).toEqual([75, 25]);
   });
 
@@ -138,7 +133,7 @@ describe("By model", () => {
     );
     const p = r.find((m) => m.id === "pequeno")!;
     expect(p.quase).toBe(true);
-    // O anel ganha um fio: vazio, ele diria "não custou nada".
+
     expect(p.pct).toBe(1);
     expect(r.find((m) => m.id === "grande")!.quase).toBe(false);
   });
@@ -180,7 +175,7 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
       ["claude-sonnet-4-6", 75],
       ["gpt-5", 25],
     ]);
-    // Sem conversa no recorte, mas no relatório: bate com o "See all 3".
+
     expect(r.paradas.map((o) => o.id)).toEqual(["gemini-2.5-flash"]);
     expect(r.usadas.length + r.paradas.length).toBe(ops.length);
   });
@@ -192,7 +187,7 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
     };
     const r = relatorioDe([ops[0]], baldes, agregado(baldes).total);
     expect(r.usadas.map((u) => u.id)).toEqual(["gpt-5"]);
-    // A fatia continua sendo do TOTAL, não só do que sobrou na busca.
+
     expect(r.usadas[0].pct).toBe(25);
     expect(r.paradas).toEqual([]);
   });
@@ -205,7 +200,7 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
       modes: ["agent"],
       days: 30,
     });
-    // Não mexe no filtro de quem chamou.
+
     expect(f.models).toEqual(["gpt-5"]);
   });
 
@@ -286,20 +281,19 @@ describe("os filtros que valem a pena", () => {
       "claude-sonnet-4-6",
       "gpt-4o",
     ]);
-    // Com três ou menos, tudo — e nada de "See all".
+
     expect(opcoesAVista(ops.slice(0, 2), [])).toHaveLength(2);
   });
 
   it("marcada fora das três volta pra fileira, NA FRENTE", () => {
-    // No fim, ela caía cortada na beirada — o filtro recém-ligado era a
-    // única pílula invisível.
+
     expect(opcoesAVista(ops, ["llama3.2"]).map((o) => o.id)).toEqual([
       "llama3.2",
       "gpt-5",
       "claude-sonnet-4-6",
       "gpt-4o",
     ]);
-    // Marcada DENTRO das três não se mexe, nem duplica.
+
     expect(opcoesAVista(ops, ["gpt-4o"]).map((o) => o.id)).toEqual([
       "gpt-5",
       "claude-sonnet-4-6",
@@ -335,8 +329,6 @@ describe("os filtros que valem a pena", () => {
   });
 });
 
-// ── o desenho ───────────────────────────────────────────────────────────
-
 const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
 const SEM_COMENTARIO = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 const VIEW = readFileSync(resolve(__dirname, "../src/ui/UsageView.tsx"), "utf8");
@@ -351,12 +343,10 @@ function bloco(agulha: string): string {
 
 describe("o cartão de uso da home", () => {
   it("não some num mês vazio — mostra o mês novo zerado", () => {
-    // 0.9.17: ele saía de cena quando o mês não tinha conversa, e o mês vazio
-    // mais comum é o que acabou de virar — no dia 1º de manhã o cartão sumia
-    // da home e parecia defeito. O índice era a única coisa que ficava.
+
     expect(CARD).not.toMatch(/total\.chats === 0\)\s*return/);
     expect(CARD).not.toMatch(/return <RagLine/);
-    // O índice continua sendo o rodapé do cartão, não uma linha solta.
+
     expect(CARD).toContain('className="corvus-usage-foot"');
   });
 });
@@ -365,51 +355,46 @@ describe("o desenho da página de uso", () => {
   it("o relatório mora na barra — flutuando, ele cobria a lista", () => {
     expect(VIEW).not.toContain("corvus-fab");
     expect(VIEW).toContain("corvus-topbar-action");
-    // A mesma pílula do "New" das folhas: uma regra só pras duas.
+
     expect(CSS).toMatch(
       /button\.corvus-sheet-action,\s*\.corvus-root button\.corvus-topbar-action\s*\{/
     );
   });
 
   it("as pílulas dos filtros ficam do tamanho delas", () => {
-    // Justificadas, a que sobrava sozinha na fileira virava uma barra da
-    // largura da tela.
+
     expect(bloco(".corvus-root .corvus-usage-dim button.corvus-choice {")).toContain(
       "flex: 0 0 auto"
     );
   });
 
   it("cada dimensão é UMA fileira, que rola de lado — nunca quebra", () => {
-    // Quebrando, cada modelo novo empurrava a página e a mesma dimensão virava
-    // duas, três linhas.
+
     const b = bloco(".corvus-root .corvus-usage-dim .corvus-choices {");
     expect(b).toContain("flex-wrap: nowrap");
     expect(b).toContain("overflow-x: auto");
-    // Sangra até a borda da tela e devolve o respiro por dentro: a pílula
-    // cortada na beirada é o aviso de que tem mais.
+
     expect(b).toContain("margin: 0 calc(var(--corvus-gutter) * -1)");
     expect(b).toContain("padding: 0 var(--corvus-gutter)");
-    // Sem degradê: ele apagava justamente a pílula que avisava.
+
     expect(b).not.toMatch(/mask-image/);
   });
 
   it("o rótulo do quadro nunca corta — sem espaço, sai o ícone", () => {
-    // "RECEIV…" num telefone de 360px. Quem decide é a largura do QUADRO
-    // (container query), não a da tela: a página também abre numa barra
-    // lateral estreita.
+
     expect(bloco(".corvus-root .corvus-usage.is-hero .corvus-mod {")).toContain(
       "container-type: inline-size"
     );
     const i = SEM_COMENTARIO.search(/@container \(max-width: [\d.]+px\)/);
     expect(i, "a regra do quadro estreito sumiu").toBeGreaterThan(-1);
-    // Até o fim da regra de dentro — a primeira `}` depois da `@container`.
+
     const regra = SEM_COMENTARIO.slice(i, SEM_COMENTARIO.indexOf("}", i));
     expect(regra).toContain(".corvus-mod-title.has-icon .corvus-icon");
     expect(regra).toContain("display: none");
   });
 
   it("as listas esticam — o bloco de seção encolhe os filhos", () => {
-    // Encolhida, a tabela perdia a borda direita e o valor colava no nome.
+
     expect(CSS).toContain(
       ".corvus-root .corvus-home-block > .corvus-usage-list {"
     );
@@ -419,8 +404,7 @@ describe("o desenho da página de uso", () => {
   });
 
   it("o ícone do módulo é medido pelo token, não pelo atributo", () => {
-    // `svg.svg-icon { width: var(--icon-size) }` no Obsidian passa por cima do
-    // `size` do <Icon>; com os 18px de sempre, "PER CHAT" cortava.
+
     expect(bloco(".corvus-root .corvus-mod-title.has-icon {")).toMatch(
       /--icon-size:\s*\d+px/
     );
@@ -450,13 +434,12 @@ describe("o desenho da página de uso", () => {
   });
 
   it("a lista do See all é RELATÓRIO, não seletor — nada com cara de toque", () => {
-    // Com as linhas da folha de modelos (check, linha-botão), ela parecia um
-    // menu. Agora são as linhas do "By model": o anel, os números, e só.
+
     expect(VIEW).not.toMatch(/<SheetRow\b/);
     expect(VIEW).toMatch(/<LinhaDeFatia\b[\s\S]*?m=\{mLista\}/);
     expect(VIEW).toContain("relatorioDe(");
     expect(VIEW).toContain("semADimensao(f, lista)");
-    // As linhas de relatório são `div`, não botão.
+
     const linha = VIEW.slice(
       VIEW.indexOf("function LinhaDeFatia"),
       VIEW.indexOf("function LinhaParada")
@@ -466,9 +449,7 @@ describe("o desenho da página de uso", () => {
   });
 
   it("os grupos de filtro respiram mais entre si do que até as pílulas", () => {
-    // A classe COLADA na do bloco de seção: `.corvus-home-block` (gap de 8px)
-    // vem depois no arquivo e, com o mesmo peso, ganhava — medido no preview,
-    // o espaço entre os grupos era 8px com a regra pedindo outra coisa.
+
     const entreGrupos = bloco(".corvus-root .corvus-home-block.corvus-usage-filters {");
     expect(entreGrupos).toContain("gap: var(--corvus-5)");
     expect(bloco(".corvus-root .corvus-usage-dim {")).toContain("gap: var(--corvus-2)");

@@ -1,27 +1,15 @@
-// src/rag/quant.ts
-// Quantização + perfis de índice (estilo Effort): o user escolhe o trade-off
-// qualidade × memória e o app recomenda o melhor pro tamanho do vault.
-//
-// Matemática: embeddings são unit-normalizados (||v|| = 1) ANTES de quantizar.
-//  - float32: guarda o vetor unit como Float32Array → cosine = dot (unit norm).
-//  - int8:    guarda round(unit × 127) como Int8Array (8× menor que o number[]
-//             float64 antigo) → cosine ≈ dot / 127².
-// A query é normalizada/quantizada do mesmo jeito no momento da busca.
-
 export type QuantPrecision = "float32" | "int8";
 
 export interface QuantProfile {
   id: string;
-  /** Precisão de armazenamento dos vetores. */
+
   precision: QuantPrecision;
-  /** Dim alvo (Matryoshka). 0 = dim cheia do modelo. Só aplica a modelos que
-   *  suportam o param `dimensions` (OpenAI text-embedding-3-*). */
+
   targetDim: number;
-  /** Emoji pro seletor (estilo Effort). Label/descrição vêm do i18n. */
+
   emoji: string;
 }
 
-/** 4 perfis — do mais preciso/pesado ao mais leve. */
 export const QUANT_PROFILES: Record<string, QuantProfile> = {
   precision: { id: "precision", precision: "float32", targetDim: 0, emoji: "🎯" },
   balanced: { id: "balanced", precision: "int8", targetDim: 0, emoji: "⚖️" },
@@ -33,11 +21,6 @@ export function getQuantProfile(id: string): QuantProfile {
   return QUANT_PROFILES[id] ?? QUANT_PROFILES.balanced;
 }
 
-// ============================================================
-// Normalização + quantização
-// ============================================================
-
-/** Normaliza pra unit norm (||v|| = 1). Devolve Float32Array. */
 export function unitNormalize(v: number[] | Float32Array): Float32Array {
   let norm = 0;
   for (let i = 0; i < v.length; i++) norm += v[i] * v[i];
@@ -47,7 +30,6 @@ export function unitNormalize(v: number[] | Float32Array): Float32Array {
   return out;
 }
 
-/** Quantiza um embedding RAW pro typed array do perfil (já unit-normalizado). */
 export function quantizeEmbedding(
   raw: number[] | Float32Array,
   precision: QuantPrecision
@@ -57,20 +39,12 @@ export function quantizeEmbedding(
   const out = new Int8Array(unit.length);
   for (let i = 0; i < unit.length; i++) {
     const q = Math.round(unit[i] * 127);
-    // Range simétrico [-127, 127] de propósito: casa com a divisão por 127²
-    // no scoreVectors (escala 127). Não usamos -128 pra não introduzir viés
-    // assimétrico no dot. v0.1.228
+
     out[i] = q > 127 ? 127 : q < -127 ? -127 : q;
   }
   return out;
 }
 
-// ============================================================
-// Score — dot product sobre vetores unit/quantizados
-// ============================================================
-
-/** Cosine ≈ dot (vetores já unit-normalizados). int8 divide por 127² pra
- *  voltar a [-1, 1] (mantém o threshold minScore consistente). */
 export function scoreVectors(
   a: Float32Array | Int8Array,
   b: Float32Array | Int8Array,
@@ -82,15 +56,10 @@ export function scoreVectors(
   return precision === "int8" ? dot / (127 * 127) : dot;
 }
 
-// ============================================================
-// Persistência: typed array <-> base64 (1 arquivo JSON, embeddings binários)
-// ============================================================
-
-/** Encoda um typed array (Int8/Float32) em base64 do seu buffer. */
 export function typedArrayToBase64(arr: Int8Array | Float32Array): string {
   const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   let binary = "";
-  const chunk = 0x8000; // 32K — evita stack overflow no fromCharCode.apply
+  const chunk = 0x8000; 
   for (let i = 0; i < bytes.length; i += chunk) {
     binary += String.fromCharCode.apply(
       null,
@@ -100,7 +69,6 @@ export function typedArrayToBase64(arr: Int8Array | Float32Array): string {
   return btoa(binary);
 }
 
-/** Decoda base64 → typed array conforme a precisão do índice. */
 export function base64ToTypedArray(
   b64: string,
   precision: QuantPrecision
@@ -109,10 +77,7 @@ export function base64ToTypedArray(
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   if (precision === "int8") return new Int8Array(bytes.buffer);
-  // Float32Array exige byteLength múltiplo de 4 — um base64 truncado/corrompido
-  // (write parcial, shard cortado) lançaria RangeError. Trunca ao múltiplo de 4
-  // pra degradar (a entrada vira inválida e é filtrada lá em cima) em vez de
-  // derrubar a busca inteira. v0.1.227
+
   const usable = bytes.byteLength - (bytes.byteLength % 4);
   return new Float32Array(bytes.buffer, 0, usable / 4);
 }

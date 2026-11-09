@@ -1,8 +1,3 @@
-// src/components/_shared/providersMeta.ts
-// Metadados de UI dos providers (nome + logo) e o check de "configurado".
-// Extraído da StarterScreen (removida na limpeza pós-ds-1.0) — a NewChatScreen
-// e futuros consumidores importam daqui.
-
 import type CorvusPlugin from "../main";
 import { tr } from "../i18n/tr";
 
@@ -15,15 +10,6 @@ export const PROVIDERS = [
   { id: "ollama", name: "Ollama", icon: "logo-ollama" },
 ];
 
-/**
- * Saúde do provider — o que o bolinha mostra em todo trilho:
- *   off      sem credencial. Não dá pra usar, ponto.
- *   fail     a credencial foi testada e o provider recusou.
- *   ok       testada e respondeu.
- *   unknown  tem credencial, nunca testou nesta instalação.
- * "unknown" é utilizável de propósito: obrigar um teste antes do primeiro uso
- * seria uma catraca, e a chave recém-colada quase sempre está certa.
- */
 export type ProviderHealth = "off" | "unknown" | "ok" | "fail";
 
 export function providerHealth(
@@ -36,14 +22,11 @@ export function providerHealth(
   return st.ok ? "ok" : "fail";
 }
 
-/** Dá pra escolher este provider no chat? Só o que sabidamente não funciona
- *  fica de fora — sem credencial, ou reprovado no último teste. */
 export function providerUsable(plugin: CorvusPlugin, id: string): boolean {
   const h = providerHealth(plugin, id);
   return h === "ok" || h === "unknown";
 }
 
-/** Por que este provider está bloqueado — vai no title do item desabilitado. */
 export function providerBlockedReason(
   plugin: CorvusPlugin,
   id: string
@@ -58,7 +41,6 @@ export function providerBlockedReason(
   }
 }
 
-/** Provider tem credencial configurada? (ollama não tem key — checa endpoint) */
 export function providerConfigured(plugin: CorvusPlugin, id: string): boolean {
   const s = plugin.settings;
   switch (id) {

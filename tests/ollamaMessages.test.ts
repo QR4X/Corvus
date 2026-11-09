@@ -3,11 +3,6 @@ import { ollamaProvider, toOllamaMessages } from "../src/providers/ollama";
 import type { ProviderMessage } from "../src/providers/base";
 import { fakeStreamResponse } from "./helpers/streamMock";
 
-// O agente com Ollama morria na SEGUNDA volta do loop de ferramentas: o
-// histórico ia no formato OpenAI (`arguments` como string JSON) e o
-// `/api/chat` do Ollama devolvia 400 — "Value looks like object, but can't
-// find closing '}' symbol". Achado ao vivo, com qwen3.5:9b, no Obsidian 1.13.7.
-
 const historico: ProviderMessage[] = [
   { role: "user", content: "Move my Lisbon trip note into a Personal folder." },
   {
@@ -46,11 +41,7 @@ describe("toOllamaMessages — o histórico no formato do Ollama", () => {
 });
 
 describe("toOllamaMessages — imagem anexada", () => {
-  // O conversor OpenAI põe o anexo em `content` como LISTA de partes, e o
-  // /api/chat só aceita string: o Ollama devolvia 400 ("json: cannot unmarshal
-  // array into Go struct field ChatRequest.messages.content of type string")
-  // a qualquer mensagem com imagem. Medido no Ollama local, com qwen3.5:9b: no
-  // formato abaixo ele responde "Red" pra um PNG vermelho.
+
   const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/58BAwAI/AL+hc2rNAAAAABJRU5ErkJggg==";
 
   it("o texto volta a ser string e a imagem vai em `images`, em base64 cru", () => {

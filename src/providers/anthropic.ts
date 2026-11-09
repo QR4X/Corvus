@@ -1,22 +1,3 @@
-// src/providers/anthropic.ts
-// Provider Anthropic (Claude) — duas modalidades:
-//   chat()       — não-streaming via requestUrl, com TOOL USE (Agent mode)
-//   streamChat() — streaming SSE via fetch (chat mode)
-//
-// Diferenças em relação a OpenAI:
-//   - Auth: header `x-api-key` (não Bearer)
-//   - Versão obrigatória: `anthropic-version: 2023-06-01`
-//   - Browser access: `anthropic-dangerous-direct-browser-access: true` (libera CORS)
-//   - System prompt: campo SEPARADO no body (não dentro de messages)
-//   - max_tokens: OBRIGATÓRIO (vs opcional na OpenAI)
-//   - SSE events: tipos diferentes (content_block_delta com delta.text)
-//
-// Tool use (v0.1.32):
-//   - Tools: `{ name, description, input_schema }` (vs `{ type:"function", function:{...} }`)
-//   - Assistant w/ tools: content = array de blocks [text, tool_use]
-//   - Tool result: vira role "user" com content array `[{ type:"tool_result", tool_use_id, content }]`
-//   - Anthropic exige alternância user/assistant — tool_results consecutivos viram 1 user msg
-
 import { requestUrl } from "obsidian";
 import {
   Provider,
@@ -40,10 +21,6 @@ import {
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
-
-// ============================================================
-// Content blocks — formato Anthropic
-// ============================================================
 
 interface TextBlock {
   type: "text";
@@ -69,7 +46,7 @@ interface ImageBlock {
     url?: string;
   };
 }
-/** PDF anexado — bloco nativo do Messages API (Claude 3.5+). v0.1.248 */
+
 interface DocumentBlock {
   type: "document";
   source: {
@@ -77,7 +54,7 @@ interface DocumentBlock {
     media_type: "application/pdf";
     data: string;
   };
-  /** Nome do arquivo — ajuda o modelo a se referir ao documento. */
+
   title?: string;
 }
 type ContentBlock =
@@ -106,15 +83,10 @@ interface AnthropicBody {
   system?: string;
   tools?: AnthropicTool[];
   temperature?: number;
-  /** Quanto pensar (low…max), nos Claude que têm o controle. */
+
   output_config?: { effort: string };
 }
 
-// ---- O que a Anthropic devolve (ver a nota em _shared.ts) ----------------
-// Tudo opcional: o que chega é o que o `typeof` abaixo disser, não o que a
-// spec promete. Com `any` no lugar disto, nenhuma dessas leituras era checada.
-
-/** Bloco da resposta non-stream: texto ou tool_use. */
 interface BlocoDaResposta {
   type?: string;
   text?: unknown;
@@ -128,13 +100,11 @@ interface UsoAnthropic {
   output_tokens?: number;
 }
 
-/** Resposta non-stream (requestUrl). */
 interface RespostaAnthropic {
   content?: BlocoDaResposta[];
   usage?: UsoAnthropic;
 }
 
-/** Um evento `data:` do stream. Cada `type` usa um subconjunto dos campos. */
 interface EventoAnthropic {
   type?: string;
   index?: number;
@@ -150,19 +120,10 @@ interface EventoAnthropic {
   error?: { message?: string };
 }
 
-/** Resposta do catálogo de modelos. */
 interface ModelosAnthropic {
   data?: Array<{ id?: string }>;
 }
 
-/**
- * Converte ProviderMessage[] pro formato wire-level do Anthropic.
- * - system → extraído em campo separado
- * - role "tool" → vira role "user" com content array contendo tool_result block
- * - role "assistant" com toolCalls → content array com text + tool_use blocks
- * - tool_results consecutivos viram 1 user msg com content[] mergeado
- *   (Anthropic exige alternância user/assistant)
- */
 export function toAnthropicPayload(messages: ProviderMessage[]): {
   system: string | undefined;
   messages: AnthropicMessage[];
@@ -172,18 +133,16 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
 
   for (const m of messages) {
     if (m.role === "system") {
-      // Concatena se tiver vários systems (raro mas seguro)
+
       system = system ? system + "\n\n" + m.content : m.content;
       continue;
     }
 
     if (m.role === "tool") {
-      // tool_use_id vazio garante 400 na Anthropic. Sem o id de correlação não
-      // dá pra emitir um tool_result válido → degrada pra texto (preserva o
-      // conteúdo da tool em vez de quebrar a request inteira). v0.1.228
+
       if (!m.toolCallId) {
         console.warn(
-          "[anthropic] tool message sem toolCallId — anexando como texto pra evitar 400"
+          "[anthropic] tool message missing toolCallId — appending as text to avoid 400"
         );
         converted.push({ role: "user", content: m.content || " " });
         continue;
@@ -216,8 +175,6 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
       continue;
     }
 
-    // User normal — pode ter attachments (imagens e PDFs) em content array.
-    // Note/audio vêm inlinados como texto pelo caller (não wire).
     const imageAtt =
       m.role === "user" && m.attachments
         ? m.attachments.filter((a) => a.type === "image")
@@ -228,8 +185,7 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
         : [];
     if (m.role === "user" && (imageAtt.length > 0 || pdfAtt.length > 0)) {
       const blocks: ContentBlock[] = [];
-      // PDF ANTES do texto: a doc do Anthropic recomenda o documento primeiro
-      // (a pergunta depois costuma render resposta melhor).
+
       for (const att of pdfAtt) {
         if (att.type !== "pdf" || !att.dataUrl) continue;
         const parsed = parseDataUrl(att.dataUrl);
@@ -247,10 +203,10 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
       if (m.content) blocks.push({ type: "text", text: m.content });
       for (const att of imageAtt) {
         if (att.type === "image") {
-          // Anthropic aceita base64 inline OU URL externa
+
           const isDataUrl = att.dataUrl.startsWith("data:");
           if (isDataUrl) {
-            // data:image/png;base64,XXXX → media_type + data separados
+
             const match = /^data:([^;]+);base64,(.+)$/.exec(att.dataUrl);
             if (match) {
               blocks.push({
@@ -270,9 +226,7 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
           }
         }
       }
-      // Se TODOS os anexos falharam o parse (data URL malformada), sobra no
-      // máximo o bloco de texto — e aí a mensagem volta a ser string simples.
-      // blocks vazio seria 400 do Anthropic (string vazia vira " "). v0.1.227
+
       const onlyText = blocks.every((b) => b.type === "text");
       if (onlyText) {
         converted.push({ role: "user", content: m.content || " " });
@@ -282,21 +236,12 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
       continue;
     }
 
-    // Assistant text-only
     converted.push({
       role: m.role,
       content: m.content,
     });
   }
 
-  // Anthropic exige alternância ESTRITA user/assistant. Juntamos msgs
-  // consecutivas do MESMO role num content[] só. Cobre dois casos:
-  //   - user: tool_results consecutivos (expansão do agentSteps)
-  //   - assistant: múltiplos turns do agent (ao reabrir um chat de agente
-  //     multi-turn, cada turn vira um ai-response → assistant consecutivos).
-  //     OpenAI-compat tolera, Anthropic não — sem o merge, dá 400. v0.1.162
-  // toBlocks dropa texto vazio (assistant com toolCalls tem content:"" → não
-  // vira um text-block vazio, que o Anthropic rejeita).
   const toBlocks = (c: string | ContentBlock[]): ContentBlock[] =>
     Array.isArray(c) ? c : c ? [{ type: "text" as const, text: c }] : [];
 
@@ -304,8 +249,7 @@ export function toAnthropicPayload(messages: ProviderMessage[]): {
   for (const m of converted) {
     const last = merged[merged.length - 1];
     if (last && last.role === m.role) {
-      // Acumula in-place: garante array UMA vez e dá push (evita reconstruir o
-      // content[] a cada msg consecutiva — era O(n²) com o spread). v0.1.228
+
       if (!Array.isArray(last.content)) last.content = toBlocks(last.content);
       last.content.push(...toBlocks(m.content));
     } else {
@@ -326,12 +270,10 @@ function buildBody(req: ProviderRequest, stream: boolean): AnthropicBody {
     stream,
   };
   if (system) body.system = system;
-  // Claude usa range 0..1 (paramPolicy clampa) — não 0..2 como a OpenAI — e
-  // os atuais (Fable, Opus 4.7+, Sonnet 5+) não aceitam nenhuma: a política
-  // devolve undefined e o campo nem vai.
+
   const temp = resolveTemperature("anthropic", req.model, req.temperature);
   if (temp !== undefined) body.temperature = temp;
-  // O nível do Effort vira o `output_config.effort` dos que têm o controle.
+
   aplicarEsforco(body as unknown as Record<string, unknown>, "anthropic", req.model, req.effort);
   if (req.tools && req.tools.length > 0) {
     body.tools = req.tools.map((t) => ({
@@ -380,7 +322,6 @@ export class AnthropicProvider implements Provider {
 
     ensureOkRequest(res, { label: "Anthropic" });
 
-    // Anthropic devolve content como array de blocks tipados (text + tool_use)
     const corpo = res.json as RespostaAnthropic | undefined;
     const content = corpo?.content;
     if (!Array.isArray(content)) {
@@ -411,7 +352,6 @@ export class AnthropicProvider implements Provider {
     const result: ProviderResponse = { content: text };
     if (toolCalls.length > 0) result.toolCalls = toolCalls;
 
-    // Usage tokens
     const usage = corpo?.usage;
     if (usage) {
       result.usage = {
@@ -451,10 +391,7 @@ export class AnthropicProvider implements Provider {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      // Falha de CONEXÃO do fetch SSE (típico: CORS no WebView mobile). Em vez
-      // de erro duro, cai pro chat() via requestUrl (fura CORS) e emite tudo de
-      // uma vez. O header dangerous-direct-browser-access já libera o desktop;
-      // isto cobre o mobile onde o WebView ainda barra o stream. v0.1.232
+
       return streamFallbackToChat(
         () => this.chat(req, apiKey),
         onToken,
@@ -468,22 +405,15 @@ export class AnthropicProvider implements Provider {
       throw new ProviderError("Empty stream from Anthropic.", "unknown");
     }
 
-    // Parser SSE — Anthropic envia events tipados.
-    // Nos interessam:
-    //   content_block_start (text ou tool_use), content_block_delta (text_delta
-    //   ou input_json_delta), content_block_stop, message_stop, error.
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let inputTokens = 0;
     let outputTokens = 0;
     let accumulatedText = "";
-    // Tool use accumulator por content_block_index
+
     const toolUseAccum: Record<number, { id: string; name: string; jsonBuf: string }> = {};
 
-    // try/finally garante que o reader seja liberado em QUALQUER saída do loop
-    // (break, return no message_stop, throw de ProviderError ou AbortError) —
-    // sem isso o stream vazava a cada abort/erro mid-stream. v0.1.228
     try {
     while (true) {
       const { done, value } = await reader.read();
@@ -502,7 +432,7 @@ export class AnthropicProvider implements Provider {
         try {
           json = JSON.parse(data) as EventoAnthropic;
         } catch {
-          // JSON inválido (linha SSE parcial/keep-alive) — pula
+
           continue;
         }
         try {
@@ -523,7 +453,7 @@ export class AnthropicProvider implements Provider {
                 onToken(token);
               }
             } else if (json.delta?.type === "thinking_delta") {
-              // Extended thinking do Claude → canal de reasoning. v0.1.195
+
               const th = json.delta.thinking;
               if (onReasoning && typeof th === "string" && th.length > 0) {
                 onReasoning(th);
@@ -539,8 +469,7 @@ export class AnthropicProvider implements Provider {
           } else if (json.type === "message_delta") {
             outputTokens = json.usage?.output_tokens ?? outputTokens;
           } else if (json.type === "message_stop") {
-            // Alguns shapes só trazem o usage final aqui (não no message_delta)
-            // → lê o fallback e mantém o MAIOR visto pra não zerar. v0.1.228
+
             const stopOut =
               json.message?.usage?.output_tokens ??
               json.usage?.output_tokens ??
@@ -561,23 +490,18 @@ export class AnthropicProvider implements Provider {
           }
         } catch (err) {
           if (err instanceof ProviderError) throw err;
-          // Erro inesperado no handler de um event conhecido (ex: TypeError de
-          // onToken/onReasoning) — re-lança em vez de engolir. O JSON.parse já
-          // foi isolado acima, então isto NÃO é mais erro de parse. v0.1.228
+
           throw err;
         }
       }
     }
     } finally {
-      // Libera o stream em toda saída — inclusive return/throw/abort. v0.1.228
+
       try {
         await reader.cancel();
-      } catch {
-        /* reader já fechado/cancelado — ignora */
-      }
+      } catch { void 0; }
     }
 
-    // Stream encerrou sem message_stop — dispara usage com o que temos
     if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
       onUsage({ input: inputTokens, output: outputTokens });
     }
@@ -589,10 +513,6 @@ export class AnthropicProvider implements Provider {
     );
   }
 
-  /** Monta ProviderResponse do stream — text + tool_use blocks parseados. */
-
-  /** Lista curada — fallback quando não há key ou o fetch falha. Manter em
-   *  sincronia com os 5 arquivos de metadata (caps/pricing/cards/ctx). */
   private curatedModels(): string[] {
     return [
       "claude-fable-5",
@@ -603,8 +523,7 @@ export class AnthropicProvider implements Provider {
   }
 
   async listModels(apiKey: string): Promise<string[]> {
-    // Com key, busca o catálogo VIVO da Anthropic (GET /v1/models) — assim a
-    // lista nunca fica presa nos hardcoded. Sem key / em erro, cai na curada.
+
     if (!apiKey || !apiKey.trim()) return this.curatedModels();
     try {
       const res = await requestUrl({
@@ -622,7 +541,7 @@ export class AnthropicProvider implements Provider {
       const ids: string[] = (catalogo?.data ?? [])
         .map((m) => m.id)
         .filter((id): id is string => typeof id === "string");
-      // Une com a curada (garante Fable/4.x mesmo se a API atrasar) + dedup.
+
       const merged = Array.from(new Set([...ids, ...this.curatedModels()]));
       return merged.length > 0 ? merged : this.curatedModels();
     } catch {
@@ -631,10 +550,6 @@ export class AnthropicProvider implements Provider {
   }
 }
 
-/**
- * Helper compartilhado pra montar ProviderResponse após o stream Anthropic terminar.
- * Parseia input_json_delta acumulado em cada tool_use block.
- */
 function buildAnthropicStreamResponse(
   text: string,
   toolUseAccum: Record<number, { id: string; name: string; jsonBuf: string }>,
@@ -650,7 +565,7 @@ function buildAnthropicStreamResponse(
     if (!acc.name) continue;
     let parsedArgs: Record<string, unknown> = {};
     try {
-      // input_json_delta às vezes vem vazio quando o input é {} — buf vazio = {}
+
       parsedArgs = acc.jsonBuf
         ? (JSON.parse(acc.jsonBuf) as Record<string, unknown>)
         : {};
@@ -658,8 +573,7 @@ function buildAnthropicStreamResponse(
       parsedArgs = { _raw: acc.jsonBuf };
     }
     toolCalls.push({
-      // Fallback com UUID evita colisão entre calls no mesmo ms (Date.now()+i
-      // colidia se duas respostas caíssem no mesmo tick). v0.1.228
+
       id: acc.id || `anthropic_call_${crypto.randomUUID()}`,
       name: acc.name,
       arguments: parsedArgs,

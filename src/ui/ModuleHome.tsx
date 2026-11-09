@@ -1,16 +1,3 @@
-// src/ui/ModuleHome.tsx
-// A HOME de um módulo — a porta de entrada de Chat, Vault Q&A ou Agent.
-//
-// É uma página inteira e independente, não um painel dentro do menu nem a
-// tela de uma conversa vazia: nome grande, as conversas daquele módulo em
-// cartões e um botão flutuante pra começar outra. Não há campo de texto de
-// propósito — esta tela é sobre ESCOLHER, não sobre escrever.
-//
-// E cada uma tem a SUA mobília, como na referência (lá Chats, Code e Cowork
-// não se parecem): o Agent abre com as skills à mão e a lista de sessões
-// filtrável por período, porque uma sessão de agente é trabalho datado; Chat
-// e Vault Q&A abrem com busca, porque ali o que se procura é assunto.
-
 import { useMemo, useState } from "react";
 import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
@@ -29,39 +16,37 @@ import {
   moduleLabel,
   searchChats,
 } from "./modules";
-import { marca, tr } from "../i18n/tr";
+import { mark, tr } from "../i18n/tr";
 
-/** Janelas do filtro de período do Agent, em dias (0 = tudo). */
 const PERIODOS: Array<{
   id: string;
   label: string;
-  /** A lista vazia naquele período, em frase inteira: montar "Nothing in" +
-   *  o rótulo não vira português palavra por palavra. */
+
   vazio: string;
   dias: number;
 }> = [
   {
     id: "all",
-    label: marca("All"),
-    vazio: marca("Nothing in all."),
+    label: mark("All"),
+    vazio: mark("Nothing in all."),
     dias: 0,
   },
   {
     id: "today",
-    label: marca("Today"),
-    vazio: marca("Nothing in today."),
+    label: mark("Today"),
+    vazio: mark("Nothing in today."),
     dias: 1,
   },
   {
     id: "week",
-    label: marca("This week"),
-    vazio: marca("Nothing in this week."),
+    label: mark("This week"),
+    vazio: mark("Nothing in this week."),
     dias: 7,
   },
   {
     id: "month",
-    label: marca("This month"),
-    vazio: marca("Nothing in this month."),
+    label: mark("This month"),
+    vazio: mark("Nothing in this month."),
     dias: 30,
   },
 ];
@@ -78,7 +63,7 @@ export function ModuleHome({
   plugin: CorvusPlugin;
   session: ChatSession;
   modulo: string;
-  /** Sai desta tela — volta pra home. */
+
   onBack: () => void;
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
@@ -92,8 +77,6 @@ export function ModuleHome({
 
   const ehAgent = modulo === "agent";
 
-  // Período primeiro (só o Agent tem), busca depois: a busca procura DENTRO
-  // do que está sendo mostrado, senão o filtro viraria mentira na tela.
   const noPeriodo = useMemo(() => {
     if (!ehAgent || periodo.dias === 0) return minhas;
     const corte = Date.now() - periodo.dias * 86400000;
@@ -107,16 +90,12 @@ export function ModuleHome({
   const visiveis = busca.hits;
   const procurando = query.trim().length > 0;
 
-  // Módulo que este código não conhece (pasta criada por outra versão): dá pra
-  // ler o que está lá, não dá pra criar — o motor não sabe rodar nesse modo.
   const podeCriar = isChatMode(modulo);
 
   return (
     <div className="corvus-chat">
       <header className="corvus-topbar is-bare">
-        {/* Seta, não hambúrguer: o menu mora na home, e esta tela é um lugar
-            DENTRO dela. Antes daqui só se saía pelo menu — um lugar que só
-            tem porta lateral. */}
+        {}
         <button
           type="button"
           className="corvus-icon-btn"
@@ -135,9 +114,7 @@ export function ModuleHome({
         {ehAgent && (
           <section className="corvus-home-block">
             <span className="corvus-section-label">{tr("Skills")}</span>
-            {/* O que o agente sabe fazer é o que ele TEM à mão — por isso as
-                skills abrem a home dele, do mesmo jeito que os aparelhos
-                abrem a tela de Code na referência. */}
+            {}
             <button
               type="button"
               className="corvus-home-pill"
@@ -149,8 +126,7 @@ export function ModuleHome({
           </section>
         )}
 
-        {/* A pílula é GATILHO: quem toca vai pra folha de busca, onde o
-            teclado não cobre o resultado (ver SearchSheet.tsx). */}
+        {}
         <SearchField
           value={query}
           placeholder={tr("Search")}
@@ -206,10 +182,7 @@ export function ModuleHome({
           </div>
         )}
 
-        {/* DENTRO do scroller, grudado na base com `sticky`. Fora dele ele
-            precisaria de um ancestral posicionado — e `.corvus-chat` não é
-            posicionado: foi assim que o composer `absolute` foi parar colado
-            no header do aparelho (ver o bloco do composer no CSS). */}
+        {}
         {podeCriar && (
           <button type="button" className="corvus-fab" onClick={onNewChat}>
             <Icon name="plus" size={20} />
@@ -218,10 +191,7 @@ export function ModuleHome({
         )}
       </div>
 
-      {/* Busca com regex: `^draft`, `readme|changelog`, `gpt-5$`. O campo NÃO
-          anuncia isso: termo comum também é regex válida, então pra quem só
-          quer procurar palavra a palavra "regex" no rótulo é uma instrução a
-          mais pra ler e ignorar. Quem precisa, digita e funciona. */}
+      {}
       <SearchSheet
         open={buscando}
         title={tr("Search {module}", { module: moduleLabel(modulo) })}
@@ -238,8 +208,7 @@ export function ModuleHome({
             session={session}
             chats={visiveis}
             onOpen={(c) => {
-              // Fecha a busca ANTES de sair: voltar da conversa e encontrar a
-              // folha ainda aberta por cima seria um fantasma.
+
               setBuscando(false);
               onOpenChat(c);
             }}

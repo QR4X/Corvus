@@ -1,23 +1,3 @@
-// src/ui/LeftToday.tsx
-// A seção "Left today" da tela de Uso: quanto sobra HOJE em cada lugar com
-// cota grátis — os tokens do data-sharing da OpenAI, os pedidos por modelo do
-// Gemini, os grátis do OpenRouter, o dia do NIM.
-//
-// Ela não depende do período nem dos filtros da página: cota é do dia, e o
-// dia é o de cada provider (ver usage/sobraDoDia.ts). Por isso mora no TOPO,
-// antes do seletor de período — que é a régua só do que vem abaixo dele.
-//
-// O medidor é de BATERIA: a barra é o que SOBRA e encurta conforme se usa,
-// porque a pergunta da seção é "quanto ainda tenho", não "quanto gastei".
-// Sem teto conhecido não há barra — uma barra inventada seria dado inventado;
-// fica o número do dia, e no Gemini o botão pra pessoa trazer o teto dela.
-//
-// Cada provider é um ACORDEÃO. Fechado, só as barras: o "quanto sobra" de
-// relance, sem uma palavra — a cor avisa quando está acabando. Aberto, o
-// texto: os nomes, quanto sobra, a conta ("238 of 250 used"), o teto e a
-// explicação de onde vem o número. O que fica aberto é lembrado por vault,
-// neste aparelho: é preferência de tela, não dado.
-
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { App } from "obsidian";
 import type CorvusPlugin from "../main";
@@ -30,16 +10,15 @@ import {
   emQuanto,
   fracaoQueSobra,
   nivel,
-  sobraDoDia,
+  remainingToday,
   type Cartao,
   type Medidor,
-} from "../usage/sobraDoDia";
-import { usd } from "../usage/gastoDoDia";
+} from "../usage/remainingToday";
+import { usd } from "../usage/dailySpend";
 import { providerIcon } from "./ChatList";
 import { Icon } from "./Icon";
-import { localeDaInterface, tr } from "../i18n/tr";
+import { uiLocale, tr } from "../i18n/tr";
 
-/** Onde mora (no localStorage do vault) quais blocos ficaram abertos. */
 const CHAVE_ABERTOS = "corvus-left-today-open";
 
 function lerAbertos(app: App): Set<string> {
@@ -54,33 +33,24 @@ function lerAbertos(app: App): Set<string> {
 function gravarAbertos(app: App, abertos: Set<string>): void {
   try {
     app.saveLocalStorage(CHAVE_ABERTOS, abertos.size ? Array.from(abertos) : null);
-  } catch {
-    // Sem armazenamento (janela privada, cota cheia): a escolha vale até a
-    // tela fechar, e só.
-  }
+  } catch { void 0; }
 }
 
-/** Pedidos são poucos e contados um a um: "1,000", não "1.0k". Tokens são
- *  muitos, e o compacto é o que se lê ("238k"). */
 function numero(n: number, unidade: Medidor["unidade"]): string {
   if (unidade === "usd") return usd(n);
-  return unidade === "tokens" ? formatCompact(n) : Math.round(n).toLocaleString(localeDaInterface());
+  return unidade === "tokens" ? formatCompact(n) : Math.round(n).toLocaleString(uiLocale());
 }
 
-/** O número com a unidade: "238k tokens", "12 requests", "1 request". */
 function quantos(n: number, unidade: Medidor["unidade"]): string {
   if (unidade === "tokens") return tr("{n} tokens", { n: numero(n, unidade) });
   if (unidade === "usd") return numero(n, unidade);
   return n === 1 ? tr("1 request") : tr("{n} requests", { n: numero(n, unidade) });
 }
 
-/** "238 left". Um só sobrando é singular em português ("resta 1"); dinheiro
- *  não entra nessa conta ("$1.00 left" continua plural). */
 function sobram(n: number, unidade: Medidor["unidade"]): string {
   return n === 1 && unidade !== "usd" ? tr("1 left") : tr("{n} left", { n: numero(n, unidade) });
 }
 
-/** A conta do pé: "238 of 250 requests used". O plural é o do teto. */
 function usadosDe(usado: number, limite: number, unidade: Medidor["unidade"]): string {
   const u = numero(usado, unidade);
   if (unidade === "usd") return tr("{used} of {limit} spent", { used: u, limit: numero(limite, unidade) });
@@ -92,16 +62,12 @@ function usadosDe(usado: number, limite: number, unidade: Medidor["unidade"]): s
     : tr("{used} of {limit} requests used", { used: u, limit: numero(limite, unidade) });
 }
 
-/** Dinheiro de crédito e de gasto do dia: centavos bastam ("$0.31"); a casa
- *  a mais do formatUsd ("$0.310") é pra preço por conversa, não pra saldo. */
 function dinheiro(n: number): string {
   if (n === 0) return "$0.00";
   if (n > 0 && n < 0.01) return "<$0.01";
   return `$${n.toFixed(2)}`;
 }
 
-/** De quanto em quanto o teto da chave volta, no valor que o OpenRouter
- *  manda ("daily", "weekly", "monthly"); um valor novo vai como veio. */
 function voltaDoCredito(volta: string): string {
   if (volta === "daily") return tr("resets daily");
   if (volta === "weekly") return tr("resets weekly");
@@ -109,8 +75,6 @@ function voltaDoCredito(volta: string): string {
   return tr("resets {when}", { when: volta });
 }
 
-/** O nome de um medidor na tela: o do app pro modelo ("Gemini 2.5 Flash"),
- *  o rótulo pro resto ("Flagship models"). */
 function nomeDo(m: Medidor): string {
   return m.modelo ? prettyModelName(m.modelo) : m.rotulo;
 }
@@ -118,7 +82,6 @@ function nomeDo(m: Medidor): string {
 export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   const s = plugin.settings;
 
-  // O relógio da seção: o "resets in" anda, e o dia vira com a tela aberta.
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
     const t = window.setInterval(() => setAgora(new Date()), 60_000);
@@ -134,8 +97,6 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
     gravarAbertos(plugin.app, novo);
   };
 
-  // O OpenRouter conta os grátis da CHAVE (qualquer app que a use): pergunta
-  // ao abrir a tela e quando a pessoa pede de novo.
   const chaveOR = plugin.providerCredential("openrouter").trim();
   const [viva, setViva] = useState<EstadoDaChave | null | undefined>(undefined);
   const [lendo, setLendo] = useState(false);
@@ -165,7 +126,7 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
     void plugin.saveSettings();
   };
 
-  const cartoes = sobraDoDia({
+  const cartoes = remainingToday({
     livro: s.usoDoDia ?? {},
     agora,
     comChave: (id) => !!plugin.providerCredential(id).trim(),
@@ -203,8 +164,6 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   );
 }
 
-/** Um provider: o cabeçalho que abre e fecha; fechado, as barras; aberto, o
- *  texto todo. */
 function CartaoDoDia({
   c,
   aberto,
@@ -216,11 +175,11 @@ function CartaoDoDia({
   aberto: boolean;
   onAlternar: () => void;
   onSalvarLimite: (chave: string, n: number | null) => void;
-  /** Só o OpenRouter: perguntar de novo à chave. */
+
   atualizar?: { lendo: boolean; ir: () => void };
 }) {
   const idCorpo = `corvus-left-${c.provider}`;
-  // Fechado, só o que tem barra: um modelo sem teto não tem o que desenhar.
+
   const comBarra = c.medidores.filter((m) => fracaoQueSobra(m) != null);
   return (
     <div className={aberto ? "corvus-left-prov is-open" : "corvus-left-prov"}>
@@ -282,8 +241,7 @@ function CartaoDoDia({
         </div>
       ) : (
         comBarra.length > 0 && (
-          // Tocar nas barras também abre — o botão de verdade (pro teclado e
-          // pro leitor de tela) é o cabeçalho, logo acima.
+
           <div className="corvus-left-bars" id={idCorpo} onClick={onAlternar}>
             {comBarra.map((m) => (
               <Barra key={m.id} m={m} />
@@ -295,11 +253,6 @@ function CartaoDoDia({
   );
 }
 
-/**
- * A barra de um medidor — a mesma fechado (sozinha) e aberto (na linha). O
- * nível (quase no fim, acabou) mora NELA: fechado, ela é o único aviso. O
- * leitor de tela ouve o número que o olho não vê.
- */
 function Barra({ m }: { m: Medidor }) {
   const f = fracaoQueSobra(m);
   if (f == null || m.limite == null || m.restante == null) return null;
@@ -327,10 +280,6 @@ function Barra({ m }: { m: Medidor }) {
   );
 }
 
-/**
- * Um medidor aberto: o nome e o que sobra na linha de cima, a barra embaixo
- * (só com teto conhecido), e a conta no pé — "238 of 250 requests used".
- */
 function LinhaDoMedidor({
   m,
   ajuda,
@@ -338,9 +287,9 @@ function LinhaDoMedidor({
   onSalvarLimite,
 }: {
   m: Medidor;
-  /** Onde a pessoa acha o teto que vai informar (o AI Studio). */
+
   ajuda?: { rotulo: string; url: string };
-  /** Os grátis do OpenRouter: perguntar de novo à chave. */
+
   atualizar?: { lendo: boolean; ir: () => void };
   onSalvarLimite: (chave: string, n: number | null) => void;
 }) {
@@ -392,12 +341,6 @@ function LinhaDoMedidor({
   );
 }
 
-/**
- * O teto que a pessoa informa (Gemini): um botão de texto que vira campo — e,
- * com o campo aberto, a linha que diz onde achar o número. Sem salvar ao
- * perder o foco: tocar no ✓ tira o foco do campo ANTES do toque chegar no
- * botão, e o campo sumiria debaixo do dedo. Vazio apaga o teto.
- */
 function EditorDeLimite({
   atual,
   nome,
@@ -408,16 +351,14 @@ function EditorDeLimite({
   atual?: number;
   nome: string;
   ajuda?: { rotulo: string; url: string };
-  /** Teto em dólar (com centavos), não em pedidos. */
+
   dinheiro?: boolean;
   onSalvar: (n: number | null) => void;
 }) {
   const [aberto, setAberto] = useState(false);
   const [txt, setTxt] = useState("");
   const campo = useRef<HTMLInputElement>(null);
-  // O campo nasce de um toque no "Set limit": o foco vai pra onde a pessoa
-  // acabou de pedir. Por ref, e não pelo atributo autofocus — num campo
-  // inserido depois que a página carregou, o navegador pode ignorá-lo.
+
   useEffect(() => {
     if (aberto) campo.current?.focus();
   }, [aberto]);
@@ -444,8 +385,7 @@ function EditorDeLimite({
       </button>
     );
   }
-  // Lê o CAMPO, não o estado: o render que leva o último dígito pro estado
-  // pode ainda não ter rodado quando o Enter chega.
+
   const salvar = () => {
     const bruto = (campo.current?.value ?? txt).trim().replace(",", ".");
     const v = Number(bruto);
@@ -500,8 +440,6 @@ function EditorDeLimite({
   );
 }
 
-/** O crédito da chave do OpenRouter — dinheiro, sem barra (o teto da chave
- *  não é do dia, então uma barra "do dia" mentiria). */
 function LinhaDoCredito({
   credito,
 }: {

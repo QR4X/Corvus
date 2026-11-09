@@ -1,7 +1,3 @@
-// tests/attachSources.test.ts
-// As decisões das fontes do "+": o que conta como artefato, o que sobra de uma
-// página web e o que fazer com um endereço digitado torto.
-
 import { describe, it, expect } from "vitest";
 import {
   rankArtifacts,
@@ -31,7 +27,7 @@ const f = (path: string, mtime: number): ArtifactLike => {
 
 const vault: ArtifactLike[] = [
   f(`${GENERATION_DIR}/images/1700-gato.png`, 10),
-  f(`${GENERATION_DIR}/images/1700-gato.md`, 11), // sidecar de metadata
+  f(`${GENERATION_DIR}/images/1700-gato.md`, 11), 
   f(`${GENERATION_DIR}/audio/1800-fala.mp3`, 50),
   f(`${GENERATION_DIR}/video/1900-clipe.mp4`, 30),
   f("PROJECTS/FRAMEWORKS.md", 99),
@@ -134,8 +130,6 @@ describe("linkNote", () => {
   });
 });
 
-// O rótulo do chip: o que aparece é o título ou o host — nunca o último
-// pedaço do caminho da URL (isso virava "spaced" numa página de wikipedia).
 describe("attachmentLabel", () => {
   it("link com título mostra o título", () => {
     expect(attachmentLabel(linkNote("https://x.com/a/b", "Spaced repetition", "c"))).toBe(

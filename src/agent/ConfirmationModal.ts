@@ -1,36 +1,20 @@
-// src/agent/ConfirmationModal.ts
-// Modal de aprovação do Agent — mostra um PREVIEW/DIFF da mudança antes de
-// gravar no vault, e devolve a decisão do user. v0.1.140 (aposta #2):
-//   - editar nota → diff antes/depois (vermelho/verde) do trecho trocado
-//   - criar nota → conteúdo novo (verde)
-//   - mover/renomear → de → para
-//   - deletar → caminho (irreversível, vermelho)
-//   - outras tools → preview genérico dos argumentos
-//
-// Botões: Negar · (Aprovar todas) · Aprovar. "Aprovar todas" libera o resto das
-// edições desta rodada sem perguntar (NÃO aparece em ações irreversíveis —
-// delete sempre é por ação). O agent loop dá `await modal.openAndWait()`.
-
 import { App, Component, MarkdownRenderer, Modal, Setting } from "obsidian";
 import type { ToolCall, ToolDefinition } from "./types";
 import type { Translations } from "../i18n";
-import { texto } from "../core/texto";
+import { texto } from "../core/text";
 
 interface ConfirmOpts {
   toolCall: ToolCall;
   definition: ToolDefinition;
-  /** Mostra o preview/diff da mudança (Settings → "Approve changes (diff)").
-   *  v0.1.237: o toggle deixou de forçar o GATE (nível decide se confirma) e
-   *  passou a controlar só a riqueza da confirmação. Default true. */
+
   showDiff?: boolean;
-  /** Strings i18n (t.agent) — injetadas pelo caller, mesmo padrão do
-   *  ImageGenModal (strings: t.imageGen). Antes eram PT-BR hardcoded. */
+
   strings: Translations["agent"];
 }
 
 export interface ConfirmResult {
   approved: boolean;
-  /** Aprovar todas as edições restantes desta rodada (não-irreversíveis). */
+
   approveAll: boolean;
 }
 
@@ -38,8 +22,7 @@ export class ConfirmationModal extends Modal {
   private opts: ConfirmOpts;
   private resolver: (r: ConfirmResult) => void = () => {};
   private resolved = false;
-  /** Dono dos renders de markdown (o renderer do Obsidian precisa de um
-   *  Component vivo pra pendurar callouts, mermaid, embeds…). */
+
   private md: Component | null = null;
 
   constructor(app: App, opts: ConfirmOpts) {
@@ -65,14 +48,12 @@ export class ConfirmationModal extends Modal {
     contentEl.empty();
     contentEl.addClass("corvus-confirm-modal");
     this.modalEl.addClass("corvus-modal-keyboard-aware");
-    // O `.modal-container` é do Obsidian e fica ACIMA do nosso modal. Marcá-lo
-    // aqui troca um `:has()` no CSS por uma classe: mesma especificidade, sem
-    // invalidação de seletor, e funciona onde `:has` não existe.
+
     this.containerEl.addClass("corvus-modal-container", "corvus-confirm-container");
 
     const irreversible = !!opts.definition.irreversible;
     const strings = opts.strings;
-    // Pedido à web não é "mudança": nada no vault muda, mas algo SAI dele.
+
     contentEl.createEl("h2", {
       text: irreversible
         ? strings.confirmTitleIrreversible
@@ -101,7 +82,7 @@ export class ConfirmationModal extends Modal {
       });
       btn.buttonEl.classList.add("corvus-confirm-deny");
     });
-    // "Aprovar todas" — só em ações reversíveis (delete sempre é por ação).
+
     if (!irreversible) {
       setting.addButton((btn) => {
         btn.setButtonText(strings.confirmApproveAll).onClick(() => {
@@ -123,8 +104,6 @@ export class ConfirmationModal extends Modal {
     });
   }
 
-  /** Preview/diff conforme a tool. Conteúdo grande é truncado, e o que sobra
-   *  vira uma linha de aviso em vez de sujar o bloco. */
   private renderPreview(root: HTMLElement) {
     const { name, arguments: args } = this.opts.toolCall;
     const strings = this.opts.strings;
@@ -137,10 +116,6 @@ export class ConfirmationModal extends Modal {
       row.createSpan({ cls: "corvus-confirm-path-val", text: value });
     };
 
-    // O conteúdo aparece DO JEITO QUE ELE É: nota vira markdown formatado,
-    // arquivo de código vira bloco colorido (Prism do próprio Obsidian), e o
-    // que não dá pra reconhecer continua texto cru. Quem aprova uma mudança
-    // precisa LER a mudança — markdown cru com ## e ** no meio é ruído.
     const block = (
       text: string,
       kind: "add" | "del" | "ctx",
@@ -159,7 +134,7 @@ export class ConfirmationModal extends Modal {
             ? fence(cortado, como.lang)
             : closeOpenFence(cortado);
         void MarkdownRenderer.render(this.app, md, host, path, this.mdOwner())
-          // Markdown quebrado não pode engolir a aprovação: cai pro texto cru.
+
           .catch(() => {
             host.empty();
             host.removeClass("is-rich");
@@ -200,8 +175,7 @@ export class ConfirmationModal extends Modal {
         pathRow(strings.confirmLabelDelete, path, "corvus-confirm-path-del");
         return;
       }
-      // A web mostra o que SAI: a consulta inteira, a URL inteira — é nela que
-      // um dado vazaria, então ela não pode chegar cortada.
+
       case "web_search": {
         pathRow(strings.confirmLabelWebSearch, "");
         block(texto(args.query), "ctx", { kind: "plain" });
@@ -213,8 +187,7 @@ export class ConfirmationModal extends Modal {
         return;
       }
       default: {
-        // Preview genérico dos argumentos (tools não-write em modo "ask").
-        // String é texto; objeto é JSON colorido.
+
         Object.entries(args).forEach(([key, value]) => {
           const texto =
             typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -231,8 +204,6 @@ export class ConfirmationModal extends Modal {
     }
   }
 
-  /** Component vivo enquanto o modal existe — criado na primeira vez que
-   *  alguém renderiza markdown, descarregado no onClose. */
   private mdOwner(): Component {
     if (!this.md) {
       this.md = new Component();
@@ -245,12 +216,10 @@ export class ConfirmationModal extends Modal {
     this.md?.unload();
     this.md = null;
     this.contentEl.empty();
-    this.resolveOnce(false); // X / Escape = negação
+    this.resolveOnce(false); 
   }
 }
 
-// v0.1.228: corta na 1ª frase real (ponto + espaço), sem quebrar em pontos
-// internos como ".md" ou "1.5". Fallback: descrição inteira truncada curta.
 function firstSentence(desc: string, max = 140): string {
   const d = desc.trim();
   if (!d) return "";
@@ -259,8 +228,6 @@ function firstSentence(desc: string, max = 140): string {
   return sentence.length > max ? sentence.slice(0, max - 1) + "…" : sentence;
 }
 
-/** Teto do preview: o suficiente pra julgar a mudança sem virar a nota
- *  inteira dentro de um modal. O que sobra vira uma linha de aviso. */
 const MAX_PREVIEW = 1200;
 
 type Preview =
@@ -268,9 +235,6 @@ type Preview =
   | { kind: "code"; lang: string }
   | { kind: "plain" };
 
-/** Extensão → linguagem do Prism (o mesmo highlighter que o Obsidian usa em
- *  modo leitura). Sem entrada aqui o conteúdo fica texto cru: melhor que
- *  colorir errado. */
 const CODE_LANGS: Record<string, string> = {
   ts: "typescript",
   tsx: "tsx",
@@ -320,8 +284,6 @@ function extOf(path: string): string {
   return dot <= 0 ? "" : base.slice(dot + 1).toLowerCase();
 }
 
-/** Como mostrar o conteúdo de um caminho. Sem extensão é nota do vault —
- *  markdown, que é o caso mais comum aqui. */
 export function previewFor(path: string): Preview {
   const ext = extOf(path);
   if (ext === "" || MARKDOWN_EXT.has(ext)) return { kind: "markdown" };
@@ -329,8 +291,6 @@ export function previewFor(path: string): Preview {
   return lang ? { kind: "code", lang } : { kind: "plain" };
 }
 
-/** Cerca de código maior que qualquer sequência de crases do conteúdo: senão
- *  uma cerca no meio do arquivo fecha o bloco e o resto vaza como markdown. */
 export function fence(text: string, lang: string): string {
   const maior = Math.max(
     0,
@@ -340,8 +300,6 @@ export function fence(text: string, lang: string): string {
   return `${crases}${lang}\n${text}\n${crases}`;
 }
 
-/** Truncar markdown pode deixar uma cerca aberta — o resto do preview viraria
- *  código. Fecha o que ficou aberto. */
 export function closeOpenFence(md: string): string {
   const cercas = md.match(/^ {0,3}(`{3,}|~{3,})/gm);
   if (!cercas || cercas.length % 2 === 0) return md;

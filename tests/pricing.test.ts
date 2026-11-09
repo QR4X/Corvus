@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getPricing } from "../src/usage/pricing";
 
-// O tier (free/paid/unknown) é o que a UI usa pra mostrar o badge FREE/PAID
-// na lista de modelos. Esses testes travam o sinal de "é grátis ou não".
-
 describe("getPricing — tier free/paid", () => {
   it("modelos cloud de chat são paid", () => {
     expect(getPricing("openai", "gpt-4o").tier).toBe("paid");

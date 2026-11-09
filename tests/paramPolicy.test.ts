@@ -6,9 +6,6 @@ import {
   paramPolicy,
 } from "../src/providers/paramPolicy";
 
-// Política de params por modelo — o que mais quebra calado é mandar temperature
-// pra reasoning model da OpenAI (400) ou fora do range do Claude (0..1).
-
 describe("isReasoningModel", () => {
   it("OpenAI o-series + gpt-5 (não -chat) são reasoning", () => {
     for (const m of ["o1", "o1-mini", "o3", "o3-mini", "o4", "gpt-5", "gpt-5-mini", "openai/o3"]) {
@@ -45,7 +42,7 @@ describe("resolveTemperature", () => {
   it("Claude que aceita temperatura clampa em 0..1 (não 0..2)", () => {
     expect(resolveTemperature("anthropic", "claude-sonnet-4-6", 0.7)).toBe(0.7);
     expect(resolveTemperature("anthropic", "claude-sonnet-4-6", 1.5)).toBe(1);
-    // Claude via OpenRouter também: detecta pelo id
+
     expect(resolveTemperature("openrouter", "anthropic/claude-sonnet-4", 1.8)).toBe(1);
   });
 
@@ -68,17 +65,17 @@ describe("resolveMaxTokens — teto de OUTPUT (≠ context window)", () => {
     expect(resolveMaxTokens("openrouter", "deepseek/deepseek-chat", 512, "low")).toBe(512);
   });
   it("Effort Max (~159k) clampa pro limite real de cada modelo", () => {
-    // Claude 4.x = 128k (não os 159k que o Effort pede)
+
     expect(resolveMaxTokens("anthropic", "claude-opus-4-8", 159000)).toBe(128000);
-    // gpt-4o = 16k
+
     expect(resolveMaxTokens("openai", "gpt-4o", 159000)).toBe(16384);
-    // gpt-5 = 128k
+
     expect(resolveMaxTokens("openai", "gpt-5", 200000)).toBe(128000);
-    // o-series = 100k (inclui reasoning)
+
     expect(resolveMaxTokens("openai", "o3-mini", 200000)).toBe(100000);
-    // Gemini 2.5 = 64k
+
     expect(resolveMaxTokens("gemini", "gemini-2.5-flash", 200000)).toBe(65536);
-    // Claude 3.x legado = 8k
+
     expect(resolveMaxTokens("anthropic", "claude-3-5-sonnet-latest", 50000)).toBe(8192);
   });
 

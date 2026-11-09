@@ -4,7 +4,6 @@ import {
   openaiFreeTierForModel,
 } from "../src/usage/freeTokens";
 
-// Data-sharing da OpenAI: tokens grátis em modelos de TEXTO, nunca em imagem.
 describe("openaiFreeAllowance", () => {
   it("Tier 1 com data-sharing → 250k grandes + 2.5M mini, imagem NÃO coberta", () => {
     const a = openaiFreeAllowance(1, true);

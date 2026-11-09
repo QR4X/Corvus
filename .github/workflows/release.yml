@@ -1,47 +1,5 @@
 name: Release Obsidian plugin
 
-# Triggers when a version tag is pushed (e.g. 0.1.176 — WITHOUT the "v"
-# prefix, the Obsidian convention). Builds, validates and publishes a GitHub
-# Release with the 3 files (main.js + manifest.json + styles.css) that Obsidian
-# needs to distribute the update automatically — without a re-review after the
-# plugin is already listed.
-#
-# Update flow: bump the manifest + commit, then — IN THIS ORDER:
-#
-#   git tag 0.9.7
-#   git push origin 0.9.7     # 1st the TAG: the Action builds and publishes the Release
-#   # wait for the Release to exist (gh run watch)
-#   git push origin main      # 2nd main
-#
-# The order matters. The Obsidian portal reads manifest.json at the HEAD of the
-# default branch and looks for the Release of that version. Pushing main first
-# leaves ~1 minute where the manifest already says the new version but the
-# Release is still building — and anyone opening the page in that window sees
-# "No release matches your manifest version". With the tag first, main only
-# announces the version after the Release exists, so the window is gone. (It
-# happened in 0.9.6.)
-#
-# Manual alternative (workflow_dispatch): trigger from the Actions tab / API
-# without pushing a tag. The version comes from the `version` input or, if
-# empty, from manifest.json — and the Release itself creates the tag pointing
-# at the built commit.
-#
-# TEST BUILD (pre-release, since 2026-10-01): a tag with a hyphen, e.g.
-#
-#   git tag 0.9.20-beta.1
-#   git push origin 0.9.20-beta.1
-#
-# becomes a PRE-RELEASE, and the repository manifest.json does NOT change: the
-# tag version is written only into the manifest.json that ships INSIDE the
-# pre-release. So:
-#   - BRAT (which installs the newest release counting pre-releases) delivers
-#     the beta to the tester's device;
-#   - the Obsidian directory, which reads manifest.json from main, stays on the
-#     stable version — nobody else gets the beta.
-# No branch or bump needed. Got enough? Then a normal bump (0.9.20, no hyphen)
-# and the flow above. Semver: 0.9.20 > 0.9.20-beta.N, so BRAT moves from beta
-# to stable on its own.
-
 on:
   push:
     tags:
@@ -55,10 +13,6 @@ on:
 
 permissions:
   contents: write
-  # Provenance attestation of the artifacts (Obsidian review recommendation):
-  # signs main.js and styles.css proving they came out of THIS repository, at
-  # this commit, by this workflow. Whoever installs can verify with
-  # `gh attestation verify main.js --repo QR4X/M.I.L.A`.
   id-token: write
   attestations: write
 
@@ -72,7 +26,6 @@ jobs:
         with:
           node-version: "20"
 
-      # obsidian × codemirror peer-deps conflict → --legacy-peer-deps.
       - name: Install deps
         run: npm install --legacy-peer-deps
 
@@ -82,8 +35,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Resolve the tag: a tag push uses the ref; a manual dispatch uses the
-      # input or, if empty, the manifest.json version.
       - name: Resolve tag
         id: tag
         run: |
@@ -98,10 +49,6 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Resolved tag: $tag"
 
-      # Guard against the classic mistake: tagging without bumping the manifest.
-      # The pre-release rule is different (a hyphenated tag): the repository
-      # manifest stays on the stable version, and the beta must be GREATER than
-      # it — otherwise BRAT does not see it as an update.
       - name: Check tag matches manifest version
         id: kind
         run: |
@@ -128,16 +75,11 @@ jobs:
               ;;
           esac
 
-      # Pre-release only: the tag version goes into the manifest.json that ships
-      # in the release (BRAT checks that the two match). The repository one does
-      # not change.
       - name: Stamp pre-release version
         if: steps.kind.outputs.prerelease == 'true'
         run: |
           TAG="${{ steps.tag.outputs.tag }}" node -e "const fs=require('fs');const f='output/manifest.json';const m=JSON.parse(fs.readFileSync(f,'utf8'));m.version=process.env.TAG;fs.writeFileSync(f,JSON.stringify(m,null,2)+'\n');console.log('pre-release manifest:',m.version)"
 
-      # Sign the artifacts BEFORE publishing: the attestation must refer
-      # exactly to the bytes that go to the Release.
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
@@ -145,8 +87,6 @@ jobs:
             output/main.js
             output/styles.css
 
-      # The assets land in output/ (basename becomes main.js/manifest.json/styles.css).
-      # On a manual dispatch, `gh release create` creates the tag at the built commit.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -157,12 +97,11 @@ jobs:
             exit 0
           fi
           if [ "${{ steps.kind.outputs.prerelease }}" = "true" ]; then
-            # Pre-release: out of GitHub's "latest" and marked as a test.
             gh release create "$tag" \
               --title "$tag (test)" \
               --target "${GITHUB_SHA}" \
               --prerelease --latest=false \
-              --notes "TEST build of the Corvus ($tag), to install via BRAT. Not the Obsidian directory version." \
+              --notes "TEST build of Corvus ($tag), to install via BRAT. Not the Obsidian directory version." \
               output/main.js output/manifest.json output/styles.css
           else
             gh release create "$tag" \

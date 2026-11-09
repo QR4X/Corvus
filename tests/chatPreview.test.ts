@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { previewFromMarkdown } from "../src/core/chatPreview";
 
-/** Um arquivo de conversa como o `renderBody` grava. */
 const arquivo = (corpo: string) =>
   `---\nid: x\ntitle: T\n---\n\n# T\n\n${corpo}`;
 
@@ -14,8 +13,7 @@ describe("previewFromMarkdown", () => {
   });
 
   it("os comentários do formato não vazam pro cartão", () => {
-    // A meta e os passos do agente são base64 — apareceriam como uma parede
-    // de caracteres exatamente onde deveria estar a última frase.
+
     const md = arquivo(
       "## Assistant\n\n<!-- corvus: ts=1 -->\nmovi 3 notas\n\n<!-- corvus-steps: eyJhIjoxfQ== -->\n"
     );
@@ -70,8 +68,7 @@ describe("previewFromMarkdown", () => {
   });
 
   it("última fala vazia? pega a anterior que tenha texto", () => {
-    // Acontece o tempo todo: a mensagem do assistente ainda está chegando e o
-    // arquivo já tem a seção dela, vazia.
+
     const md = arquifoVazio();
     expect(previewFromMarkdown(md)).toBe("pergunta");
   });

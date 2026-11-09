@@ -6,11 +6,6 @@ import {
 } from "../src/core/chatExport";
 import type { ChatData } from "../src/core/chatPersistence";
 
-// Exportar é a ÚNICA porta entre a conversa e o vault: o arquivo de verdade
-// mora em `.corvus/chats`, pasta que o Obsidian ignora (não indexa, não abre).
-// Por isso a cópia precisa ser uma nota COMUM — nada de recado do app pro app
-// no meio do texto.
-
 const chat = (over: Partial<ChatData> = {}): ChatData => ({
   id: "abc",
   title: "Weekly review",
@@ -35,8 +30,7 @@ describe("limparMarcas", () => {
   });
 
   it("tira o paredão de base64 dos passos do agente", () => {
-    // Invisível no preview, mas não no editor: uma nota que abre com base64
-    // não é nota, é despejo.
+
     const r = limparMarcas("fiz isso\n\n<!-- corvus-steps: QUJDREVGRw== -->");
     expect(r).toBe("fiz isso");
     expect(r).not.toMatch(/corvus-steps/);
@@ -70,7 +64,7 @@ describe("exportChatMarkdown", () => {
   const quando = new Date("2026-09-27T12:00:00.000Z");
 
   it("abre com frontmatter que diz de onde veio", () => {
-    // Sem isso, daqui a três meses a cópia é um texto órfão.
+
     const md = exportChatMarkdown(chat(), quando);
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain('model: "gpt-5"');
@@ -101,4 +95,3 @@ describe("exportChatMarkdown", () => {
     expect(md).not.toMatch(/corvus-steps|corvus: ts=/);
   });
 });
-

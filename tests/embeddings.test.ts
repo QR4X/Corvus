@@ -7,9 +7,7 @@ import {
   registerDiscoveredEmbeddings,
 } from "../src/rag/types";
 
-// Descoberta de modelos de embedding via fetch → entram no RAG com info.
-
-afterEach(() => registerDiscoveredEmbeddings([])); // limpa o registro global
+afterEach(() => registerDiscoveredEmbeddings([])); 
 
 describe("isEmbeddingModelId", () => {
   it("reconhece ids de embedding", () => {
@@ -29,24 +27,23 @@ describe("inferEmbeddingSpec", () => {
   it("usa o spec CURADO quando o modelo é conhecido", () => {
     const s = inferEmbeddingSpec("openai", "text-embedding-3-large");
     expect(s.dim).toBe(3072);
-    expect(s.discovered).toBeUndefined(); // curado, não inferido
+    expect(s.discovered).toBeUndefined(); 
   });
 
   it("infere dim por heurística de nome p/ modelo desconhecido", () => {
     expect(inferEmbeddingSpec("openai", "text-embedding-3-large-2025").dim).toBe(3072);
     expect(inferEmbeddingSpec("gemini", "text-embedding-004").dim).toBe(768);
     expect(inferEmbeddingSpec("nim", "nvidia/nv-embedqa-e5-v5-next").dim).toBe(1024);
-    // sem pista no nome → default 1536
+
     expect(inferEmbeddingSpec("openai", "embed-mistério").dim).toBe(1536);
   });
 
-  it("marca discovered + infere flags (imagem/free)", () => {
+  it("mark discovered + infere flags (imagem/free)", () => {
     const vl = inferEmbeddingSpec("openrouter", "vendor/embed-vl-2b:free");
     expect(vl.discovered).toBe(true);
     expect(vl.supportsImage).toBe(true);
     expect(vl.free).toBe(true);
-    // NIM NÃO é grátis em todo modelo (só os Free Endpoint, pela lista do
-    // fetch); o Gemini é do tier da conta — nenhum dos dois é "free" daqui.
+
     expect(inferEmbeddingSpec("nim", "vendor/embed-x").free).toBeUndefined();
     expect(inferEmbeddingSpec("gemini", "text-embedding-004").free).toBeUndefined();
   });
@@ -57,7 +54,7 @@ describe("registro de descobertos", () => {
     const before = getAllEmbeddingModels().length;
     registerDiscoveredEmbeddings([
       inferEmbeddingSpec("openai", "text-embedding-9-ultra"),
-      // duplicata de um curado — não deve contar 2x
+
       inferEmbeddingSpec("openai", "text-embedding-3-small"),
     ]);
     const all = getAllEmbeddingModels();

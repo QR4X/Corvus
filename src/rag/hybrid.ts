@@ -1,13 +1,3 @@
-// src/rag/hybrid.ts
-// Busca híbrida: funde resultados SEMÂNTICOS (embeddings/cosine) com KEYWORD
-// (BM25-ish do vaultSearch) via Reciprocal Rank Fusion (RRF). Pega o melhor dos
-// dois mundos — conceito/sinônimos (semantic) + nomes próprios/termos raros
-// (keyword) — e ainda re-rankeia usando o GRAFO de links do Obsidian.
-//
-// RRF: score(path) = Σ 1/(k + rank_na_lista). k=60 é o valor canônico.
-// Graph-aware: um resultado linkado por OUTRO resultado relevante ganha boost
-// (co-citação) — usa só o metadataCache (em memória, sem I/O de arquivo).
-
 import type { App, TFile } from "obsidian";
 import type { VectorIndex } from "./vectorIndex";
 import { embedQuery, type EmbedCredentials } from "./embeddings";
@@ -15,18 +5,16 @@ import { searchVault } from "../core/vaultSearch";
 
 export interface HybridHit {
   path: string;
-  /** Melhor trecho/excerpt do path (chunk semântico ou excerpt keyword). */
+
   text: string;
-  /** Score RRF (após boost de grafo). */
+
   score: number;
-  /** Origem: "semantic", "keyword", "semantic+keyword". */
+
   via: string;
 }
 
 const RRF_K = 60;
-// Bônus de co-citação, ADITIVO no espaço RRF (não multiplicativo no score
-// final) — mantém a escala RRF consistente e não distorce hits de score alto
-// desproporcionalmente. ~1/4 de um rank-0 RRF (1/60). v0.1.228
+
 const GRAPH_BOOST = 1 / (RRF_K * 4);
 
 export interface HybridOptions {
@@ -35,10 +23,9 @@ export interface HybridOptions {
   creds: EmbedCredentials;
   query: string;
   topK: number;
-  /** (P1-83) Tamanho do trecho por nota — vem do effort (Settings prometia
-   *  e o hybrid fixava 500). Default 500. */
+
   excerptChars?: number;
-  /** Re-rankeia por co-citação no grafo de links. Default true. */
+
   useGraph?: boolean;
 }
 
@@ -65,16 +52,14 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
     acc.set(path, cur);
   };
 
-  // ---- Semântico (se índice populado) ----
   if (index && index.size > 0) {
     try {
       const vec = await embedQuery(query, creds, index.model, index.dim);
-      // Sharded → busca streamed (lê shards do disco, memória limitada);
-      // single-file → busca in-memory. Mesmos resultados. v0.1.200
+
       const sem = index.streamed
         ? await index.searchStreamed(vec, topK * 3, 0.3)
         : index.search(vec, topK * 3, 0.3);
-      // Dedup por path — fica o melhor chunk (lista já vem ordenada por score)
+
       const seen = new Set<string>();
       let rank = 0;
       for (const r of sem) {
@@ -83,13 +68,11 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
         bump(r.entry.path, rank++, r.entry.text.slice(0, excerptChars), "semantic");
       }
     } catch (err) {
-      // embed falhou (sem key / rate limit) → segue só com keyword.
-      // Loga pra erro real (não só rate limit) ficar diagnosticável. v0.1.228
-      console.warn("[corvus/rag] busca semântica falhou, caindo pra keyword:", err);
+
+      console.warn("[corvus/rag] semantic search failed, falling back to keyword:", err);
     }
   }
 
-  // ---- Keyword ----
   const kw = await searchVault(app, query, topK * 3, excerptChars);
   kw.forEach((m, rank) => bump(m.path, rank, m.excerpt, "keyword"));
 
@@ -100,7 +83,6 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
     via: Array.from(v.via).sort().join("+"),
   }));
 
-  // ---- Graph-aware: co-citação entre os próprios resultados ----
   if (useGraph && hits.length > 1) {
     const inResults = new Set(hits.map((h) => h.path));
     const scoreBoost = new Map<string, number>();
@@ -111,8 +93,7 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
       for (const l of links) {
         const dest = app.metadataCache.getFirstLinkpathDest(l.link, h.path);
         if (dest && dest.path !== h.path && inResults.has(dest.path)) {
-          // dest é citado por um resultado relevante → boost (aditivo, acumula
-          // por co-citação no espaço RRF, não multiplica o score). v0.1.228
+
           scoreBoost.set(dest.path, (scoreBoost.get(dest.path) ?? 0) + GRAPH_BOOST);
         }
       }

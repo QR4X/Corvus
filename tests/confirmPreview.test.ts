@@ -1,10 +1,3 @@
-// tests/confirmPreview.test.ts
-// O modal de aprovação decide COMO mostrar o conteúdo antes de gravar: nota
-// vira markdown formatado, arquivo de código vira bloco colorido, e o que não
-// dá pra reconhecer continua texto cru. Essas três decisões são lógica pura —
-// e é o tipo de coisa que quebra calada (uma extensão a mais, um `.md` dentro
-// do nome da pasta) sem ninguém ver no aparelho.
-
 import { describe, it, expect } from "vitest";
 import {
   previewFor,
@@ -66,7 +59,7 @@ describe("fence", () => {
     const out = fence("antes\n```\ninterno\n```\ndepois", "markdown");
     expect(out.startsWith("````markdown\n")).toBe(true);
     expect(out.endsWith("\n````")).toBe(true);
-    // o conteúdo sai inteiro, não cortado na cerca interna
+
     expect(out).toContain("interno");
     expect(out).toContain("depois");
   });
@@ -88,7 +81,7 @@ describe("closeOpenFence", () => {
     expect(closeOpenFence(md)).toBe(md + "\n```");
   });
 
-  it("fecha com a MESMA marca (til continua til)", () => {
+  it("fecha com a MESMA mark (til continua til)", () => {
     const md = "~~~python\nprint(1)";
     expect(closeOpenFence(md)).toBe(md + "\n~~~");
   });

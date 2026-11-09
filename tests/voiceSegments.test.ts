@@ -10,7 +10,7 @@ import {
 
 describe("shouldRotate", () => {
   it("não corta no meio da frase", () => {
-    // Falando (silêncio 0), mesmo passado o mínimo: cortar aqui parte palavra.
+
     expect(
       shouldRotate({ duracaoMs: MIN_SEGMENT_MS + 5000, silencioMs: 0 })
     ).toBe(false);
@@ -29,7 +29,7 @@ describe("shouldRotate", () => {
   });
 
   it("segura o corte enquanto o segmento é curto, mesmo em silêncio", () => {
-    // Senão um "alô" seguido de pausa vira uma chamada de rede por palavra.
+
     expect(
       shouldRotate({ duracaoMs: MIN_SEGMENT_MS - 1, silencioMs: 5000 })
     ).toBe(false);
@@ -61,8 +61,7 @@ describe("joinTranscripts", () => {
   });
 
   it("pula o segmento que ainda está voando em vez de travar o resto", () => {
-    // O buraco chega em ~1s e o texto se corrige no lugar; segurar tudo faria
-    // a tela parar justamente enquanto a pessoa fala.
+
     expect(joinTranscripts(["um", undefined, "três"], "quatro")).toBe(
       "um três quatro"
     );

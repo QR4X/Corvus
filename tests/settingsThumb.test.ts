@@ -3,12 +3,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { putThumb, seedThumb, thumbOf } from "../src/ui/settings/thumb";
 
-// O thumb dos segmented das settings. O filtro do catálogo é remontado a
-// cada toque, e o thumb da linha nova nascia no padrão do CSS (o primeiro
-// item, largura zero): "vai pro primeiro e depois pro que eu escolhi".
-
-/** Uma linha falsa que anota a ORDEM das coisas: a transição precisa estar
- *  desligada quando a posição é escrita e lida, e só depois voltar. */
 function linha(ativo: { left: number; width: number } | null, vars: Record<string, string> = {}) {
   const log: string[] = [];
   const estilo = new Map(Object.entries(vars));
@@ -79,7 +73,7 @@ describe("a linha remontada nasce onde a velha estava", () => {
     seedThumb(nova.row, thumbOf(velha.row));
     nova.log.length = 0;
     putThumb(nova.row);
-    // Não é "primeira": não desliga a transição — sai de 161 e vai pra 85.
+
     expect(nova.log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
   });
 
@@ -98,8 +92,7 @@ describe("o CSS tem o desligador", () => {
   });
 
   it("a barra de abas zera a margem da direita que o app.css dá ao 1º filho", () => {
-    // `.setting-item > *:first-child { margin-inline-end: 16px }` — a barra
-    // parava 16px antes do trilho de providers logo abaixo.
+
     const corpo = CSS.match(/\.corvus-settings-root \.corvus-settings-nav\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(corpo).toMatch(/margin:\s*0 0 var\(--size-4-3\);/);
   });

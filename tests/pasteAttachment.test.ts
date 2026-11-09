@@ -1,7 +1,3 @@
-// tests/pasteAttachment.test.ts
-// Colar grande vira anexo. O limite e o rótulo são o que o usuário vê — e o
-// rótulo também é o que o modelo lê no prompt.
-
 import { describe, it, expect } from "vitest";
 import {
   PASTE_LIMIT,

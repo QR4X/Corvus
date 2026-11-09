@@ -1,10 +1,3 @@
-// src/usage/export.ts
-// Exportadores do Usage report — Markdown + PDF.
-//
-// Markdown: gera string formatada, salva em corvus-ai/reports/usage-{YYYY-MM-DD_HH-MM-SS}-{rand}.md
-// PDF: usa Electron BrowserWindow.printToPDF quando disponível (desktop),
-//      cai pra window.print() (com CSS print-only) no resto.
-
 import type { App } from "obsidian";
 import { ensureFolder } from "../core/chatPersistence";
 import { formatUsd } from "./pricing";
@@ -15,12 +8,10 @@ import {
 } from "./aggregate";
 import { formatCompact } from "./format";
 
-/** Pasta default pra reports — fica fora do generationPath pra não poluir. */
 const REPORTS_FOLDER = "corvus-ai/reports";
 
 function tsFileName(): string {
-  // v0.1.228: toISOString().slice(0,19) descarta os ms — dois reports no mesmo
-  // segundo colidiam e um sobrescrevia o outro. Sufixo curto aleatório evita.
+
   const stamp = new Date()
     .toISOString()
     .replace(/[:.]/g, "-")
@@ -30,26 +21,21 @@ function tsFileName(): string {
   return `${stamp}-${rand}`;
 }
 
-/** O mesmo formato compacto que o cartão da home usa (ver usage/format.ts). */
 const formatNumber = formatCompact;
 
 function periodLabel(agg: UsageAggregate, periodDays: number): string {
-  if (periodDays > 0) return `últimos ${periodDays} dias`;
+  if (periodDays > 0) return `last ${periodDays} days`;
   if (agg.periodStart && agg.periodEnd) {
     if (agg.periodStart === agg.periodEnd) return agg.periodStart;
-    return `${agg.periodStart} a ${agg.periodEnd}`;
+    return `${agg.periodStart} to ${agg.periodEnd}`;
   }
-  return "todo o histórico";
+  return "all time";
 }
 
 function bucketCostCell(b: UsageBucket): string {
   const costStr = formatUsd(b.cost);
   return b.hasUnknownCost ? `${costStr}*` : costStr;
 }
-
-// ============================================================
-// MARKDOWN export
-// ============================================================
 
 export function generateUsageMarkdown(
   agg: UsageAggregate,
@@ -78,7 +64,6 @@ export function generateUsageMarkdown(
   lines.push(`> Period: **${periodLabel(agg, periodDays)}** · generated ${generatedAt}`);
   lines.push("");
 
-  // ===== Summary =====
   lines.push(`## Summary`);
   lines.push("");
   lines.push(`- **Estimated total spend:** ${formatUsd(agg.total.cost)}${agg.total.hasUnknownCost ? " (some model has no public price — see `*` below)" : ""}`);
@@ -89,7 +74,6 @@ export function generateUsageMarkdown(
   }
   lines.push("");
 
-  // ===== By provider =====
   const providerRows = sortBucketEntries(agg.byProvider);
   if (providerRows.length > 0) {
     lines.push(`## By provider`);
@@ -102,7 +86,6 @@ export function generateUsageMarkdown(
     lines.push("");
   }
 
-  // ===== By model (top 15) =====
   const modelRows = sortBucketEntries(agg.byModel).slice(0, 15);
   if (modelRows.length > 0) {
     lines.push(`## By model (top 15)`);
@@ -115,7 +98,6 @@ export function generateUsageMarkdown(
     lines.push("");
   }
 
-  // ===== By mode =====
   const modeRows = sortBucketEntries(agg.byMode);
   if (modeRows.length > 0) {
     lines.push(`## By mode`);
@@ -128,7 +110,6 @@ export function generateUsageMarkdown(
     lines.push("");
   }
 
-  // ===== Top chats =====
   const top = agg.chats.slice(0, 10);
   if (top.length > 0) {
     lines.push(`## Top 10 chats (by cost)`);
@@ -152,16 +133,11 @@ export function generateUsageMarkdown(
   return lines.join("\n");
 }
 
-// ============================================================
-// File save helpers
-// ============================================================
-
 export interface ExportResult {
   path: string;
   format: "md" | "html" | "pdf";
 }
 
-/** Salva o Markdown no vault em corvus-ai/reports/. */
 export async function saveUsageMarkdown(
   app: App,
   agg: UsageAggregate,
@@ -171,12 +147,12 @@ export async function saveUsageMarkdown(
 ): Promise<ExportResult> {
   const md = generateUsageMarkdown(agg, periodDays, chatsPath);
   const path = `${basePath}/usage-${tsFileName()}.md`;
-  // v0.1.228: erro de IO subia cru pra UI; relança com o path pro Notice ser útil.
+
   try {
     await ensureFolder(app.vault.adapter, basePath);
     await app.vault.adapter.write(path, md);
   } catch (e) {
-    throw new Error(`Falha ao salvar o report em ${path}: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`Failed to save report to ${path}: ${e instanceof Error ? e.message : String(e)}`);
   }
   return { path, format: "md" };
 }

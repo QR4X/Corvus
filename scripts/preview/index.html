@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Corvus preview</title>
     <script src="lucide.js"></script>
-    <!-- Os helpers de DOM do Obsidian (createDiv, el.win, addClass…), extraídos
-         do app instalado. Antes do bundle, como no app de verdade. -->
+    
     <script src="enhance.js"></script>
-    <!-- CSS REAL do Obsidian (extraído de obsidian.asar). Tem que vir antes do
-         nosso styles.css, como acontece no app: o plugin carrega depois. -->
+    
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="main.css" />
     <style>
@@ -19,11 +17,8 @@
         height: 100%;
         overflow: hidden;
       }
-      /* Estrutura mínima do workspace pra .view-content receber o mesmo
-         tratamento que recebe dentro do app. */
-      /* A gaveta, os containers e a leaf são estilizados pelo app.css REAL
-         (position: fixed, top/bottom 0, largura parcial). Aqui só o mínimo
-         que o app monta via JS: as caixas em coluna. */
+      
+      
       .workspace-drawer-inner,
       .workspace-drawer-tab-container,
       .workspace-drawer-active-tab-container,
@@ -57,7 +52,7 @@
         color: var(--text-muted);
         font-size: 13px;
       }
-      /* O "editor atrás": é ele que aparece quando a gaveta não cobre a tela. */
+      
       #behind {
         position: fixed;
         inset: 0;
@@ -72,14 +67,12 @@
       i[data-lucide] {
         display: inline-flex;
       }
-      /* A MESMA conta do Obsidian (`svg.svg-icon { width: var(--icon-size) }`
-         no app.css, 18px de padrão): com 18px fixos aqui, quem ajustava o
-         tamanho pelo token via o ícone mudar no aparelho e não no preview. */
+      
       svg.lucide {
         width: var(--icon-size, 18px);
         height: var(--icon-size, 18px);
       }
-      /* Desenho da navbar/teclado só pro preview. */
+      
       .mobile-navbar {
         position: fixed;
         left: 0;
@@ -91,7 +84,7 @@
         margin-bottom: calc(0px - var(--keyboard-height));
       }
       body.preview-kb::after {
-        content: "teclado";
+        content: "keyboard";
         position: fixed;
         left: 0;
         right: 0;
@@ -135,21 +128,15 @@
     </style>
   </head>
   <body class="theme-dark is-mobile is-phone">
-    <!-- Mesma árvore do mobile: a Corvus mora na gaveta DIREITA, dentro da aba
-         ativa. É o que o CSS de fullscreen/teclado ancora. -->
-    <div id="behind">editor por tras (workspace)</div>
+    
+    <div id="behind">editor behind (workspace)</div>
     <div class="app-container">
       <div class="workspace-drawer mod-right" id="drawer">
         <div class="workspace-drawer-inner">
           <div class="workspace-drawer-header">
             <div class="workspace-drawer-header-name">Corvus</div>
           </div>
-          <!-- O app monta `.workspace-drawer-tab-container` (relativo) com o
-               `.workspace-drawer-active-tab-container` ABSOLUTO dentro, e a
-               barra de seleção de aba (`.workspace-drawer-tab-options`) como
-               irmã do conteúdo. Sem esse nível a barra de baixo não existia no
-               preview — e o vão que ela deixa ao sumir no fullscreen ficava
-               invisível aqui (foi o bug da tela cheia). -->
+          
           <div class="workspace-drawer-tab-container">
             <div class="workspace-drawer-active-tab-container">
               <div class="workspace-drawer-tab-options">
@@ -163,12 +150,9 @@
                 <div class="workspace-drawer-tab-options-list"></div>
               </div>
               <div class="workspace-drawer-active-tab-content">
-                <!-- `.workspace-tab-container` existia na cadeia da casca antiga,
-                     mas pode não existir na versão atual do Obsidian: o parâmetro
-                     &chain=short tira o elo pra provar que nada depende dele. -->
+                
                 <div class="__TAB_CONTAINER__">
-                <!-- `corvus-leaf`: o CorvusView.onOpen põe esta classe na folha que o
-                     embrulha. Aqui a árvore é montada à mão, então vem escrita. -->
+                
                 <div class="workspace-leaf corvus-leaf">
                   <div
                     class="workspace-leaf-content"
@@ -185,45 +169,33 @@
           </div>
         </div>
       </div>
-      <!-- navbar nativa: exercita a reserva de espaço do composer, o recuo
-           com o teclado e o fullscreen. A regra lê `body.corvus-has-navbar`, que
-           no app o observarNavbar() do main.ts mantém — aqui, o script abaixo. -->
+      
       <div class="mobile-navbar"></div>
     </div>
     <script>
-      // ?chain=short remove o elo .workspace-tab-container da árvore.
+
       (function () {
         const short = new URLSearchParams(location.search).get("chain") === "short";
         const el = document.querySelector(".__TAB_CONTAINER__");
         if (el) el.className = short ? "preview-plain-chain" : "workspace-tab-container";
       })();
-      // Tema e modo pela query: ?theme=light&device=desktop
+
       const q = new URLSearchParams(location.search);
       if (q.get("theme") === "light") {
         document.body.classList.replace("theme-dark", "theme-light");
       }
       if (q.get("device") === "desktop") {
-        // `is-phone` anda junto com `is-mobile` no celular de verdade, e é ELA
-        // que o app.css usa nas regras mais agressivas de settings
-        // (`.is-phone .modal … button { width: 100% }`). Sem ela o preview
-        // mostrava um layout que o aparelho nunca teve.
+
         document.body.classList.remove("is-mobile", "is-phone");
       }
-      // ?mic=fake troca o microfone por um oscilador: MediaRecorder e
-      // AnalyserNode passam a ver um stream DE VERDADE (chunks reais, nível
-      // real), sem depender de permissão nem de hardware. É o único jeito de
-      // exercitar o modo de voz aqui — a rede continua falsa no stub.
+
       if (q.get("mic") === "fake") {
         navigator.mediaDevices = navigator.mediaDevices || {};
-        // Um contexto só: o navegador limita quantos AudioContext uma página
-        // pode abrir, e um por gravação esgotava depois de algumas.
+
         let fakeCtx = null;
-        // Toda faixa entregue fica aqui: é assim que o teste PROVA que o
-        // microfone foi liberado (track.readyState === "ended").
+
         window.__fakeTracks = [];
-        // ?micdelay=700 imita o celular: abrir o microfone LEVA TEMPO (permissão
-        // + warm-up). Com o microfone instantâneo do desktop, a corrida entre
-        // soltar o dedo e o stream ficar pronto nunca aparecia.
+
         const micDelay = Number(q.get("micdelay") ?? 0);
         navigator.mediaDevices.getUserMedia = async () => {
           if (micDelay) await new Promise((r) => setTimeout(r, micDelay));
@@ -234,12 +206,7 @@
           osc.frequency.value = 220;
           osc.connect(gain).connect(dest);
           osc.start();
-          // Fala TEM pausa. Um tom contínuo escondia metade do modo de voz —
-          // é no silêncio que a gravação é cortada em segmentos. Aqui o ganho
-          // alterna 3s de fala e 0,7s de pausa, agendado no relógio do áudio
-          // (o setInterval do JS derrapa e a pausa saía torta).
-          // ?falamos=4000&pausa=900 mexe nos dois; ?tom=continuo volta ao
-          // oscilador parado de antes.
+
           const falaMs = Number(q.get("falamos") ?? 3000);
           const pausaMs = Number(q.get("pausa") ?? 700);
           if (q.get("tom") === "continuo") {
@@ -258,31 +225,15 @@
           return dest.stream;
         };
       }
-      // ?kb=300 simula o teclado: é a MESMA variável que o Obsidian mantém.
+
       const kb = Number(q.get("kb") ?? 0);
       document.documentElement.style.setProperty("--keyboard-height", kb + "px");
       document.body.classList.toggle("preview-kb", kb > 0);
-      // As classes abaixo são as MESMAS que a CorvusView põe nos ancestrais
-      // (applyFullscreen / observer do teclado). Aqui elas entram na mão
-      // porque o preview renderiza <App> direto, sem a ItemView.
+
       const drawer = document.getElementById("drawer");
       drawer.classList.toggle("corvus-keyboard-open", kb > 0);
       document.body.classList.toggle("corvus-keyboard-open", kb > 0);
-      // Altura útil MEDIDA, como a CorvusView faz com visualViewport.height —
-      // e recalculada no resize, também como ela. (No aparelho o valor vem do
-      // viewport; aqui é derivado do ?kb=.)
-      // Espelha o comportamento REAL do Obsidian mobile (docs/archive/
-      // MOBILE-FULLSCREEN.md, 0.1.255): quando o teclado abre, o PRÓPRIO app
-      // encolhe a gaveta até o topo do teclado. O plugin não mexe nisso — só
-      // o fullscreen, que impõe altura própria, desconta a var.
-      // Dois mundos, escolhidos por &webview=resize :
-      //  - padrão: o teclado só COBRE. O Obsidian encolhe a gaveta (é o que
-      //    mantém o modo normal certo) e, no fullscreen, a altura é nossa —
-      //    o CSS desconta a --keyboard-height que o próprio Obsidian publica.
-      //  - resize: a WebView encolheu sozinha; não há nada a descontar.
-      // Modelo da 0.2.37: quando o teclado abre, o PRÓPRIO Obsidian encolhe a
-      // gaveta e marca `is-hidden-nav` (some a navbar). O plugin só reage por
-      // classe. `&drawer=fixed` simula uma versão que não encolhe.
+
       const drawerFixed = q.get("drawer") === "fixed";
       const syncKb = () => {
         drawer.style.height =
@@ -291,12 +242,9 @@
       syncKb();
       window.addEventListener("resize", syncKb);
       window.visualViewport?.addEventListener("resize", syncKb);
-      // `is-hidden-nav` é o que o Obsidian marca quando esconde a navbar —
-      // acontece com o teclado aberto. É o gatilho que tira a nossa reserva.
+
       document.body.classList.toggle("is-hidden-nav", q.get("nav") === "hidden");
-      // O que o observarNavbar() do main.ts faz no app: a classe segue a
-      // PRESENÇA da navbar no DOM. ?nav=none tira a navbar, como o Obsidian
-      // faz quando o teclado abre.
+
       if (q.get("nav") === "none") document.querySelector(".mobile-navbar")?.remove();
       document.body.classList.toggle(
         "corvus-has-navbar",
@@ -305,21 +253,11 @@
       const fs = q.get("fs") === "1";
       drawer.classList.toggle("corvus-fullscreen", fs);
       document.body.classList.toggle("corvus-fullscreen", fs);
-      // Os helpers de DOM (createEl, createDiv, addClass, setText, empty…) vêm
-      // do enhance.js REAL do Obsidian, carregado no <head>. Aqui havia um
-      // substituto escrito à mão que só entendia `text` e `cls`: ignorava
-      // `attr`, `title`, `prepend`, `parent`… e, por morar em
-      // HTMLElement.prototype, SOMBREAVA o helper real. O preview mostrava um
-      // menu sem role/type que o app não tem — preview mentindo de novo.
+
     </script>
     <script src="bundle.js"></script>
     <script>
-      // Hidrata os ícones que JÁ estão na árvore e os que aparecerem depois.
-      // Era uma chamada só, 60ms após o boot: tudo que o app cria por JS mais
-      // tarde — o menu suspenso do ⋯, por exemplo — ficava sem ícone NO
-      // PREVIEW, e só no preview. No aparelho o `setIcon` do Obsidian insere o
-      // SVG na hora; aqui a ausência era do harness, não do app. Preview que
-      // some com o ícone é preview mentindo sobre desenho.
+
       const hidratar = () =>
         window.lucide?.createIcons({ nameAttr: "data-lucide" });
       setTimeout(hidratar, 60);

@@ -1,26 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { getTranslations } from "../src/i18n";
+import { getTranslations, LOCALES, resolveLocale } from "../src/i18n";
 import { EN_US } from "../src/i18n/en-us";
+import { mark, tr, uiLocale } from "../src/i18n/tr";
 
-// O dicionário INGLÊS, olhado sozinho. O roteamento entre os dois locales e a
-// paridade de chaves moram em i18n.dois.test.ts — aqui é só garantir que o EN
-// continua sendo o EN. (Até 0.7.13 este arquivo afirmava que EN era o ÚNICO
-// locale; o PT-BR voltou em 0.7.14, com seletor nas settings.)
-
-describe("i18n — o dicionário inglês", () => {
-  it("é o que sai pro locale en-us", () => {
+describe("i18n — English dictionary", () => {
+  it("returns EN_US for all locales", () => {
     expect(getTranslations("en-us")).toBe(EN_US);
+    expect(getTranslations("auto")).toBe(EN_US);
+    expect(resolveLocale("auto")).toBe("en-us");
+    expect(LOCALES.map((l) => l.id)).toEqual(["auto", "en-us"]);
   });
 
-  it("o dicionário mantém as seções principais + funções tipadas", () => {
+  it("keeps main sections and typed functions", () => {
     expect(typeof EN_US.agent).toBe("object");
     expect(typeof EN_US.vault).toBe("object");
     expect(typeof EN_US.ai.err.noKey).toBe("function");
     expect(EN_US.ai.err.noKey("OpenAI")).toContain("OpenAI");
   });
 
-  it("textos-chave estão em inglês (sem resíduo PT)", () => {
-    expect(EN_US.ai.thinking.toLowerCase()).not.toMatch(/pensando|aguarde/);
-    expect(JSON.stringify(EN_US.agent).toLowerCase()).not.toContain("configurações");
+  it("interpolates variables in tr() and preserves mark()", () => {
+    expect(tr("{n} chats", { n: 3 })).toBe("3 chats");
+    expect(mark("All time")).toBe("All time");
+    expect(uiLocale()).toBe("en-US");
   });
 });

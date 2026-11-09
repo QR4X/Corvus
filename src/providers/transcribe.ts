@@ -1,17 +1,3 @@
-// src/providers/transcribe.ts
-// Transcrição de áudio (STT) — fecha o VOZ-03/P0-01: o hold-to-record salvava a
-// gravação no vault e o modelo nunca a ouvia. Agora o áudio vira TEXTO antes do
-// envio, e o transcript entra na mensagem (logo vai pro .md e sobrevive ao
-// reload — o mesmo rastro honesto de sempre, só que agora com conteúdo).
-//
-// Transporte: `requestUrl` do Obsidian (nativo, fura CORS no WebView mobile) com
-// multipart/form-data montado à mão — FormData não sobrevive ao requestUrl, que
-// quer um ArrayBuffer. O builder é uma função pura, testada byte a byte.
-//
-// Provider: OpenAI /v1/audio/transcriptions (a MESMA key já usada pelo cloud
-// TTS). Não inventamos um papel novo de modelo pra isso; quem não tem key
-// OpenAI continua com o aviso honesto de sempre.
-
 import { requestUrl } from "obsidian";
 import { ProviderError } from "./base";
 
@@ -20,10 +6,8 @@ export const OPENAI_TRANSCRIBE_ENDPOINT =
 export const OPENROUTER_TRANSCRIBE_ENDPOINT =
   "https://openrouter.ai/api/v1/audio/transcriptions";
 
-/** Teto do arquivo aceito pela API (25MB) — barrado antes de subir. */
 export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
 
-/** Campo de um multipart: texto simples ou arquivo binário. */
 export type MultipartField =
   | { name: string; value: string }
   | {
@@ -33,13 +17,6 @@ export type MultipartField =
       data: Uint8Array;
     };
 
-/**
- * Monta um corpo multipart/form-data. Devolve o buffer e o content-type COM o
- * boundary (o servidor precisa dos dois casados).
- *
- * O boundary é injetável pra o teste poder afirmar os bytes exatos; em produção
- * vem de um random, como manda a especificação.
- */
 export function buildMultipartBody(
   fields: MultipartField[],
   boundary = `----corvus${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
@@ -79,7 +56,6 @@ export function buildMultipartBody(
   };
 }
 
-/** Extensão → mime que a API aceita. Default webm (o que o MediaRecorder dá). */
 export function audioMimeFor(path: string): string {
   const ext = (path.split(".").pop() ?? "").toLowerCase();
   switch (ext) {
@@ -99,16 +75,16 @@ export function audioMimeFor(path: string): string {
 
 export interface TranscribeOptions {
   apiKey: string;
-  /** Provider: "openai" ou "openrouter". Se omitido, auto-detecta por sk-or- ou endpoint. */
+
   provider?: "openai" | "openrouter";
-  /** Endpoint customizado (opcional). */
+
   endpoint?: string;
-  /** gpt-4o-mini-transcribe, whisper-1, openai/whisper-large-v3, etc. */
+
   model: string;
   data: Uint8Array;
-  /** Nome com extensão — a API usa pra sniffar o formato. */
+
   filename: string;
-  /** ISO-639-1 opcional; sem isso o modelo detecta sozinho. */
+
   language?: string;
 }
 
@@ -123,10 +99,6 @@ export interface TranscribeCredential {
   provider: "openai" | "openrouter";
 }
 
-/**
- * Ermittelt den Transkriptions-Schlüssel (OpenAI oder OpenRouter).
- * Unterstützt beide Anbieter nahtlos für Whisper STT & Reel-Transkription.
- */
 export function getTranscriptionCredential(
   settings: TranscribeCredentialSettings
 ): TranscribeCredential | null {
@@ -143,11 +115,6 @@ export function getTranscriptionCredential(
   return null;
 }
 
-/**
- * Transcreve um áudio. Devolve o texto limpo.
- * Erros viram ProviderError com o MESMO vocabulário de código do resto do app
- * (no-key/invalid-key/rate-limit/network), então a UI já sabe re-localizar.
- */
 export async function transcribeAudio(
   opts: TranscribeOptions
 ): Promise<string> {
@@ -193,7 +160,7 @@ export async function transcribeAudio(
     Authorization: `Bearer ${opts.apiKey.trim()}`,
   };
   if (isRouter) {
-    headers["HTTP-Referer"] = "https://github.com/QR4X/M.I.L.A";
+    headers["HTTP-Referer"] = "https://github.com/QR4X/Corvus";
     headers["X-Title"] = "Corvus";
   }
 
@@ -239,11 +206,6 @@ export async function transcribeAudio(
   return text;
 }
 
-/**
- * Texto do transcript a partir da resposta. `json.text` é o formato padrão;
- * `text` cru cobre response_format=text e hosts compatíveis que não devolvem
- * JSON. Devolve "" quando não há nada aproveitável.
- */
 export function extractTranscript(
   json: unknown,
   raw?: string

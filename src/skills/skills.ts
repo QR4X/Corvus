@@ -1,41 +1,23 @@
-// src/skills/skills.ts
-// Skills compartilháveis (v0.1.139) — aposta #4.
-//
-// Um SKILL é só uma NOTA markdown na pasta de skills (settings.skillsPath):
-//   - frontmatter: name, description, icon?, mode?
-//   - corpo: o prompt/template que vai pro composer quando o skill é acionado.
-// Acionável via slash-command no composer (/<nome>). Como é .md, qualquer um
-// edita no próprio Obsidian e compartilha (é uma nota). Esse é o efeito de rede.
-
 import { TFile, TFolder, type App, parseYaml, normalizePath } from "obsidian";
-import { texto } from "../core/texto";
+import { texto } from "../core/text";
 
 export interface Skill {
   id: string;
   name: string;
   description: string;
-  /** Ícone Lucide (default: sparkles). */
+
   icon: string;
-  /**
-   * Cor do brasão, da mesma paleta dos projetos ("default" = a do texto).
-   *
-   * Skill tinha ícone e mais nada, e numa grade de dois todos os brasões eram
-   * o mesmo cinza: o desenho ficava sendo a única pista, e desenho pequeno em
-   * cinza a gente não distingue de relance. Cor é a segunda pista, e é ela que
-   * faz uma grade virar um acervo reconhecível.
-   */
+
   color: string;
-  /** Modo preferido (chat / vault-qa / agent) — trocado ao acionar, se houver. */
+
   mode?: string;
-  /** Corpo da nota = prompt/template injetado no composer. */
+
   body: string;
   path: string;
-  /** Última edição do arquivo (ms). É a nota que manda: um skill editado no
-   *  Obsidian é tão editado quanto um salvo pela folha. */
+
   mtime: number;
 }
 
-/** Parseia uma nota .md → Skill (frontmatter + corpo). null se não tiver corpo. */
 function parseSkillFile(
   path: string,
   raw: string,
@@ -61,8 +43,7 @@ function parseSkillFile(
     name,
     description: texto(fm.description),
     icon: texto(fm.icon) || "sparkles",
-    // Sem cor no arquivo = "default", que é o brasão neutro de sempre. Skill
-    // escrito à mão no Obsidian continua válido — a cor é opcional.
+
     color: texto(fm.color) || "default",
     mode: texto(fm.mode) || undefined,
     body,
@@ -71,30 +52,21 @@ function parseSkillFile(
   };
 }
 
-/** Prefixo normalizado da pasta de skills (sempre terminando em "/"). */
 export function skillsFolderPrefix(folderPath: string): string {
   const folder = normalizePath(folderPath || "corvus-ai/skills");
   return folder.endsWith("/") ? folder : folder + "/";
 }
 
-/**
- * O caminho é uma nota de skill? Usado pelo watcher do vault (SKL-03) pra só
- * recarregar quando o .md mexido está DENTRO da pasta de skills — sem isso,
- * qualquer edição no vault dispararia um reload da lista.
- */
 export function isSkillFilePath(path: string, folderPath: string): boolean {
   if (!path || !path.toLowerCase().endsWith(".md")) return false;
   return normalizePath(path).startsWith(skillsFolderPrefix(folderPath));
 }
 
-/** Lê todos os skills (.md) da pasta. Ordena por nome. */
 export async function loadSkills(
   app: App,
   folderPath: string
 ): Promise<Skill[]> {
-  // Lê a PASTA, não o vault. Isto chamava `getMarkdownFiles()` e filtrava pelo
-  // prefixo — ou seja, percorria todas as notas da pessoa pra ficar com as de
-  // uma pasta nossa. Em vault grande é caro, e é olhar mais do que precisamos.
+
   const prefix = skillsFolderPrefix(folderPath);
   const raiz = app.vault.getAbstractFileByPath(prefix.replace(/\/$/, ""));
   if (!(raiz instanceof TFolder)) return [];
@@ -110,9 +82,7 @@ export async function loadSkills(
   desce(raiz);
   files.sort((a, b) => a.path.localeCompare(b.path));
   const skills: Skill[] = [];
-  // v0.1.228: dois arquivos cujo basename só difere por caractere não-\w geram
-  // o mesmo id (ex: "Plano!" e "Plano?"). Desambigua com sufixo numérico pra o
-  // id continuar único (o path já é, mas o id é usado como chave estável).
+
   const seenIds = new Set<string>();
   for (const f of files) {
     try {
@@ -126,25 +96,22 @@ export async function loadSkills(
       }
       seenIds.add(s.id);
       skills.push(s);
-    } catch {
-      /* nota ilegível — skip */
-    }
+    } catch { void 0; }
   }
   skills.sort((a, b) => a.name.localeCompare(b.name));
   return skills;
 }
 
-// 3 skills de exemplo que mostram o poder do plugin (citação + vault + ação).
 const EXAMPLE_SKILLS: { file: string; content: string }[] = [
   {
-    file: "Resumo TL;DR.md",
+    file: "TL;DR Summary.md",
     content: `---
-name: Resumo TL;DR
-description: Resume o conteúdo em 3 bullets + 1 ação
+name: TL;DR Summary
+description: Summarize content in 3 bullets + 1 action item
 icon: list
 mode: chat
 ---
-Resuma o conteúdo abaixo em **3 bullets curtos** e termine com **uma ação** sugerida. Seja direto.
+Summarize the content below in **3 short bullets** and end with **one suggested action**. Be direct.
 
 `,
   },
@@ -152,34 +119,32 @@ Resuma o conteúdo abaixo em **3 bullets curtos** e termine com **uma ação** s
     file: "Literature note.md",
     content: `---
 name: Literature note
-description: Vira um material em nota de literatura (Zettelkasten)
+description: Turn source material into a literature note (Zettelkasten)
 icon: book-open
 mode: chat
 ---
-Crie uma *literature note* a partir do material abaixo:
-- Resumo em 1 parágrafo.
-- 3 a 5 pontos-chave em bullets.
-- Uma seção **Conexões** sugerindo possíveis [[links]] pro meu vault.
+Create a *literature note* from the material below:
+- 1-paragraph summary.
+- 3 to 5 key takeaways in bullets.
+- A **Connections** section suggesting possible [[links]] for my vault.
 
 `,
   },
   {
-    file: "Construir MOC.md",
+    file: "Build MOC.md",
     content: `---
-name: Construir MOC
-description: Gera um Map of Content sobre um tema usando suas notas
+name: Build MOC
+description: Generate a Map of Content on a topic using your notes
 icon: network
 mode: vault-qa
 ---
-Monte um **Map of Content (MOC)** sobre o tema abaixo usando as minhas notas.
-Liste as notas relevantes como [[links]] agrupadas por subtema, cite as fontes, e sugira 2-3 notas que faltam criar.
+Build a **Map of Content (MOC)** on the topic below using my notes.
+List relevant notes as [[links]] grouped by subtopic, cite sources, and suggest 2-3 missing notes to create.
 
-Tema: `,
+Topic: `,
   },
 ];
 
-/** Cria a pasta + escreve os skills de exemplo que ainda não existem.
- *  Retorna quantos foram criados. */
 export async function seedExampleSkills(
   app: App,
   folderPath: string
@@ -191,16 +156,12 @@ export async function seedExampleSkills(
   let created = 0;
   for (const ex of EXAMPLE_SKILLS) {
     const p = normalizePath(`${folder}/${ex.file}`);
-    // v0.1.228: checa e cria na MESMA camada (vault), e isola cada create num
-    // try/catch — assim um arquivo que já existe no disco (mas fora do índice)
-    // não dispara desync nem aborta a criação dos demais exemplos.
+
     if (app.vault.getAbstractFileByPath(p)) continue;
     try {
       await app.vault.create(p, ex.content);
       created++;
-    } catch {
-      /* já existe / corrida com o índice — ignora e segue */
-    }
+    } catch { void 0; }
   }
   return created;
 }

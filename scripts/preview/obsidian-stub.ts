@@ -1,16 +1,5 @@
-// scripts/preview/obsidian-stub.ts
-// Stub da API do Obsidian para o preview no browser. Cobre so o que a casca
-// toca: setIcon, Menu, Modal/Setting, MarkdownRenderer, Notice.
-// setIcon emite <i data-lucide="nome"> e o index.html hidrata com lucide do CDN.
-
 declare const PREVIEW_OBSIDIAN_VERSION: string;
 
-/**
- * Como a de verdade: true se a versão do app é >= `version`. A versão é a do
- * asar de onde o preview tirou o app.css (injetada pelo preview.mjs), pra que
- * a escolha de classe por versão (ver marcarPerigoso em ui/modals.ts) bata com
- * o CSS que está desenhando a tela.
- */
 export function requireApiVersion(version: string): boolean {
   const a = PREVIEW_OBSIDIAN_VERSION.split(".").map(Number);
   const b = version.split(".").map(Number);
@@ -25,34 +14,16 @@ export function normalizePath(p: string): string {
   return p.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
 
-/**
- * O caminho de um wikilink, sem alias e sem âncora:
- * `[[Nota|alias#seção]]` → `Nota`. É o que o `abrirLinkDaResposta` usa pra
- * achar a nota destino.
- */
 export function getLinkpath(linktext: string): string {
   return (linktext.split("|")[0] ?? "").split("#")[0]?.trim() ?? "";
 }
 
-/**
- * Atalhos de teclado. O preview só toca `isModEvent` (Cmd/Ctrl ou botão do
- * meio), que o clique de wikilink usa pra decidir se abre na aba atual ou numa
- * nova. No browser não há mod-event do Obsidian — basta distinguir o clique
- * simples.
- */
 export const Keymap = {
   isModEvent(evt?: MouseEvent | KeyboardEvent): boolean {
     return !!evt && (evt.metaKey || evt.ctrlKey);
   },
 };
-/**
- * YAML de mentirinha, do tamanho do frontmatter que o app escreve: uma chave
- * por linha, valor entre aspas ou solto.
- *
- * O `{}` de antes fazia todo skill do preview aparecer com o ícone padrão e
- * sem modo, acontecesse o que acontecesse no formulário — ou seja, o preview
- * escondia justamente o efeito do seletor de ícone.
- */
+
 export function parseYaml(texto?: string): unknown {
   const out: Record<string, string> = {};
   for (const linha of (texto ?? "").split(/\r?\n/)) {
@@ -73,15 +44,12 @@ export class Notice {
   setMessage() {}
   hide() {}
 }
-/** Palavras da fala falsa — a transcrição devolve fatias daqui. */
+
 const FAKE_WORDS =
   ("perfeito chat só que assim a transcrição ela tem que aparecer desse mesmo " +
     "jeito que eu vou falando aqui olha que eu vou tirar o print pra você e " +
     "entendeu como é que funciona").split(" ");
-/** Segmento que o stub acha que está ouvindo. A casca corta a gravação em
- *  pedaços independentes: dentro de um segmento os envios CRESCEM (parcial,
- *  parcial maior, fechamento), e o primeiro envio do segmento seguinte é
- *  menor que o anterior. É esse degrau pra baixo que marca o corte aqui. */
+
 let fakeSeg = -1;
 let fakeUltimoTamanho = Infinity;
 
@@ -89,8 +57,7 @@ export async function requestUrl(opts: {
   url?: string;
   body?: ArrayBuffer | string;
 }): Promise<unknown> {
-  // Página web de mentira — é o que o "Link" do "+" busca. Sem isso não dava
-  // pra ver o anexo de link nascer.
+
   if (opts?.url && /^https?:/.test(opts.url) && !/\/v1\//.test(opts.url)) {
     await new Promise((r) => setTimeout(r, 300));
     return {
@@ -104,8 +71,7 @@ export async function requestUrl(opts: {
       ].join(""),
     };
   }
-  // O preview NÃO fala com a rede. A transcrição é a exceção MODELADA: sem ela
-  // não dá pra ver o texto crescendo, que é o coração do modo de voz.
+
   if (opts?.url && /audio\/transcriptions/.test(opts.url)) {
     const bytes =
       typeof opts.body === "string"
@@ -114,40 +80,26 @@ export async function requestUrl(opts: {
     if (bytes <= fakeUltimoTamanho) fakeSeg += 1;
     fakeUltimoTamanho = bytes;
     const seg = fakeSeg;
-    // O registro é o que deixa MEDIR o que antes só dava pra intuir: quantos
-    // envios, de que tamanho, e quanto tempo o último demorou.
+
     const log = ((window as unknown as Record<string, unknown>).__transcribeLog ??=
       []) as { bytes: number; at: number; seg: number }[];
     log.push({ bytes, at: Date.now(), seg });
-    // ?falhar=3,4 derruba a 3a e a 4a chamadas. A rede do celular cai no meio
-    // da fala o tempo todo, e o que a casca faz com isso (guardar o áudio e
-    // tentar de novo no fim) não dá pra ver sem poder derrubar de propósito.
+
     const derrubar = (new URLSearchParams(location.search).get("falhar") ?? "")
       .split(",")
       .filter(Boolean)
       .map(Number);
     if (derrubar.includes(log.length)) {
       await new Promise((r) => setTimeout(r, 200));
-      return { status: 500, json: { error: { message: "preview: queda de propósito" } } };
+      return { status: 500, json: { error: { message: "preview: simulated failure" } } };
     }
-    // Latência MODELADA em três parcelas, porque foi com a resposta
-    // INSTANTÂNEA que o preview escondeu o problema do Pause — e porque uma
-    // latência FIXA esconde justamente o que estamos consertando agora (o
-    // custo de reenviar áudio):
-    //   fixa   — TLS + fila do servidor (?lag=ms, padrão 700)
-    //   rede   — subir os bytes a ~1,5 Mbps de uplink de celular
-    //   modelo — transcrever roda a ~0,12x o tempo do áudio
-    // Áudio a 32kbps => 4000 bytes por segundo de fala. CUIDADO ao comparar
-    // com uma versão que grave em outro bitrate: a parcela do modelo é
-    // estimada A PARTIR DOS BYTES, então um áudio mais gordo parece mais
-    // LONGO do que é e leva uma punição que não é dele.
+
     const base = Number(new URLSearchParams(location.search).get("lag") ?? 700);
     const segundosDeAudio = bytes / 4000;
     await new Promise((r) =>
       setTimeout(r, base + bytes / 190 + segundosDeAudio * 120)
     );
-    // Mesmo áudio, mesmo texto; mais áudio, mais palavras — é o que um
-    // transcritor faz. Cada segmento pega uma fatia diferente da frase.
+
     const palavras = Math.max(1, Math.min(6, Math.round(bytes / 6000)));
     const inicio = (seg * 6) % FAKE_WORDS.length;
     return {
@@ -155,8 +107,7 @@ export async function requestUrl(opts: {
       json: { text: FAKE_WORDS.slice(inicio, inicio + palavras).join(" ") },
     };
   }
-  // TTS: devolve um WAV mudo de verdade, pra dar pra exercitar o caminho
-  // inteiro (blob → <audio> → play) sem falar com a rede.
+
   if (opts?.url && /audio\/speech|text-to-speech/.test(opts.url)) {
     await new Promise((r) => setTimeout(r, 300));
     return { status: 200, arrayBuffer: silentWav() };
@@ -176,7 +127,6 @@ export async function requestUrl(opts: {
   throw new Error("no network in preview");
 }
 
-/** WAV de 0.2s em silêncio — cabeçalho montado à mão. */
 function silentWav(): ArrayBuffer {
   const rate = 8000;
   const frames = rate / 5;
@@ -206,16 +156,11 @@ export class PluginSettingTab {
   constructor(public app?: unknown, _plugin?: unknown) {}
   display(): void {}
   hide(): void {}
-  /** 1.13: o SettingsTab só chama atrás de requireApiVersion("1.13.0"). */
+
   refreshDomState(): void {}
 }
 export class ItemView {}
-/**
- * Modal com a ÁRVORE de verdade do Obsidian — `.modal-container.mod-dim` →
- * `.modal` → `.modal-content`. Um `open()` vazio (como era antes) escondia o
- * desenho inteiro do modal de aprovação: o preview só conseguia mostrar um
- * espelho de HTML escrito à mão, que mente por construção.
- */
+
 export class Modal {
   containerEl: HTMLElement;
   modalEl: HTMLElement;
@@ -256,7 +201,7 @@ export class Modal {
 export class FuzzySuggestModal extends Modal {
   setPlaceholder() {}
 }
-/** A lista de escolha (o "Translate selection…" do editor). */
+
 export class SuggestModal<T> extends Modal {
   setPlaceholder(_p?: string) {}
   getSuggestions(_q: string): T[] {
@@ -264,10 +209,7 @@ export class SuggestModal<T> extends Modal {
   }
 }
 export class MarkdownView {}
-/**
- * O idioma do Obsidian (o "Same as Obsidian" da interface segue ele). No
- * preview, `?lang=pt` na URL simula um Obsidian em português.
- */
+
 export function getLanguage(): string {
   try {
     return new URLSearchParams(location.search).get("lang") ?? "en";
@@ -275,7 +217,7 @@ export function getLanguage(): string {
     return "en";
   }
 }
-/** O interruptor solto (o editor de esforço usa fora de um Setting). */
+
 export class ToggleComponent {
   toggleEl: HTMLElement;
   private valor = false;
@@ -295,7 +237,7 @@ export class ToggleComponent {
     const mudou = v !== this.valor;
     this.valor = v;
     this.toggleEl.classList.toggle("is-enabled", v);
-    // Como no Obsidian: setValue que muda o valor chama o onChange.
+
     if (mudou) this.handler?.(v);
     return this;
   }
@@ -308,17 +250,7 @@ export class ToggleComponent {
     return this;
   }
 }
-/**
- * Setting e SettingGroup com o DOM REAL de cada versão (app.js 1.12.7 e
- * 1.13.7): o app.css pinta os cartões por essas classes, então uma árvore
- * inventada aqui mostraria um cartão que o aparelho nunca teve. No 1.13 a
- * linha ganha `tabindex=-1` e o grupo um `.setting-group-search` (vazio,
- * escondido por `:empty`) antes da lista.
- *
- * O desenho declarativo do 1.13 (getSettingDefinitions) usa estas MESMAS duas
- * classes por dentro — por isso desenhar a árvore pelo display() aqui mostra o
- * mesmo DOM que o Obsidian 1.13 monta sozinho.
- */
+
 const V113 = () => requireApiVersion("1.13.0");
 
 function divCls(cls: string): HTMLDivElement {
@@ -375,7 +307,7 @@ export class Setting {
     for (const c of this.components) c.setDisabled(v);
     return this;
   }
-  /** Como o de verdade: só esvazia o controle (nome, descrição e classes ficam). */
+
   clear() {
     this.controlEl.textContent = "";
     this.components = [];
@@ -480,7 +412,6 @@ export class Setting {
   }
 }
 
-/** O cartão de settings — existe desde o 1.11.0. */
 export class SettingGroup {
   groupEl: HTMLElement;
   headerEl: HTMLElement;
@@ -511,7 +442,7 @@ export class SettingGroup {
     else if (!text && shown) this.headerEl.remove();
     return this;
   }
-  /** No 1.12 é UMA classe; `classList.add` com espaço explode igual ao real. */
+
   addClass(...cls: string[]) {
     this.groupEl.classList.add(...cls);
     return this;
@@ -523,8 +454,7 @@ export class SettingGroup {
 }
 export class TFile {}
 export class TFolder {}
-/** Base64 de um ArrayBuffer — o Obsidian expõe isso e a casca usa pra anexar
- *  um artefato do vault como imagem. */
+
 export function arrayBufferToBase64(buf: ArrayBuffer): string {
   let bin = "";
   const bytes = new Uint8Array(buf);
@@ -536,12 +466,7 @@ export class Component {
   load() {}
   unload() {}
 }
-/**
- * Markdown de mentirinha — só o suficiente pra PROVAR que a formatação chega
- * (negrito, itálico, título, lista, código). O renderer de verdade é o do
- * Obsidian; aqui o que importa é o pipeline: quem chama, quando, e se pisca.
- * `textContent` cru, como estava antes, escondia exatamente o bug do stream.
- */
+
 export const MarkdownRenderer = {
   async render(_app: unknown, text: string, el: HTMLElement) {
     const esc = (t: string) =>
@@ -551,7 +476,7 @@ export const MarkdownRenderer = {
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
         .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
-        // Link: sem isso o preview não tinha como mostrar a cor de acento.
+
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     const out: string[] = [];
     let lista: string[] = [];
@@ -579,13 +504,9 @@ export const MarkdownRenderer = {
       );
       tabela = [];
     };
-    // Cerca de código: <pre><code class="language-x">, que é o que o Obsidian
-    // produz (e onde o Prism dele pinta os tokens). Sem isto o preview não
-    // mostrava bloco de código NENHUM — a formatação sumia calada.
-    let cerca: { marca: string; lang: string; linhas: string[] } | null = null;
-    // O Obsidian injeta um botão de copiar dentro de todo bloco de código. Sem
-    // ele aqui, o preview mostrava um bloco que não existe no aparelho — e foi
-    // justamente o botão que apareceu fora do lugar.
+
+    let cerca: { mark: string; lang: string; linhas: string[] } | null = null;
+
     const bloco = (lang: string, linhas: string[]) =>
       '<pre><button class="copy-code-button"><i data-lucide="copy"></i></button><code class="language-' +
       lang +
@@ -595,7 +516,7 @@ export const MarkdownRenderer = {
     for (const linha of text.split(String.fromCharCode(10))) {
       const abre = linha.match(/^ {0,3}(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)\s*$/);
       if (cerca) {
-        if (abre && abre[1][0] === cerca.marca[0] && abre[1].length >= cerca.marca.length) {
+        if (abre && abre[1][0] === cerca.mark[0] && abre[1].length >= cerca.mark.length) {
           out.push(bloco(cerca.lang, cerca.linhas));
           cerca = null;
         } else {
@@ -605,21 +526,19 @@ export const MarkdownRenderer = {
       }
       if (abre) {
         fechaLista();
-        cerca = { marca: abre[1], lang: abre[2] || "none", linhas: [] };
+        cerca = { mark: abre[1], lang: abre[2] || "none", linhas: [] };
         continue;
       }
       const h = linha.match(/^(#{1,4})\s+(.*)$/);
       const li = linha.match(/^[-*]\s+(.*)$/);
-      // TABELA: acumula as linhas que começam e terminam com "|". Sem isto o
-      // preview não renderizava tabela nenhuma — e tabela é justamente o que
-      // mais aparece diferente entre um markdown cru e um formatado.
+
       if (/^\s*\|.*\|\s*$/.test(linha)) {
         fechaLista();
         tabela.push(linha);
         continue;
       }
       if (tabela.length > 0) fechaTabela();
-      // Citação e régua.
+
       if (/^>\s?/.test(linha)) {
         fechaLista();
         out.push("<blockquote><p>" + inline(linha.replace(/^>\s?/, "")) + "</p></blockquote>");
@@ -648,7 +567,7 @@ export const MarkdownRenderer = {
     el.innerHTML = out.join("");
   },
 };
-/** Registro do addIcon — o mesmo que o Obsidian mantém pros ícones custom. */
+
 const CUSTOM_ICONS = new Map<string, string>();
 
 export function addIcon(id: string, svgContent: string): void {
@@ -672,8 +591,7 @@ export function setIcon(el: HTMLElement, name: string): void {
   (window as unknown as { lucide?: { createIcons: (o: unknown) => void } })
     .lucide?.createIcons({ nameAttr: "data-lucide" });
 }
-/** ?platform=desktop troca o aparelho. O stub fixo em `isMobile: true` não
- *  deixava nem testar o caminho do desktop (Enter envia, Shift+Enter quebra). */
+
 export const Platform = {
   isMobile:
     new URLSearchParams(location.search).get("platform") !== "desktop",
@@ -706,7 +624,6 @@ export class MenuItem {
   cb: (() => void) | null = null;
 }
 
-/** Menu do preview: popup simples só pra conferir o fluxo visual. */
 export class Menu {
   private items: MenuItem[] = [];
   addItem(cb: (item: MenuItem) => void) {

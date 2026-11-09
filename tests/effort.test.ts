@@ -32,13 +32,13 @@ describe("resolveEffortConfig", () => {
   it("override parcial mescla só os campos presentes", () => {
     const cfg = resolveEffortConfig("low", { low: { maxTokens: 999 } });
     expect(cfg.maxTokens).toBe(999);
-    // resto continua o default de 'low'
+
     expect(cfg).not.toHaveProperty("agentMaxTurns");
     expect(cfg.vaultTopK).toBe(DEFAULT_EFFORT_CONFIGS.low.vaultTopK);
   });
 
   it("REGRESSÃO: override com 0/false é respeitado (não cai no default por falsy)", () => {
-    // `?? base` precisa tratar 0 e false como valores válidos, não ausência.
+
     const cfg = resolveEffortConfig("high", {
       high: { temperature: 0, toolRetryOnError: 0, parallelToolCalls: false },
     });
@@ -68,17 +68,17 @@ describe("effortToMaxTokensSmart", () => {
   });
 
   it("max usa ~80% do context window menos 1k de reserva", () => {
-    // 200k * 0.8 - 1000 = 159000
+
     expect(effortToMaxTokensSmart("max", 200_000)).toBe(159_000);
   });
 
   it("max nunca devolve menos que o piso de 2048", () => {
-    // 1000 * 0.8 - 1000 = -200 → clamp pra 2048
+
     expect(effortToMaxTokensSmart("max", 1000)).toBe(2048);
   });
 
   it("override do contextReservePercent é clampado em [10, 95]", () => {
-    // pct=200 → clamp 95 → 100000*0.95 - 1000 = 94000
+
     const v = effortToMaxTokensSmart("max", 100_000, {
       max: { contextReservePercent: 200 },
     });

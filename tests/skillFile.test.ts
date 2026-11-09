@@ -20,16 +20,13 @@ describe("skillFileName", () => {
   });
 
   it("troca o que o Obsidian não aceita em vez de recusar", () => {
-    // O nome é do usuário, o arquivo é nosso: ele digita "Resumo: TL;DR" e nós
-    // damos um jeito no `:` — mandar digitar de novo seria cobrar dele uma
-    // regra do sistema de arquivos.
+
     expect(skillFileName("Resumo: TL;DR")).toBe("Resumo- TL;DR.md");
     expect(skillFileName("a/b*c?d")).toBe("a-b-c-d.md");
   });
 
   it("não deixa o arquivo terminar em ponto nem espaço", () => {
-    // No Windows os dois somem sozinhos, e o arquivo criado deixa de ser o
-    // arquivo procurado.
+
     expect(skillFileName("Rascunho...")).toBe("Rascunho.md");
     expect(skillFileName("  espaço  ")).toBe("espaço.md");
   });
@@ -61,7 +58,7 @@ describe("skillMarkdown", () => {
   });
 
   it("sem modo, a linha nem existe", () => {
-    // `mode: ""` faria o acionamento tentar trocar pra um modo que não existe.
+
     expect(skillMarkdown(draft({ mode: "" }))).not.toContain("mode:");
     expect(skillMarkdown(draft({ mode: "agent" }))).toContain('mode: "agent"');
   });
@@ -74,15 +71,14 @@ describe("skillProblema", () => {
 
   it("cobra o nome e cobra o prompt", () => {
     expect(skillProblema(draft({ name: "  " }), [])).toMatch(/name/i);
-    // Sem corpo o parser descarta a nota: o skill seria criado e sumiria da
-    // lista no mesmo segundo.
+
     expect(skillProblema(draft({ body: "" }), [])).toMatch(/prompt/i);
   });
 
   it("não pisa num skill que já existe", () => {
     const existentes = ["corvus-ai/skills/Weekly review.md"];
     expect(skillProblema(draft(), existentes)).toMatch(/already/i);
-    // Editando aquele mesmo, o nome dele não é conflito.
+
     expect(skillProblema(draft(), existentes, existentes[0])).toBeNull();
   });
 

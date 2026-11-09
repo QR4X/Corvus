@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isGeminiBillingError } from "../src/providers/gemini";
 
-// Muro de billing do Gemini (v0.1.162): a assinatura consumer (AI Pro/Ultra)
-// NÃO cobre a API. Detectar isso → bolha de erro com "Ativar billing no AI
-// Studio" em vez de "tentar de novo" inútil.
-
 describe("isGeminiBillingError", () => {
   it("frases fortes de billing → true em qualquer contexto/status", () => {
     const cases = [
@@ -40,7 +36,7 @@ describe("isGeminiBillingError", () => {
   it("é case-insensitive e tolera message vazio/garbage", () => {
     expect(isGeminiBillingError(400, "PAID TIER required", "chat")).toBe(true);
     expect(isGeminiBillingError(400, "", "chat")).toBe(false);
-    // @ts-expect-error — robustez a undefined em runtime
+
     expect(isGeminiBillingError(400, undefined, "chat")).toBe(false);
   });
 });

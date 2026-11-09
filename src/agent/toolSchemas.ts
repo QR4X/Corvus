@@ -1,10 +1,3 @@
-// src/agent/toolSchemas.ts
-// Definições das tools — descrições pro LLM + JSON Schema dos params.
-//
-// Convenção: nome em snake_case (matchea OpenAI/Anthropic).
-// Descrições em EN — o LLM lê pra decidir quando usar a tool (coerente com
-// o system prompt do agent, que também é EN).
-
 import type { ToolDefinition } from "./types";
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
@@ -210,14 +203,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: "generate_image",
     description:
-      "Gera uma imagem a partir de um prompt de texto e a renderiza NA CONVERSA (salva no vault). Use quando o usuário pedir uma imagem, ilustração, mockup, logo, ícone, capa, etc. O usuário confirma o modelo num modal antes de gerar — você NÃO escolhe o modelo. Escreva um prompt visual rico e específico. Não precisa trocar de modelo de chat.",
+      "Generates an image from a text prompt and renders it in the conversation (saved in the vault). Use when the user asks for an image, illustration, mockup, logo, icon, cover, etc. The user confirms the model in a modal before generating — you do NOT choose the model. Write a rich, specific visual prompt. No need to switch the chat model.",
     parameters: {
       type: "object",
       properties: {
         prompt: {
           type: "string",
           description:
-            "Descrição visual detalhada da imagem (estilo, composição, cores, enquadramento). Em inglês costuma render melhor.",
+            "Detailed visual description of the image (style, composition, colors, framing). English prompts usually render best.",
         },
       },
       required: ["prompt"],
@@ -226,7 +219,6 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
 ];
 
-/** Helper: pega ToolDefinition pelo nome. */
 export function getToolDefinition(name: string): ToolDefinition | undefined {
   return TOOL_DEFINITIONS.find((t) => t.name === name);
 }

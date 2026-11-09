@@ -36,9 +36,7 @@ describe("chatIndexSignature", () => {
       { tokensOut: 10 },
       { toolCount: 4 },
       { starred: true },
-      // O que quebrou de verdade: o preview do cartão do Agent não estava aqui,
-      // então um índice gravado sem ele era "igual" ao disco pra sempre e a
-      // linha nunca aparecia.
+
       { preview: "outra coisa" },
     ];
     for (const m of mudancas) {

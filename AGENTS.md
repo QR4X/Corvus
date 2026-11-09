@@ -43,6 +43,7 @@ edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 - User-visible settings: add a default in `src/ui/settings/values.ts`, the row
   in `src/ui/settings/tree.ts`, the label in `src/i18n/`, and a test.
 - No hardcoded UI text; route through `src/i18n/`.
+- Do not add code comments; keep the repository 100% in English.
 - Match the patterns of neighboring files before adding new abstractions.
 
 ## Testing

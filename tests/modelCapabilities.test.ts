@@ -62,13 +62,13 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
 });
 
 describe("getModelCapabilities — overlay :free do OpenRouter", () => {
-  it("sufixo :free marca free=true sem perder as caps do upstream", () => {
+  it("sufixo :free mark free=true sem perder as caps do upstream", () => {
     const caps = getModelCapabilities("openrouter", "mistralai/mistral-7b:free");
     expect(caps.free).toBe(true);
-    expect(caps.tools).toBe(true); // herdado de "mistralai/"
+    expect(caps.tools).toBe(true); 
   });
 
-  it(":free sem match de prefixo ainda marca free no default", () => {
+  it(":free sem match de prefixo ainda mark free no default", () => {
     const caps = getModelCapabilities("openrouter", "lab-desconhecido/x:free");
     expect(caps.free).toBe(true);
     expect(caps.streaming).toBe(true);
@@ -77,7 +77,7 @@ describe("getModelCapabilities — overlay :free do OpenRouter", () => {
 
 describe("getModelCapabilities — fallbacks seguros", () => {
   it("provider desconhecido → default conservador (só streaming)", () => {
-    // pdf entrou em 0.1.248 — derivado, e provider fora da lista nunca recebe PDF.
+
     expect(getModelCapabilities("provider-fake", "x")).toEqual({
       vision: false,
       tools: false,
@@ -143,8 +143,7 @@ describe("getModelCapabilities — overlay do catálogo vivo", () => {
         modalities: ["text"],
       },
     });
-    // O catálogo é do OUTRO provider (OpenRouter): serve pra ligar o que
-    // faltava, nunca pra tirar um tool calling que o API direto já tinha.
+
     expect(getModelCapabilities("nim", "meta/llama-3.3-70b-instruct").tools).toBe(
       true
     );

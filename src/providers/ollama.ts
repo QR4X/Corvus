@@ -1,24 +1,3 @@
-// src/providers/ollama.ts
-// Provider Ollama — LLMs locais via servidor HTTP.
-// Endpoint: settings.ollamaEndpoint — vazio de fábrica desde a 0.9.20 (o
-// Ollama começa desligado; ver core/ollamaPadrao.ts). Sem auth (local).
-//
-// Diferenças do OpenAI:
-//   - Body: { model, messages, stream, tools?, options? }
-//   - Resposta streaming: JSON delimitado por NEWLINE (não SSE com "data:")
-//   - Cada linha: {"message": {"role":"assistant","content":"..."}, "done":false}
-//   - Última linha: {"done":true, "prompt_eval_count":..., "eval_count":...}
-//
-// Tool calling (v0.1.33):
-//   - Body envia `tools[]` mesmo formato OpenAI (sem `tool_choice` — Ollama ignora)
-//   - Resposta: `message.tool_calls[]` no formato `{function: {name, arguments}}`
-//   - Pegadinha: `arguments` no Ollama vem como OBJETO (não JSON string como OpenAI)
-//   - Pegadinha: tool_calls do Ollama frequentemente vêm SEM `id` — geramos um
-//   - Modelos com tool calling: llama3.1, llama3.2, qwen2.5, mistral-large, etc.
-//   - Modelos antigos / pequenos ignoram silenciosamente o campo `tools`
-//
-// Como a key não é necessária, passamos vazia mesmo.
-
 import { requestUrl } from "obsidian";
 import { pareceEmbeddingDoOllama } from "../rag/types";
 import {
@@ -39,10 +18,6 @@ import {
   ensureOkStream,
   fetchStream,
 } from "./_shared";
-
-// ---- O que o Ollama devolve (ver a nota em _shared.ts) -------------------
-// Ollama não fala OpenAI-compatible aqui: tool call vem sem `id`, e os
-// arguments chegam ora como objeto, ora como string JSON (depende do modelo).
 
 interface ToolCallOllama {
   id?: string;
@@ -73,23 +48,6 @@ interface MensagemOpenAI {
   tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: unknown } }>;
 }
 
-/**
- * O histórico no formato que o `/api/chat` do Ollama aceita. Parte do
- * conversor OpenAI (que normaliza tool results e anexos) e desfaz as três
- * diferenças que quebravam o agente na SEGUNDA volta do loop de ferramentas:
- *   - `arguments` vai como OBJETO. O OpenAI quer string JSON; o Ollama recusa
- *     com 400 ("Value looks like object, but can't find closing '}'") — o
- *     agente com Ollama morria logo depois da primeira ferramenta.
- *   - `content` nunca vai `null` numa mensagem do assistente.
- *   - a resposta da ferramenta leva `tool_name`, que é como o Ollama liga o
- *     resultado à chamada (ele não usa `tool_call_id`).
- * E uma quarta, a da IMAGEM: o conversor OpenAI põe o anexo em `content` como
- * lista de partes (`text` + `image_url` com data URL), e o `/api/chat` só
- * aceita `content` string — recusava com 400 ("cannot unmarshal array into …
- * content of type string") qualquer mensagem com imagem, em modelo de visão
- * ou não. Aqui o texto volta a ser string e as imagens vão em `images`, em
- * base64 cru (sem o `data:…;base64,`). PDF o Ollama não lê: a parte cai.
- */
 export function toOllamaMessages(messages: ProviderRequest["messages"]): unknown[] {
   const nomePorId = new Map<string, string>();
   return (toOpenAIMessages(messages) as MensagemOpenAI[]).map((m) => {
@@ -143,20 +101,12 @@ interface ParteOpenAI {
   image_url?: { url?: string };
 }
 
-/** `data:image/png;base64,AAAA` → `AAAA` (o que o Ollama quer). Sem o
- *  prefixo, o texto já é o base64; um link http não é imagem que dê pra
- *  mandar e vira "". */
 function base64DaDataUrl(url: string): string {
   const virgula = url.indexOf(",");
   if (url.startsWith("data:")) return virgula >= 0 ? url.slice(virgula + 1) : "";
   return /^https?:/i.test(url) ? "" : url;
 }
 
-/**
- * Tool calls do Ollama → ProviderToolCall[]. Era o MESMO bloco escrito duas
- * vezes (non-stream e stream); qualquer correção tinha que ser feita em dois
- * lugares. Sem name não há o que chamar, então a entrada é descartada.
- */
 function toolCallsDoOllama(brutas: unknown): ProviderToolCall[] {
   if (!Array.isArray(brutas)) return [];
   const saida: ProviderToolCall[] = [];
@@ -166,10 +116,10 @@ function toolCallsDoOllama(brutas: unknown): ProviderToolCall[] {
     const raw = fn.arguments;
     let parsedArgs: Record<string, unknown> = {};
     if (raw && typeof raw === "object") {
-      // Caminho Ollama: já vem como objeto.
+
       parsedArgs = raw as Record<string, unknown>;
     } else if (typeof raw === "string") {
-      // Caminho compat: alguns modelos devolvem string JSON.
+
       try {
         parsedArgs = JSON.parse(raw) as Record<string, unknown>;
       } catch {
@@ -185,18 +135,6 @@ function toolCallsDoOllama(brutas: unknown): ProviderToolCall[] {
   return saida;
 }
 
-// ── o que o /api/show conta de cada modelo local ─────────────────────────
-//
-// UMA leitura por modelo, cacheada: o mesmo POST responde o tamanho da janela
-// (num_ctx) e o que o modelo ACEITA. O `/api/show` do Ollama ≥0.4 traz
-// `capabilities: ["completion", "vision", "tools", "insert"]`, que é a verdade
-// LOCAL sobre este modelo — melhor que adivinhar pelo prefixo do nome:
-// `gemma3` lê imagem e não está em tabela nenhuma, e o mesmo vale pra
-// `qwen3-vl`, `granite3.2-vision` e pro que a pessoa baixar amanhã.
-//
-// Só resposta boa entra no cache: servidor fora, Ollama antigo ou resposta
-// vazia não guardam nada, e o próximo pedido (ou a próxima busca) tenta de
-// novo — quem não tem o dado, a tabela curada decide.
 interface MostraDoModelo {
   model_info?: Record<string, unknown>;
   capabilities?: unknown;
@@ -224,7 +162,7 @@ async function mostraDoModelo(
     mostraConhecida.set(chave, json);
     return json;
   } catch {
-    // Sem o /api/show: segue sem o teto do modelo (ver contextoDoOllama).
+
     return null;
   }
 }
@@ -237,7 +175,6 @@ async function contextoDoModelo(endpoint: string, model: string): Promise<number
   return undefined;
 }
 
-/** O que o servidor declara que o modelo aceita. null = ele não diz. */
 function capacidadesDe(mostra: MostraDoModelo | null): string[] | null {
   const caps = mostra?.capabilities;
   if (!Array.isArray(caps)) return null;
@@ -245,11 +182,6 @@ function capacidadesDe(mostra: MostraDoModelo | null): string[] | null {
   return lista.length > 0 ? lista : null;
 }
 
-/**
- * Grava o que o SERVIDOR declara pra uma lista de modelos, no mesmo cache de
- * specs que o catálogo do OpenRouter alimenta (ver modelInfoStore). Nunca
- * lança: sem servidor, não grava nada e a tabela curada decide.
- */
 export async function enriquecerCapacidadesOllama(
   endpoint: string,
   models: readonly string[]
@@ -261,8 +193,7 @@ export async function enriquecerCapacidadesOllama(
     const caps = capacidadesDe(await mostraDoModelo(endpoint, model));
     if (!caps) continue;
     recordModelInfo("ollama", model, {
-      // "image" é o vocabulário do catálogo do OpenRouter (input_modalities);
-      // vazio = o servidor não listou visão (o overlay é upgrade-only).
+
       modalities: caps.includes("vision") ? ["image"] : [],
       supportsTools: caps.includes("tools"),
       source: "ollama",
@@ -273,8 +204,6 @@ export async function enriquecerCapacidadesOllama(
   return gravados;
 }
 
-/** Tokens que um pedido ocupa, por alto: 3 caracteres por token (português e
- *  o JSON das ferramentas rendem menos que os 4 do inglês), ~1k por imagem. */
 export function tokensDoPedido(req: ProviderRequest): number {
   let chars = 0;
   let imagens = 0;
@@ -289,14 +218,6 @@ export function tokensDoPedido(req: ProviderRequest): number {
 
 const DEGRAUS_DE_CONTEXTO = [8192, 16384, 32768, 65536, 131072, 262144];
 
-/**
- * O num_ctx de um pedido. Sem ele o Ollama usa a janela padrão do servidor
- * (pequena) e CORTA o começo do prompt sem avisar — justamente as instruções
- * e as ferramentas do agente. Aqui: o menor degrau que cabe o prompt e a
- * resposta (até 8k dela), sem passar do que o modelo aguenta. Degraus fixos
- * porque mudar o num_ctx recarrega o modelo: com eles, uma conversa que
- * cresce recarrega poucas vezes. Sem saber o máximo do modelo, até 32k.
- */
 export function contextoDoOllama(prompt: number, resposta: number, maxModelo?: number): number {
   const precisa = prompt + Math.min(resposta, 8192);
   const degrau =
@@ -309,18 +230,13 @@ export function contextoDoOllama(prompt: number, resposta: number, maxModelo?: n
 export class OllamaProvider implements Provider {
   id = "ollama";
   name = "Ollama";
-  // Ollama ≥0.3 suporta tool calling em modelos compatíveis (llama3.1+,
-  // qwen2.5+, mistral-large, etc). Modelos antigos ignoram silenciosamente.
-  // O usuário precisa escolher um modelo que tenha tools no card do Ollama.
+
   supportsTools = true;
 
-  /** Endpoint base que vem das settings (apiKey no nosso modelo, mas é URL). */
   private getEndpoint(apiKey: string): string {
-    // No nosso modelo, apiKey carrega o endpoint do Ollama (settings.ollamaEndpoint)
+
     const DEFAULT = "http://localhost:11434";
-    // Vazio é DESLIGADO, não "use o localhost": cair no padrão aqui buscaria
-    // modelos (e mandaria conversa) num servidor que ninguém configurou. O
-    // chat já barra antes (helpers.semCredencial); isto cobre o Fetch.
+
     if (!apiKey.trim()) {
       throw new ProviderError(
         "Set your Ollama server address first (Settings → Providers → Ollama, usually http://localhost:11434).",
@@ -328,22 +244,20 @@ export class OllamaProvider implements Provider {
       );
     }
     const url = apiKey.trim().replace(/\/$/, "");
-    // v0.1.228: valida o endpoint configurado — URL malformada ou esquema
-    // não-HTTP cai pro default localhost em vez de produzir erros confusos.
+
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        console.warn(`[Ollama] Endpoint com esquema inválido (${parsed.protocol}), usando ${DEFAULT}.`);
+        console.warn(`[Ollama] Endpoint has invalid scheme (${parsed.protocol}), using ${DEFAULT}.`);
         return DEFAULT;
       }
     } catch {
-      console.warn(`[Ollama] Endpoint inválido ("${url}"), usando ${DEFAULT}.`);
+      console.warn(`[Ollama] Invalid endpoint ("${url}"), using ${DEFAULT}.`);
       return DEFAULT;
     }
     return url;
   }
 
-  /** O corpo do /api/chat — o mesmo pros dois caminhos (com e sem stream). */
   private async corpo(
     req: ProviderRequest,
     endpoint: string,
@@ -356,8 +270,7 @@ export class OllamaProvider implements Provider {
       await contextoDoModelo(endpoint, req.model)
     );
     const temp = resolveTemperature("ollama", req.model, req.temperature);
-    // Body com OpenAI-compat messages — reusa o converter pra normalizar
-    // assistant.tool_calls e tool results.
+
     const body: Record<string, unknown> = {
       model: req.model,
       messages: toOllamaMessages(req.messages),
@@ -377,7 +290,7 @@ export class OllamaProvider implements Provider {
           parameters: t.parameters,
         },
       }));
-      // Ollama NÃO usa tool_choice — qualquer valor é ignorado, então omitimos.
+
     }
     return body;
   }
@@ -410,9 +323,6 @@ export class OllamaProvider implements Provider {
       throw new ProviderError("Empty response from Ollama.", "unknown");
     }
 
-    // Parseia tool_calls — formato Ollama:
-    //   { function: { name: string, arguments: object | string } }
-    // Sem `id` na maioria dos casos — geramos um pra fechar o loop.
     const lidas = toolCallsDoOllama(message.tool_calls);
     const toolCalls = lidas.length > 0 ? lidas : undefined;
 
@@ -426,7 +336,7 @@ export class OllamaProvider implements Provider {
 
     const result: ProviderResponse = { content };
     if (toolCalls) result.toolCalls = toolCalls;
-    // Usage tokens (vem no response não-streaming também)
+
     if (corpo?.prompt_eval_count !== undefined || corpo?.eval_count !== undefined) {
       result.usage = {
         input: corpo.prompt_eval_count ?? 0,
@@ -442,8 +352,7 @@ export class OllamaProvider implements Provider {
     onToken: TokenHandler,
     onUsage?: UsageHandler,
     signal?: AbortSignal,
-    // o Ollama não emite trilha de raciocínio separada, então o handler entra
-    // só pra assinatura bater com os outros providers e fica sem uso.
+
     _onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
@@ -470,23 +379,17 @@ export class OllamaProvider implements Provider {
       throw new ProviderError("Empty stream from Ollama.", "unknown");
     }
 
-    // Parser NDJSON — cada linha é um JSON completo (não SSE)
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let accumulatedText = "";
     let usage: { input: number; output: number } | undefined;
-    // v0.1.228: Ollama emite o bloco INTEIRO de tool_calls (não deltas) e pode
-    // reenviar o array em mais de uma linha — guardamos só o último recebido em
-    // vez de concatenar, evitando tool calls duplicados.
+
     let lastToolCalls: ProviderToolCall[] = [];
 
-    // v0.1.228: try/finally garante liberar o reader em erro/abort (o read()
-    // já rejeita com AbortError quando o signal aborta, via fetch).
     try {
       while (true) {
-        // v0.1.228: aborta cedo se o signal já disparou (read() também rejeita,
-        // mas isto encurta o ciclo entre chunks).
+
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
         const { done, value } = await reader.read();
         if (done) break;
@@ -501,12 +404,10 @@ export class OllamaProvider implements Provider {
           try {
             json = JSON.parse(trimmed) as RespostaOllama;
           } catch {
-            // v0.1.228: linha provavelmente truncada — o buffer já guarda o
-            // resto (último split vira o novo buffer), então ignoramos.
+
             continue;
           }
-          // v0.1.228: Ollama sinaliza erros de runtime com um campo `error` na
-          // própria linha do stream — propaga em vez de engolir silenciosamente.
+
           if (typeof json.error === "string" && json.error) {
             throw new ProviderError(`Ollama: ${json.error}`, "unknown");
           }
@@ -516,9 +417,7 @@ export class OllamaProvider implements Provider {
             accumulatedText += token;
             onToken(token);
           }
-          // Ollama emite tool_calls inteiros (não em deltas) — geralmente
-          // numa linha só, próximo do final do stream. Se reenviar, o array
-          // novo SUBSTITUI o anterior (não acumula).
+
           const parsed = toolCallsDoOllama(message?.tool_calls);
           if (parsed.length > 0) lastToolCalls = parsed;
           if (json?.done === true) {
@@ -535,7 +434,7 @@ export class OllamaProvider implements Provider {
         }
       }
     } finally {
-      try { reader.releaseLock(); } catch { /* já liberado */ }
+      try { reader.releaseLock(); } catch { void 0; }
     }
     const result: ProviderResponse = { content: accumulatedText };
     if (lastToolCalls.length > 0) result.toolCalls = lastToolCalls;
@@ -543,7 +442,6 @@ export class OllamaProvider implements Provider {
     return result;
   }
 
-  /** Lista modelos instalados localmente via /api/tags */
   async listModels(apiKey: string): Promise<string[]> {
     const endpoint = this.getEndpoint(apiKey);
     let res;
@@ -569,12 +467,6 @@ export class OllamaProvider implements Provider {
       .sort();
   }
 
-  /**
-   * Os modelos de EMBEDDING instalados — o que deixa o Vault Q&A rodar sem
-   * nuvem. O nome resolve as famílias comuns (nomic-embed-text, mxbai, bge,
-   * all-minilm…); o resto pergunta ao /api/show, que nos Ollama recentes diz
-   * "embedding" nas capabilities. Sem resposta dele, fica só o nome.
-   */
   async listEmbeddingModels(apiKey: string): Promise<string[]> {
     const endpoint = this.getEndpoint(apiKey);
     const todos = await this.listModels(apiKey);

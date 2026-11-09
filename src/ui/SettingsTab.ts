@@ -1,33 +1,3 @@
-// src/ui/SettingsTab.ts
-// Settings em ABAS, por classe de configuração — a lista corrida ficava longa
-// demais no mobile e misturava coisas de natureza diferente (credencial,
-// default de sessão, pasta do vault, índice, permissão).
-//
-//   Providers  → uma SUB-ABA por provider (chave/endpoint + modelo). São seis;
-//                é o único lugar onde a segunda camada se paga.
-//   Chat       → o que vale pra toda conversa nova.
-//   Vault      → onde as coisas são gravadas.
-//   Vault Q&A  → o índice e o que o alimenta.
-//   Agent      → o que o agente pode fazer sem perguntar.
-//   Mobile     → só aparece no celular.
-//
-// DUAS maneiras de chegar na tela, UMA árvore (ui/settings/tree.ts):
-//
-//   • Obsidian 1.13+: `getSettingDefinitions()` devolve a árvore e o Obsidian
-//     desenha — cartões nativos, e toda linha entra na busca das settings.
-//   • 1.11.4–1.12.x: não existe `getSettingDefinitions`; o `display()` desenha
-//     a mesma árvore (ui/settings/legacy.ts).
-//
-// A barra de abas e o trilho de providers NÃO são páginas do Obsidian: trocar
-// de aba só troca um atributo do container (`data-corvus-tab`), e o CSS esconde
-// os grupos das outras abas. Nada é redesenhado, nada perde o foco — e a busca
-// continua achando tudo, porque pra ela nenhuma linha está escondida.
-//
-// O que muda de texto ou de opções (a bolinha da conexão, o catálogo, a lista
-// de vozes…) é uma linha VIVA (`slot`): ela guarda o próprio Setting e se
-// redesenha no lugar. É o que troca o `update()` do 1.13 — que redesenharia a
-// aba inteira e roubaria o foco do campo em que a pessoa está digitando.
-
 import {
   App,
   getLanguage,
@@ -56,7 +26,7 @@ import { buildModelCatalog, porFabricante, soltosPorFabricante } from "./modelCa
 import { PROVIDERS_MULTI_FABRICANTE } from "../providers/vendors";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { speak, stopSpeaking, TTS_PROVIDERS, ttsReady } from "./readAloud";
-import { fraseDaAmostra, idiomaDaAmostra } from "./settings/amostra";
+import { fraseDaAmostra, idiomaDaAmostra } from "./settings/voiceSample";
 import { elevenVoices } from "../providers/elevenlabs";
 import { hapticsOn, setHapticsEnabled, tap } from "./haptics";
 import { marcarPerigoso } from "./modals";
@@ -81,28 +51,24 @@ import {
 import { openActions } from "./menu";
 import { modelLogo } from "../providers/modelLogo";
 import { putThumb, seedThumb, thumbOf, type Thumb } from "./settings/thumb";
-import { pendenciaDoIndice } from "./settings/indice";
+import { pendenciaDoIndice } from "./settings/searchIndex";
 import {
   EffortLevelModal,
   nivelEditado,
   resumoDoNivel,
 } from "./settings/effortEditor";
 import { EFFORT_ICONS, type EffortLevel } from "../core/effort";
-import { localeDaInterface, marca, tr } from "../i18n/tr";
+import { uiLocale, mark, tr } from "../i18n/tr";
 
-/** Favoritos aparecem na tela inicial; mais que isso vira lista, não atalho. */
 export const FAVORITE_LIMIT = 5;
 
-/** O que a bolinha do trilho quer dizer (vai no tooltip do item). Marcado
- *  aqui, traduzido no syncReady. */
 const HEALTH_TEXT: Record<ProviderHealth, string> = {
-  off: marca("no credential"),
-  unknown: marca("not tested"),
-  ok: marca("connected"),
-  fail: marca("last test failed"),
+  off: mark("no credential"),
+  unknown: mark("not tested"),
+  ok: mark("connected"),
+  fail: mark("last test failed"),
 };
 
-/** O que a linha de conexão diz em cada estado (o tr() roda ao pintar). */
 const CONN_TEXT: Record<string, (detail?: string) => string> = {
   unknown: () => tr("Not tested yet — hit Test to check the credential."),
   testing: () => tr("Talking to the provider…"),
@@ -110,66 +76,54 @@ const CONN_TEXT: Record<string, (detail?: string) => string> = {
   fail: (d) => tr("Failed. {detail}", { detail: d ?? "" }).trim(),
 };
 
-/** Estado do teste de conexão. "unknown" = ainda não testou nesta sessão. */
 interface ConnState {
   state: "unknown" | "testing" | "ok" | "fail";
-  /** Quantos modelos o provider respondeu (ok) ou o erro (fail). */
+
   detail?: string;
 }
 
-/** Uma linha VIVA: guarda o próprio Setting e sabe se redesenhar no lugar. */
 interface Slot {
   row: Setting;
   paint: (row: Setting) => void;
-  /** A aba onde mora — trocar pra ela redesenha as linhas dela. */
+
   tab: TabId;
 }
 
-/** O método interno do 1.13 que acha a linha de um resultado da busca. */
 interface DefinitionLookup {
   getElementForDefinition?: (def: unknown) => HTMLElement | null | undefined;
 }
 
 export class CorvusSettingsTab extends PluginSettingTab {
-  /** Sobrevivem ao redesenho: reabrir as settings volta pra mesma aba. */
+
   private tab: TabId = "providers";
   private provider = "openai";
-  /** Catálogo buscado no provider (não persiste — é sempre "o que há hoje"). */
+
   private catalog: Record<string, string[]> = {};
-  /** Papel selecionado no filtro da lista de modelos ("all" = sem filtro). */
+
   private kind = "all";
-  /** A ÚNICA seção de família aberta (`provider:papel:família`). Nascem todas
-   *  fechadas: com sete classes abertas a lista volta a ser a rolagem sem fim
-   *  que o agrupamento veio resolver. */
+
   private openFam: string | null = null;
-  /** O fabricante aberto na lista (OpenRouter, NIM) — um por vez. */
+
   private openVendor: string | null = null;
-  /** Resultado do último teste de conexão de cada provider (só na sessão). */
+
   private conn: Record<string, ConnState> = {};
-  /** Provider cujo catálogo está sendo buscado agora (um de cada vez). */
+
   private fetchingFor: string | null = null;
   private fetchingVoices = false;
-  /** O ▶ da voz que está tocando a amostra agora (ver tocarAmostra). */
+
   private amostra: HTMLButtonElement | null = null;
-  /** O recarregamento do índice espera a digitação da pasta parar. */
+
   private timerDoIndice = 0;
-  /** A busca do Ollama espera a digitação do endereço parar. */
+
   private timerDoOllama: number | null = null;
   private hapticsOff: (() => void) | null = null;
 
-  /** As linhas vivas, por nome (ver `slot`). */
   private slots = new Map<string, Slot>();
-  /** Linha/grupo da árvore → aba e provider: o pouso da busca. */
+
   private places = new WeakMap<object, Place>();
-  /** O desenho do caminho antigo, quando é ele que está na tela. */
+
   private legacy: LegacyTree | null = null;
 
-  // NÃO chamar de `navEl`: esse nome é do Obsidian — é o item da barra lateral
-  // das settings que ele guarda em cada aba (openTab faz navEl.addClass
-  // ("is-active"), e a lista lateral é remontada com os navEl). Até a 0.9.13
-  // este campo se chamava assim e sobrescrevia o dele; no 1.13, zerado na
-  // limpeza, reabrir as settings quebrava. tests/settingsTabFields.test.ts
-  // impede a volta.
   private tabBarEl: HTMLElement | null = null;
   private blurbEl: HTMLElement | null = null;
   private railEl: HTMLElement | null = null;
@@ -179,34 +133,25 @@ export class CorvusSettingsTab extends PluginSettingTab {
     private readonly plugin: CorvusPlugin
   ) {
     super(app, plugin);
-    // Aparece nos resultados da busca das settings, ao lado de cada linha.
+
     this.icon = "bot";
     this.prepareRoot();
   }
 
-  // ── os dois caminhos ──────────────────────────────────────────────────────
-
-  /** 1.13+: a árvore, pro Obsidian desenhar e indexar. Lida uma vez, no
-   *  `addSettingTab`; quem muda depois são as linhas vivas, não a árvore. */
   getSettingDefinitions(): SettingDefinitionItem[] {
     try {
       return this.buildTree();
     } catch (err) {
-      // Sem try/catch, um erro aqui derrubaria o `onload` do plugin inteiro
-      // (o addSettingTab chama isto). Com a lista vazia, o 1.13 volta a
-      // chamar o `display()`.
-      console.error("[corvus] settings: a árvore falhou — a aba cai no display()", err);
+
+      console.error("[corvus] settings: tree failed — falling back to display()", err);
       return [];
     }
   }
 
-  /** 1.11.4–1.12.x (e o 1.13, se a árvore falhar): a MESMA árvore, por nós. */
   display(): void {
     this.desenharLegado();
   }
 
-  /** O desenho do `display()`, chamável de dentro (a troca de idioma) sem
-   *  passar pelo método que o 1.13 marca como obsoleto. */
   private desenharLegado(): void {
     this.legacy?.dispose();
     this.slots.clear();
@@ -218,36 +163,19 @@ export class CorvusSettingsTab extends PluginSettingTab {
     });
   }
 
-  /** A aba saiu da tela (fechou as settings, trocou de página, o "voltar" do
-   *  Android): a amostra de uma voz para junto — o balão do ▶ some com o
-   *  modal sem passar pelo `fechar` dele. */
   hide(): void {
     this.pararAmostra();
     super.hide();
   }
 
-  /** O Obsidian lê um `control` por aqui. */
   getControlValue(key: string): unknown {
     return this.readValue(key);
   }
 
-  /**
-   * O Obsidian grava um `control` por aqui. O padrão dele grava com
-   * `saveData(settings)` e mandaria as chaves de API em texto puro pro
-   * data.json — ver ui/settings/values.ts.
-   */
   async setControlValue(key: string, value: unknown): Promise<void> {
     await this.writeValue(key, value);
   }
 
-  /**
-   * O POUSO DA BUSCA (1.13). Clicar num resultado abre a aba e chama este
-   * método — interno, não está nas tipagens — pra achar a linha e rolar até
-   * ela. A linha pode estar numa aba ou num provider escondidos por CSS, então
-   * primeiro mostramos a aba dela e depois devolvemos o que o Obsidian
-   * devolveria. Se um dia o método mudar de nome, a busca continua achando e
-   * abrindo a aba; só o pouso numa aba escondida deixa de acontecer.
-   */
   getElementForDefinition(def: unknown): HTMLElement | null | undefined {
     const place = def && typeof def === "object" ? this.places.get(def) : undefined;
     if (place) {
@@ -256,9 +184,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
     const base = (PluginSettingTab.prototype as unknown as DefinitionLookup)
       .getElementForDefinition;
-    // Sem asserção: o `.call` tem tipo porque o tsconfig liga o
-    // `strictBindCallApply` — como a revisão do Obsidian, que acusou a
-    // asserção da 0.9.14 como desnecessária.
+
     return base?.call(this, def);
   }
 
@@ -273,8 +199,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   private async writeValue(key: string, value: unknown): Promise<void> {
-    // O tato espelha a setting ANTES de gravar: o pulso de confirmação abaixo
-    // já sai (ou não) conforme o que acabou de ser escolhido.
+
     if (key === "hapticsEnabled") setHapticsEnabled(value === true);
     if (!(await writeControl(this.plugin, key, value))) return;
     switch (key) {
@@ -285,7 +210,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         await this.plugin.reloadSkills();
         break;
       case "hapticsEnabled":
-        // Sente na hora o que acabou de ligar.
+
         if (value === true) tap();
         break;
       case "language":
@@ -293,18 +218,17 @@ export class CorvusSettingsTab extends PluginSettingTab {
         break;
       case "openaiDataSharing":
       case "openaiTier":
-        // Os dois mudam a etiqueta de cota de cada modelo da OpenAI.
+
         this.repaint("catalog:openai");
         this.repaint("freeOffer");
         break;
       case "ragQuantProfile":
       case "ragStreamShards":
-        // A linha do índice avisa que falta atualizar pra valer.
+
         this.repaint("index");
         break;
       case "ragIndexPath":
-        // O campo grava a cada tecla, e carregar um índice é ler megabytes:
-        // o índice da pasta nova só é lido quando a digitação para.
+
         this.repaint("index");
         window.clearTimeout(this.timerDoIndice);
         this.timerDoIndice = window.setTimeout(() => {
@@ -314,25 +238,16 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  /**
-   * O idioma mudou: a árvore é montada de novo, com os textos no idioma novo.
-   * No 1.13 o Obsidian só lê a árvore no `addSettingTab` (o `update()` relê e
-   * redesenha a aba aberta); antes do 1.13 é o desenho do `display()`. É o
-   * único redesenho inteiro da aba: a escolha do idioma é um menu, então não
-   * há campo com foco pra perder.
-   */
   private retraduzir(): void {
     if (requireApiVersion("1.13.0")) this.update();
     else this.desenharLegado();
   }
 
-  /** Reavalia os `visible` da árvore depois de uma mudança feita à mão. */
   private refreshVisibility(): void {
     this.legacy?.refresh();
     if (requireApiVersion("1.13.0")) this.refreshDomState();
   }
 
-  /** O que a árvore pede: estado e os desenhos de cada linha. */
   private ui(): SettingsUi {
     return {
       isMobile: Platform.isMobile,
@@ -345,8 +260,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         this.slot(`cred:${id}`, "providers", (row) => this.paintCredential(row, id)),
       connection: (id) =>
         this.slot(`conn:${id}`, "providers", (row) => this.paintConnection(row, id)),
-      // Um slot, pra redesenhar quando a busca do Ollama troca o modelo que
-      // não está mais instalado.
+
       newChatModel: (id) =>
         this.slot(`model:${id}`, "providers", (row) => this.paintNewChatModel(row, id)),
       fetchModels: (id) =>
@@ -378,11 +292,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     };
   }
 
-  /**
-   * Uma linha VIVA. O render guarda o Setting que recebeu; `repaint(id)` o
-   * limpa e pinta de novo, no lugar. A limpeza devolvida roda quando o
-   * Obsidian desmonta a linha (sair da aba, fechar as settings).
-   */
   private slot(id: string, tab: TabId, paint: (row: Setting) => void): RowRender {
     return (row) => {
       const entry: Slot = { row, paint, tab };
@@ -401,9 +310,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     entry.paint(entry.row);
   }
 
-  // ── a casca: container, barra de abas, trilho ─────────────────────────────
-
-  /** A classe e os atributos de que o CSS das abas depende. */
   private prepareRoot(): void {
     const el = this.containerEl;
     el.addClass("corvus-settings-root");
@@ -419,11 +325,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
     return blurb ? tr(blurb) : "";
   }
 
-  /** Segmented control, igual ao da tela inicial: trilho + thumb que desliza
-   *  até o item ativo. Colunas do tamanho do conteúdo, nada de quebrar linha. */
   private renderNav(row: Setting): () => void {
     this.prepareRoot();
-    // Tato em tudo que se toca aqui dentro, sem precisar lembrar botão a botão.
+
     this.hapticsOff?.();
     const off = hapticsOn(this.containerEl);
     this.hapticsOff = off;
@@ -457,7 +361,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     };
   }
 
-  /** Troca de aba mexendo SÓ no atributo do container e na barra. */
   private setTab(id: TabId): void {
     if (!tabsFor(Platform.isMobile).some((t) => t.id === id)) return;
     const changed = id !== this.tab;
@@ -474,35 +377,23 @@ export class CorvusSettingsTab extends PluginSettingTab {
       this.placeThumb(this.tabBarEl);
     }
     this.blurbEl?.setText(this.blurbOf(id));
-    // Escondido, o trilho mede zero: o thumb só acha o lugar quando aparece.
+
     if (id === "providers" && this.railEl) this.placeThumb(this.railEl);
     if (!changed) return;
-    // O que uma aba mostra pode ter mudado em outra (uma chave digitada em
-    // Providers muda o "Who reads"). Antes o corpo inteiro era redesenhado a
-    // cada troca; agora só as linhas vivas da aba que entrou.
+
     for (const [slotId, slot] of this.slots) {
       if (slot.tab === id) this.repaint(slotId);
     }
     this.refreshVisibility();
   }
 
-  /**
-   * Posiciona o thumb do segmented sobre o item ativo. As colunas são do
-   * tamanho do CONTEÚDO (colunas iguais cortavam "OpenRouter" e "Anthropic"
-   * num painel de 375px), então o thumb não dá pra calcular só em CSS. Quando
-   * ele desliza e quando aparece direto: ver settings/thumb.ts.
-   */
   private placeThumb(row: HTMLElement): void {
     const put = () => putThumb(row);
     put();
-    // De novo no frame seguinte: na primeira passada a linha pode nem estar
-    // no documento ainda, ou as fontes não assentaram. A janela é a da linha —
-    // no 1.13 as settings do desktop abrem em janela própria.
+
     row.win.requestAnimationFrame(put);
   }
 
-  /** O trilho de providers: quem já tem credencial aparece aceso, quem não
-   *  tem fica apagado — dá pra ver o estado dos seis sem abrir um por um. */
   private renderRail(row: Setting): () => void {
     const el = row.settingEl;
     el.empty();
@@ -512,9 +403,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
       const active = p.id === this.provider;
       const btn = sub.createEl("button", {
         cls: "corvus-seg-item" + (active ? " is-active" : ""),
-        // O LOGO no lugar do nome: com seis providers, nome + logo não cabem
-        // em uma linha, e o logo identifica mais rápido. O nome fica no
-        // aria-label, no tooltip e no título do cartão logo abaixo.
+
         attr: {
           type: "button",
           "aria-pressed": String(active),
@@ -525,8 +414,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
       });
       const mark = btn.createSpan({ cls: "corvus-seg-logo" });
       setIcon(mark, p.icon);
-      // Bolinha de conexão: vazada = sem credencial, cinza cheio = tem mas
-      // nunca testou, verde = testou e respondeu, vermelho = recusou.
+
       mark.createSpan({ cls: "corvus-seg-dot" });
       btn.onclick = () => this.setProvider(p.id);
     }
@@ -538,7 +426,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     };
   }
 
-  /** Troca de provider mexendo só no atributo, no trilho e no catálogo. */
   private setProvider(id: string): void {
     if (!PROVIDER_FIELDS[id]) return;
     const old = this.provider;
@@ -555,16 +442,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
       this.placeThumb(this.railEl);
     }
     if (old === id) return;
-    // Outro provider, outros papéis: um filtro herdado mostraria uma lista
-    // vazia sem explicar por quê.
+
     this.kind = "all";
-    // Só o catálogo do provider à vista existe desenhado: seis catálogos de
-    // dezenas de linhas, escondidos, seriam DOM à toa.
+
     this.repaint(`catalog:${old}`);
     this.repaint(`catalog:${id}`);
   }
 
-  /** Estado da conexão: o desta sessão, senão o último teste gravado. */
   private connOf(id: string): ConnState {
     const live = this.conn[id];
     if (live) return live;
@@ -573,8 +457,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     return { state: saved.ok ? "ok" : "fail", detail: saved.detail };
   }
 
-  /** Saúde mostrada na bolinha — o teste desta sessão manda na frente do
-   *  gravado (acabou de testar e ainda não fechou as settings). */
   private healthOf(id: string): ProviderHealth {
     if (!providerConfigured(this.plugin, id)) return "off";
     const live = this.conn[id];
@@ -583,7 +465,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     return providerHealth(this.plugin, id);
   }
 
-  /** Reacende os logos do trilho conforme quem tem credencial. */
   private syncReady(): void {
     if (!this.railEl) return;
     for (const btn of Array.from(
@@ -610,14 +491,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
   private save = () => this.plugin.saveSettings();
 
-  // ── Providers ─────────────────────────────────────────────────────────────
-
   private paintCredential(row: Setting, providerId: string): void {
     const f = PROVIDER_FIELDS[providerId];
     if (!f) return;
     const s = this.s;
-    // Depois de cada tecla: o trilho acende, o botão Test destrava e os
-    // recados que dependem da chave (o ditado, a leitura) se reavaliam.
+
     const changed = () => {
       this.syncReady();
       this.repaint(`conn:${providerId}`);
@@ -650,15 +528,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  /**
-   * Um endereço novo do Ollama já traz a lista do que ele tem instalado — sem
-   * isto, quem acabou de configurar ficava sem modelo nenhum até apertar Test
-   * (a fábrica do Ollama é vazia). Espera a digitação parar; um endereço pela
-   * metade só não responde, e a lista fica como estava.
-   */
   private conferirOllamaDepois(): void {
-    // O catálogo buscado era de OUTRO endereço: sai na hora, senão os modelos
-    // do servidor antigo seguiam na lista como se este os tivesse.
+
     if (this.catalog.ollama) {
       delete this.catalog.ollama;
       this.repaint("catalog:ollama");
@@ -672,16 +543,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
         this.catalog.ollama = instalados;
         this.repaint("catalog:ollama");
         this.repaint("model:ollama");
-        // E a lista de embeddings do Q&A, que também é deste servidor.
+
         await this.plugin.scanEmbeddings("ollama");
         this.repaint("embedding");
       })();
     }, 900);
   }
 
-  // "Tem chave" e "a chave funciona" são coisas diferentes; o trilho mostra a
-  // primeira, esta linha mostra a segunda. O teste é o listModels do próprio
-  // provider (o motor já tem) — se ele responde, a credencial vale.
   private paintConnection(row: Setting, providerId: string): void {
     const st = this.connOf(providerId);
     row.setDesc(CONN_TEXT[st.state](st.detail));
@@ -699,11 +567,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     row.descEl.addClass("corvus-conn-desc", `is-${st.state}`);
   }
 
-  /**
-   * Testa a credencial pedindo a lista de modelos ao provider. É o mesmo
-   * caminho do "Fetch models" — e como a resposta JÁ é o catálogo, guardar ele
-   * aqui evita uma segunda ida à rede pra pedir o que acabou de chegar.
-   */
   private async testConnection(providerId: string): Promise<void> {
     if (this.conn[providerId]?.state === "testing") return;
     this.conn[providerId] = { state: "testing" };
@@ -711,8 +574,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     try {
       const desde = this.s.ollamaEndpoint;
       const models = await this.plugin.scanModels(providerId);
-      // No Ollama, zero modelos é resposta (nada instalado), não falta dela —
-      // desde que seja do endereço de agora.
+
       const doEnderecoAtual = providerId !== "ollama" || this.s.ollamaEndpoint === desde;
       if (doEnderecoAtual && (models.length > 0 || providerId === "ollama")) {
         this.catalog[providerId] = models;
@@ -732,8 +594,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         detail: err instanceof Error ? err.message : String(err),
       };
     }
-    // Grava: quem mais precisa do resultado é o CHAT, que não vai testar
-    // sozinho na hora de abrir a folha de modelos.
+
     const now = this.conn[providerId];
     (this.s.providerStatus ??= {})[providerId] = {
       ok: now.state === "ok",
@@ -774,28 +635,24 @@ export class CorvusSettingsTab extends PluginSettingTab {
     );
   }
 
-  /** Busca o catálogo do provider (o motor já tem: plugin.scanModels). */
   private async fetchModels(providerId: string): Promise<void> {
     if (this.fetchingFor) return;
     this.fetchingFor = providerId;
     this.repaint(`fetch:${providerId}`);
     this.repaint(`catalog:${providerId}`);
     try {
-      // Os de EMBEDDING vêm na mesma ida (ver plugin.scanEmbeddings): eles
-      // alimentam a lista de modelos do Q&A. Nunca lançam.
+
       const desde = this.s.ollamaEndpoint;
       const [models, embeds] = await Promise.all([
         this.plugin.scanModels(providerId),
         this.plugin.scanEmbeddings(providerId),
       ]);
-      // Ollama: o endereço mudou no meio da busca — a resposta é do servidor
-      // de antes, e a conferência do endereço novo já cuida da lista.
+
       if (providerId === "ollama" && this.s.ollamaEndpoint !== desde) return;
       this.catalog[providerId] = models;
-      // No Ollama a lista do Q&A também ENCOLHE (o que saiu com `ollama rm`).
+
       if (embeds.length > 0 || providerId === "ollama") this.repaint("embedding");
-      // Os grátis contados pela regra de verdade (preço no OpenRouter, marca
-      // "Free Endpoint" no NIM) — o número que a lista vai mostrar.
+
       const gratis = models.filter((m) => this.tagGratis(providerId, m) !== null).length;
       const partes = [
         models.length === 1
@@ -812,7 +669,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
           : tr("No models returned — check the key or the endpoint.")
       );
     } catch (err) {
-      console.error("[corvus] scanModels falhou:", err);
+      console.error("[corvus] scanModels failed:", err);
       new Notice(
         tr("Fetch failed: {error}", {
           error: err instanceof Error ? err.message : String(err),
@@ -827,16 +684,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  // ── a cota diária da OpenAI ───────────────────────────────────────────────
-  // Isto não LIGA nada: o interruptor é da OpenAI, e mora na conta. O que a
-  // gente guarda é se ele está ligado e em que tier a conta está — as duas
-  // coisas que decidem o NÚMERO. Sem elas, a lista de modelos teria que
-  // escolher entre mostrar uma cota que talvez não exista ou não mostrar
-  // nenhuma; as duas mentem pra metade das contas.
-
-  /** Com o programa desligado, a lista marca com "+" o que ele DARIA. A conta
-   *  diz de quantos modelos se está falando — sem ela, o "+" seria um sinal
-   *  sem tamanho. */
   private freeOfferCount(): number {
     return (this.catalog.openai ?? this.s.activeModels.openai ?? []).filter(
       (m) => openaiFreeTierForModel(m) !== null
@@ -858,7 +705,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.refreshVisibility();
   }
 
-  /** Recado curto entre linhas: o que falta pra linha de cima funcionar. */
   private paintHint(row: Setting, text: string): void {
     const el = row.settingEl;
     el.empty();
@@ -866,13 +712,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
     el.createEl("p", { cls: "corvus-settings-hint", text });
   }
 
-  // ── o catálogo ────────────────────────────────────────────────────────────
-
   private paintCatalog(row: Setting, providerId: string): void {
     const el = row.settingEl;
-    // O filtro é remontado junto com a lista (a cada toque nele e a cada
-    // modelo marcado). O novo nasce onde o thumb do velho estava, e desliza
-    // de lá — não do primeiro item.
+
     const velho = el.querySelector<HTMLElement>(".corvus-models-filter");
     const thumb = velho ? thumbOf(velho) : null;
     el.empty();
@@ -881,7 +723,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.drawModels(el.createDiv({ cls: "corvus-models" }), providerId, thumb);
   }
 
-  /** A lista de modelos — o único pedaço que os toggles e o filtro remontam. */
   private drawModels(
     list: HTMLElement,
     providerId: string,
@@ -889,8 +730,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
   ): void {
     const redraw = () => this.repaint(`catalog:${providerId}`);
 
-    // A lista é o catálogo buscado UNIDO ao que já está marcado — sem fetch,
-    // o usuário ainda vê e desmarca o que configurou antes.
     const shown = this.s.activeModels[providerId] ?? [];
     const favs = this.s.favoriteModels?.[providerId] ?? [];
     const models = Array.from(
@@ -917,9 +756,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       text: tr("Show · Favorite ({n}/{max})", { n: favs.length, max: FAVORITE_LIMIT }),
     });
 
-    // PAPEL no filtro, FAMÍLIA nas seções — as duas coisas o motor já sabe
-    // (ver src/ui/modelCatalog.ts). Um catálogo de provider vem com dezenas de
-    // ids embaralhados; sem isso a lista é indigerível.
     const groups = buildModelCatalog(providerId, models);
     if (
       this.kind !== "all" &&
@@ -929,9 +765,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       this.kind = "all";
     }
 
-    // FAVORITOS em cima, sempre abertos. É o mesmo arranjo da folha de
-    // modelos do chat — e a razão é a mesma: quem já escolheu os seus cinco
-    // não devia caçá-los dentro de um catálogo de oitenta a cada visita.
     if (favs.length > 0) {
       const sec = list.createDiv({ cls: "corvus-models-fav" });
       const cab = sec.createDiv({ cls: "corvus-models-fav-head" });
@@ -945,9 +778,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       for (const m of [...favs].sort()) this.modelRow(sec, providerId, m, redraw);
     }
 
-    // Quantos modelos são de graça DE VERDADE (ver usage/freeTag.ts) — o
-    // número decide se o filtro "Free" aparece. Filtro que leva a uma lista
-    // vazia é um toque perdido.
     const gratis = models.filter((m) => this.tagGratis(providerId, m) !== null);
     if (gratis.length > 0) {
       head.firstElementChild?.setText(
@@ -980,8 +810,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         });
         const mark = btn.createSpan({ cls: "corvus-seg-ico" });
         setIcon(mark, it.icon);
-        // Só o ATIVO mostra o rótulo: sete papéis com nome não cabem numa
-        // linha, e a regra do segmented aqui é nunca quebrar em duas.
+
         if (active) btn.createSpan({ cls: "corvus-seg-label", text: it.label });
         btn.onclick = () => {
           this.kind = it.id;
@@ -992,9 +821,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
 
     const multi = PROVIDERS_MULTI_FABRICANTE.has(providerId);
-    // Acordeões: um fabricante aberto por vez e, dentro dele, uma classe.
-    // Guardo os pares pra abrir/fechar só trocando classe — remontar a lista
-    // seria o piscar que já tiramos daqui.
+
     const panes: { key: string; sec: HTMLElement; wrap: HTMLElement }[] = [];
     const vendors: { key: string; sec: HTMLElement; body: HTMLElement }[] = [];
     const applyOpen = () => {
@@ -1012,7 +839,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       }
     };
 
-    /** O cabeçalho de um fabricante (OpenRouter, NIM): logo, nome, quantos. */
     const fabricanteSec = (chave: string, nome: string, total: number, exemplo: string) => {
       const key = `${providerId}:v:${chave}`;
       const closed = key !== this.openVendor;
@@ -1035,15 +861,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
       return body;
     };
 
-    /** Uma seção de classe (família) com as linhas dela. */
     const classeSec = (
       host: HTMLElement,
       key: string,
       g: { id: string; label: string; icon: string },
       fam: { id: string; label: string; icon: string; models: string[] }
     ) => {
-      // Família sem linhagem conhecida ("Other") vira o próprio papel: uma
-      // seção "OTHER · Text embedding" não informa nada.
+
       const orfa = fam.id === "other";
       const closed = key !== this.openFam;
       const sec = host.createEl("button", {
@@ -1056,8 +880,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         cls: "corvus-model-section-name",
         text: orfa ? g.label : fam.label,
       });
-      // Em "All" a família sozinha é ambígua (GPT-5 em chat e em reasoning),
-      // então o papel vem junto.
+
       if (this.kind === "all" && !orfa) {
         sec.createSpan({ cls: "corvus-model-section-role", text: g.label });
       }
@@ -1080,9 +903,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       };
     };
 
-    // "Free" é um recorte que atravessa os papéis (tem chat, tem reasoning,
-    // tem mini), então ele não é um grupo do catálogo: é uma lista chapada —
-    // por fabricante, nos providers de muitos.
     if (this.kind === "free") {
       const nota = this.notaGratis(providerId);
       if (nota) list.createEl("p", { cls: "corvus-models-free-note", text: nota });
@@ -1109,7 +929,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     const visible =
       this.kind === "all" ? groups : groups.filter((g) => g.id === this.kind);
 
-    // Uma casa só (OpenAI, Anthropic, Gemini…): as classes direto.
     if (!multi) {
       for (const g of visible) {
         for (const fam of g.families) {
@@ -1119,9 +938,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       return;
     }
 
-    // Muitas casas (OpenRouter, NIM): um nível a mais — o fabricante, e as
-    // classes dele dentro. Com uma classe só, os modelos vêm direto: abrir o
-    // fabricante pra depois abrir a única classe dele seria um toque à toa.
     for (const v of porFabricante(visible)) {
       const body = fabricanteSec(
         v.fabricante.chave,
@@ -1145,8 +961,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  /** A etiqueta de grátis de um modelo — de verdade (a lista do fetch vale
-   *  sobre o palpite pelo nome; ver usage/freeTag.ts) e com a regra da casa. */
   private tagGratis(providerId: string, m: string): FreeTag | null {
     return freeTag(providerId, m, {
       free: gratisDeVerdade(
@@ -1160,19 +974,16 @@ export class CorvusSettingsTab extends PluginSettingTab {
     });
   }
 
-  /** O que "free" quer dizer neste provider — em cima da lista do filtro
-   *  Free, porque o detalhe da etiqueta (o `title`) não aparece no toque. */
   private notaGratis(providerId: string): string | null {
     if (providerId === "openrouter") {
-      // Três frases inteiras (a cota da chave conhecida ou não, e se já passou
-      // dos US$ 10) em vez de pedaços colados: cada uma se traduz sozinha.
+
       const c = this.s.freeQuota?.[providerId];
       if (!c) {
         return tr(
           "No cost, checked by price, not by the \":free\" in the name. They share 20 requests a minute and 50 a day (1,000 once you've bought $10 in credits)."
         );
       }
-      const n = c.limit.toLocaleString(localeDaInterface());
+      const n = c.limit.toLocaleString(uiLocale());
       return c.limit >= 1000
         ? tr(
             "No cost, checked by price, not by the \":free\" in the name. They share 20 requests a minute and {n} a day on this key.",
@@ -1191,7 +1002,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     return null;
   }
 
-  /** Uma linha da lista de modelos: nome, tag free, id e os dois toggles. */
   private modelRow(
     host: HTMLElement,
     providerId: string,
@@ -1205,9 +1015,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     const info = row.createDiv({ cls: "corvus-model-info" });
     const title = info.createDiv({ cls: "corvus-model-name" });
     title.createSpan({ text: prettyModelName(m) });
-    // A etiqueta separa DE GRAÇA SEMPRE de DE GRAÇA ATÉ UM LIMITE (ver
-    // usage/freeTag.ts). Chamar as duas de "free" faz a segunda parecer a
-    // primeira — e a conta chega.
+
     const tag = this.tagGratis(providerId, m);
     if (tag) {
       title.createSpan({
@@ -1257,8 +1065,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         return;
       }
       this.toggleInList("favoriteModels", providerId, m);
-      // Favoritar implica aparecer na lista: senão o atalho existiria sem o
-      // modelo estar disponível pra escolher.
+
       if (this.s.favoriteModels[providerId]?.includes(m)) {
         this.addToList("activeModels", providerId, m);
       }
@@ -1289,22 +1096,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
       : [model, ...list];
   }
 
-  // ── Menus de ESCOLHA ──────────────────────────────────────────────────────
-  // No lugar do <select>. No Android ele abre a caixa do sistema — rádio,
-  // letra enorme, nenhum ícone, no meio da tela, longe do que foi tocado. Aqui
-  // é um botão com a cara do select do Obsidian e o ícone da opção, que abre
-  // o MESMO balão do ⋯ das conversas, ancorado nele e com a opção de agora
-  // marcada.
-
-  /** O botão e o balão. Quem grava é `onPick`; o botão não guarda estado. */
   private pickButton(
     row: Setting,
     opts: {
       items: PickItem[];
       value: string;
       onPick: (value: string) => void | Promise<void>;
-      /** Com isto, cada opção ganha um ▶ que toca a amostra dela (as vozes).
-       *  Recebe o valor e devolve o nome que a voz fala. */
+
       ouvir?: (value: string) => string;
     }
   ): void {
@@ -1325,8 +1123,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     } else if (atual?.icon) {
       setIcon(ico, atual.icon);
     }
-    // Um valor que a lista não conhece (gravado por uma versão antiga, ou um
-    // modelo que saiu do catálogo) aparece cru em vez de sumir.
+
     btn.createSpan({ cls: "corvus-pick-label", text: atual?.label ?? value });
     setIcon(btn.createSpan({ cls: "corvus-pick-chev" }), "chevrons-up-down");
     btn.onclick = (ev) =>
@@ -1350,35 +1147,26 @@ export class CorvusSettingsTab extends PluginSettingTab {
       );
   }
 
-  /** Um `control` de texto desenhado como menu de escolha. Grava pelo MESMO
-   *  caminho dos controles do Obsidian (writeValue), com os mesmos efeitos. */
   private paintPick(row: Setting, key: TextKey, items: () => PickItem[]): void {
     const atual = this.readValue(key);
     this.pickButton(row, {
       items: items(),
-      // Controle de texto lê string; qualquer outra coisa é "nada escolhido".
+
       value: typeof atual === "string" ? atual : "",
       onPick: async (v) => {
         await this.writeValue(key, v);
         this.repaint(`pick:${key}`);
-        // Escolher pode mostrar ou esconder linhas (quem lê decide as vozes).
+
         this.refreshVisibility();
       },
-      // As vozes da OpenAI: o valor é o nome ("coral" → "Coral").
+
       ouvir: key === "ttsVoice" ? nomeProprio : undefined,
     });
   }
 
-  // ── Os níveis de esforço ──────────────────────────────────────────────────
-
-  /** Uma linha por nível: o desenho dele, os números que valem agora e o
-   *  botão que abre o editor (settings/effortEditor.ts). */
   private paintEffortLevel(row: Setting, level: EffortLevel): void {
     const s = this.s;
-    // O repaint do slot só limpa os controles: sem tirar o ícone da vez
-    // anterior, cada edição somaria mais um na frente do nome. E o ícone nasce
-    // DENTRO do nome (createSpan do próprio elemento) — o global criaria no
-    // documento da janela principal, e no desktop as settings são outra janela.
+
     row.nameEl.querySelector(".corvus-effort-ico")?.remove();
     const ico = row.nameEl.createSpan({ cls: "corvus-effort-ico" });
     setIcon(ico, EFFORT_ICONS[level]);
@@ -1393,12 +1181,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       })
     );
   }
-
-  // ── A assistente de criação ───────────────────────────────────────────────
-  // Ela escreve skills e projetos por você. Mora no Chat, e não junto dos
-  // providers, porque não é sobre com quem você conversa — é sobre quem te
-  // ajuda a montar as coisas. E tem modelo PRÓPRIO de propósito: preencher um
-  // formulário não justifica o modelo caro da conversa.
 
   private paintAssistantModel(row: Setting): void {
     const s = this.s;
@@ -1420,20 +1202,16 @@ export class CorvusSettingsTab extends PluginSettingTab {
           })
         : tr("Nothing free found yet — run SCAN on OpenRouter, or pick a model here.")
     );
-    // O nome é o NOSSO (prettyModelName), como em toda parte do app — o id
-    // cru do catálogo só aparece onde ele É o dado (a chave, o debug).
+
     const todos = [
       ...new Set([...(s.activeModels?.openrouter ?? []), ...livres]),
     ].sort();
     this.pickButton(row, {
       items: [
-        // "Automático" primeiro, e é o padrão: id de modelo free muda de nome
-        // e some do catálogo, então deixar a gente procurar sozinha envelhece
-        // melhor que fixar um.
+
         {
           value: "",
-          // Curto pra caber na largura do botão: a lista embaixo dele é toda
-          // do OpenRouter, e a descrição da linha diz quando falta modelo.
+
           label: tr("Automatic — first free model"),
           icon: "wand-sparkles",
         },
@@ -1455,8 +1233,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
     });
   }
 
-  // ── Voz ───────────────────────────────────────────────────────────────────
-
   private paintTtsProvider(row: Setting): void {
     const s = this.s;
     this.pickButton(row, {
@@ -1465,7 +1241,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         label: ttsReady(this.plugin, p.id)
           ? p.label
           : tr("{provider} (needs {what})", { provider: p.label, what: tr(p.needs) }),
-        // A ElevenLabs não tem logo no nosso set; a onda diz "voz".
+
         icon: p.id === "openai" ? "logo-openai" : "audio-waveform",
       })),
       value: s.ttsProvider,
@@ -1487,8 +1263,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         .onChange(async (v) => {
           s.elevenApiKey = v.trim();
           await this.save();
-          // "Who reads" diz se falta a chave; "no voices yet" só aparece com
-          // chave. Os dois mudam com a digitação.
+
           this.repaint("ttsWho");
           this.refreshVisibility();
         });
@@ -1530,7 +1305,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
       b
         .setButtonText(this.fetchingVoices ? tr("Fetching…") : tr("Fetch voices"))
         .setCta()
-        // Sem trava por key vazia: sem key, a própria chamada avisa.
+
         .setDisabled(this.fetchingVoices)
         .onClick(() => void this.fetchVoices())
     );
@@ -1541,7 +1316,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     if (s.elevenVoices.length === 0) return;
     this.pickButton(row, {
       items: s.elevenVoices.map((v) => {
-        // A voz clonada é a que soa como você — ela ganha o desenho de pessoa.
+
         const own = v.category === "cloned" || v.category === "professional";
         return {
           value: v.id,
@@ -1559,13 +1334,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
     });
   }
 
-  /** O botão que prova que a voz escolhida funciona. */
   private paintTestVoice(row: Setting): void {
     row.addButton((b) =>
       b.setButtonText(tr("Play sample")).onClick(async () => {
         b.setButtonText(tr("Playing…")).setDisabled(true);
-        // `speak` precisa começar DENTRO do clique: é lá que ele destrava o
-        // áudio (o navegador recusa tocar fora do gesto).
+
         await speak(this.plugin, fraseDaAmostra(this.nomeDaVozAtual(), this.idiomaDaAmostra()), {
           guardar: true,
         });
@@ -1573,10 +1346,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
       })
     );
   }
-
-  // ── A amostra das vozes ───────────────────────────────────────────────────
-  // O ▶ de cada voz da lista toca a frase de amostra NELA, sem escolher. Uma
-  // por vez: tocar outra para a de antes, e tocar de novo a mesma para.
 
   private tocarAmostra(botao: HTMLButtonElement, voz: string, nome: string): void {
     if (this.amostra === botao) {
@@ -1592,8 +1361,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     };
     this.amostra = botao;
     desenhar("buscando");
-    // `speak` começa DENTRO do toque: é lá que ele destrava o áudio (fora do
-    // gesto, o navegador recusa tocar quando a rede responder).
+
     void speak(this.plugin, fraseDaAmostra(nome, this.idiomaDaAmostra()), {
       voice: voz,
       guardar: true,
@@ -1604,17 +1372,14 @@ export class CorvusSettingsTab extends PluginSettingTab {
     });
   }
 
-  /** Para a amostra que estiver tocando (e só ela — a leitura do chat não). */
   private pararAmostra(): void {
     if (this.amostra) stopSpeaking();
   }
 
-  /** O idioma em que as vozes se apresentam (ver settings/amostra.ts). */
   private idiomaDaAmostra(): string {
     return idiomaDaAmostra(this.s.voiceLanguage, getLanguage());
   }
 
-  /** O nome da voz que lê hoje — o do botão Test. */
   private nomeDaVozAtual(): string {
     const s = this.s;
     if (s.ttsProvider === "eleven") {
@@ -1660,22 +1425,12 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  // ── Vault Q&A ─────────────────────────────────────────────────────────────
-
-  /** Linha viva: a lista cresce com os modelos de embedding descobertos. */
-  /** O modelo de embedding do Q&A — o último menu nativo das settings, agora
-   *  de escolha: o logo do provider (é a chave dele que o modelo usa), o nome
-   *  do jeito do app, e os avisos que decidem a escolha (grátis, falta a
-   *  chave). Os descobertos pelo Fetch entram aqui (getAllEmbeddingModels). */
   private paintEmbeddingModel(row: Setting): void {
     const s = this.s;
     const specs = getAllEmbeddingModels();
     this.pickButton(row, {
       items: specs.map((spec) => {
-        // O mesmo "grátis de verdade" da lista de modelos: a lista do fetch
-        // (NIM, OpenRouter) e o tier da conta no Gemini.
-        // Local (Ollama) não é "grátis de um provider": é a máquina de quem
-        // usa, e a etiqueta diz isso — nada sai dela.
+
         const gratis = spec.local
           ? tr("local")
           : spec.provider === "gemini"
@@ -1707,7 +1462,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         if (spec) s.ragEmbeddingProvider = spec.provider;
         await this.save();
         this.repaint("embedding");
-        // Modelo novo = vetores de outro tamanho: a linha do índice avisa.
+
         this.repaint("index");
       },
     });
@@ -1716,8 +1471,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
   private paintIndex(row: Setting): void {
     const s = this.s;
     const size = this.plugin.vectorIndex?.size ?? 0;
-    // Precisão e pedaços só valem na próxima atualização: a linha diz quando
-    // o índice carregado ainda é o do jeito antigo.
+
     const pendente = pendenciaDoIndice(this.plugin.vectorIndex ?? null, s);
     const folder = s.ragIndexPath;
     row.setDesc(
@@ -1736,7 +1490,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
           .onClick(() => void this.runIndex())
       )
       .addButton((b) =>
-        // marcarPerigoso e não setWarning: ver a nota em ui/modals.ts.
+
         marcarPerigoso(b.setButtonText(tr("Delete index")))
           .setDisabled(size === 0 && !this.plugin.vectorIndex)
           .onClick(async () => {
@@ -1748,11 +1502,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
       );
   }
 
-  /** A indexação mora no plugin (dois chamadores: aqui e a linha da home). */
   private async runIndex(): Promise<void> {
     const run = this.plugin.runVaultIndex();
-    // O plugin marca `indexing` antes do primeiro await: o botão já vira
-    // "Cancel indexing" enquanto roda (e um toque nele cancela).
+
     this.repaint("index");
     await run;
     this.repaint("index");

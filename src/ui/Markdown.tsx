@@ -1,17 +1,3 @@
-// src/ui/Markdown.tsx
-// Renderiza markdown com o renderer NATIVO do Obsidian (wikilinks, callouts,
-// code, mermaid…) — INCLUSIVE enquanto a mensagem está chegando.
-//
-// Antes o streaming mostrava texto cru e só formatava no fim, pra fugir de dois
-// problemas reais: custo (re-parsear a cada token) e piscada (esvaziar o nó
-// antes de cada render). Os dois têm solução, e nenhuma delas é desistir da
-// formatação:
-//
-//   custo   → no máximo um render a cada THROTTLE_MS, com o texto mais novo
-//             no momento em que ele acontece (não uma fila deles).
-//   piscada → o markdown é montado num nó SOLTO e só então troca o conteúdo
-//             visível de uma vez. O usuário nunca vê o vazio do meio.
-
 import { useCallback, useEffect, useRef } from "react";
 import { App, Component, Keymap, MarkdownRenderer, Platform, type HoverParent } from "obsidian";
 import {
@@ -19,9 +5,8 @@ import {
   linkInterno,
   previaDoLink,
   textoDoLink,
-} from "./linksDaResposta";
+} from "./responseLinks";
 
-/** Teto de renders por segundo enquanto o texto chega. */
 const THROTTLE_MS = 140;
 
 export function Markdown({
@@ -36,12 +21,12 @@ export function Markdown({
   const ref = useRef<HTMLDivElement>(null);
   const compRef = useRef<Component | null>(null);
   const timerRef = useRef<number | null>(null);
-  /** Texto mais novo — o timer lê daqui, não do fecho em que foi criado. */
+
   const textRef = useRef(text);
   textRef.current = text;
-  /** O que já está na tela: evita re-render de texto que não mudou. */
+
   const shownRef = useRef<string | null>(null);
-  /** Dono da prévia de nota aberta pelo hover (o Obsidian guarda ela aqui). */
+
   const hoverRef = useRef<HoverParent>({ hoverPopover: null });
 
   const render = useCallback(
@@ -53,17 +38,7 @@ export function Markdown({
       const comp = new Component();
       comp.load();
       compRef.current = comp;
-      // Monta FORA da tela e troca pronto: sem o quadro vazio do meio.
-      // No documento do PRÓPRIO destino: numa janela destacada, um nó criado
-      // na janela principal entra como estrangeiro.
-      //
-      // `el.win.createDiv()`: o `win` do nó é a janela DELE, e o `createDiv`
-      // dessa janela cria um div SEM pai, no documento dela. Os helpers vêm do
-      // enhance.js do Obsidian, que define `window.createDiv` e é reavaliado
-      // DENTRO de cada janela nova (a de popout inclusive) — por isso a busca
-      // no app.js não os achava: moram noutro arquivo. (A 0.9.9 errou nisso.)
-      // O cast é porque a tipagem declara `createDiv` como função global, e
-      // `Window` não traz o membro; `typeof window` traz.
+
       const tmp = (el.win as typeof window).createDiv();
       await MarkdownRenderer.render(app, md, tmp, "", comp);
       if (ref.current !== el || shownRef.current !== md) return;
@@ -81,7 +56,7 @@ export function Markdown({
       if (shownRef.current !== text) void render(text);
       return;
     }
-    // Já tem um render agendado: ele vai pegar o texto mais novo sozinho.
+
     if (timerRef.current !== null) return;
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
@@ -97,15 +72,13 @@ export function Markdown({
     []
   );
 
-  // Os [[links]] da resposta abrem a nota (linksDaResposta.ts). Um ouvinte só,
-  // no contêiner: o conteúdo é trocado a cada render e o contêiner fica.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const abrir = (e: MouseEvent) => {
       const a = linkInterno(e.target, el);
       if (!a) return;
-      // O botão do meio chega no auxclick; o direito fica com o menu.
+
       if (e.type === "auxclick" && e.button !== 1) return;
       e.preventDefault();
       e.stopPropagation();
@@ -113,7 +86,7 @@ export function Markdown({
     };
     const previa = (e: MouseEvent) => {
       const a = linkInterno(e.target, el);
-      // Andar entre os filhos do mesmo link não é entrar nele de novo.
+
       if (!a || a.contains(e.relatedTarget as Node | null)) return;
       previaDoLink(app, e, a, hoverRef.current);
     };

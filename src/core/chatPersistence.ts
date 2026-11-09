@@ -1,32 +1,13 @@
-// src/components/_shared/chatPersistence.ts
-// Persistência de chats no Vault — Módulo 4.1+4.2
-//
-// Cada conversa vira um arquivo .md em `.corvus/chats/chat/[id].md` com:
-//   - Frontmatter YAML com metadata (id, title, date, provider, model, effort, tokens)
-//   - Body markdown legível: `## You` / `## Assistant` blocks
-//
-// Funções:
-//   saveChat()   — escreve/atualiza o arquivo do chat
-//   loadChat()   — lê + parsa um chat
-//   listChats()  — lista summary de todos os chats (frontmatter only)
-//   ensureFolder() — cria pasta recursiva
-
 import type { App, DataAdapter } from "obsidian";
 import type { AIToolStep } from "../agent/types";
 import type { MessageAttachment } from "../providers/base";
 import { previewFromMarkdown } from "./chatPreview";
-import { texto } from "./texto";
+import { texto } from "./text";
 import { tr } from "../i18n/tr";
 
-/**
- * Descritor MÍNIMO de um anexo no .md — nunca bytes. Imagem anexada vira um
- * arquivo no vault (path); aqui fica só tipo, path, nome e mime. O chat é
- * reescrito a cada mensagem, então embutir a imagem (data URL) o faria crescer
- * pra sempre.
- */
 export interface MessageAttachmentStored {
   type: "image" | "note" | "pdf" | "audio";
-  /** Path no vault (imagem local) OU a URL externa (imagem de http…). */
+
   path?: string;
   name?: string;
   mimeType?: string;
@@ -37,17 +18,15 @@ export interface ChatMessageStored {
   type: "user" | "ai-response";
   content: string;
   timestamp: number;
-  /** Reaction do user no ai-response (persiste like/dislike entre reloads). */
+
   reaction?: "like" | "dislike" | null;
-  /** Ações de tool do agent (Agent mode) — persistidas pra continuidade de
-   *  contexto ao reabrir o chat. v0.1.160 */
+
   agentSteps?: AIToolStep[];
-  /** Anexos da mensagem do user, como descritores pequenos (ver acima). */
+
   attachments?: MessageAttachmentStored[];
   isError?: boolean;
 }
 
-/** Argumento mais significativo de uma tool (path/from/query) pro resumo. */
 function stepLabel(step: AIToolStep): string {
   const a = step.arguments ?? {};
   const key = (a.path ?? a.from ?? a.folder ?? a.query) as string | undefined;
@@ -57,36 +36,28 @@ function stepLabel(step: AIToolStep): string {
 export interface ChatData {
   id: string;
   title: string;
-  date: string; // ISO 8601
+  date: string; 
   mode: string;
   provider: string;
   model: string;
   effort: string;
   tokensIn: number;
   tokensOut: number;
-  /** Persona / system prompt custom do chat ("" ou ausente = prompt padrão). */
+
   persona?: string;
-  /** Instruções do projeto onde a conversa nasceu. Ficam GRAVADAS na conversa,
-   *  e não são lidas do projeto na hora de responder: mudar as instruções do
-   *  projeto amanhã não pode reescrever o que já foi combinado ontem. */
+
   instructions?: string;
-  /** Favoritada (item "Star" do menu ⋮). Ausente = não favoritada. */
+
   starred?: boolean;
-  /** As notas entram como contexto nesta conversa? AUSENTE é diferente de
-   *  `false`: ausente significa "ninguém mexeu no interruptor", e aí vale o
-   *  padrão do modo (ver core/vaultContext.ts). */
+
   vault?: boolean;
   messages: ChatMessageStored[];
 }
 
-/** Lê um booleano do frontmatter tolerando as DUAS origens: o metadataCache do
- *  Obsidian entrega `true` (boolean), o nosso parseSimpleYaml entrega "true"
- *  (string). Qualquer outra coisa = false. */
 function yamlBool(v: unknown): boolean {
   return v === true || v === "true";
 }
 
-/** Anexos da memória → descritores pequenos pro .md (nunca os bytes da imagem). */
 export function toStoredAttachments(
   atts: MessageAttachment[]
 ): MessageAttachmentStored[] {
@@ -105,7 +76,6 @@ export function toStoredAttachments(
   });
 }
 
-/** Relê os bytes da imagem do vault e reconstroi a data URL de exibição. */
 function base64FromBytes(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let bin = "";
@@ -113,11 +83,6 @@ function base64FromBytes(buf: ArrayBuffer): string {
   return btoa(bin);
 }
 
-/**
- * Descritores do .md → anexos de novo, pra UI renderizar. Imagem local relê o
- * arquivo do vault (path → data URL); URL externa volta como está. Nota volta
- * sem `content` — o conteúdo só é lido no envio, não vem do disco.
- */
 export async function fromStoredAttachments(
   app: App,
   stored: MessageAttachmentStored[]
@@ -162,7 +127,7 @@ export interface ChatSummary {
   id: string;
   title: string;
   date: string;
-  /** Modo da conversa (chat / vault-qa / agent). Usado pra carregar do disco. */
+
   mode: string;
   provider: string;
   model: string;
@@ -170,26 +135,17 @@ export interface ChatSummary {
   tokensIn: number;
   tokensOut: number;
   messageCount: number;
-  /** Quantas ações de tool a conversa rodou (o `tools_used` do frontmatter).
-   *  É o que a home do Agent mostra em cada cartão — sem isto a lista de lá
-   *  não teria como dizer o que cada sessão FEZ. */
+
   toolCount: number;
   filePath: string;
-  /** Favoritada — sobe pro topo dos recentes e ganha estrela na lista. */
+
   starred: boolean;
-  /** A última fala, em uma linha — é o que o cartão de sessão do Agent mostra
-   *  embaixo do título (ver core/chatPreview.ts).
-   *
-   *  Vem vazia quando o frontmatter veio do metadataCache do Obsidian, que
-   *  não guarda corpo. Na prática ela quase sempre existe: as conversas moram
-   *  numa pasta oculta, que o Obsidian não indexa, então a listagem já lê o
-   *  arquivo — o preview sai dessa mesma leitura, sem abrir nada a mais. */
+
   preview: string;
 }
 
 const TAG_LIST = ["corvus-chat"];
 
-/** Cria a pasta (e ancestrais) se não existir. */
 export async function ensureFolder(adapter: DataAdapter, path: string): Promise<void> {
   const normalized = path.replace(/\\/g, "/");
   const parts = normalized.split("/").filter(Boolean);
@@ -198,45 +154,30 @@ export async function ensureFolder(adapter: DataAdapter, path: string): Promise<
     if (!(await adapter.exists(partial))) {
       try {
         await adapter.mkdir(partial);
-      } catch {
-        // pode falhar se outro processo criou ao mesmo tempo — ignora
-      }
+      } catch { void 0; }
     }
   }
 }
 
-/** Caminho da pasta de um modo específico (ex: "chat") */
 function modeFolder(chatsPath: string, mode: string): string {
   return `${chatsPath}/${mode}`;
 }
 
-/** Caminho completo do arquivo do chat */
 function chatFilePath(chatsPath: string, mode: string, chatId: string): string {
   return `${modeFolder(chatsPath, mode)}/${chatId}.md`;
 }
 
-/** Gera título auto-baseado na primeira mensagem do user */
 export function generateTitle(firstUserMessage: string): string {
   const cleaned = firstUserMessage.replace(/\s+/g, " ").trim();
   if (cleaned.length <= 60) return cleaned;
   return cleaned.slice(0, 60).trim() + "…";
 }
 
-// ============================================================
-// Render: ChatData → Markdown
-// ============================================================
-
 function yamlString(s: string): string {
-  // JSON.stringify produz string YAML-segura (com aspas + escapes)
+
   return JSON.stringify(s);
 }
 
-// Base64 UTF-8-safe (funciona no plugin Electron E no node dos testes). Usado
-// pra embutir os agentSteps num comentário sem risco de "-->" no result quebrar.
-//
-// Era `btoa(unescape(encodeURIComponent(s)))`. `escape`/`unescape` são legado
-// depreciado — a ponte pra bytes agora é TextEncoder/TextDecoder, que dá
-// exatamente os mesmos bytes UTF-8. O que já está gravado continua sendo lido.
 function b64encode(s: string): string {
   const bytes = new TextEncoder().encode(s);
   let bin = "";
@@ -254,8 +195,7 @@ function renderFrontmatter(chat: ChatData): string {
   const tags = TAG_LIST.concat([`corvus-mode-${chat.mode}`])
     .map((t) => `  - ${t}`)
     .join("\n");
-  // tools_used: resumo legível das ações do agent (RAG indexa frontmatter →
-  // dá pra achar "qual chat criou notes/projeto.md"). v0.1.160
+
   const allSteps = chat.messages.flatMap((m) => m.agentSteps ?? []);
   const toolsBlock =
     allSteps.length > 0
@@ -284,21 +224,18 @@ function renderBody(chat: ChatData): string {
   const sections = chat.messages
     .map((m) => {
       const label = m.type === "user" ? "You" : "Assistant";
-      // Marca de reaction como linha HTML comment invisível no markdown
-      // (sobrevive ao parse manual + invisivel em qualquer render)
+
       const meta: string[] = [];
       if (m.timestamp) meta.push(`ts=${m.timestamp}`);
       if (m.reaction) meta.push(`reaction=${m.reaction}`);
       if (m.isError) meta.push("error=true");
       const metaLine = meta.length > 0 ? `<!-- corvus: ${meta.join(" ")} -->\n` : "";
-      // Ações do agent — base64 num comentário (precisão pro replay; invisível
-      // no preview). O resumo legível vai no frontmatter tools_used.
+
       const stepsLine =
         m.agentSteps && m.agentSteps.length > 0
           ? `\n\n<!-- corvus-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
           : "";
-      // Anexos do user — base64 no mesmo comentário (descritores pequenos;
-      // a imagem mora num arquivo do vault, ver toStoredAttachments).
+
       const attsLine =
         m.attachments && m.attachments.length > 0
           ? `\n\n<!-- corvus-att: ${b64encode(JSON.stringify(m.attachments))} -->`
@@ -309,7 +246,6 @@ function renderBody(chat: ChatData): string {
   return `${heading}\n${sections}`;
 }
 
-/** Extrai metadata da linha HTML comment + retorna content limpo. */
 function parseMessageMeta(content: string): {
   cleanContent: string;
   timestamp?: number;
@@ -334,17 +270,10 @@ function parseMessageMeta(content: string): {
   return { cleanContent, timestamp, reaction, isError };
 }
 
-// Exportadas pra teste de round-trip (integridade de dados). v0.1.149
 export function renderChatMarkdown(chat: ChatData): string {
   return `${renderFrontmatter(chat)}\n\n${renderBody(chat)}`;
 }
 
-// ============================================================
-// Parse: Markdown → ChatData
-// ============================================================
-
-// Chaves do frontmatter que devem virar Number. Demais valores (id, title…)
-// ficam string — evita coagir um id numérico e perder zeros à esquerda. v0.1.228
 const NUMERIC_KEYS = new Set(["tokens_in", "tokens_out", "message_count"]);
 
 function parseSimpleYaml(text: string): Record<string, string | number | string[]> {
@@ -355,33 +284,31 @@ function parseSimpleYaml(text: string): Record<string, string | number | string[
 
   for (const rawLine of lines) {
     const line = rawLine;
-    // Item de array (- value)
+
     const arrayItemMatch = line.match(/^\s*-\s+(.+)$/);
     if (currentArrayKey && arrayItemMatch) {
       let value = arrayItemMatch[1].trim();
       if (value.startsWith('"') && value.endsWith('"')) {
         try {
           value = JSON.parse(value) as string;
-        } catch {
-          /* keep */
-        }
+        } catch { void 0; }
       }
       currentArray.push(value);
       continue;
     }
-    // Se tinha array em progresso e a linha não é mais item, salva
+
     if (currentArrayKey && !arrayItemMatch) {
       result[currentArrayKey] = currentArray;
       currentArrayKey = null;
       currentArray = [];
     }
-    // Key: value
+
     const kvMatch = line.match(/^([\w_-]+):\s*(.*)$/);
     if (!kvMatch) continue;
     const key = kvMatch[1];
     const rawValue = kvMatch[2].trim();
     if (!rawValue) {
-      // Pode ser início de array (linhas seguintes começam com `- `)
+
       currentArrayKey = key;
       currentArray = [];
       continue;
@@ -390,33 +317,25 @@ function parseSimpleYaml(text: string): Record<string, string | number | string[
     if (value.startsWith('"') && value.endsWith('"')) {
       try {
         value = JSON.parse(value) as string;
-      } catch {
-        /* keep */
-      }
+      } catch { void 0; }
     } else if (NUMERIC_KEYS.has(key) && /^-?\d+(\.\d+)?$/.test(value)) {
-      // v0.1.228: só coage chaves sabidamente numéricas. Antes coagia QUALQUER
-      // valor numérico → um `id` puramente numérico (hand-edit) perdia zeros à
-      // esquerda/precisão. id/title/etc ficam string (consumidos via String()).
+
       value = Number(value);
     }
     result[key] = value;
   }
-  // Fecha array pendente
+
   if (currentArrayKey) {
     result[currentArrayKey] = currentArray;
   }
   return result;
 }
 
-/** Extrai os agentSteps (comentário base64 no fim) e devolve o content limpo. */
 function extractAgentSteps(content: string): {
   content: string;
   agentSteps?: AIToolStep[];
 } {
-  // v0.1.228: sem âncora `$` — o marcador `corvus-steps:` é único das nossas
-  // escritas, então achá-lo em qualquer posição é seguro e mais robusto a
-  // hand-edits (texto após o comentário não impede mais a detecção). Remove
-  // só o trecho do comentário, preservando o resto do content.
+
   const re = /\n*<!--\s*corvus-steps:\s*([A-Za-z0-9+/=]+)\s*-->/;
   const m = content.match(re);
   if (!m || m.index === undefined) return { content };
@@ -429,7 +348,6 @@ function extractAgentSteps(content: string): {
   }
 }
 
-/** Extrai os anexos (comentário base64 no fim) e devolve o content limpo. */
 function extractAttachments(content: string): {
   content: string;
   attachments?: MessageAttachmentStored[];
@@ -447,16 +365,11 @@ function extractAttachments(content: string): {
 }
 
 function parseBody(body: string): ChatMessageStored[] {
-  // Pula até a primeira heading `## You` ou `## Assistant`
-  // depois alterna entre elas até o final ou outra heading desconhecida.
+
   const messages: ChatMessageStored[] = [];
   const sectionRegex = /^## (You|Assistant)\s*$/gm;
   let match: RegExpExecArray | null;
-  // Guarda o início do HEADING (match.index) E o início do CONTEÚDO
-  // (após o match). O fim de cada conteúdo é o heading do próximo.
-  // v0.1.149: antes o fim era calculado subtraindo o tamanho fixo do label
-  // de next.start — mas `\s*$` engole um \n, então match[0] tinha 1 char a
-  // mais e vazava o "#" do próximo heading pro fim da mensagem anterior.
+
   const starts: {
     type: "user" | "ai-response";
     headingStart: number;
@@ -477,20 +390,20 @@ function parseBody(body: string): ChatMessageStored[] {
       cur.contentStart,
       next ? next.headingStart : body.length
     );
-    // Extrai metadata (timestamp + reaction) da linha HTML comment
+
     const { cleanContent, timestamp, reaction, isError } = parseMessageMeta(rawContent.trim());
-    // Extrai as ações do agent (comentário base64) e tira do conteúdo visível.
+
     const { content: finalContent, agentSteps } = extractAgentSteps(
       cleanContent.trim()
     );
-    // Extrai os anexos (comentário base64) e tira também do conteúdo visível.
+
     const { content: finalContent2, attachments } = extractAttachments(
       finalContent.trim()
     );
     messages.push({
       type: cur.type,
       content: finalContent2,
-      // Restaura timestamp original se salvo; fallback now()
+
       timestamp: timestamp ?? Date.now(),
       ...(reaction != null ? { reaction } : {}),
       ...(agentSteps ? { agentSteps } : {}),
@@ -510,7 +423,7 @@ export function parseChatMarkdown(content: string): ChatData {
   const messages = parseBody(match[2]);
   return {
     id: texto(fm.id),
-    title: texto(fm.title, "Sem título"),
+    title: texto(fm.title, "Untitled"),
     date: String(fm.date ?? new Date().toISOString()),
     mode: String(fm.mode ?? "chat"),
     provider: String(fm.provider ?? "openai"),
@@ -518,20 +431,15 @@ export function parseChatMarkdown(content: string): ChatData {
     effort: String(fm.effort ?? "med"),
     persona: fm.persona ? String(fm.persona) : undefined,
     instructions: fm.instructions ? String(fm.instructions) : undefined,
-    // Ausente fica undefined (não `false`) — mantém o round-trip exato, igual
-    // à persona: o que não foi escrito não volta como campo.
+
     starred: yamlBool(fm.starred) ? true : undefined,
-    // Mesma regra: ausente volta undefined, que é "nunca mexeram nisto".
+
     vault: fm.vault === undefined ? undefined : yamlBool(fm.vault),
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messages,
   };
 }
-
-// ============================================================
-// Public API
-// ============================================================
 
 export async function saveChat(
   app: App,
@@ -556,7 +464,6 @@ export async function loadChat(
   return parseChatMarkdown(content);
 }
 
-/** Monta um ChatSummary a partir do frontmatter (do cache OU parseado). */
 export function summaryFromFrontmatter(
   fm: Record<string, unknown>,
   fallbackMode: string,
@@ -565,7 +472,7 @@ export function summaryFromFrontmatter(
 ): ChatSummary {
   return {
     id: texto(fm.id),
-    title: texto(fm.title, "Sem título"),
+    title: texto(fm.title, "Untitled"),
     date: texto(fm.date),
     mode: texto(fm.mode, fallbackMode),
     provider: texto(fm.provider),
@@ -593,10 +500,7 @@ export async function listChats(
   const summaries: ChatSummary[] = [];
   for (const file of listing.files) {
     if (!file.endsWith(".md")) continue;
-    // CACHE-FIRST (v0.1.159): o Obsidian já parseou o frontmatter no
-    // metadataCache → pega de lá sem LER o arquivo (antes lia o .md INTEIRO
-    // só pro frontmatter, pesado em vault com muitos chats). Cache frio
-    // (arquivo recém-criado) cai no fallback de leitura.
+
     const cached = app.metadataCache.getCache(file)?.frontmatter;
     if (cached && cached.id) {
       summaries.push(summaryFromFrontmatter(cached, mode, file));
@@ -606,7 +510,7 @@ export async function listChats(
       const content = await app.vault.adapter.read(file);
       const match = content.match(/^---\n([\s\S]*?)\n---/);
       if (!match) continue;
-      // O conteúdo já está aqui — o preview sai dele de graça.
+
       summaries.push(
         summaryFromFrontmatter(
           parseSimpleYaml(match[1]),
@@ -615,33 +519,25 @@ export async function listChats(
           previewFromMarkdown(content)
         )
       );
-    } catch {
-      // skip arquivos quebrados
-    }
+    } catch { void 0; }
   }
   return summaries
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
 }
 
-/**
- * Lista chats de TODOS os modos (chat / vault-qa / agent / etc).
- * Walk em todas as subpastas de chatsPath e agrega. Usado pela
- * ConversationsList (que mostra tudo) e pela StarterScreen (recent).
- */
 export async function listAllChats(
   app: App,
   chatsPath: string,
   limit: number = 1000
 ): Promise<ChatSummary[]> {
   if (!(await app.vault.adapter.exists(chatsPath))) return [];
-  // Cada subpasta do chatsPath é um "modo" (chat, vault-qa, agent, ...)
+
   const root = await app.vault.adapter.list(chatsPath);
-  // v0.1.228: lista os modos em paralelo (antes era sequencial por subpasta —
-  // lento em vault com muitos chats). A ordenação/limite final é idempotente.
+
   const perMode = await Promise.all(
     root.folders.map((subfolder) => {
-      // O último segmento do path é o nome do modo
+
       const mode = subfolder.split("/").pop() ?? "chat";
       return listChats(app, chatsPath, mode, 10_000);
     })
@@ -652,14 +548,6 @@ export async function listAllChats(
     .slice(0, limit);
 }
 
-/**
- * Renomeia o título de um chat (sem mudar o id / file path).
- * Reescreve frontmatter `title:` e o `# Heading` do body.
- */
-/**
- * Deleta o .md de um chat — manda pra LIXEIRA do sistema (recuperável), com
- * fallback pro adapter.remove se a Vault API não conhecer o arquivo. #3
- */
 export async function deleteChat(
   app: App,
   chatsPath: string,
@@ -669,28 +557,20 @@ export async function deleteChat(
   const path = chatFilePath(chatsPath, mode, chatId);
   const file = app.vault.getAbstractFileByPath(path);
   if (file) {
-    // `trashFile` respeita a preferência "Deleted files" de quem usa (lixeira
-    // do Obsidian, do sistema, ou apagar de vez); `vault.trash` decide sozinho.
+
     await app.fileManager.trashFile(file);
     return;
   }
   if (!(await app.vault.adapter.exists(path))) return;
-  // Numa pasta OCULTA o arquivo não está no índice, então `getAbstractFileByPath`
-  // devolve null e o caminho acima nem roda. Antes daí ia direto pro `remove`,
-  // que apaga de vez — enquanto a tela promete "vai pra lixeira (recuperável)".
-  // O adapter tem lixeira; a promessa passa a ser verdade nos dois casos.
+
   const ad = app.vault.adapter;
   try {
     if (await ad.trashSystem(path)) return;
-  } catch {
-    // Sem lixeira do sistema (alguns Android): cai na do vault, logo abaixo.
-  }
+  } catch { void 0; }
   try {
     await ad.trashLocal(path);
     return;
-  } catch {
-    // Nem uma nem outra: aí sim, apagar é o que sobrou.
-  }
+  } catch { void 0; }
   await ad.remove(path);
 }
 
@@ -707,38 +587,18 @@ export async function renameChat(
   const content = await app.vault.adapter.read(path);
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) throw new Error(tr("Invalid frontmatter in this chat file."));
-  // Atualiza só a linha `title:` (mantém resto do frontmatter)
+
   const updatedFm = match[1].replace(
     /^title:\s*.*$/m,
     `title: ${yamlString(clean)}`
   );
-  // Atualiza o `# ...` do TÍTULO — que é sempre a 1ª linha do body (renderBody
-  // emite `# title` no topo). v0.1.228: ancora só na primeira linha pra não
-  // atingir um H1 dentro do conteúdo da conversa; replacement via função pra
-  // não interpretar `$` (ex: título com "$1").
+
   let body = match[2];
   body = body.replace(/^# .+(?=\n|$)/, () => `# ${clean}`);
   const updated = `---\n${updatedFm}\n---\n${body}`;
   await app.vault.adapter.write(path, updated);
 }
 
-/**
- * Liga/desliga o `starred` de um chat (item "Star" do menu ⋮). Mexe SÓ na linha
- * do frontmatter — não toca no body, então é seguro em conversa longa.
- *
- * Estratégia: tira qualquer `starred:` que exista (idempotente, tolera arquivo
- * hand-editado com o campo em outra posição) e, se for pra favoritar, reinsere
- * antes de `tokens_in:` — a mesma posição que o renderFrontmatter usa, pra um
- * arquivo reescrito depois sair byte-idêntico ao de um save normal.
- */
-/**
- * Grava (ou apaga, com texto vazio) as INSTRUÇÕES de uma conversa, no
- * frontmatter dela. São as mesmas `instructions` que a conversa herda do
- * projeto ao nascer: elas SOMAM ao prompt do app nos três modos (ver
- * agent/conversation.ts) — diferente da `persona`, que substitui e levaria
- * junto as regras do app (idioma, como citar nota, o que o agente pode
- * mexer). Reescreve só o frontmatter; o corpo da conversa fica intacto.
- */
 export async function setChatInstructions(
   app: App,
   chatsPath: string,
@@ -754,8 +614,7 @@ export async function setChatInstructions(
   const texto = instructions.trim();
   if (texto) {
     const linha = `instructions: ${yamlString(texto)}`;
-    // Substituição por FUNÇÃO: com string, um "$&" ou "$1" escrito nas
-    // instruções seria lido como padrão do replace e gravado trocado.
+
     fm = /^tokens_in:/m.test(fm)
       ? fm.replace(/^tokens_in:/m, () => `${linha}\ntokens_in:`)
       : `${fm.replace(/\n+$/, "")}\n${linha}`;
@@ -776,8 +635,7 @@ export async function setChatStarred(
   if (!match) throw new Error(tr("Invalid frontmatter in this chat file."));
   let fm = match[1].replace(/^starred:\s*.*$\n?/m, "");
   if (starred) {
-    // Reinsere antes de tokens_in. Se o arquivo não tiver tokens_in (formato
-    // antigo/quebrado), cai pro fim do frontmatter em vez de perder a marca.
+
     fm = /^tokens_in:/m.test(fm)
       ? fm.replace(/^tokens_in:/m, "starred: true\ntokens_in:")
       : `${fm.replace(/\n+$/, "")}\nstarred: true`;

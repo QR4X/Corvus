@@ -1,35 +1,18 @@
-// src/usage/timeline.ts
-// A SÉRIE NO TEMPO: quanto entrou e quanto saiu, data a data — o que o
-// gráfico da página de uso desenha.
-//
-// Ela não soma nada por conta própria: parte do `byDay` que a agregação já
-// entrega (usage/aggregate), o mesmo do total lá em cima. O que mora aqui é
-// só a decisão de COMO o tempo é contado — de dia em dia num recorte curto,
-// de semana em semana num médio, de mês em mês num longo.
-//
-// O passo muda porque a largura não muda: noventa colunas num telefone são
-// noventa fios de um pixel, e um ano são trezentos e sessenta e cinco. O
-// desenho tem que continuar sendo legível quando o recorte cresce.
-
 import type { UsageBucket } from "./aggregate";
-import { marca, tr } from "../i18n/tr";
+import { mark, tr } from "../i18n/tr";
 
 const DIA_MS = 86_400_000;
 
-// Marcados pra tradução: quem mostra passa por tr() (ver nomeDoMes).
 export const MESES = [
-  marca("Jan"), marca("Feb"), marca("Mar"), marca("Apr"), marca("May"), marca("Jun"),
-  marca("Jul"), marca("Aug"), marca("Sep"), marca("Oct"), marca("Nov"), marca("Dec"),
+  mark("Jan"), mark("Feb"), mark("Mar"), mark("Apr"), mark("May"), mark("Jun"),
+  mark("Jul"), mark("Aug"), mark("Sep"), mark("Oct"), mark("Nov"), mark("Dec"),
 ];
 
-/** O mês curto no idioma da interface ("Sep"); fora da faixa, null. */
 function nomeDoMes(m: number): string | null {
   const nome = MESES[m - 1];
   return nome ? tr(nome) : null;
 }
 
-/** "2026-09-11" → "Sep 11" (ou "Sep 11, 2026"). A ordem é do idioma: em
- *  português o dia vem antes ("11 set"). */
 export function diaCurto(iso: string, comAno = false): string {
   const [a, m, d] = iso.split("-").map(Number);
   const mes = nomeDoMes(m);
@@ -39,16 +22,14 @@ export function diaCurto(iso: string, comAno = false): string {
     : tr("{month} {day}", { month: mes, day: d });
 }
 
-/** De quanto em quanto tempo as colunas contam. */
 export type Passo = "day" | "week" | "month";
 
-/** Uma coluna do gráfico: um pedaço de tempo, com o que entrou e o que saiu. */
 export interface Coluna {
-  /** O primeiro dia do pedaço, "YYYY-MM-DD" em UTC — a chave e a ordem. */
+
   inicio: string;
-  /** Curto, pro eixo ("Sep 11", "Sep 8", "Sep"). */
+
   rotulo: string;
-  /** Inteiro, pra quem foi ler ("Sep 8 – Sep 14, 2026"). */
+
   titulo: string;
   entrada: number;
   saida: number;
@@ -56,36 +37,24 @@ export interface Coluna {
   chats: number;
 }
 
-/** "YYYY-MM-DD" (UTC) → instante. */
 function ms(dia: string): number {
   return Date.parse(`${dia}T00:00:00Z`);
 }
 
-/** Instante → "YYYY-MM-DD" (UTC), a MESMA chave que a agregação usa. */
 function chave(t: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
 
-/** Quantos dias vão de um ao outro, contando os dois. */
 export function diasEntre(de: string, ate: string): number {
   return Math.round((ms(ate) - ms(de)) / DIA_MS) + 1;
 }
 
-/**
- * O passo que cabe num intervalo.
- *
- * Os cortes são de largura, não de calendário: cerca de 31 colunas é o que um
- * telefone desenha com uma coluna ainda tocável; 26 semanas cobrem meio ano
- * no mesmo espaço; daí pra frente, mês.
- */
 export function passoDe(dias: number): Passo {
   if (dias <= 31) return "day";
   if (dias <= 182) return "week";
   return "month";
 }
 
-/** O começo do pedaço de tempo em que um instante cai. Semana começa na SEGUNDA
- *  (é como o calendário do cartão da home desenha o mês). */
 function inicioDoPasso(t: number, passo: Passo): number {
   const d = new Date(t);
   if (passo === "week") {
@@ -120,18 +89,6 @@ function tituloDe(inicio: string, fim: string, passo: Passo): string {
   });
 }
 
-/**
- * A janela que o gráfico cobre.
- *
- * Numa janela de N dias é ela mesma, terminando hoje — dia sem conversa entra
- * como coluna vazia, porque não ter usado também é o que o desenho conta.
- * Em "All time" é do primeiro ao último dia que tem conversa.
- *
- * Nos dois casos ela se ESTICA pra caber todo dia que a agregação trouxe: o
- * filtro de período corta por instante (agora − N×24h) e o `byDay` indexa por
- * dia em UTC, então uma conversa pode passar no filtro e cair um dia antes do
- * começo da janela. Sem esticar, ela sumia do gráfico e continuava no total.
- */
 export function janelaDoGrafico(
   dias: number,
   byDay: Record<string, UsageBucket>,
@@ -150,13 +107,6 @@ export function janelaDoGrafico(
   };
 }
 
-/**
- * As colunas do gráfico, da mais antiga pra mais nova.
- *
- * Todo pedaço de tempo da janela entra, inclusive os zerados: buraco no meio
- * de uma série temporal é informação (você não usou), e uma série que só
- * mostra os dias cheios encosta um pico no outro e mente sobre o ritmo.
- */
 export function serieDoTempo(
   byDay: Record<string, UsageBucket>,
   de: string,
@@ -170,16 +120,13 @@ export function serieDoTempo(
   const colunas: Coluna[] = [];
   const porInicio = new Map<string, Coluna>();
 
-  // Primeiro os pedaços VAZIOS, na ordem — assim a série nasce contínua e o
-  // que vier do byDay só preenche.
   for (let t = inicioDoPasso(inicio, passo); t <= fim; ) {
     const k = chave(t);
     const proximo =
       passo === "month"
         ? Date.UTC(new Date(t).getUTCFullYear(), new Date(t).getUTCMonth() + 1, 1)
         : t + (passo === "week" ? 7 : 1) * DIA_MS;
-    // O fim do pedaço nunca passa do fim da janela: um pedaço que termina no
-    // futuro anunciaria dias que ainda não aconteceram.
+
     const ultimoDia = chave(Math.min(proximo - DIA_MS, fim));
     const col: Coluna = {
       inicio: k,
@@ -209,8 +156,6 @@ export function serieDoTempo(
   return colunas;
 }
 
-/** A coluna mais alta — é ela que dá a escala, e o gráfico anuncia o valor
- *  dela pra altura significar alguma coisa. */
 export function picoDa(colunas: readonly Coluna[]): number {
   return colunas.reduce((p, c) => (c.total > p ? c.total : p), 0);
 }

@@ -14,17 +14,12 @@ import {
   recortarJson,
 } from "../src/assistant/parse";
 import {
-  idiomaDoApp,
+  appLanguage,
   promptDescricao,
   promptInstrucoes,
   promptProjeto,
   promptSkill,
 } from "../src/assistant/prompt";
-
-// A assistente é um convidado, não um autor. Nada do que ela diz vira dado sem
-// passar por uma lista nossa — e é aqui que isso é garantido. Um nome de ícone
-// inventado não dá erro em lugar nenhum: `setIcon` não desenha, e o projeto
-// nasce com um buraco no lugar do brasão.
 
 const ICONES = ["folder", "graduation-cap", "plane"];
 const CORES = ["default", "#e5484d", "#4361ee"];
@@ -41,7 +36,7 @@ describe("escolherAssistente", () => {
   });
 
   it("sem escolha, pega o FAVORITO free do OpenRouter", () => {
-    // Favorito primeiro porque favoritar é escolher — só que antes.
+
     expect(
       escolherAssistente({
         favoriteModels: { openrouter: ["pago/modelo", "meta/llama:free"] },
@@ -74,8 +69,7 @@ describe("escolherAssistente", () => {
 
 describe("motivoIndisponivel", () => {
   it("sem modelo e sem chave dizem coisas DIFERENTES", () => {
-    // Uma mensagem só mandaria metade das pessoas pro lugar errado: sem chave
-    // se cola uma, sem modelo se roda o SCAN.
+
     const semModelo = motivoIndisponivel(null, () => true);
     const semChave = motivoIndisponivel(
       { provider: "openrouter", model: "x:free" },
@@ -99,8 +93,7 @@ describe("recortarJson", () => {
   });
 
   it("acha o objeto no meio da prosa", () => {
-    // Acontece o tempo todo com modelo pequeno: "Here's the JSON:" na frente e
-    // um parágrafo de despedida atrás.
+
     expect(recortarJson('Sure! {"a":1} Hope that helps.')).toBe('{"a":1}');
   });
 
@@ -129,12 +122,11 @@ describe("lerSkill", () => {
   });
 
   it("skill também tem cor, e fora da paleta vira default", () => {
-    // Skill tinha ícone e mais nada: numa grade de dois, todos os brasões eram
-    // o mesmo cinza e o desenho miúdo era a única pista.
+
     expect(lerSkill({ ...ok, color: "roxo" }, ICONES, "folder", CORES)?.color).toBe(
       "default"
     );
-    // Sem paleta declarada, o padrão continua servindo.
+
     expect(lerSkill(ok, ICONES, "folder")?.color).toBe("default");
   });
 
@@ -151,8 +143,7 @@ describe("lerSkill", () => {
   });
 
   it("sem corpo não é skill", () => {
-    // Sem corpo o parser da nota descarta o arquivo, e o skill some no mesmo
-    // segundo em que foi criado.
+
     expect(lerSkill({ ...ok, body: "" }, ICONES, "folder", CORES)).toBeNull();
     expect(lerSkill({ ...ok, body: 42 }, ICONES, "folder", CORES)).toBeNull();
   });
@@ -183,8 +174,7 @@ describe("lerProjeto", () => {
   });
 
   it("nota inventada é DESCARTADA", () => {
-    // O modelo inventa caminho plausível com uma facilidade que assusta, e uma
-    // fonte que não existe só aparece na primeira conversa do projeto.
+
     const r = lerProjeto(
       { ...ok, notes: ["Refs/Kuhn.md", "Projects/Tese.md"] },
       ICONES,
@@ -251,8 +241,7 @@ describe("os prompts", () => {
   });
 
   it("sem notas, ele MANDA devolver lista vazia", () => {
-    // Dizer "here are the notes:" e não mandar nada convida o modelo a
-    // preencher o vazio com caminhos plausíveis.
+
     const p = promptProjeto("direto", ICONES, CORES, [], "English");
     expect(p).toContain('"notes": []');
     expect(p).not.toContain("Notes in this vault");
@@ -266,8 +255,7 @@ describe("os prompts", () => {
 
 describe("um campo só", () => {
   it("a descrição leva o prompt como matéria-prima", () => {
-    // É o que faz ela poder escrever sem a pessoa digitar nada: o contexto já
-    // está na tela.
+
     const p = promptDescricao({ name: "Weekly review", body: "Go through…", idioma: "English" });
     expect(p).toContain("Weekly review");
     expect(p).toContain("Go through…");
@@ -283,13 +271,12 @@ describe("um campo só", () => {
     });
     expect(p).toContain("Project: Tese");
     expect(p).toContain("- Refs/Kuhn.md");
-    // A regra que mais importa: elas SOMAM ao app, não substituem.
+
     expect(p).toMatch(/ADD to how the app already works/);
   });
 
   it("o que já está escrito vai junto pra ser MELHORADO", () => {
-    // Pedir ajuda num campo com texto quer dizer "melhora isto", não "joga
-    // fora e começa de novo".
+
     const p = promptInstrucoes({
       name: "Tese",
       notes: [],
@@ -314,41 +301,34 @@ describe("um campo só", () => {
   });
 });
 
-describe("o idioma", () => {
-  // O app só fala dois. "Escreva no idioma da pessoa" parecia gentil e era uma
-  // porta aberta: numa frase curta o modelo decide sozinho — e decidiu
-  // norueguês num formulário onde o texto dele senta ao lado do texto do app.
-  it("o locale vira o nome do idioma", () => {
-    expect(idiomaDoApp("pt-br")).toBe("Brazilian Portuguese");
-    expect(idiomaDoApp("en-us")).toBe("English");
-    // Locale desconhecido não vira um terceiro idioma.
-    expect(idiomaDoApp("nb-no")).toBe("English");
+describe("the language", () => {
+  it("resolves locale to English", () => {
+    expect(appLanguage("en-us")).toBe("English");
+    expect(appLanguage("auto")).toBe("English");
+    expect(appLanguage("nb-no")).toBe("English");
   });
 
-  it("todos os prompts MANDAM escrever no idioma do app", () => {
+  it("all prompts instruct writing in the app language", () => {
     const todos = [
-      promptSkill("direto", ICONES, CORES, "Brazilian Portuguese"),
-      promptProjeto("direto", ICONES, CORES, [], "Brazilian Portuguese"),
-      promptDescricao({ name: "x", body: "y", idioma: "Brazilian Portuguese" }),
+      promptSkill("direto", ICONES, CORES, "English"),
+      promptProjeto("direto", ICONES, CORES, [], "English"),
+      promptDescricao({ name: "x", body: "y", idioma: "English" }),
       promptInstrucoes({
         name: "x",
         notes: [],
         atual: "",
-        idioma: "Brazilian Portuguese",
+        idioma: "English",
       }),
     ];
     for (const p of todos) {
-      expect(p).toContain("Write EVERY field in Brazilian Portuguese");
-      // E a porta aberta não pode voltar.
+      expect(p).toContain("Write EVERY field in English");
       expect(p).not.toMatch(/same language the person used/i);
     }
   });
 });
 
 describe("free pelo PREÇO, não pelo nome", () => {
-  // O app reconhecia grátis pelo sufixo `:free` do id. Isso acerta a maioria e
-  // perde os que o OpenRouter publica com preço zero sem dizer no nome — e
-  // quem paga por essa perda é justamente quem não quer pagar nada.
+
   it("a lista descoberta manda, mesmo sem o sufixo", () => {
     expect(ehFree("vendor/modelo")).toBe(false);
     expect(ehFree("vendor/modelo", ["vendor/modelo"])).toBe(true);
@@ -368,8 +348,7 @@ describe("free pelo PREÇO, não pelo nome", () => {
   });
 
   it("escaneou mas não curou nada: ainda assim acha um", () => {
-    // Sem isto a assistente ficaria "sem modelo" com uma lista de grátis na
-    // mão — o estado exato de quem acabou de rodar o SCAN.
+
     expect(
       escolherAssistente({ freeModels: { openrouter: ["a/b"] } })
     ).toEqual({ provider: "openrouter", model: "a/b" });
@@ -395,8 +374,7 @@ describe("ehPrecoZero", () => {
 
 describe("o interrogatório pede TRÊS", () => {
   it("o prompt manda exatamente três, e proíbe uma quarta", () => {
-    // A quarta é do app — o "eu escrevo" —, e uma vinda do modelo apareceria
-    // duas vezes ou no lugar errado.
+
     const p = promptSkill("guiado", ICONES, CORES, "English");
     expect(p).toMatch(/EXACTLY 3 options/);
     expect(p).toMatch(/never offer one yourself/i);

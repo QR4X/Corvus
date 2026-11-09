@@ -1,33 +1,4 @@
-// src/i18n/en-us.ts
-// Strings do MOTOR (v0.4.0, base CRUD): erros/estados do chat (`ai`), agente
-// (`agent` — inclui o ConfirmationModal), Vault Q&A (`vault`), system prompts
-// (`systemPrompt`) e os poucos avisos de CRUD (`chat`, `conversations`).
-// A casca nova usa strings inline; quando a UI for redesenhada, o i18n volta
-// a crescer daqui. Shape canônico = typeof EN_US.
-
 export const EN_US = {
-
-
-
-
-
-
-
-
-
-
-
-
-  // Clean "new conversation" base screen (no starter screen) — per mode. v0.1.219
-
-  // Redesigned model selector (category tabs + modal + favorites). v0.1.222
-
-  // (ModelArena removida na limpeza pós-DS-1.0 — a tela que consumia estas
-  // strings saiu junto com a StarterScreen. Bloco removido em 0.1.247 para o
-  // dicionário refletir só o que existe na UI; o histórico do git guarda o
-  // texto original se a arena voltar.)
-
-
   chat: {
     deletedToTrash: "Conversation moved to trash.",
   },
@@ -37,13 +8,9 @@ export const EN_US = {
     renameFailed: (msg: string) => `Failed to rename: ${msg}`,
   },
 
-
-  // Dashboard — starter became the plugin home (v0.1.103): usage stats,
-  // activity, new-chat setup and RAG/provider status.
-
-
   agent: {
-    loopAborted: "Agent kept repeating the same action and was stopped. Try rephrasing the task or giving more context.",
+    loopAborted:
+      "Agent kept repeating the same action and was stopped. Try rephrasing the task or giving more context.",
     thinking: "🤖 Agent thinking...",
     systemPrompt:
       "You are Corvus, an assistant integrated into Obsidian with direct access " +
@@ -60,7 +27,6 @@ export const EN_US = {
       "When you need to list many files, prefer parallel tool calls (same turn).",
     needsOpenAI:
       "Agent Mode requires a provider with tool calling. Use OpenAI, Anthropic, Gemini, OpenRouter, Nvidia NIM, or Ollama (compatible model).",
-    // Chips de activity do agent loop (P1-03/P1-27) — antes hardcoded em PT.
     unknownTool: (name: string) => `Unknown tool: ${name}`,
     deniedTool: (name: string) => `Denied: ${name}`,
     loopDetectedPending: "Loop detected — asking the agent to reconsider",
@@ -85,7 +51,6 @@ export const EN_US = {
     confirmTruncated: (n: number) => `+${n} chars not shown`,
   },
 
-
   vault: {
     searching: (topK: number, effort: string) =>
       `Searching up to ${topK} notes in vault (effort: ${effort})...`,
@@ -96,17 +61,21 @@ export const EN_US = {
       `${count} note${count !== 1 ? "s" : ""} found (keyword — no semantic index)`,
     foundContextKeywordFallback: (count: number) =>
       `${count} note${count !== 1 ? "s" : ""} found (keyword — semantic search failed)`,
-    notFound:
-      "No relevant notes found — answering without vault context",
+    notFound: "No relevant notes found — answering without vault context",
   },
 
   ai: {
     thinking: "Thinking...",
-    emptyResponse: "The provider returned no answer, only reasoning or an empty response. Try again or choose another model.",
-    outputLimit: "The model reached the request's output-token limit before finishing. Increase the output budget where supported, or try another model.",
-    streamIncomplete: "The response stream ended before the provider confirmed completion. Try again.",
-    invalidToolResponse: "The model returned incomplete or invalid tool arguments. No tools from this batch were executed.",
-    recovering: "No usable answer received — trying once more (may use additional API credits).",
+    emptyResponse:
+      "The provider returned no answer, only reasoning or an empty response. Try again or choose another model.",
+    outputLimit:
+      "The model reached the request's output-token limit before finishing. Increase the output budget where supported, or try another model.",
+    streamIncomplete:
+      "The response stream ended before the provider confirmed completion. Try again.",
+    invalidToolResponse:
+      "The model returned incomplete or invalid tool arguments. No tools from this batch were executed.",
+    recovering:
+      "No usable answer received — trying once more (may use additional API credits).",
     errorPrefix: "[Error]",
     unknownError: "Unknown error.",
     failed: "Failed",
@@ -129,14 +98,6 @@ export const EN_US = {
     },
   },
 
-
-  // Activities/erros do motor de geração de mídia (useGeneration) — P1-27.
-
-  // ErrorBoundary (painel de erro de render) — P1-27.
-
-
-
-
   systemPrompt: {
     base:
       "You are Corvus, an assistant integrated into Obsidian. " +
@@ -150,7 +111,6 @@ export const EN_US = {
       "[[ ]]). Do not invent notes that are not listed below. When an answer " +
       "comes from a specific note, cite it right after the sentence.\n\nNotes:\n\n",
   },
-
 };
 
 export type Translations = typeof EN_US;

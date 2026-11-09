@@ -1,25 +1,9 @@
-// scripts/size-report.mjs
-// Régua de tamanho do plugin (Frente 0 do plano 1.0). Mede o que REALMENTE vai
-// pro Obsidian (output/) em gzip + LOC da fonte. Roda no fim do build prod e
-// avulso: `npm run size`. Tetos = warn (não quebram o build) até a gente firmar.
-
 import fs from "fs";
 import zlib from "zlib";
 import path from "path";
 
 const OUT = "output";
 
-/**
- * Tetos, em KB, POR MEDIDA — e as duas medidas aparecem porque as duas
- * importam por motivos diferentes: o gzip é o que viaja na rede quando alguém
- * instala; o cru é o que o WebView do celular tem que parsear toda vez que o
- * Obsidian abre.
- *
- * Eram só os de gzip, e o relatório imprimia "(teto 260KB)" logo depois do
- * número CRU — numa revisão isso foi lido como "424 contra 260, estourado",
- * quando o real era 135 de gzip contra 260. Um rótulo ambíguo custou uma
- * acusação errada; agora cada teto sai grudado na medida dele.
- */
 const BUDGET = {
   "main.js": { raw: 512, gz: 260 },
   "styles.css": { raw: 128, gz: 45 },
@@ -41,29 +25,29 @@ function locOf(dir, exts) {
 }
 
 export function report() {
-  console.log("\n— Corvus · régua de tamanho (output instalado) —");
+  console.log("\n— Corvus · bundle size report (installed output) —");
   let over = false;
   for (const f of ["main.js", "styles.css"]) {
     const p = path.join(OUT, f);
     if (!fs.existsSync(p)) continue;
     const buf = fs.readFileSync(p);
     const g = gz(buf);
-    const teto = BUDGET[f] ?? {};
-    const acimaRaw = teto.raw && buf.length / 1024 > teto.raw;
-    const acimaGz = teto.gz && g / 1024 > teto.gz;
-    if (acimaRaw || acimaGz) over = true;
-    const marca = (acima) => (acima ? " ⚠" : "");
+    const cap = BUDGET[f] ?? {};
+    const overRaw = cap.raw && buf.length / 1024 > cap.raw;
+    const overGz = cap.gz && g / 1024 > cap.gz;
+    if (overRaw || overGz) over = true;
+    const flag = (exceeded) => (exceeded ? " ⚠" : "");
     console.log(
       `  ${f.padEnd(11)} ` +
-        `${kb(buf.length).padStart(7)} KB raw /${String(teto.raw ?? "—").padStart(4)}${marca(acimaRaw)}  ` +
-        `${kb(g).padStart(6)} KB gz /${String(teto.gz ?? "—").padStart(4)}${marca(acimaGz)}`
+        `${kb(buf.length).padStart(7)} KB raw /${String(cap.raw ?? "—").padStart(4)}${flag(overRaw)}  ` +
+        `${kb(g).padStart(6)} KB gz /${String(cap.gz ?? "—").padStart(4)}${flag(overGz)}`
     );
   }
   const tsLoc = locOf("src", [".ts", ".tsx"]);
   const cssLoc = fs.existsSync("styles/main.css")
     ? fs.readFileSync("styles/main.css", "utf8").split("\n").length
     : 0;
-  console.log(`  fonte (nosso lado): ${tsLoc} LOC TS · ${cssLoc} linhas CSS\n`);
+  console.log(`  source: ${tsLoc} LOC TS · ${cssLoc} CSS lines\n`);
   return !over;
 }
 

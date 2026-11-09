@@ -1,11 +1,3 @@
-// tests/chatImageAttachments.test.ts
-// Imagem anexada a uma mensagem: sobrevive dentro da MENSAGEM (referência de
-// que imagem você mandou), sem inflar o .md do chat com os bytes.
-//
-//   envio      → bytes gravados UMA vez no vault (path no anexo)
-//   save .md   → só o descritor pequeno (type/name/path) — nunca a data URL
-//   reload     → relê o arquivo do vault e reconstroi a data URL de exibição
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatSession } from "../src/core/session";
 import { useChatStore } from "../src/store/chat";
@@ -21,8 +13,6 @@ import {
 } from "../src/ui/attachSources";
 import type CorvusPlugin from "../src/main";
 
-// O envio chama streamReply (rede); aqui ele é no-op pra testar o caminho que
-// vai do composer até a mensagem no store.
 vi.mock("../src/core/chatEngine", () => ({
   streamReply: vi.fn(async () => ({ content: "" })),
 }));
@@ -106,12 +96,12 @@ describe("enviar guarda os anexos na mensagem", () => {
       type: "image",
       name: "print.png",
       mimeType: "image/png",
-      dataUrl: IMAGEM.dataUrl, // o provider continua recebendo como antes
+      dataUrl: IMAGEM.dataUrl, 
     });
     expect(msg.attachments?.[0].path).toMatch(
       new RegExp(`^${GENERATION_DIR}/images/.+\\.png$`)
     );
-    // bytes no vault UMA vez, descritor pequeno no store
+
     expect(plugin.app.vault.adapter.writeBinary).toHaveBeenCalledTimes(1);
     expect(useChatStore.getState().attachments).toEqual([]);
   });

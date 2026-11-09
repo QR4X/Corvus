@@ -25,17 +25,13 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   ...over,
 });
 
-/** Quarta-feira, 16/09/2026, meio-dia local. Setembro de 2026 começa numa
- *  terça e tem 30 dias. */
 const AGORA = new Date(2026, 8, 16, 12).getTime();
 const local = (a: number, m: number, d: number, h = 10) =>
   new Date(a, m - 1, d, h).toISOString();
 
 describe("diaLocal", () => {
   it("é o dia do relógio de quem olha, não o de UTC", () => {
-    // 23h50 local continua sendo hoje, ainda que em UTC já seja amanhã (ou
-    // ontem) dependendo do fuso — o quadradinho tem que cair no dia em que a
-    // pessoa lembra de ter usado.
+
     expect(diaLocal(new Date(2026, 8, 16, 23, 50).getTime())).toBe("2026-09-16");
   });
 
@@ -51,8 +47,7 @@ describe("nivelDoDia", () => {
   });
 
   it("as faixas são do PICO, não do ranking", () => {
-    // Todos os dias iguais num mês fraco = todos no mesmo tom. Quartil daria
-    // quatro cores e inventaria um contraste que não existe.
+
     expect(nivelDoDia(100, 1000)).toBe(1);
     expect(nivelDoDia(300, 1000)).toBe(2);
     expect(nivelDoDia(600, 1000)).toBe(3);
@@ -72,21 +67,19 @@ describe("heatmapDoMes", () => {
   });
 
   it("o mês começa na coluna do dia da semana dele", () => {
-    // 01/09/2026 é terça: uma casa vazia antes (segunda), e o dia 1 na
-    // segunda coluna.
+
     const h = heatmapDoMes([], AGORA);
     expect(h.celulas[0].dia).toBeNull();
     expect(h.celulas[1].dia).toBe("2026-09-01");
   });
 
   it("dia que ainda não chegou não é dia: fica sem data, não com zero", () => {
-    // Pintar zero num dia futuro diria "não usei" — e não é isso.
+
     const h = heatmapDoMes([], AGORA);
     const dezesseis = h.celulas.findIndex((c) => c.dia === "2026-09-16");
     expect(dezesseis).toBeGreaterThan(0);
     expect(h.celulas[dezesseis + 1].dia).toBeNull();
-    // Mas ele é marcado como FUTURO, e não como "fora do mês": é a diferença
-    // entre a grade manter a forma do mês e parecer cortada na metade.
+
     expect(h.celulas[dezesseis + 1].futuro).toBe(true);
     expect(h.celulas[0].futuro).toBeUndefined();
   });
@@ -131,7 +124,7 @@ describe("heatmapDoMes", () => {
   });
 
   it("mês que começa numa segunda não tem casa vazia na frente", () => {
-    // 01/06/2026 é segunda.
+
     const h = heatmapDoMes([], new Date(2026, 5, 10, 12).getTime());
     expect(h.celulas[0].dia).toBe("2026-06-01");
   });

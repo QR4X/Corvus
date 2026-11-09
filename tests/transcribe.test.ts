@@ -56,7 +56,7 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
       "B"
     );
     const view = new Uint8Array(body);
-    // Procura a sequência crua dentro do corpo montado.
+
     const idx = view.findIndex(
       (_, i) => raw.every((b, k) => view[i + k] === b)
     );
@@ -186,7 +186,7 @@ describe("transcribeAudio — contrato de erro", () => {
 
     expect(res).toBe("transcrição via openrouter");
     expect(sent.url).toBe("https://openrouter.ai/api/v1/audio/transcriptions");
-    expect(sent.headers["HTTP-Referer"]).toBe("https://github.com/QR4X/M.I.L.A");
+    expect(sent.headers["HTTP-Referer"]).toBe("https://github.com/QR4X/Corvus");
     expect(sent.headers["X-Title"]).toBe("Corvus");
     expect(dec.decode(sent.body)).toContain("openai/whisper-1");
   });

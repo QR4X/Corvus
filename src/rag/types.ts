@@ -1,31 +1,20 @@
-// src/rag/types.ts
-// Tipos compartilhados do módulo RAG.
-//
-// Arquitetura:
-//   Indexer  → percorre vault, chunka markdown, chama Embeddings, salva VectorIndex
-//   Embeddings → wrapper das APIs (OpenAI / Ollama futuramente)
-//   VectorIndex → cosine similarity em memória + persistência JSON
-
 export interface VectorEntry {
-  /** Path do arquivo no vault (relativo). Pode ser .md ou imagem. */
+
   path: string;
-  /** SHA-1 hex do conteúdo no momento do embed — usado pra detectar mudança. */
+
   hash: string;
-  /** Índice do chunk dentro do arquivo (markdown grande vira N chunks; imagem = 0). */
+
   chunkIndex: number;
-  /** Total de chunks do arquivo (pra UX/debug). Imagem = 1. */
+
   chunkCount: number;
-  /** Texto raw do chunk (pra excerpt na busca). Pra imagem: "Image: filename.ext". */
+
   text: string;
-  /** Vetor em memória — typed array UNIT-NORMALIZADO. Int8Array (×127) quando o
-   *  índice usa precisão int8, Float32Array quando float32. Tamanho = dim. */
+
   embedding: Float32Array | Int8Array;
-  /** Tipo do conteúdo. "text" = markdown chunk; "image" = arquivo de imagem inteiro. */
+
   kind?: "text" | "image";
 }
 
-/** Entry como persistido em disco — embedding vira base64 do buffer do typed
- *  array (precisão vem do IndexFile, global do índice). */
 export interface StoredEntry {
   path: string;
   hash: string;
@@ -33,59 +22,53 @@ export interface StoredEntry {
   chunkCount: number;
   text: string;
   kind?: "text" | "image";
-  /** base64 do buffer (Int8Array ou Float32Array conforme IndexFile.precision). */
+
   emb: string;
 }
 
-/** Formato persistido em disco — versionado pra migração futura. */
 export interface IndexFile {
   version: number;
   provider: string;
   model: string;
   dim: number;
-  /** Precisão dos vetores (int8 / float32) — v0.1.80+ (RAG v2). */
+
   precision: "float32" | "int8";
-  /** Id do perfil de quantização (precision/balanced/light/minimal). */
+
   profile: string;
-  /** ISO string da última indexação completa. */
+
   lastIndexedAt: string;
-  /** Total de arquivos cobertos. */
+
   fileCount: number;
   entries: StoredEntry[];
 }
 
-/** Resultado de uma busca — entry + score de similaridade. */
 export interface SearchResult {
   entry: VectorEntry;
-  /** Cosine similarity em [-1, 1]. Maior = mais relevante. */
+
   score: number;
 }
 
-/** Provider de embeddings disponíveis. */
 export type EmbeddingProvider = "openai" | "openrouter" | "gemini" | "nim" | "ollama";
 
-/** Modelo + dimensão associada. */
 export interface EmbeddingModelSpec {
   provider: EmbeddingProvider;
-  /** ID do modelo na API (ex: "text-embedding-3-small"). */
+
   model: string;
-  /** Dimensão do vetor produzido. */
+
   dim: number;
-  /** Tokens máx por input (limite da API). */
+
   maxInputTokens: number;
-  /** Custo por 1M tokens (USD) — pra estimativa pré-indexação. */
+
   pricePerMillion: number;
-  /** Suporta embedding de imagens? VL models = true, text models = false. */
+
   supportsImage?: boolean;
-  /** Suporta dim reduzida via param `dimensions` (Matryoshka). OpenAI 3-* = true.
-   *  Quando false, perfis "Leve/Mínimo" caem pra int8 com a dim cheia do modelo. */
+
   supportsDimensions?: boolean;
-  /** Indica que é tier free do OpenRouter (rate limits mais apertados). */
+
   free?: boolean;
-  /** Descoberto via fetch da API (spec inferida, não curada). v0.1.151 */
+
   discovered?: boolean;
-  /** Roda na máquina de quem usa (Ollama): nada sai pra nuvem. A dimensão
-   *  é um palpite pelo nome — o indexador mede a de verdade antes de usar. */
+
   local?: boolean;
 }
 
@@ -115,7 +98,7 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     supportsImage: true,
     free: true,
   },
-  // ── Gemini (endpoint OpenAI-compat /v1beta/openai/embeddings) ──
+
   {
     provider: "gemini",
     model: "gemini-embedding-001",
@@ -131,10 +114,7 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     maxInputTokens: 2048,
     pricePerMillion: 0,
   },
-  // ── Nvidia NIM (endpoint OpenAI-compat /v1/embeddings; usa input_type) ──
-  // Nenhum dos dois é Free Endpoint no catálogo da NVIDIA (out/2026) — o
-  // único embedding grátis do NIM é o nemotron-3-embed-1b, que o fetch
-  // descobre. O grátis de verdade vem da lista do fetch, não daqui.
+
   {
     provider: "nim",
     model: "nvidia/nv-embedqa-e5-v5",
@@ -149,7 +129,7 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
     maxInputTokens: 8192,
     pricePerMillion: 0,
   },
-  // ── OpenAI legacy ──
+
   {
     provider: "openai",
     model: "text-embedding-ada-002",
@@ -159,52 +139,34 @@ export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
   },
 ];
 
-// ============================================================
-// Modelos de embedding DESCOBERTOS via fetch da API (v0.1.151)
-// Registro mutável: o plugin popula no load + a cada "Buscar da API". Assim
-// getEmbeddingSpec/getAllEmbeddingModels enxergam os descobertos em todo lugar
-// (indexer, settings, hybrid) sem prop drilling.
-// ============================================================
 let DISCOVERED_EMBEDDINGS: EmbeddingModelSpec[] = [];
 
-/** Substitui o conjunto de embeddings descobertos (chamado pelo plugin). */
 export function registerDiscoveredEmbeddings(specs: EmbeddingModelSpec[]): void {
   DISCOVERED_EMBEDDINGS = specs;
 }
 
-/** Curados + descobertos, sem duplicar por model id. */
 export function getAllEmbeddingModels(): EmbeddingModelSpec[] {
   const seen = new Set(EMBEDDING_MODELS.map((m) => m.model));
   const extra = DISCOVERED_EMBEDDINGS.filter((m) => !seen.has(m.model));
   return [...EMBEDDING_MODELS, ...extra];
 }
 
-/** True se o id parece um modelo de embedding (filtra o fetch). */
 export function isEmbeddingModelId(id: string): boolean {
   return /embed/i.test(id);
 }
 
-/** As famílias de embedding mais comuns no Ollama — pelo nome, porque nem
- *  todo Ollama diz no /api/show quais modelos são de embedding. */
 export function pareceEmbeddingDoOllama(nome: string): boolean {
   return /(embed|bge|minilm|\be5\b|e5-|gte|nomic|mxbai|snowflake-arctic|granite-embedding|paraphrase|jina)/i.test(nome);
 }
 
-/** A dimensão provável de um embedding do Ollama, pela família. Só pra
- *  mostrar: o indexador mede a de verdade com uma sonda. */
 function dimDoOllama(id: string): number {
   if (/minilm|granite-embedding:30m|arctic-embed:(xs|s)\b|arctic-embed:2[23]m/.test(id)) return 384;
   if (/qwen3-embedding:8b/.test(id)) return 4096;
   if (/qwen3-embedding:4b/.test(id)) return 2560;
   if (/mxbai|bge-m3|bge-large|arctic-embed(:l|:335m|$|:latest)|qwen3-embedding/.test(id)) return 1024;
-  return 768; // nomic-embed-text, embeddinggemma, paraphrase-multilingual, arctic-embed:m…
+  return 768; 
 }
 
-/**
- * Monta um spec pra um modelo de embedding: usa o curado se existir, senão
- * INFERE (dim por heurística de nome, free/imagem/dimensions por padrão). É a
- * info "best-effort" mostrada na UI pros modelos recém-descobertos. v0.1.151
- */
 export function inferEmbeddingSpec(
   provider: EmbeddingProvider,
   model: string
@@ -213,8 +175,7 @@ export function inferEmbeddingSpec(
   if (curated) return curated;
 
   const id = model.toLowerCase();
-  // Ollama: na máquina de quem usa — sem custo, sem nuvem, e a imagem fica
-  // de fora (o caminho de imagem é só o do OpenRouter).
+
   if (provider === "ollama") {
     return {
       provider,
@@ -227,7 +188,7 @@ export function inferEmbeddingSpec(
       discovered: true,
     };
   }
-  // Dimensão — heurística pelos nomes conhecidos; default 1536.
+
   let dim = 1536;
   if (id.includes("3-large") || id.includes("gemini-embedding")) dim = 3072;
   else if (id.includes("004")) dim = 768;
@@ -238,9 +199,7 @@ export function inferEmbeddingSpec(
   const supportsImage = /(\bvl\b|vision|multimodal|embed-vl)/.test(id);
   const supportsDimensions =
     id.includes("text-embedding-3") || id.includes("gemini-embedding");
-  // Só a variante :free do OpenRouter é grátis declarada. O NIM não é grátis
-  // em todo modelo (só os Free Endpoint, que vêm da lista do fetch), e o
-  // grátis do Gemini é do tier da conta — a tela decide os dois.
+
   const free = provider === "openrouter" && id.includes(":free");
 
   return {
@@ -248,7 +207,7 @@ export function inferEmbeddingSpec(
     model,
     dim,
     maxInputTokens: 8192,
-    pricePerMillion: free ? 0 : 0.1, // estimativa — só pra ordem de grandeza
+    pricePerMillion: free ? 0 : 0.1, 
     ...(supportsImage ? { supportsImage: true } : {}),
     ...(supportsDimensions ? { supportsDimensions: true } : {}),
     ...(free ? { free: true } : {}),
@@ -262,16 +221,13 @@ export function getEmbeddingSpec(model: string): EmbeddingModelSpec {
   );
 }
 
-/** Helper: extensões de imagem suportadas pelos modelos VL. */
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
 
-/** Detecta se um path é imagem (case-insensitive). */
 export function isImagePath(path: string): boolean {
   const ext = path.toLowerCase().split(".").pop() ?? "";
   return (IMAGE_EXTENSIONS as readonly string[]).includes(ext);
 }
 
-/** Mime type pra um path de imagem. Cobre os 5 formatos da lista. */
 export function imageMimeFromPath(path: string): string {
   const ext = path.toLowerCase().split(".").pop() ?? "";
   switch (ext) {

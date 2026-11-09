@@ -1,26 +1,17 @@
-// src/providers/modelRoles.ts
-// "Papéis" funcionais dos modelos = as seções do editor Connections → Models.
-// Cada papel agrupa uma ou mais ModelCategory e tem um ★ = o modelo-padrão pra
-// aquela função (chat, reasoning, imagem, vídeo, TTS, embedding). Unifica os
-// defaults que viviam espalhados (defaultModel/anthropicModel/…/ragEmbeddingModel).
-// v0.1.236
-
 import type { ModelCategory } from "./modelDescriptions";
-import { marca } from "../i18n/tr";
+import { mark } from "../i18n/tr";
 
-/** Modelo escolhido pra um papel: o ID + de qual provider (dedup cross-provider). */
 export interface RoleModelEntry {
   model: string;
   provider: string;
 }
 
-/** Os 7 papéis = seções (na ordem que aparecem no editor). */
 export type RoleId =
-  | "chat" // chat-vision + chat-text + agent
+  | "chat" 
   | "reasoning"
   | "image"
   | "video"
-  | "tts" // audio-gen
+  | "tts" 
   | "embedding"
   | "other";
 
@@ -36,15 +27,14 @@ export const ROLE_ORDER: RoleId[] = [
 
 export const ROLE_LABELS: Record<RoleId, string> = {
   chat: "Chat",
-  reasoning: marca("Reasoning"),
-  image: marca("Image"),
-  video: marca("Video"),
-  tts: marca("Text-to-speech"),
-  embedding: marca("Text embedding"),
-  other: marca("Other"),
+  reasoning: mark("Reasoning"),
+  image: mark("Image"),
+  video: mark("Video"),
+  tts: mark("Text-to-speech"),
+  embedding: mark("Text embedding"),
+  other: mark("Other"),
 };
 
-/** Ícone Lucide do "brasão" de cada papel. */
 export const ROLE_ICONS: Record<RoleId, string> = {
   chat: "messages-square",
   reasoning: "brain",
@@ -55,8 +45,6 @@ export const ROLE_ICONS: Record<RoleId, string> = {
   other: "box",
 };
 
-/** Mapeia a categoria semântica do modelo → papel (seção). As 3 variantes de
- *  chat (vision/text/agent) caem todas em "chat". */
 export function categoryToRole(cat: ModelCategory): RoleId {
   switch (cat) {
     case "chat-vision":

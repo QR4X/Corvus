@@ -1,46 +1,30 @@
-// src/providers/modelInfoStore.ts
-// Camada de COLETA de dados dos modelos (v0.1.130).
-//
-// Estratégia pra plugin público (decidida com o dev):
-//   - Baseline = registro local curado (modelDescriptions.ts) → offline, pt/en,
-//     review-safe, renderiza instantâneo.
-//   - Enriquecimento = botão "Fetch info" busca specs/pricing/modalidade ao vivo
-//     via OpenRouter /api/v1/models (público, sem API key, cobre fechados+open),
-//     e faz MERGE num cache persistido em JSON no diretório do plugin.
-//   - O card lê cache-sobre-bundled (enriched override do curado).
-//
-// Rede via requestUrl do Obsidian (fura CORS). Inglês vem da API; o pt fica
-// curado no baseline.
-
 import { requestUrl } from "obsidian";
-import { ehGratisNoOpenRouter } from "./gratisOpenRouter";
+import { ehGratisNoOpenRouter } from "./openrouterFree";
 
-/** Specs enriquecidas de um modelo (vindas do fetch — OpenRouter por ora). */
 export interface EnrichedModelInfo {
-  /** Descrição em inglês (a API só dá EN; pt fica curado no baseline). */
+
   descriptionEn?: string;
   contextWindow?: number;
   inputPerMillion?: number | null;
   outputPerMillion?: number | null;
-  /** USD por imagem (image gen / input de imagem). */
+
   imagePerCall?: number | null;
-  /** Modalidades de INPUT aceitas: text / image / audio / file ... */
+
   modalities?: string[];
-  /** Modalidades de OUTPUT: text / image ... */
+
   outputModalities?: string[];
-  /** Suporta tool/function calling. */
+
   supportsTools?: boolean;
   tier?: "free" | "paid" | "unknown";
-  /** Fonte do dado ("openrouter") + quando foi buscado (ISO). */
+
   source?: string;
   fetchedAt?: string;
 }
 
-// Cache em memória (hidratado do disco no onload do plugin).
 let CACHE: Record<string, EnrichedModelInfo> = {};
-// Catálogo do OpenRouter cacheado por sessão (1 GET serve pra vários fetches).
+
 let openRouterCatalog: OpenRouterModel[] | null = null;
-// v0.1.228: dedupe da Promise em voo — N fetches concorrentes compartilham 1 GET.
+
 let catalogPromise: Promise<OpenRouterModel[]> | null = null;
 
 interface OpenRouterModel {
@@ -61,12 +45,10 @@ export function cacheKey(provider: string, model: string): string {
   return provider + "::" + model;
 }
 
-/** Hidrata o cache em memória a partir do que o plugin leu do disco. */
 export function hydrateModelInfoCache(
   data: Record<string, EnrichedModelInfo> | undefined | null
 ): void {
-  // v0.1.228: valida o shape — só aceita objetos plain (rejeita Array/null),
-  // descartando entradas corrompidas do JSON em disco em vez de confiar nelas.
+
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     CACHE = {};
     return;
@@ -80,12 +62,10 @@ export function hydrateModelInfoCache(
   CACHE = clean;
 }
 
-/** Snapshot do cache pra persistir em disco. */
 export function getModelInfoCache(): Record<string, EnrichedModelInfo> {
   return CACHE;
 }
 
-/** Lê specs enriquecidas de um modelo (cache-sobre-bundled no card). */
 export function getEnrichedInfo(
   provider: string,
   model: string
@@ -95,16 +75,14 @@ export function getEnrichedInfo(
 
 async function loadOpenRouterCatalog(): Promise<OpenRouterModel[]> {
   if (openRouterCatalog) return openRouterCatalog;
-  // v0.1.228: memoiza a Promise em voo (não só o resultado) — fetches
-  // concorrentes compartilham 1 GET; limpa pra null se rejeitar (permite retry).
+
   if (catalogPromise) return catalogPromise;
   catalogPromise = (async () => {
     const res = await requestUrl({
       url: "https://openrouter.ai/api/v1/models",
       method: "GET",
       headers: { Accept: "application/json" },
-      // requestUrl lança em status >=400 quando throw=true (padrão); checamos
-      // explícito abaixo pra não confiar em corpo vazio/200 sem data.
+
     });
     if (res.status < 200 || res.status >= 300) {
       throw new Error("OpenRouter /models HTTP " + res.status);
@@ -112,8 +90,7 @@ async function loadOpenRouterCatalog(): Promise<OpenRouterModel[]> {
     const data = (res.json as { data?: unknown } | undefined)?.data as
       | OpenRouterModel[]
       | undefined;
-    // v0.1.228: só cacheia catálogo válido e não-vazio; em falha deixa null
-    // pra permitir retry numa próxima chamada (não fixa um array vazio).
+
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error("OpenRouter /models payload empty/invalid");
     }
@@ -128,13 +105,11 @@ async function loadOpenRouterCatalog(): Promise<OpenRouterModel[]> {
   }
 }
 
-/** "openai/gpt-4o" / "gpt-4o:free" → "gpt-4o" (cauda, sem vendor nem :free). */
 function tailOf(id: string): string {
   const lower = (id || "").toLowerCase().replace(/:free$/, "");
   return lower.includes("/") ? lower.slice(lower.lastIndexOf("/") + 1) : lower;
 }
 
-/** Acha o modelo no catálogo do OpenRouter: id exato → cauda igual → prefixo. */
 function matchOpenRouter(
   catalog: OpenRouterModel[],
   model: string
@@ -145,9 +120,7 @@ function matchOpenRouter(
   const tail = tailOf(model);
   hit = catalog.find((m) => tailOf(m.id || "") === tail);
   if (hit) return hit;
-  // v0.1.228: prefixo só casa com limite de borda (próximo char é separador
-  // -/:/. ou fim) e prefixo >=5 chars, evitando "gpt-4" casar "gpt-4o-mini".
-  // Entre vários candidatos, prefere o de maior overlap (prefixo mais longo).
+
   const boundary = (full: string, prefix: string): boolean => {
     if (!full.startsWith(prefix)) return false;
     const next = full.charAt(prefix.length);
@@ -171,16 +144,13 @@ function matchOpenRouter(
 function perMillion(usdPerToken: string | undefined): number | null {
   const v = parseFloat(usdPerToken ?? "");
   if (isNaN(v)) return null;
-  // v0.1.228: 6 casas decimais — preços sub-centavo por milhão (modelos
-  // baratos) não colapsam a 0, evitando classificá-los como gratuitos.
+
   return Math.round(v * 1_000_000 * 1_000_000) / 1_000_000;
 }
 
 function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
   const arch = raw.architecture ?? {};
-  // v0.1.228: prefere input_modalities; no fallback do campo `modality`
-  // (ex: "text+image->text") pega só a parte ANTES do fluxo "->" e faz split
-  // por "+". Não usa classe com "-" (quebrava "text-to-image" e ids hifenizados).
+
   const inModal =
     arch.input_modalities ??
     (arch.modality
@@ -193,10 +163,7 @@ function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
   const input = perMillion(raw.pricing?.prompt);
   const output = perMillion(raw.pricing?.completion);
   const imgRaw = parseFloat(raw.pricing?.image ?? "");
-  // v0.1.228: separa "preço zero confirmado" de "preço desconhecido (null)".
-  // 0.9.22: zero por token não basta — o Lyria (música) vem "0" e cobra por
-  // clipe. "free" só pela regra de gratisOpenRouter.ts; zero sem ela é
-  // "unknown" (o preço existe, só não está em campo nenhum).
+
   const gratis =
     typeof raw.id === "string" &&
     ehGratisNoOpenRouter({
@@ -216,15 +183,14 @@ function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
   const rawDesc =
     typeof raw.description === "string" ? raw.description.trim() : undefined;
   return {
-    // v0.1.228: trunca a 280 chars (com reticências) — limita o tamanho do
-    // cache. O consumidor renderiza como texto, nunca dangerouslySetInnerHTML.
+
     descriptionEn:
       rawDesc && rawDesc.length > 280 ? rawDesc.slice(0, 279) + "…" : rawDesc,
     contextWindow:
       typeof raw.context_length === "number" ? raw.context_length : undefined,
     inputPerMillion: input,
     outputPerMillion: output,
-    // v0.1.228: 0 é preço válido (imagem grátis) — null só quando ausente/NaN.
+
     imagePerCall: isNaN(imgRaw) ? null : imgRaw,
     modalities: inModal.filter(Boolean),
     outputModalities: (arch.output_modalities ?? []).filter(Boolean),
@@ -235,12 +201,6 @@ function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
   };
 }
 
-/**
- * Grava no cache specs JÁ prontas de outra fonte que não o catálogo do
- * OpenRouter — hoje, o Ollama, que declara `capabilities` no /api/show.
- * O shape é o mesmo, então quem lê (getEnrichedInfo → getModelCapabilities)
- * não precisa saber de onde veio. O CALLER persiste (plugin.saveModelInfoCache).
- */
 export function recordModelInfo(
   provider: string,
   model: string,
@@ -249,7 +209,6 @@ export function recordModelInfo(
   CACHE[cacheKey(provider, model)] = info;
 }
 
-/** Match + conversão + gravação — o miolo que os dois caminhos compartilham. */
 function gravarDoCatalogo(
   catalog: OpenRouterModel[],
   provider: string,
@@ -263,11 +222,6 @@ function gravarDoCatalogo(
   return info;
 }
 
-/**
- * Busca e cacheia as specs de um modelo via OpenRouter. Retorna a info
- * (e atualiza o cache em memória) ou null se não achou correspondência.
- * O CALLER persiste em disco (plugin.saveModelInfoCache) após sucesso.
- */
 export async function fetchAndCacheModelInfo(
   provider: string,
   model: string
@@ -276,34 +230,18 @@ export async function fetchAndCacheModelInfo(
   return gravarDoCatalogo(catalog, provider, model);
 }
 
-/**
- * Enriquece uma LISTA de modelos pelo catálogo do OpenRouter — UM GET só (o
- * catálogo é memoizado) e match por id/cauda, que é o que liga um modelo do
- * NIM/Ollama/OpenAI ao mesmo modelo publicado lá. Devolve quantos foram
- * gravados. Nunca lança: sem rede, valem as tabelas curadas.
- *
- * Não escreve em disco: quem chama decide quando persistir. Assim uma rodada
- * sobre seis providers grava UMA vez, e não seis.
- *
- * Isto era código morto na 0.9.x: o "Fetch info" por card saiu na migração
- * pra src/ui e levou o único caller embora. A camada de capacidades seguiu
- * lendo um cache que ninguém mais escrevia — daí um modelo com visão aparecer
- * como modelo sem visão só por não estar na tabela por prefixo.
- */
 export async function enrichModelsFromCatalog(
   provider: string,
   models: readonly string[]
 ): Promise<number> {
-  // Nada a aprender (todo mundo já está no cache) → nem toca na rede. É o
-  // estado normal depois da primeira sessão: o começo do Obsidian fica sem
-  // GET nenhum.
+
   const faltando = models.filter((m) => m && !CACHE[cacheKey(provider, m)]);
   if (faltando.length === 0) return 0;
   let catalog: OpenRouterModel[];
   try {
     catalog = await loadOpenRouterCatalog();
   } catch {
-    return 0; // Sem catálogo (offline/throttle): fica a tabela curada.
+    return 0; 
   }
   let gravados = 0;
   for (const model of faltando) {

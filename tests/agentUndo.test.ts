@@ -18,10 +18,6 @@ import {
   toolVaultMove,
 } from "../src/agent/tools";
 
-// O Undo das mudanças do agente: guarda antes, monta a volta depois, e a
-// volta nunca atropela o que mudou no meio. Um vault falso em memória com a
-// API de Vault que as tools e o desfazer usam.
-
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -117,12 +113,8 @@ function vaultFalso(trashOption: string | null = "local") {
   };
   return { app, vault, lixeira, texto, existe: (p: string) => nos.has(p) };
 }
-
-/** Contexto das tools no teste — storage do app não vem configurado. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ctxDe = (app: App) => ({ app, vectorIndex: null, appDataPaths: [] }) as any;
 
-/** Roda a tool como o agente roda: antes → tool → depois → registro. */
 async function comoOAgente(
   app: App,
   id: string,
@@ -157,7 +149,7 @@ describe("desfazer cada mudança do agente", () => {
     expect(podeDesfazer("e1")).toBe(true);
     expect(await desfazer("e1")).toBe("Restored a.md");
     expect(await v.texto("a.md")).toBe("um dois três");
-    // não se desfaz duas vezes
+
     expect(podeDesfazer("e1")).toBe(false);
   });
 
@@ -169,7 +161,7 @@ describe("desfazer cada mudança do agente", () => {
     await v.vault.process(v.vault.getAbstractFileByPath("a.md") as TFile, () => "y + mão da pessoa");
     await expect(desfazer("e2")).rejects.toBeInstanceOf(ConflitoAoDesfazer);
     expect(await v.texto("a.md")).toBe("y + mão da pessoa");
-    expect(podeDesfazer("e2")).toBe(true); // o conflito não gasta o desfazer
+    expect(podeDesfazer("e2")).toBe(true); 
     expect(await desfazer("e2", true)).toBe("Restored a.md");
     expect(await v.texto("a.md")).toBe("x");
   });

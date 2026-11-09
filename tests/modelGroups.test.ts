@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { filterModels, groupModels, mergeModelOptions } from "../src/ui/modelGroups";
 
-/**
- * O catálogo de um provider chega como uma pilha só: geradores de imagem,
- * vozes de TTS e modelos de conversa no mesmo rolo, vários deles dizendo a
- * mesma frase. Escolher ali é procurar. Estes testes são o contrato do que
- * separa essa pilha — e o que ele NÃO pode fazer é esconder alguma coisa.
- */
-
 describe("groupModels", () => {
   it("põe junto o que é da mesma natureza, e conversa vem primeiro", () => {
     const g = groupModels("openai", [
@@ -23,7 +16,7 @@ describe("groupModels", () => {
     expect(rotulos).toContain("Reasoning");
     expect(rotulos).toContain("Image");
     expect(rotulos).toContain("Voice");
-    // Conversa antes de qualquer outro grupo.
+
     expect(rotulos.indexOf("Chat")).toBe(0);
   });
 
@@ -33,8 +26,7 @@ describe("groupModels", () => {
   });
 
   it("não perde NENHUM modelo pelo caminho", () => {
-    // Um agrupamento que engole um item é pior que nenhum agrupamento: o
-    // modelo some da tela e ninguém sabe que ele existe.
+
     const entrada = [
       "gpt-4o",
       "o1",
@@ -48,8 +40,7 @@ describe("groupModels", () => {
   });
 
   it("preserva a ordem de dentro de cada grupo", () => {
-    // É a ordem que a pessoa montou em Settings — reordenar seria inventar
-    // uma preferência que ela não expressou.
+
     const g = groupModels("openai", ["gpt-5", "gpt-4o", "gpt-4o-mini"]);
     expect(g[0].models).toEqual(["gpt-5", "gpt-4o", "gpt-4o-mini"]);
   });
@@ -75,7 +66,7 @@ describe("filterModels", () => {
   });
 
   it("acha pelo NOME que está na tela", () => {
-    // Na tela lê-se "Gpt 5.4"; ninguém digita o hífen de propósito.
+
     expect(filterModels(lista, "gpt 5", pretty)).toEqual(["gpt-5.4"]);
   });
 
@@ -96,7 +87,7 @@ describe("filterModels", () => {
 
 describe("mergeModelOptions", () => {
   it("põe o catálogo DEPOIS do que está marcado", () => {
-    // A ordem marcada é a que a pessoa montou em Settings: ela manda.
+
     expect(
       mergeModelOptions(["gpt-5", "gpt-4o"], ["gpt-4o", "gpt-5-mini"])
     ).toEqual(["gpt-5", "gpt-4o", "gpt-5-mini"]);

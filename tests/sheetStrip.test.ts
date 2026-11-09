@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { drawerInnerOf, SHEET_OPEN_CLASS, syncSheetStrip } from "../src/ui/sheetStrip";
 
-// A faixa da barra de gestos sai de uma classe RECALCULADA do DOM (ver
-// src/ui/sheetStrip.ts). O que importa provar: a classe segue o que está no
-// DOM, não quem chamou por último — várias folhas, desmontagem, ordem
-// qualquer.
-
-/** Uma `.workspace-drawer-inner` de mentira: só o que o sheetStrip usa. */
 function fakeInner(abertas: () => number) {
   const classes = new Set<string>();
   return {
@@ -37,8 +31,7 @@ describe("syncSheetStrip", () => {
   });
 
   it("fechar UMA de duas folhas abertas mantém a faixa", () => {
-    // O motivo de recalcular em vez de ligar/desligar: a folha que fecha não
-    // sabe se há outra aberta.
+
     let n = 2;
     const inner = fakeInner(() => n);
     syncSheetStrip(inner as never);

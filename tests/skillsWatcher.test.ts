@@ -1,15 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 
-// O módulo importa "obsidian" (normalizePath) — resolve pro stub dos testes.
 vi.mock("obsidian", () => import("./obsidian-stub"));
 
 const { isSkillFilePath, skillsFolderPrefix } = await import(
   "../src/skills/skills"
 );
-
-// SKL-03: o watcher do vault só pode recarregar as skills quando o .md mexido
-// está DENTRO da pasta configurada — senão qualquer edição no vault dispara
-// uma releitura da pasta inteira.
 
 describe("isSkillFilePath — gate do hot reload das skills", () => {
   const FOLDER = "corvus-ai/skills";

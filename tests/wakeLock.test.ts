@@ -6,12 +6,6 @@ import {
 } from "../src/core/wakeLock";
 import { useChatStore } from "../src/store/chat";
 
-// O contrato do wake lock: a tela fica acesa exatamente enquanto a IA escreve
-// (store.isLoading) com o toggle ligado e o app à vista; qualquer coisa fora
-// disso solta o lock. Cada caso aqui é um jeito de a tela apagar (ou ficar
-// acesa) na hora errada.
-
-/** Um navegador de mentira: registra pedidos/soltas e dispara os listeners. */
 function fakeEnv(over: Partial<WakeLockEnv> = {}): WakeLockEnv & {
   pedidos: string[];
   soltos: string[];
@@ -149,9 +143,9 @@ describe("acompanharEscrita", () => {
     });
     const vigia = acompanharEscrita(() => true, env);
     useChatStore.setState({ isLoading: true });
-    useChatStore.setState({ isLoading: false }); // acabou antes de o lock chegar
+    useChatStore.setState({ isLoading: false }); 
     liberar({ release: async () => {}, addEventListener: () => {} });
-    // o pedido velho não segura nada nem trava o próximo turno
+
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(pedidos).toEqual(["screen", "screen"]));
     vigia.dispose();

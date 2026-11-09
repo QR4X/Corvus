@@ -11,17 +11,6 @@ import { toAnthropicPayload } from "../src/providers/anthropic";
 import type { AIToolStep } from "../src/agent/types";
 import type { ProviderMessage } from "../src/providers/base";
 
-// =============================================================================
-// Persistência de chat × continuidade do agent — EDGE CASES (v0.1.161/162)
-//
-// Dois eixos cobertos:
-//   1. Round-trip do .md (render → parse) com agentSteps em situações chatas.
-//   2. Reconstrução do history (storeMessagesToProvider) → payload WIRE válido
-//      em TODOS os providers: OpenAI-compat (toOpenAIMessages) e Anthropic
-//      (toAnthropicPayload). É a prova de que "reabrir o chat e continuar"
-//      funciona em qualquer provider/modo.
-// =============================================================================
-
 const baseChat: ChatData = {
   id: "edge1",
   title: "Edge",
@@ -40,16 +29,13 @@ const mkChat = (messages: ChatMessageStored[]): ChatData => ({
   messages,
 });
 
-// ── Validadores de invariantes wire ─────────────────────────────────────────
-
-/** OpenAI-compat: todo `tool` casa com um assistant.tool_calls[].id anterior. */
 function assertOpenAIToolIntegrity(wire: Array<Record<string, any>>) {
   const declared = new Set<string>();
   for (const m of wire) {
     if (m.role === "assistant" && Array.isArray(m.tool_calls)) {
       for (const tc of m.tool_calls) {
         declared.add(tc.id);
-        // arguments sempre string JSON (formato OpenAI)
+
         expect(typeof tc.function.arguments).toBe("string");
       }
     }
@@ -59,18 +45,16 @@ function assertOpenAIToolIntegrity(wire: Array<Record<string, any>>) {
   }
 }
 
-/** Anthropic: alternância estrita, 1ª msg user, tool_use↔tool_result casados,
- *  zero text-block vazio. Se qualquer uma falhar, a API responde 400. */
 function assertAnthropicValid(payload: ReturnType<typeof toAnthropicPayload>) {
   const { messages } = payload;
   if (messages.length === 0) return;
-  // 1. primeira msg é user (Anthropic exige começar por user)
+
   expect(messages[0].role).toBe("user");
-  // 2. alternância estrita user/assistant
+
   for (let i = 1; i < messages.length; i++) {
     expect(messages[i].role).not.toBe(messages[i - 1].role);
   }
-  // 3. todo tool_use tem tool_result correspondente (e vice-versa)
+
   const useIds: string[] = [];
   const resultIds: string[] = [];
   for (const m of messages) {
@@ -81,7 +65,7 @@ function assertAnthropicValid(payload: ReturnType<typeof toAnthropicPayload>) {
     }
   }
   expect(useIds.sort()).toEqual(resultIds.sort());
-  // 4. nenhum text-block vazio (Anthropic rejeita text content vazio)
+
   for (const m of messages) {
     const blocks = Array.isArray(m.content) ? m.content : [];
     for (const b of blocks as Array<Record<string, any>>) {
@@ -95,9 +79,6 @@ const steps2: AIToolStep[] = [
   { id: "c2", name: "vault_search", arguments: { query: "arquitetura" }, result: "3 hits", ok: true },
 ];
 
-// =============================================================================
-// 1. Round-trip de persistência — edge cases de conteúdo
-// =============================================================================
 describe("persistência round-trip — edge cases", () => {
   it("result com headings '## You'/'## Assistant' não quebra o parse (base64 protege)", () => {
     const steps: AIToolStep[] = [
@@ -173,7 +154,7 @@ describe("persistência round-trip — edge cases", () => {
   it("content SEM steps que termina com um comentário corvus-steps falso fica intacto", () => {
     const chat = mkChat([
       { type: "user", content: "oi", timestamp: 1 },
-      // sem agentSteps; o texto só PARECE ter o marcador
+
       { type: "ai-response", content: "veja <!-- corvus-steps: bogus -->", timestamp: 2 },
     ]);
     const r = parseChatMarkdown(renderChatMarkdown(chat));
@@ -182,9 +163,6 @@ describe("persistência round-trip — edge cases", () => {
   });
 });
 
-// =============================================================================
-// 2. storeMessagesToProvider — cross-mode edge cases
-// =============================================================================
 describe("storeMessagesToProvider — cross-mode", () => {
   it("toolMode=true: resposta de agent com content vazio → NÃO emite assistant de texto vazio", () => {
     const out = storeMessagesToProvider(
@@ -195,10 +173,10 @@ describe("storeMessagesToProvider — cross-mode", () => {
       undefined,
       true
     );
-    // user, assistant(tool_calls), tool, tool — sem assistant final (content vazio)
+
     expect(out.map((m) => m.role)).toEqual(["user", "assistant", "tool", "tool"]);
     expect(out.some((m) => m.role === "assistant" && m.content === "")).toBe(true);
-    // o assistant vazio é o de tool_calls (tem toolCalls), não um texto solto
+
     const emptyAssist = out.find((m) => m.role === "assistant" && m.content === "")!;
     expect(emptyAssist.toolCalls?.length).toBe(2);
   });
@@ -218,11 +196,8 @@ describe("storeMessagesToProvider — cross-mode", () => {
   });
 });
 
-// =============================================================================
-// 3. Continuidade CROSS-PROVIDER — o history reconstruído é WIRE-válido nos 6
-// =============================================================================
 describe("continuidade cross-provider — payload wire válido", () => {
-  // Cenário canônico do user: abriu agente, criou projeto, voltou e continuou.
+
   const singleTurn: ProviderMessage[] = [
     { role: "system", content: "AGENT" },
     ...storeMessagesToProvider(
@@ -236,17 +211,14 @@ describe("continuidade cross-provider — payload wire válido", () => {
     ),
   ];
 
-  // Multi-turn REAL: o agent emitiu texto entre tool calls → o store guarda
-  // ai-responses CONSECUTIVOS (cada turn é uma msg), só o último tem agentSteps.
-  // É o caso que gerava `assistant` consecutivos → Anthropic 400 sem o merge.
   const multiTurn: ProviderMessage[] = [
     { role: "system", content: "AGENT" },
     ...storeMessagesToProvider(
       [
         { type: "user", content: "constrói o app" },
-        { type: "ai-response", content: "Deixa eu olhar a estrutura…" }, // turn 1, sem steps
-        { type: "ai-response", content: "Agora vou criar os arquivos…" }, // turn 2, sem steps
-        { type: "ai-response", content: "Tudo pronto.", agentSteps: steps2 }, // final
+        { type: "ai-response", content: "Deixa eu olhar a estrutura…" }, 
+        { type: "ai-response", content: "Agora vou criar os arquivos…" }, 
+        { type: "ai-response", content: "Tudo pronto.", agentSteps: steps2 }, 
       ],
       undefined,
       true
@@ -268,10 +240,9 @@ describe("continuidade cross-provider — payload wire válido", () => {
   it("Anthropic: multi-turn — assistants consecutivos são MERGEADOS (sem 400)", () => {
     const payload = toAnthropicPayload(multiTurn);
     assertAnthropicValid(payload);
-    // o system foi extraído, não virou mensagem
+
     expect(payload.system).toBe("AGENT");
-    // os 3 ai-responses + tool_calls colapsam em UM bloco assistant antes do
-    // user(tool_result) — prova do merge (texto dos turns 1/2 + tool_use juntos).
+
     const firstAssistant = payload.messages.find((m) => m.role === "assistant")!;
     const blocks = Array.isArray(firstAssistant.content) ? firstAssistant.content : [];
     const texts = blocks.filter((b: any) => b.type === "text").map((b: any) => b.text);
@@ -294,7 +265,7 @@ describe("continuidade cross-provider — payload wire válido", () => {
     );
     const payload = toAnthropicPayload([{ role: "system", content: "A" }, ...hist]);
     assertAnthropicValid(payload);
-    // o id estrangeiro foi preservado no tool_use E no tool_result
+
     const flat = payload.messages.flatMap((m) =>
       Array.isArray(m.content) ? m.content : []
     ) as Array<Record<string, any>>;
@@ -307,10 +278,10 @@ describe("continuidade cross-provider — payload wire válido", () => {
       { type: "user", content: "oi" },
       { type: "ai-response", content: "pensando…" },
       { type: "ai-response", content: "feito", agentSteps: steps2 },
-    ]); // toolMode=false
+    ]); 
     const payload = toAnthropicPayload([{ role: "system", content: "S" }, ...flat]);
     assertAnthropicValid(payload);
-    // sem tool_use no flatten — tudo é texto
+
     const flatBlocks = payload.messages.flatMap((m) =>
       Array.isArray(m.content) ? m.content : []
     ) as Array<Record<string, any>>;
@@ -318,7 +289,7 @@ describe("continuidade cross-provider — payload wire válido", () => {
   });
 
   it("end-to-end: persiste no .md → relê → reconstrói → Anthropic válido", () => {
-    // Simula o ciclo completo: salvar agent chat, reabrir, continuar.
+
     const chat = mkChat([
       { type: "user", content: "cria o projeto", timestamp: 1 },
       { type: "ai-response", content: "olhando…", timestamp: 2 },

@@ -1,23 +1,21 @@
 <h1 align="center">Corvus</h1>
 
 <p align="center">
-  <a href="https://community.obsidian.md/plugins/corvus"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&query=%24%5B%22corvus%22%5D.downloads&label=downloads&logo=obsidian&color=7C3AED" alt="Obsidian downloads"></a>
-  <a href="https://github.com/QR4X/M.I.L.A/releases/latest"><img src="https://img.shields.io/github/v/release/QR4X/M.I.L.A?label=version&color=6c5ce7" alt="Latest release"></a>
+  <a href="https://github.com/QR4X/Corvus/releases/latest"><img src="https://img.shields.io/github/downloads/QR4X/Corvus/total?label=downloads&logo=obsidian&color=7C3AED" alt="Obsidian downloads"></a>
+  <a href="https://github.com/QR4X/Corvus/releases/latest"><img src="https://img.shields.io/github/v/release/QR4X/Corvus?label=version&color=6c5ce7" alt="Latest release"></a>
   <a href="#faq"><img src="https://img.shields.io/badge/desktop%20%2B%20mobile-supported-success" alt="Desktop and mobile"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0"></a>
 </p>
 
-<p align="center"><b>English</b> · <a href="README.pt-BR.md">Português (Brasil)</a></p>
-
 <p align="center">
-  <a href="https://community.obsidian.md/plugins/corvus"><img src="https://img.shields.io/badge/Add%20to%20Obsidian-7c3aed?logo=obsidian&logoColor=white&style=for-the-badge" alt="Add to Obsidian"></a>
+  <a href="https://github.com/QR4X/Corvus/releases/latest"><img src="https://img.shields.io/badge/Download%20Latest%20Release-7c3aed?logo=obsidian&logoColor=white&style=for-the-badge" alt="Download Latest Release"></a>
 </p>
 
 <p align="center"><b>Chat, ask your vault, and let an agent edit your notes, on your phone as well as your desktop.</b><br>Six providers, your own API keys, every conversation saved as Markdown.</p>
 
 <p align="center"><img src="assets/demo/hero.gif" width="900" alt="A real recording on the Obsidian mobile layout: a question about the vault, then an answer that cites the notes it came from"></p>
 
-<p align="center"><a href="https://github.com/QR4X/M.I.L.A">Website</a> · <a href="#install">Install</a> · <a href="#quick-start">Quick start</a> · <a href="#privacy-and-data">Privacy</a> · <a href="#faq">FAQ</a> · <a href="https://github.com/QR4X/M.I.L.A/discussions">Discussions</a></p>
+<p align="center"><a href="https://github.com/QR4X/Corvus">Repository</a> · <a href="#install">Install</a> · <a href="#quick-start">Quick start</a> · <a href="#privacy-and-data">Privacy</a> · <a href="#faq">FAQ</a> · <a href="https://github.com/QR4X/Corvus/discussions">Discussions</a></p>
 
 ## What it does
 
@@ -48,18 +46,18 @@
 
 Requires Obsidian **1.11.4** or newer, on desktop or mobile, and either an API key for one provider or a local Ollama server.
 
-1. Open the [Corvus page in the community directory](https://community.obsidian.md/plugins/corvus) and choose **Add to Obsidian**, or in Obsidian go to **Settings → Community plugins → Browse** and search for **Corvus**.
-2. Select **Install**, then **Enable**.
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/QR4X/Corvus/releases/latest) (or install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) using `QR4X/Corvus`).
+2. Copy the release files into `<vault>/.obsidian/plugins/corvus/` and enable **Corvus** in **Settings → Community plugins**.
 3. Open it from the ribbon icon or the command palette (**Corvus: Open**).
 
 ### Beta builds (BRAT)
 
-Test builds are published as GitHub pre-releases. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), add `QR4X/M.I.L.A`, and BRAT keeps you on the latest beta. Betas can break; the community directory always serves the stable release.
+Test builds are published as GitHub pre-releases. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), add `QR4X/Corvus`, and BRAT keeps you on the latest beta.
 
 <details>
 <summary>Manual install</summary>
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/QR4X/M.I.L.A/releases/latest).
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/QR4X/Corvus/releases/latest).
 2. Copy them into `<vault>/.obsidian/plugins/corvus/`.
 3. Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 </details>
@@ -193,7 +191,7 @@ Yes. Corvus runs in its own panel, its styles are scoped to that panel, and it d
 <details>
 <summary><b>How do I report a bug?</b></summary>
 
-Use the [bug report form](https://github.com/QR4X/M.I.L.A/issues/new?template=bug_report.yml). Your platform, Obsidian version and the steps to reproduce make it much faster to fix. Questions go to [Discussions](https://github.com/QR4X/M.I.L.A/discussions).
+Use the [bug report form](https://github.com/QR4X/Corvus/issues/new?template=bug_report.yml). Your platform, Obsidian version and the steps to reproduce make it much faster to fix. Questions go to [Discussions](https://github.com/QR4X/Corvus/discussions).
 </details>
 
 <details>
@@ -211,12 +209,12 @@ Use the [bug report form](https://github.com/QR4X/M.I.L.A/issues/new?template=bu
 - **Next:** PDFs on Gemini, NIM and Ollama; a Coder mode with diff previews.
 - **Later:** MCP connectors (Notion, Linear, GitHub); optional paid extras such as cross-device sync and automatic media transcription.
 
-Ideas and votes live in [Discussions › Ideas](https://github.com/QR4X/M.I.L.A/discussions/categories/ideas).
+Ideas and votes live in [Discussions › Ideas](https://github.com/QR4X/Corvus/discussions/categories/ideas).
 
 ## Feedback and community
 
-- Found a bug? [Report it](https://github.com/QR4X/M.I.L.A/issues/new?template=bug_report.yml).
-- Have a question? [Ask in Discussions](https://github.com/QR4X/M.I.L.A/discussions).
+- Found a bug? [Report it](https://github.com/QR4X/Corvus/issues/new?template=bug_report.yml).
+- Have a question? [Ask in Discussions](https://github.com/QR4X/Corvus/discussions).
 - Built a useful skill? Skills are `.md` files, so share yours in Discussions.
 - If Corvus helps you, a star on GitHub helps other people find it.
 

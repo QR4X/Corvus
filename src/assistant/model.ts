@@ -1,63 +1,27 @@
-// src/assistant/model.ts
-// QUEM atende a assistente de criação — e por que ela não usa o modelo do chat.
-//
-// Escrever um skill ou montar um projeto é trabalho de formulário: sai texto
-// curto, estruturado, e o resultado é revisado por quem pediu antes de virar
-// qualquer coisa. Não é a tarefa que justifica o modelo caro que você escolheu
-// pra conversar. Se ela usasse o do chat, toda ajuda pra criar um skill
-// cobraria o preço da conversa mais cara — e a ajuda deixaria de ser gratuita
-// justamente pra quem mais precisa dela.
-//
-// Por isso a assistente tem modelo PRÓPRIO, e o padrão é um free do
-// OpenRouter. E o padrão é DESCOBERTO, não escrito aqui: id de modelo free
-// muda de nome e some do catálogo, e um id fixo no código viraria um 404 num
-// dia qualquer, num lugar onde a pessoa não tem como adivinhar o que
-// aconteceu. Aqui a gente procura entre os que ela já tem.
-
 import { tr } from "../i18n/tr";
 
-/** Onde a assistente roda. */
 export interface AssistantAlvo {
   provider: string;
   model: string;
 }
 
-/** O que a escolha precisa saber das settings. */
 export interface AssistantFontes {
-  /** Os grátis descobertos no SCAN (settings.freeModels). */
+
   freeModels?: Record<string, string[]>;
-  /** Escolha explícita da pessoa (Settings). Vazio = descobrir. */
+
   assistantProvider?: string;
   assistantModel?: string;
-  /** Favoritos por provider — a primeira fonte, porque favorito é escolha. */
+
   favoriteModels?: Record<string, string[]>;
-  /** Todos os modelos conhecidos por provider. */
+
   activeModels?: Record<string, string[]>;
 }
 
-/**
- * O modelo é grátis?
- *
- * Primeiro o que o CATÁLOGO disse (a lista descoberta no SCAN, pelo preço);
- * só depois o palpite pelo nome. A ordem importa: o sufixo `:free` acerta a
- * maioria dos do OpenRouter e perde os que são grátis sem dizer no id — e
- * quem paga por essa perda é justamente quem não quer pagar nada.
- *
- * Sem lista (ninguém escaneou ainda), o palpite volta a ser tudo que temos.
- */
 export function ehFree(model: string, livres?: readonly string[]): boolean {
   if (livres?.length && livres.includes(model)) return true;
   return (model || "").toLowerCase().endsWith(":free");
 }
 
-/**
- * Onde a assistente vai rodar, ou null quando não há nada servível.
- *
- * A ordem é a ordem da intenção: o que a pessoa escolheu, depois o que ela
- * favoritou, depois o que ela tem. null não é erro — é o estado de quem ainda
- * não configurou nada, e quem chama transforma isso num convite (é daí que o
- * onboarding começa), não numa mensagem de falha.
- */
 export function escolherAssistente(s: AssistantFontes): AssistantAlvo | null {
   const escolhido = (s.assistantModel ?? "").trim();
   if (escolhido)
@@ -77,23 +41,11 @@ export function escolherAssistente(s: AssistantFontes): AssistantAlvo | null {
   const ativoFree = ativos.find(eGratis);
   if (ativoFree) return { provider: "openrouter", model: ativoFree };
 
-  // Nada nos conhecidos, mas o catálogo listou grátis: serve. É o caso de quem
-  // escaneou e ainda não curou nada — sem isto a assistente ficaria "sem
-  // modelo" com uma lista de grátis na mão.
   if (livres.length) return { provider: "openrouter", model: livres[0] };
 
   return null;
 }
 
-/**
- * Por que a assistente não está disponível — em uma frase, pra quem lê na
- * tela. null = está tudo pronto.
- *
- * Duas causas diferentes, e elas pedem coisas diferentes da pessoa: sem chave,
- * ela precisa colar uma; sem modelo, ela precisa rodar o SCAN do OpenRouter ou
- * escolher um. Uma mensagem só pras duas mandaria metade das pessoas pro lugar
- * errado.
- */
 export function motivoIndisponivel(
   alvo: AssistantAlvo | null,
   temChave: (provider: string) => boolean

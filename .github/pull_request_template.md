@@ -1,12 +1,8 @@
 ## Why
 
-<!-- The problem this solves. Link the issue if there is one. -->
-
 ## What changed
 
 ## How I tested it
-
-<!-- Desktop, a real phone, or both. Screenshots for UI changes. -->
 
 ## Checklist
 

@@ -1,16 +1,9 @@
-// src/views/corvusApp.helpers.ts
-// Helpers PUROS extraídos do CorvusApp (v0.1.234) — sem estado de componente, sem
-// React. Ficavam no topo do CorvusApp.tsx (god-file de 3300+ linhas); vivem aqui
-// agora pra (1) encolher o componente e (2) ganhar testes (eram lógica sem
-// cobertura). Comportamento idêntico — extração mecânica, zero mudança.
-
 import { ProviderError } from "../providers/base";
 import { getTranslations } from "../i18n";
 import type { AIErrorCode } from "../store/chat";
-import { texto } from "./texto";
+import { texto } from "./text";
 import { tr } from "../i18n/tr";
 
-/** ID único — randomUUID quando disponível, fallback time+random. */
 export function makeId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -18,17 +11,6 @@ export function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/**
- * Spec de activity para cada tool — define ícone Lucide + textos pending/done
- * que aparecem na timeline estilo Claude Code.
- *
- * iconPending: ícone semântico que pulsa enquanto a tool roda
- * iconDone:    troca pra check com pop animation no fim (default global "check-circle-2")
- * pendingText: ação em gerúndio + path resumido
- * doneText:    ação no particípio + path resumido (sem "✓", o ícone faz isso)
- * failedText:  "falhou em" + o mesmo alvo — montado aqui, e não tirado do
- *              pendingText por regex: traduzido, o gerúndio não casa mais
- */
 export function agentActivitySpec(
   toolName: string,
   args: Record<string, unknown>
@@ -40,10 +22,10 @@ export function agentActivitySpec(
   failedText: string;
 } {
   const path = texto(args.path) || texto(args.from) || texto(args.folder);
-  // Encurta path long pra cabe na timeline (mantém basename)
+
   const shorten = (p: string) => (p.length > 48 ? "…" + p.slice(-46) : p);
   const shortPath = shorten(path);
-  // v0.1.228: aplica o mesmo encurtamento ao destino do move (`to`).
+
   const alvo = texto(args.to);
   const shortTo = alvo ? shorten(alvo) : "?";
   const query = texto(args.query).slice(0, 40);
@@ -136,9 +118,7 @@ export function agentActivitySpec(
       let host = texto(args.url);
       try {
         host = new URL(host).hostname;
-      } catch {
-        // URL inválida: a tool recusa e a linha mostra o que veio.
-      }
+      } catch { void 0; }
       const site = { host: shorten(host) };
       return {
         iconPending: "link",
@@ -159,18 +139,11 @@ export function agentActivitySpec(
   }
 }
 
-/**
- * Extrai uma métrica curta do resultado de uma tool — usado como `content`
- * do ai-comment depois que vira "done". Exemplos:
- *   vault_list  → "8 itens"
- *   vault_read  → "1.2k chars"
- *   vault_edit  → "+12 chars" (tirado da string de retorno se possível)
- */
 export function summarizeToolResult(toolName: string, result: string): string {
   if (!result) return "";
   switch (toolName) {
     case "vault_list": {
-      // Padrão: "Contents of X (Y items):"
+
       const m = /\((\d+)\s+items?\)/.exec(result);
       if (!m) return "";
       return m[1] === "1" ? tr("1 item") : tr("{n} items", { n: m[1] });
@@ -192,13 +165,6 @@ export function summarizeToolResult(toolName: string, result: string): string {
   }
 }
 
-/**
- * Traduz qualquer erro de stream/chat numa mensagem amigável + localizada e no
- * código correspondente. Centraliza a tradução (os providers lançam texto
- * PT-only cru; aqui ele vira PT ou EN conforme a UI) e dá à bolha de erro a
- * info pra oferecer a ação certa ("Abrir Configurações" só p/ key inválida/
- * ausente). v0.1.147.
- */
 export function describeProviderError(
   err: unknown,
   t: ReturnType<typeof getTranslations>,
@@ -219,7 +185,7 @@ export function describeProviderError(
       case "context-overflow":
         return { message: t.ai.err.contextOverflow, code: "context-overflow" };
       default:
-        // "unknown" carrega a msg detalhada do provider (única com info real).
+
         return { message: err.message || t.ai.unknownError, code: "unknown" };
     }
   }
@@ -229,17 +195,10 @@ export function describeProviderError(
   return { message: t.ai.unknownError, code: "unknown" };
 }
 
-/** Providers que exigem API key (Ollama roda local via endpoint, dispensa). */
 export function providerNeedsKey(providerId: string): boolean {
   return providerId !== "ollama";
 }
 
-/**
- * Por que este provider não pode responder ainda — em uma frase pra bolha de
- * erro — ou null quando a credencial está lá. O Ollama não tem key, mas tem
- * ENDEREÇO: desde a 0.9.20 ele não vem com localhost de fábrica, e sem
- * endereço não há pra onde mandar (ver core/ollamaPadrao.ts).
- */
 export function semCredencial(
   providerId: string,
   credencial: string,

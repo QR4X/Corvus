@@ -17,8 +17,6 @@ const { supportsPdf, getModelCapabilities } = await import(
 const B64 = "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+Pgo=";
 const PDF_URL = `data:application/pdf;base64,${B64}`;
 
-// `dataUrl: null` = anexo ilegível (o default só vale quando o arg é omitido;
-// um `undefined` explícito cairia no default e mataria justamente esse caso).
 const userWithPdf = (name = "contrato.pdf", dataUrl: string | null = PDF_URL) => [
   {
     role: "user" as const,
@@ -26,8 +24,6 @@ const userWithPdf = (name = "contrato.pdf", dataUrl: string | null = PDF_URL) =>
     attachments: [{ type: "pdf" as const, name, dataUrl: dataUrl ?? undefined }],
   },
 ];
-
-// ────────────────────────────── data URLs ──────────────────────────────
 
 describe("parseDataUrl / pdfFileData", () => {
   it("parseia mime + base64 de uma data URL", () => {
@@ -67,8 +63,6 @@ describe("parseDataUrl / pdfFileData", () => {
   });
 });
 
-// ────────────────────────── capability derivada ──────────────────────────
-
 describe("supportsPdf — quem realmente recebe o anexo", () => {
   const vision = { vision: true };
   const noVision = { vision: false };
@@ -106,8 +100,6 @@ describe("supportsPdf — quem realmente recebe o anexo", () => {
     expect(getModelCapabilities("gemini", "gemini-2.5-pro").pdf).toBe(false);
   });
 });
-
-// ─────────────────────────────── wire ───────────────────────────────
 
 describe("Anthropic — bloco document", () => {
   it("PDF vira document base64 ANTES do texto", () => {

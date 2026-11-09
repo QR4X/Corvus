@@ -1,12 +1,3 @@
-// src/ui/StarterScreen.tsx
-// A tela inicial de uma CONVERSA: o que aparece enquanto ela está vazia.
-// É aqui que se escolhe o MODO (a decisão que trava no 1º envio). Provider /
-// modelo / effort ficam na barra do composer, logo abaixo — esta tela cuida do
-// "o quê", não do "com quê".
-//
-// As conversas gravadas NÃO moram aqui: cada módulo tem a sua home (ver
-// ModuleHome.tsx), que é onde se escolhe qual abrir. Esta tela é pra escrever.
-
 import type CorvusPlugin from "../main";
 import type { ChatMode, ChatSession } from "../core/session";
 import { CHAT_MODES } from "../core/session";
@@ -17,7 +8,6 @@ import { Segmented } from "./Segmented";
 import { openPluginSettings } from "./modals";
 import { tr } from "../i18n/tr";
 
-/** Saudação pela hora local — o chat abre falando com você, não com o void. */
 function greeting(): string {
   const h = new Date().getHours();
   if (h < 5) return tr("Still up");
@@ -41,8 +31,7 @@ export function StarterScreen({
 
   return (
     <div className="corvus-starter">
-      {/* O MESMO controle que filtra a lista na home (ver Segmented.tsx) —
-          aqui com o nome inteiro, que cabe em três colunas. */}
+      {}
       <Segmented
         options={CHAT_MODES.map((m) => ({ id: m, label: tr(MODULES[m].label) }))}
         value={cfg.mode}

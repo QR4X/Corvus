@@ -1,8 +1,3 @@
-// scripts/preview/entry.tsx
-// Entry do preview: monta um plugin + uma ChatSession falsos e renderiza a
-// casca REAL (App.tsx -> ChatView / StarterScreen / Drawer). Os imports sao
-// relativos a RAIZ do projeto: o esbuild do preview.mjs usa resolveDir=ROOT.
-
 import { createRoot } from "react-dom/client";
 import { App as CorvusApp } from "./src/ui/App";
 import { useChatStore } from "./src/store/chat";
@@ -15,16 +10,11 @@ import { TFile } from "obsidian";
 
 declare const PREVIEW_VERSION: string;
 
-registerBrandLogos(); // igual ao onload do plugin
+registerBrandLogos(); 
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get("s") ?? "empty";
 
-// Conversas falsas. Precisam ser MUITAS e espalhadas pelos três módulos:
-// com quatro no total, a tela de cada módulo tinha uma linha e a busca (que
-// só aparece a partir de oito) nunca nascia — ou seja, metade do menu não
-// dava pra ver. As datas são relativas a hoje pra "Today/Yesterday" valerem
-// alguma coisa.
 const dias = (n: number, h = 10) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -48,19 +38,14 @@ const chats = [
   { id: "13", title: "Draft the changelog for 0.5", date: dias(12, 16), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 13, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "14", title: "Split the daily notes by quarter", date: dias(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Split Daily/ into Daily/2026-Q1..Q3. 31 files moved, no links broken — checked every backlink before writing.", toolCount: 31 },
   { id: "15", title: "Where did I write about sleep debt?", date: dias(21, 7), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 3, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  // O módulo Chat passa de OITO conversas de propósito: é a partir daí que a
-  // busca da tela nasce, e sem um módulo gordo esse caminho não existiria no
-  // preview.
+
   { id: "17", title: "Regex for the daily note template", date: dias(7, 11), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "18", title: "Ideas for the onboarding screen", date: dias(10, 17), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 15, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "19", title: "Why is my build 300KB?", date: dias(14, 21), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 10, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "20", title: "Translate the README to Portuguese", date: dias(18, 9), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  // Modo DESCONHECIDO: uma conversa gravada por uma versão que ainda não
-  // existe. Não pode sumir nem quebrar a tela — tem que aparecer com o nome
-  // que tem.
+
   { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  // Meses atrás: sem histórico VELHO o calendário do cartão de uso nasce
-  // quase todo apagado, e não dá pra ver se o desenho funciona.
+
   { id: "21", title: "Old notes cleanup", date: dias(36, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 20, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 20 },
   { id: "22", title: "Reading list for June", date: dias(44, 15), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 12, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "23", title: "Where did the Q2 plan go?", date: dias(51, 9), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
@@ -69,9 +54,7 @@ const chats = [
   { id: "26", title: "Names for the plugin", date: dias(95, 16), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "27", title: "Which notes mention Obsidian sync?", date: dias(120, 8), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 ]
-  // Tokens plausíveis, derivados do tamanho de cada conversa. Com tudo zerado
-  // o cartão de uso da home dizia que a semana inteira foi de graça — e um
-  // preview que mente sobre o número é pior que não ter preview.
+
   .map((c) => ({
     ...c,
     tokensIn: c.messageCount * 1400 + c.toolCount * 900,
@@ -85,12 +68,9 @@ const settingsListeners = new Set<() => void>();
 
 const plugin = {
   manifest: { version: PREVIEW_VERSION, id: "corvus" },
-  // VAULT de mentira, com forma de verdade: é dele que sai a lista de notas do
-  // "+" e do `[[`. Com `app: {}` o buscador não tinha o que buscar — e um
-  // buscador vazio "passa" em qualquer teste.
+
   app: {
-    // Abrir a nota sai do app no aparelho; aqui vira registro no console — o
-    // que importa é que o caminho EXISTE e não estoura.
+
     workspace: {
       getLeaf: () => ({
         openFile: async (f: { path: string }) =>
@@ -107,21 +87,16 @@ const plugin = {
     },
     vault: {
       getMarkdownFiles: () => [...FAKE_NOTES, ...skillFiles()],
-      // getFiles inclui a MÍDIA — é dela que sai a lista de artefatos.
+
       getFiles: () => [...FAKE_NOTES, ...FAKE_ARTIFACTS],
-      // As NOTAS saem como TFile de verdade (o protótipo do stub), igual às
-      // de skill: o app testa `instanceof TFile` antes de ler uma fonte de
-      // projeto, e com o objeto solto de antes toda fonte parecia sumida — o
-      // projeto abria conversa sem nota nenhuma e o cartão contava 0 tokens.
+
       getAbstractFileByPath: (p: string) => {
         if (SKILL_FILES.has(p)) return fakeFile(p);
         const nota = FAKE_NOTES.find((f) => f.path === p);
         if (nota) return fakeFile(p, nota.stat.mtime);
         return FAKE_ARTIFACTS.find((f) => f.path === p) ?? null;
       },
-      // Criar / reescrever / apagar DE VERDADE (na memória): é o que faz o
-      // formulário de skill ser testável aqui — sem isto ele "salvava" num
-      // no-op e a lista nunca mudava.
+
       create: async (caminho: string, conteudo: string) => {
         SKILL_FILES.set(caminho, conteudo);
         return fakeFile(caminho);
@@ -135,17 +110,9 @@ const plugin = {
       adapter: {
         readBinary: async () =>
           Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer,
-        // Escrita de mentira, mas VISÍVEL: o relatório de uso vai parar no
-        // console em vez de sumir. Sem isto o botão "Save report" estourava
-        // num TypeError e o preview dizia que ele não funciona.
-        // Responde pelo que ele TEM. O `true` fixo de antes fazia o laço de
-        // nome único do export girar pra sempre — o preview travando a tela
-        // por causa de uma mentira de uma linha.
+
         exists: async (caminho: string) => SKILL_FILES.has(caminho) || !caminho.includes("/exports/"),
-        // LER de verdade (de mentira): o caminho de uma conversa vira um .md
-        // no formato do app. Sem isto, exportar e compartilhar estouravam num
-        // "read is not a function" — o preview escondendo dois caminhos
-        // inteiros que o aparelho percorre.
+
         read: async (caminho: string) => {
           const id = (caminho.split("/").pop() ?? "").replace(/\.md$/, "");
           const c =
@@ -182,23 +149,20 @@ const plugin = {
         },
         mkdir: async () => undefined,
         write: async (caminho: string, conteudo: string) => {
-          console.log(`[preview] gravaria ${caminho}:`, conteudo.slice(0, 400));
+          console.log(`[preview] would write ${caminho}:`, conteudo.slice(0, 400));
         },
       },
       cachedRead: async (f: { path: string }) =>
         SKILL_FILES.get(f.path) ??
         `# ${f.path.split("/").pop()}
 
-Conteúdo de mentira da nota, o bastante pra virar contexto.`,
+Mock note content, enough to serve as context.`,
     },
   },
-  // Preenchido pelo reloadSkills abaixo, que roda o CARREGADOR DE VERDADE em
-  // cima da pasta falsa: aqui o preview passa pelo mesmo parser do aparelho.
+
   skills: [],
   chatSummaries: chats,
-  // Mesmo contrato do plugin: marcar/desmarcar avisa a lista pelo MESMO canal
-  // do cache de conversas, senão a marca só aparecia na próxima re-renderização
-  // por acaso.
+
   markChatUnread(id: string) {
     if (!id || plugin.settings.unreadChats.includes(id)) return;
     plugin.settings.unreadChats = [...plugin.settings.unreadChats, id];
@@ -221,18 +185,13 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   notifyUnread() {
     unreadListeners.forEach((cb) => cb());
   },
-  // O índice local do RAG. Sem ele o preview mostraria pra sempre o estado
-  // "ainda não indexado", que é o de quem acabou de instalar — e a linha da
-  // home nasceria sem nunca ter sido vista no estado normal.
-  // `?indice=0` derruba: é como a linha aparece pra quem ainda não indexou.
+
   vectorIndex:
     new URLSearchParams(location.search).get("indice") === "0"
       ? null
       : { size: 18430, fileCount: 1274 },
   indexing: null,
-  // Reindexar de mentira: conta 1,2 segundos, muda o número e avisa a tela —
-  // o bastante pra ver o botão virar ■ e a linha se atualizar sozinha. Sem
-  // isto o ↻ do preview não faria nada e pareceria quebrado.
+
   async runVaultIndex() {
     if (plugin.indexing) {
       plugin.indexing.abort();
@@ -251,18 +210,14 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     settingsListeners.forEach((cb) => cb());
   },
   settings: {
-    // Uma já nasce não lida: sem isso o ponto de "New reply" só apareceria
-    // depois de esperar um turno inteiro terminar fora da tela.
+
     unreadChats: ["9"],
     openaiApiKey: "sk-test",
     anthropicApiKey: "sk-ant",
-    // Com chave e com um free na lista: é o estado em que a assistente de
-    // criação FUNCIONA. Sem isto o painel dela só sabia mostrar o convite pra
-    // configurar, e o caminho feliz nunca aparecia no preview.
+
     openrouterApiKey: "sk-or-test",
     activeModels: {
-      // Longa DE PROPÓSITO: é com a lista rolando que dá pra ver se o cartão
-      // chega no fim da tela ou morre atrás de uma faixa.
+
       openai: [
         "gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-5-mini", "gpt-5-nano",
         "gpt-4.1", "gpt-4.1-mini", "o3", "o3-mini", "o4-mini", "dall-e-3",
@@ -275,16 +230,13 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
         "deepseek/deepseek-chat:free",
       ],
     },
-    // O catálogo que a última busca de cada provider deixou gravado. É a
-    // segunda metade da lista da folha de modelos (ver mergeModelOptions): com
-    // ele aqui, dá pra ver que o nível "All models" alcança modelo que NÃO
-    // está marcado como ativo — sem passar por Settings.
+
     discoveredModels: {
       openai: [
         "gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-5-mini", "gpt-5-nano",
         "gpt-4.1", "gpt-4.1-mini", "o3", "o3-mini", "o4-mini", "dall-e-3",
         "tts-1", "tts-1-hd",
-        // Não marcados de propósito: só o catálogo os conhece.
+
         "gpt-5.1", "gpt-5.1-mini", "gpt-image-1", "text-embedding-3-small",
       ],
       anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
@@ -294,9 +246,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
         "deepseek/deepseek-chat:free",
       ],
     },
-    // ?favoritos=0 zera os favoritos: é o estado em que a folha de modelo já
-    // lista TUDO no primeiro nível e a linha "Show list" some — e foi esse o
-    // estado que fez parecer que ela tinha sumido do app.
+
     favoriteModels:
       new URLSearchParams(location.search).get("favoritos") === "0"
         ? {}
@@ -304,9 +254,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
             openai: ["gpt-5", "gpt-4o"],
             anthropic: ["claude-opus-5"],
           },
-    // Um de cada estado, pra ver as quatro bolinhas de uma vez:
-    // openai testado OK · gemini reprovado · anthropic com chave sem teste ·
-    // o resto sem credencial.
+
     geminiApiKey: "gm-test",
     providerStatus: {
       openai: { ok: true, at: Date.now(), detail: "24 models available." },
@@ -327,8 +275,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     elevenVoice: "",
     elevenVoices: [],
     skillsPath: "corvus-ai/skills",
-    // O padrão de uma conta nova: programa desligado, tier 1. Com eles
-    // ausentes, o preview mostrava a cota de quem já ligou tudo.
+
     openaiDataSharing: false,
     openaiTier: 1,
     projects: [
@@ -361,20 +308,12 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
       },
     ],
   },
-  // A casca grava em quase toda interação; sem isto o clique morre num
-  // TypeError e o preview mente dizendo que o botão não faz nada.
-  // Gravar avisa quem escuta, como no plugin de verdade (main.saveSettings).
-  // Com o no-op de antes, mexer numa configuração pela folha (favoritar um
-  // modelo) mudava o objeto e a tela não redesenhava — o preview dizendo que
-  // a marca não tinha pegado.
+
   saveSettings: async () => {
     settingsListeners.forEach((cb) => cb());
   },
   loadChatSummaries: async () => chats,
-  // Inscrição DE VERDADE: é por ela que a lista redesenha quando uma conversa
-  // é marcada como não lida. A versão no-op de antes fazia a marca só aparecer
-  // se algo outro re-renderizasse a tela por acaso — o preview escondendo
-  // justamente o que a gente queria ver.
+
   onChatsChange: (cb: () => void) => {
     chatsListeners.add(cb);
     return () => chatsListeners.delete(cb);
@@ -386,8 +325,7 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
     settingsListeners.add(cb);
     return () => settingsListeners.delete(cb);
   },
-  // ?nokey=1 simula a PRIMEIRA vez: nenhum provider configurado. É o cenário
-  // em que o envio desiste antes de criar a mensagem do usuário.
+
   providerCredential: (id: string) =>
     params.get("nokey")
       ? ""
@@ -395,13 +333,10 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
           openai: "sk-test",
           anthropic: "sk-ant",
           gemini: "gm-test",
-          // A assistente de criação roda no OpenRouter: sem isto aqui, o
-          // preview só sabia mostrar o convite pra colar a chave.
+
           openrouter: "sk-or-test",
         })[id] ?? "",
-  // Catálogo falso: o preview não fala com a rede. Grande e bagunçado DE
-  // PROPÓSITO — é assim que o catálogo real chega, e é o que o agrupamento
-  // por papel/família tem que domar.
+
   scanModels: async (id: string) =>
     id === "openai"
       ? [
@@ -431,11 +366,11 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
       [
         "---",
         'name: "Resumo TL;DR"',
-        'description: "Resume em 3 bullets + 1 ação"',
+        'description: "Summarize in 3 bullets + 1 action"',
         'icon: "list"',
         "---",
         "",
-        "Resuma o conteúdo abaixo em 3 bullets curtos.",
+        "Summarize the content below in 3 short bullets.",
         "",
       ].join("\n")
     );
@@ -444,7 +379,6 @@ Conteúdo de mentira da nota, o bastante pra virar contexto.`,
   },
 } as unknown as CorvusPlugin;
 
-/** Modelo padrão de cada provider — o que o motor tira do settings. */
 const FAKE_DEFAULT_MODEL: Record<string, string> = {
   openai: "gpt-5",
   anthropic: "claude-sonnet-5",
@@ -456,18 +390,15 @@ const FAKE_DEFAULT_MODEL: Record<string, string> = {
 
 let mode = "chat";
 let effort = "med";
-// Provider/modelo da sessão falsa. Guardar de verdade importa: é o que prova
-// que escolher um modelo de OUTRO provider na folha comita os dois.
+
 let provider = "openai";
 let model = "gpt-5";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-/** Rodada em curso foi interrompida pelo botão de parar. */
 let vaultEscolha: boolean | null = null;
 let abortado = false;
 
-/** Tira o turno em andamento da tela sem matá-lo (ver session.destacarTurno). */
 const destacarOuNada = () => {
   const st = useChatStore.getState();
   if (!st.isLoading || st.background) return;
@@ -475,7 +406,7 @@ const destacarOuNada = () => {
   if (!dono) return;
   st.detachTurn({
     chatId: dono,
-    // Onde a leitura parou — é o que faz a conversa reabrir no ponto certo.
+
     scrollTop: st.viewScrollTop,
     title: st.currentChatTitle,
     mode: st.sessionMode ?? mode,
@@ -497,9 +428,7 @@ const session = {
       model: st.sessionModel ?? model,
       mode: m,
       effort,
-      // A MESMA regra do app (core/vaultContext): com o interruptor fora
-      // daqui, a pílula "Notes" nascia sem estado nenhum no preview e não dava
-      // pra ver se Chat nasce desligado e Agent ligado.
+
       vault: vaultAtivo(m, vaultEscolha),
       locked: st.sessionProvider !== null,
     };
@@ -525,23 +454,14 @@ const session = {
     effort = e;
     emit();
   },
-  // Igual ao motor: a lista marcada como Show DAQUELE provider (+ o atual).
-  // A versão que ignorava o argumento mostrava modelo da OpenAI dentro da
-  // Anthropic — o preview mentindo de novo.
+
   modelOptions: (provider: string) => {
     const shown = plugin.settings.activeModels?.[provider] ?? [];
     const cur = FAKE_DEFAULT_MODEL[provider];
     return cur && !shown.includes(cur) ? [cur, ...shown] : shown;
   },
   apiKeyFor: () => "sk-test",
-  // RODADA DE MENTIRA, contrato DE VERDADE. `send: async () => {}` escondia
-  // duas coisas que só aparecem no fluxo: o campo limpar (ou não) conforme o
-  // envio engata, e tudo que acontece ENQUANTO a resposta chega (o "pensando",
-  // a fila, o botão de parar). O contrato copiado do motor:
-  //   - sem key na 1ª mensagem → bolha de erro, NENHUMA mensagem do usuário,
-  //     devolve false (a rodada nem começou)
-  //   - caso contrário → mensagem do usuário, narração, resposta em pedaços,
-  //     devolve true
+
   send: async (text: string) => {
     const st = useChatStore.getState();
     if (!plugin.providerCredential(provider)) {
@@ -553,7 +473,7 @@ const session = {
       });
       return false;
     }
-    // Espelha o motor: os anexos pendentes são CONSUMIDOS pelo envio.
+
     if (st.attachments.length > 0) st.setAttachments([]);
     st.addMessage({ type: "user", content: text });
     if (!st.currentChatId) {
@@ -561,12 +481,11 @@ const session = {
       st.setCurrentChatTitle(text.slice(0, 40));
       st.lockSession(provider, model, mode);
     }
-    // Carimba o dono do turno, como o motor faz: é por ele que a lista sabe
-    // qual conversa está respondendo.
+
     st.setTurnChatId(useChatStore.getState().currentChatId);
     st.setLoading(true);
     emit();
-    // ?turn=ms controla a duração da rodada (padrão 1.4s).
+
     const total = Number(params.get("turn") ?? 1400);
     abortado = false;
     const dorme = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -596,15 +515,13 @@ const session = {
       useChatStore.getState().setStreamingMessageId(null);
     }
     useChatStore.getState().setLoading(false);
-    // O turno acabou: se ele respondeu fora da tela, o de verdade grava o
-    // arquivo e marca a conversa como não lida. O preview faz a marca (é o
-    // que dá pra ver) e pula a gravação.
+
     const bgFinal = useChatStore.getState().background;
     if (bgFinal) plugin.markChatUnread(bgFinal.chatId);
     useChatStore.getState().clearBackground();
     useChatStore.getState().setTurnChatId(null);
     emit();
-    // Mesmo contrato do motor: quem entrou na fila durante a rodada sai agora.
+
     const fila = useChatStore.getState().queued;
     if (fila.length > 0) {
       const [proxima, ...resto] = fila;
@@ -620,21 +537,13 @@ const session = {
     useChatStore.getState().clearQueued();
     emit();
   },
-  // Igual ao motor (session.ts): o `mode` opcional FIXA o modo da conversa
-  // nova. A versão que ignorava o argumento fazia o "New Agent chat" do menu
-  // abrir uma conversa de Chat no preview — e o preview dizia que estava tudo
-  // bem.
-  // Desvio do turno, igual ao da sessão de verdade (session.ts): sair do chat
-  // no meio da resposta NÃO mata o turno — ele passa a escrever fora da tela.
-  // Sem isto aqui, o preview mostrava a resposta pulando pra conversa errada e
-  // dizia que estava tudo bem.
+
   newChat: (m?: string) => {
     destacarOuNada();
     useChatStore.getState().newChat();
     if (m) {
       mode = m;
-      // O motor grava o modo escolhido como padrão (session.ts). É o que faz
-      // o menu marcar o módulo certo quando não há conversa travada.
+
       plugin.settings.defaultMode = m;
     }
     emit();
@@ -642,24 +551,17 @@ const session = {
   newChatInProject: async (p: { name: string }) => {
     console.log("[preview] nova conversa no projeto", p.name);
   },
-  // Abrir uma conversa da lista: põe mensagens de mentira na tela e TRAVA a
-  // sessão no modo/modelo daquela conversa, que é o que o motor faz ao ler o
-  // arquivo. Antes era um no-op, então tocar numa conversa do menu não fazia
-  // nada e não dava pra ver se o menu tinha aberto a certa.
+
   load: async (c: { id: string; title: string; mode: string; provider: string; model: string }) => {
-    // Mesmo guarda do motor (session.load): pedir a conversa que já está
-    // aberta é no-op. Sem ele, o preview recarregava e desfazia o reanexo do
-    // turno — e mostrava como se sair e voltar perdesse a resposta.
+
     if (useChatStore.getState().currentChatId === c.id) return;
-    // Conversa que respondeu sem você ver abre NA RESPOSTA (session.load faz o
-    // mesmo, com a mensagem lida do disco).
+
     const eraNaoLida = plugin.settings.unreadChats.includes(c.id);
-    // Abrir É ler — igual à sessão de verdade (session.load).
+
     plugin.clearChatUnread(c.id);
     const bg = useChatStore.getState().background;
     if (bg?.chatId === c.id) {
-      // Voltando pra conversa que responde em segundo plano: o que vale é o
-      // que o turno já escreveu, não o disco.
+
       const run = useChatStore.getState().attachTurn();
       if (run) {
         const s2 = useChatStore.getState();
@@ -667,7 +569,7 @@ const session = {
         s2.setCurrentChatId(run.chatId);
         s2.setCurrentChatTitle(run.title);
         s2.lockSession(run.provider, run.model, run.mode);
-        // Igual ao motor: reabre onde a leitura tinha parado.
+
         s2.setResume({ scroll: run.scrollTop });
         emit();
       }
@@ -681,7 +583,7 @@ const session = {
       {
         id: `${c.id}-a`,
         type: "ai-response",
-        content: `Conversa de mentira do preview, carregada de **${c.mode}**. O que importa aqui é que o menu abriu ESTA e não outra.`,
+        content: `Mock preview conversation loaded from **${c.mode}**. What matters here is that the menu opened THIS one.`,
         timestamp: Date.now() - 50000,
       },
     ]);
@@ -718,10 +620,8 @@ if (scenario === "thread") {
     { id: "m2", type: "ai-comment", content: "", timestamp: Date.now() - 55000, activity: { phase: "done", pendingText: "Searching the vault…", doneText: "Read 4 notes" } },
     { id: "m3", type: "ai-response", content: "Three notes cover it. In **Learning/Spaced repetition.md** you settled on a 2-day → 1-week → 1-month ladder, and noted that the jump to a month was where recall broke down.\n\nThe open question you left in **Inbox/Anki backlog.md** was whether to split decks by topic or by difficulty.", timestamp: Date.now() - 50000 },
     { id: "m4", type: "user", content: "Draft a note that answers that open question.", timestamp: Date.now() - 20000 },
-    { id: "m5", type: "ai-response", reasoning: "O usuário quer uma nota que responda à pergunta em aberto. Vale olhar as duas notas citadas antes de escrever, porque a conclusão de junho contradiz a hipótese de dividir por tópico — e é essa contradição que a nota precisa resolver.", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
-      // Ações de agente: é o que alimenta o chip e a folha de auditoria.
-      // Lista LONGA de propósito: é com onze linhas que dá pra ver se a folha
-      // rola sem fim ou se cabe na tela.
+    { id: "m5", type: "ai-response", reasoning: "The user wants a note that answers the open question. Check both cited notes before writing, because the June conclusion contradicts the topic-splitting hypothesis.", content: "Splitting by difficulty is the better fit for how you review — topic decks recreate the cramming pattern you flagged in June.", timestamp: Date.now() - 10000,
+
       agentSteps: [
         { id: "t1", name: "vault_list", arguments: {}, result: "7 items", ok: true },
         { id: "t2", name: "vault_list", arguments: { folder: "PROJECTS" }, result: "16 items", ok: true },
@@ -741,13 +641,8 @@ if (scenario === "thread") {
   st.lockSession("openai", "gpt-5", "vault-qa");
 }
 
-// O store fica alcançável pelo console do preview: é assim que dá pra simular
-// um STREAM de verdade (token a token) e conferir se o markdown formata
-// enquanto chega, em vez de só no fim.
 (window as unknown as { __chat: unknown }).__chat = useChatStore;
 
-/** Notas do vault falso — nomes parecidos de propósito, que é onde o ranking
- *  do buscador mostra serviço. */
 const FAKE_NOTES = [
   { path: "PROJECTS/FRAMEWORKS.md", basename: "FRAMEWORKS", extension: "md", stat: { mtime: 5 } },
   { path: "PROJECTS/CREATIVE SYSTEMS.md", basename: "CREATIVE SYSTEMS", extension: "md", stat: { mtime: 8 } },
@@ -758,10 +653,6 @@ const FAKE_NOTES = [
   { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", extension: "md", stat: { mtime: 20 } },
 ];
 
-/** A pasta de skills do vault falso: arquivos .md DE VERDADE, com
- *  frontmatter, pra criação e edição passarem pelo mesmo caminho do aparelho
- *  (escrever a nota → reler a pasta). A lista fixa de antes fazia o preview
- *  dizer que criar funcionava sem nunca ter escrito nada. */
 const SKILL_FILES = new Map<string, string>([
   [
     "corvus-ai/skills/Daily note.md",
@@ -792,11 +683,6 @@ const SKILL_FILES = new Map<string, string>([
   ],
 ]);
 
-/** Um TFile de mentira que PASSA no `instanceof TFile` — é o que decide se
- *  "Open note" funciona ou cai no "Not found". */
-// mtime plausível: com o 50 de antes (50ms depois de 1970) o cartão do
-// skill dizia "Edited 1970-01-01" — o preview mentindo sobre a única
-// informação que o rodapé do cartão carrega.
 function fakeFile(path: string, mtime = Date.now() - 3 * 86400000) {
   const f = Object.create(TFile.prototype) as TFile & {
     path: string;
@@ -815,7 +701,6 @@ function skillFiles() {
   return [...SKILL_FILES.keys()].map((p) => fakeFile(p));
 }
 
-/** O que o plugin "gerou" — a lista de artefatos do "+". */
 const FAKE_ARTIFACTS = [
   { path: "corvus-ai/generation/images/1731-gato-de-oculos.png", basename: "1731-gato-de-oculos", extension: "png", stat: { mtime: 900 } },
   { path: "corvus-ai/generation/images/1731-gato-de-oculos.md", basename: "1731-gato-de-oculos", extension: "md", stat: { mtime: 901 } },
@@ -823,22 +708,18 @@ const FAKE_ARTIFACTS = [
   { path: "corvus-ai/generation/video/1729-clipe.mp4", basename: "1729-clipe", extension: "mp4", stat: { mtime: 700 } },
 ];
 
-/** Conteúdo de exemplo do modal de aprovação (?s=confirm). */
 const MD_DEMO = "# CREATIVE SYSTEMS\n\n## Purpose\nA broad, **practical** view of how creative systems work day to day, with enough text to prove that long lines wrap instead of running off the screen.\n\n## Core Principles\n- Treat the work as a *system*, not a mood\n- Capture first, judge later\n- Review on a schedule, not on a feeling\n\nSee [[PROJECTS/FRAMEWORKS]] for the longer version.\n\n```ts\nexport function review(deck: Card[], hoje = Date.now()) {\n  return deck.filter((c) => c.due <= hoje).sort((a, b) => a.due - b.due);\n}\n```\n";
 const TS_DEMO = "import { readFile } from 'node:fs/promises';\n\n/** L\u00ea o deck e devolve o que vence hoje. */\nexport async function due(path: string): Promise<Card[]> {\n  const raw = await readFile(path, 'utf8');\n  const deck = JSON.parse(raw) as Card[];\n  return deck.filter((c) => c.due <= Date.now());\n}\n";
 
 const host = document.getElementById("app");
 
 if (scenario === "confirm") {
-  // O modal DE VERDADE — a mesma classe que o agente abre no aparelho. Antes
-  // aqui havia um espelho de HTML escrito à mão: ele nunca ia mostrar um bug
-  // do modal, só os bugs do espelho.
+
   void (async () => {
     const { ConfirmationModal } = await import("./src/agent/ConfirmationModal");
     const { getTranslations } = await import("./src/i18n");
     const strings = getTranslations("en-us").agent;
-    // ?file=md|ts|txt — o preview precisa mostrar os TRÊS caminhos: nota
-    // formatada, código colorido e texto cru.
+
     const tipo = params.get("file") ?? "md";
     const caso =
       tipo === "ts"
@@ -849,8 +730,7 @@ if (scenario === "confirm") {
         : tipo === "txt"
           ? { path: "Inbox/dump.txt", content: "linha 1\nlinha 2\nlinha 3" }
           : { path: "PROJECTS/CREATIVE SYSTEMS.md", content: MD_DEMO };
-    // ?big=1 estoura o teto do preview: é o único jeito de VER a linha do
-    // truncamento (e de provar que ela fica fora do bloco).
+
     const content = params.get("big")
       ? caso.content.repeat(6)
       : caso.content;
@@ -872,18 +752,14 @@ if (scenario === "confirm") {
   })();
 }
 if (scenario === "settings") {
-  // Renderiza a ABA DE SETTINGS (que é Setting API nativa, não React) dentro
-  // do mesmo painel, pra dar pra olhar o desenho das abas.
+
   void (async () => {
     const { CorvusSettingsTab } = await import("./src/ui/SettingsTab");
     const tab = new CorvusSettingsTab(
       {} as never,
       plugin as never
     ) as unknown as { containerEl: HTMLElement; display: () => void };
-    // A ÁRVORE REAL das settings: o app.css tem regras presas a
-    // `.is-phone .modal .setting-item-control …`. Um div solto no #app não
-    // recebia nenhuma delas — o preview mostrava uma linha de controle que o
-    // celular nunca teve.
+
     const modal = document.createElement("div");
     modal.className = "modal mod-settings preview-settings-modal";
     const content = document.createElement("div");
@@ -903,8 +779,7 @@ if (scenario === "settings") {
   })();
 } else if (host) {
   createRoot(host).render(<CorvusApp plugin={plugin} session={session} />);
-  // O mesmo que a CorvusView faz no aparelho: um ouvinte de tato na raiz. Sem
-  // isto o preview mostrava só os pulsos "com nome" e escondia os toques.
+
   void import("./src/ui/haptics").then(({ hapticsOn, setHapticsEnabled }) => {
     setHapticsEnabled(true);
     hapticsOn(host);

@@ -1,13 +1,9 @@
 name: Weekly hot-ranking update
 
-# Collects the real model popularity (HuggingFace) and commits
-# src/providers/hotData.generated.ts IF it changed. Every Thursday 09:00 UTC.
-# Idempotent: no data change → no diff → no commit.
-
 on:
   schedule:
-    - cron: "0 9 * * 4" # Thursday, 09:00 UTC
-  workflow_dispatch: {} # allows running manually from the Actions tab
+    - cron: "0 9 * * 4"
+  workflow_dispatch: {}
 
 permissions:
   contents: write

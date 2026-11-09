@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { emendar, limparResposta, mensagensDaAcao, IdiomaModal } from "../src/editor/inline";
-import { esquecerPedidos, ouvirPedidos, pedirAoPainel, type PedidoDoEditor } from "../src/editor/ponte";
-import { registrarComandosDoEditor, PEDIDO_RESUMO } from "../src/editor/comandos";
+import { esquecerPedidos, ouvirPedidos, pedirAoPainel, type PedidoDoEditor } from "../src/editor/bridge";
+import { registrarComandosDoEditor, PEDIDO_RESUMO } from "../src/editor/commands";
 import type CorvusPlugin from "../src/main";
-
-// O Corvus a partir da nota: as instruções de cada ação no texto, a limpeza da
-// resposta, a ponte editor → painel e os comandos registrados.
 
 describe("ações no texto", () => {
   it("cada ação pede só o texto de volta; tradução nomeia o idioma", () => {
@@ -23,7 +20,7 @@ describe("ações no texto", () => {
     expect(limparResposta("```markdown\nTexto novo.\n```")).toBe("Texto novo.");
     expect(limparResposta('"Texto novo."')).toBe("Texto novo.");
     expect(limparResposta("“Texto novo.”")).toBe("Texto novo.");
-    // aspas no MEIO não são embrulho
+
     expect(limparResposta('"um" e "dois"')).toBe('"um" e "dois"');
     expect(limparResposta("  normal \r\n")).toBe("normal");
   });
@@ -51,12 +48,12 @@ describe("a ponte editor → painel", () => {
     pedirAoPainel({ tipo: "trecho", path: "b.md", texto: "x" });
     const parar = ouvirPedidos((p) => recebidos.push(p));
     expect(recebidos.map((p) => p.tipo)).toEqual(["nota", "trecho"]);
-    // com o painel montado, chega na hora
+
     pedirAoPainel({ tipo: "nota", path: "c.md", enviar: PEDIDO_RESUMO });
     expect(recebidos).toHaveLength(3);
     parar();
     pedirAoPainel({ tipo: "nota", path: "d.md" });
-    expect(recebidos).toHaveLength(3); // parou de ouvir: volta pra fila
+    expect(recebidos).toHaveLength(3); 
     esquecerPedidos();
   });
 });
@@ -81,7 +78,7 @@ describe("os comandos", () => {
       "translate-selection",
       "continue-writing",
     ]);
-    // nome sem o do plugin: a paleta já prefixa "Corvus:"
+
     expect(comandos.every((c) => !/corvus/i.test(c.name))).toBe(true);
     expect(eventos).toEqual(["editor-menu", "file-menu"]);
   });

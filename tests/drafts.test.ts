@@ -1,9 +1,3 @@
-// tests/drafts.test.ts
-// O rascunho é do CHAT, não da tela. Três regras que já custaram texto
-// digitado: ele não pode vazar de uma conversa pra outra, não pode sumir
-// quando a tela é desmontada (por isso vive no store), e não pode deixar
-// entrada vazia acumulando pra sempre.
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { useChatStore, NEW_CHAT_DRAFT } from "../src/store/chat";
 

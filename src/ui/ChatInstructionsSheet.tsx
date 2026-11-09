@@ -1,13 +1,3 @@
-// src/ui/ChatInstructionsSheet.tsx
-// As INSTRUÇÕES de uma conversa — aberto pelo ⋯ dela.
-//
-// A conversa já guardava instruções no próprio arquivo (`instructions:`): as
-// que ela herda do projeto onde nasceu. Elas SOMAM ao prompt do app nos três
-// modos — chat, Vault Q&A e agente — e por isso são o lugar certo pro "faça
-// assim nesta conversa". A `persona`, que o motor também lê, SUBSTITUI o
-// prompt do app e levaria junto as regras dele (idioma, como citar nota, o
-// que o agente pode mexer); ela continua valendo pra quem editar o .md à mão.
-
 import { useEffect, useState } from "react";
 import { Notice } from "obsidian";
 import type CorvusPlugin from "../main";
@@ -32,8 +22,6 @@ export function ChatInstructionsSheet({
   const [texto, setTexto] = useState("");
   const [pronto, setPronto] = useState(false);
 
-  // O texto de agora: o da SESSÃO quando é a conversa aberta (pode estar à
-  // frente do arquivo), senão o do arquivo.
   useEffect(() => {
     if (!open || !chat) return;
     let vivo = true;
@@ -58,7 +46,6 @@ export function ChatInstructionsSheet({
     return () => {
       vivo = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- carrega UMA vez por abertura (e por conversa). Listar `chat` re-rodaria isto quando a lista de conversas se atualiza com a folha aberta, e o texto do arquivo apagaria o que está sendo digitado.
   }, [open, chat?.id]);
 
   const salvar = async () => {
@@ -72,8 +59,7 @@ export function ChatInstructionsSheet({
         chat.id,
         limpo
       );
-      // Conversa aberta: a próxima resposta já sai com elas, e a próxima
-      // gravação da sessão não desfaz o que foi escrito aqui.
+
       const st = useChatStore.getState();
       if (st.currentChatId === chat.id) st.setSessionInstructions(limpo);
       new Notice(

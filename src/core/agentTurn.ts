@@ -1,12 +1,3 @@
-// src/core/agentTurn.ts
-// Loop do AGENTE: stream + tool calls + confirmação NATIVA (ConfirmationModal
-// com diff) + loop detection + retry de tools. Sem React: recebe um `AgentCtx`
-// e opera no store. Chamado pela ChatSession (src/core/session.ts).
-//
-// Diferença pro app antigo: a tool `generate_image` não é oferecida ao modelo
-// nesta base (o fluxo de geração de imagem saiu com a casca antiga); se o
-// modelo insistir, recebe um resultado explicando que não está disponível.
-
 import { useChatStore } from "../store/chat";
 import {
   semCredencial,
@@ -38,7 +29,7 @@ import type { EngineCtx } from "./chatEngine";
 import { buscarContextoDoVault } from "./vaultLookup";
 
 export interface AgentCtx extends EngineCtx {
-  /** "Aprovar todas" da rodada — resetado a cada turno. */
+
   agentApproveAllRef: { current: boolean };
 }
 
@@ -73,9 +64,8 @@ export async function runAgentTurn(
     tickStreamTokens,
     endStreamTimer,
   } = useChatStore.getState();
-  void userText; // já está no store (última mensagem do usuário)
+  void userText; 
 
-  // Pre-flight: sem API key (ou sem o endereço do Ollama), erro acionável direto.
   const falta = semCredencial(
     activeProviderId,
     apiKeyFor(activeProviderId),
@@ -115,18 +105,14 @@ export async function runAgentTurn(
 
   const permissionLevel: PermissionLevel = (plugin.settings
     .agentPermissionLevel || "ask") as PermissionLevel;
-  // Diff-approval: toda ação que ESCREVE passa por preview/diff antes de gravar.
+
   const diffApproval = plugin.settings.agentDiffApproval !== false;
   agentApproveAllRef.current = false;
-  // O "aprovar todas" dado num pedido à web: só pra web, e só nesta rodada.
+
   let webAprovadaNaRodada = false;
 
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
-  // As notas como contexto, quando o interruptor da conversa está ligado (ver
-  // core/vaultContext.ts). O agente já LÊ o vault com as ferramentas — o que
-  // isto muda é ele chegar sabendo o que já está escrito, em vez de descobrir
-  // procurando. É a mesma busca do turno de chat, no mesmo módulo.
   const vaultContextBlock = useVault
     ? await buscarContextoDoVault({
         plugin,
@@ -138,8 +124,6 @@ export async function runAgentTurn(
       })
     : "";
 
-  // As ferramentas de web só entram com a web ligada nas settings — e a busca
-  // só com a chave da Tavily. Fora da lista, o modelo nem sabe que existem.
   const webLigada = plugin.settings.agentWeb !== false;
   const tavily = (plugin.settings.tavilyApiKey ?? "").trim();
   const foraDaLista = (nome: string) =>
@@ -164,7 +148,7 @@ export async function runAgentTurn(
         agentMdBlock
       ),
     },
-    // toolMode=true → agentSteps são expandidos pro shape wire (replay preciso).
+
     ...storeMessagesToProvider(
       useChatStore.getState().messages,
       userAttachments,
@@ -184,7 +168,7 @@ export async function runAgentTurn(
   const recentCallSignatures: string[] = [];
   let loopNudges = 0;
   const MAX_LOOP_NUDGES = 3;
-  // Ações de tool do run inteiro — anexadas à resposta final p/ continuidade.
+
   const runSteps: AIToolStep[] = [];
 
   let firstTurn = true;
@@ -195,7 +179,7 @@ export async function runAgentTurn(
 
   try {
     while (true) {
-      // Stop entre turnos.
+
       if (controller.signal.aborted) {
         throw new DOMException("Interrupted", "AbortError");
       }
@@ -273,7 +257,6 @@ export async function runAgentTurn(
         return;
       }
 
-      // Caso 1: sem tool_calls = resposta final.
       if (!response.toolCalls || response.toolCalls.length === 0) {
         if (responseId === null) {
           if (firstTurn) {
@@ -294,7 +277,6 @@ export async function runAgentTurn(
         return;
       }
 
-      // Caso 2: tool_calls — registra a msg do assistant na history.
       if (firstTurn) {
         updateActivity(commentId, { phase: "done" });
         firstTurn = false;
@@ -305,7 +287,6 @@ export async function runAgentTurn(
         toolCalls: response.toolCalls,
       });
 
-      // Loop detection por assinatura (name + JSON(args)).
       let loopDetected = false;
       if (loopWindow > 0) {
         for (const call of response.toolCalls) {
@@ -326,7 +307,6 @@ export async function runAgentTurn(
         ok: boolean;
       };
 
-      // Pre-check de permissão (sequencial — um modal por vez) e placeholders.
       const preparedCalls: Array<{
         call: (typeof response.toolCalls)[number];
         def: ReturnType<typeof getToolDefinition>;
@@ -379,7 +359,6 @@ export async function runAgentTurn(
           continue;
         }
 
-        // Gate: roda direto ("auto") ou abre o preview de confirmação.
         const gate = decideToolGate(def, permissionLevel, {
           approveAll: agentApproveAllRef.current,
           approveAllWeb: webAprovadaNaRodada,
@@ -393,10 +372,7 @@ export async function runAgentTurn(
             showDiff: diffApproval,
             strings: t.agent,
           });
-          // A conversa fica marcada como "precisa de você" enquanto a
-          // pergunta estiver de pé. Desde que dá pra navegar durante a
-          // resposta, o modal pode abrir com a pessoa em OUTRA tela — e aí a
-          // lista é o único lugar que pode dizer de quem é aquele pedido.
+
           const dona =
             useChatStore.getState().background?.chatId ??
             useChatStore.getState().currentChatId;
@@ -452,7 +428,6 @@ export async function runAgentTurn(
         preparedCalls.push({ call, def, approved, activityId, spec });
       }
 
-      // Executor com retry (só erros transitórios) pra cada call.
       const execCall = async (
         prep: (typeof preparedCalls)[number]
       ): Promise<CallResult> => {
@@ -473,15 +448,13 @@ export async function runAgentTurn(
           };
         }
         const executor = TOOL_REGISTRY[call.name];
-        // O que a mudança vai tirar do lugar, guardado ANTES dela — é disso
-        // que sai o Undo da conversa (agent/undo.ts). Falhar aqui não pode
-        // impedir a tool: sem a cópia, a mudança só fica sem Undo.
+
         let antes: Awaited<ReturnType<typeof antesDe>> = null;
         if (prep.def?.destructive) {
           try {
             antes = await antesDe(plugin.app, call.name, call.arguments);
           } catch (err) {
-            console.warn("[corvus] sem cópia pro Undo:", err);
+            console.warn("[corvus] no copy for Undo:", err);
           }
         }
         const maxAttempts = 1 + Math.max(0, effortCfg.toolRetryOnError);
@@ -518,7 +491,7 @@ export async function runAgentTurn(
                   updateActivity(activityId, { undoId: activityId });
                 }
               } catch (err) {
-                console.warn("[corvus] Undo não registrado:", err);
+                console.warn("[corvus] Undo not recorded:", err);
               }
             }
             return {
@@ -558,8 +531,7 @@ export async function runAgentTurn(
 
       let results: CallResult[];
       if (effortCfg.parallelToolCalls && preparedCalls.length > 1) {
-        // Paralelo POR GRUPO de path: calls no MESMO arquivo rodam em série
-        // (evita race read-modify-write); paths distintos rodam em paralelo.
+
         const indexed = preparedCalls.map((prep, idx) => ({ prep, idx }));
         const groups = new Map<string, typeof indexed>();
         for (const item of indexed) {
@@ -604,7 +576,7 @@ export async function runAgentTurn(
           });
         }
       }
-      // Stop no meio das tools: encerra pelo caminho de interrupção (anexa steps).
+
       if (controller.signal.aborted) {
         throw new DOMException("Interrupted", "AbortError");
       }

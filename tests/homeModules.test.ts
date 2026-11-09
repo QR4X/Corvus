@@ -26,7 +26,6 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   ...over,
 });
 
-/** Quarta-feira, 16/09/2026, meio-dia local. */
 const AGORA = new Date(2026, 8, 16, 12).getTime();
 const local = (a: number, m: number, d: number, h = 10) =>
   new Date(a, m - 1, d, h).toISOString();
@@ -42,8 +41,7 @@ describe("sequenciaDeDias", () => {
   });
 
   it("HOJE em branco não zera: a conta parte do último dia fechado", () => {
-    // Às 9h da manhã você ainda não usou — zerar aí seria punir a pessoa por
-    // acordar.
+
     const c = [
       chat({ id: "a", date: local(2026, 9, 14) }),
       chat({ id: "b", date: local(2026, 9, 15) }),
@@ -57,9 +55,8 @@ describe("sequenciaDeDias", () => {
   });
 
   it("a sequência ATRAVESSA a virada do mês", () => {
-    // O calendário da tela recomeça no dia 1; o hábito não. Se a conta olhasse
-    // o desenho, todo dia 1 a sequência morreria sozinha.
-    const agora = new Date(2026, 9, 2, 12).getTime(); // 02/10
+
+    const agora = new Date(2026, 9, 2, 12).getTime(); 
     const c = [
       chat({ id: "a", date: local(2026, 9, 29) }),
       chat({ id: "b", date: local(2026, 9, 30) }),
@@ -112,7 +109,7 @@ describe("trabalhoDoPeriodo", () => {
   });
 
   it("o que é de antes do mês fica de fora", () => {
-    // Senão os números discordariam do calendário logo acima deles.
+
     const t = trabalhoDoPeriodo(
       [chat(), chat({ id: "velho", date: "2026-08-02T10:00:00.000Z" })],
       "2026-09-01"
@@ -146,8 +143,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("a fatia é de TOKENS, não de conversas", () => {
-    // Contar conversas faria um "oi" pesar o mesmo que uma sessão de três
-    // horas — e o número grande do cartão é em tokens.
+
     const lista = modelosMaisUsados(
       [
         chat({ id: "a", model: "gpt-5", tokensIn: 10, tokensOut: 0 }),
@@ -200,8 +196,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("modelo sem nome não vira linha", () => {
-    // Apareceria como uma fatia anônima que não diz nada e ainda rouba
-    // porcentagem de quem tem nome.
+
     const lista = modelosMaisUsados(
       [chat({ id: "a", model: "" }), chat({ id: "b", model: "gpt-5" })],
       desde

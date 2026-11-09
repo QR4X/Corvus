@@ -21,7 +21,7 @@ describe("getFreeDailyTokens", () => {
   });
 
   it("match é EXATO, não por prefixo — mini e nano têm cota própria", () => {
-    // gpt-5.2 está na lista de 250k; gpt-5.2-mini não está em nenhuma.
+
     expect(getFreeDailyTokens("openai", "gpt-5.2")).toBe(250_000);
     expect(getFreeDailyTokens("openai", "gpt-5.2-mini")).toBeNull();
     expect(getFreeDailyTokens("openai", "gpt-4o-audio-preview")).toBeNull();

@@ -15,7 +15,7 @@ const initial = useChatStore.getState();
 const t = getTranslations("en");
 
 function context(provider: Provider, effort = "low"): AgentCtx {
-  // Only the plugin surfaces used by the real engine are needed in this test.
+
   const plugin = {
     app: { vault: { getConfig: () => "local" } },
     settings: {

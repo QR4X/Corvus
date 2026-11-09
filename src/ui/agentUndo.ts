@@ -1,25 +1,14 @@
-// src/ui/agentUndo.ts
-// O lado da TELA do desfazer do agente (o motor mora em agent/undo.ts): quais
-// ações de uma rodada ainda dá pra desfazer, e os dois jeitos de desfazer —
-// uma mudança (da folha de ações) ou a rodada inteira (o chip da resposta).
-//
-// A rodada volta de trás pra frente: a última mudança primeiro. É a única
-// ordem que funciona quando uma depende da outra (criou e depois editou a
-// mesma nota; moveu e depois editou no lugar novo).
-
 import { Notice, type App } from "obsidian";
 import { ConflitoAoDesfazer, desfazer, podeDesfazer } from "../agent/undo";
 import { useChatStore, type ActivityMeta } from "../store/chat";
 import { ConfirmModal } from "./modals";
 import { tr } from "../i18n/tr";
 
-/** O id de desfazer de uma ação que AINDA pode ser desfeita, ou null. */
 export function idDesfazivel(a: ActivityMeta | undefined): string | null {
   if (!a || a.undone || a.phase !== "done") return null;
   return podeDesfazer(a.undoId) ? (a.undoId as string) : null;
 }
 
-/** As ações desfazíveis de uma lista, na ordem em que aconteceram. */
 export function desfaziveis(atividades: Array<ActivityMeta | undefined>): string[] {
   return atividades.map(idDesfazivel).filter((id): id is string => id !== null);
 }
@@ -28,10 +17,6 @@ function mensagem(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/**
- * Desfaz UMA mudança. Se o arquivo mudou depois dela, pergunta antes de
- * passar por cima. Devolve true se desfez.
- */
 export async function desfazerUma(app: App, id: string): Promise<boolean> {
   try {
     const feito = await desfazer(id);
@@ -64,11 +49,6 @@ export async function desfazerUma(app: App, id: string): Promise<boolean> {
   }
 }
 
-/**
- * Desfaz a rodada inteira, da última mudança pra primeira, depois de uma
- * confirmação. O que mudou depois da mudança do agente NÃO é atropelado
- * aqui: fica de fora, e o aviso diz que dá pra forçar pela folha de ações.
- */
 export async function desfazerRodada(app: App, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   const ok = await new ConfirmModal(app, {

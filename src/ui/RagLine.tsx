@@ -1,25 +1,3 @@
-// src/ui/RagLine.tsx
-// A linha do índice LOCAL, logo abaixo do cartão de uso.
-//
-// Ela existe porque o índice é a parte do app mais fácil de não perceber: ele
-// se constrói sozinho, mora escondido numa pasta oculta, e a diferença entre
-// "achou pelo sentido" e "achou pela palavra" só aparece na qualidade de uma
-// resposta — tarde demais pra quem está lendo. A linha conta três coisas que
-// só ele sabe: se existe, de quanto do vault ele é feito, e que nada disso
-// sai do aparelho.
-//
-// E ela é AÇÃO, não aviso. Duas, na verdade, e elas são diferentes:
-//
-//   • o texto abre as settings, onde se escolhe COMO indexar (modelo de
-//     embedding, precisão, shards) — decisões que se tomam uma vez;
-//   • o ↻ reindexa AGORA, que é o que se quer nove em cada dez vezes: você
-//     escreveu notas novas e quer que elas entrem. Pôr isso atrás de duas
-//     telas de settings seria esconder o gesto mais frequente atrás do mais
-//     raro.
-//
-// Reindexar é INCREMENTAL (ver main.runVaultIndex): só o que mudou é
-// re-embedado, senão "atualizar" custaria a conta de um índice inteiro.
-
 import { useEffect, useState } from "react";
 import type CorvusPlugin from "../main";
 import { formatCompact } from "../usage/format";
@@ -28,8 +6,7 @@ import { openPluginSettings } from "./modals";
 import { tr } from "../i18n/tr";
 
 export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
-  // O índice muda por fora desta tela (a indexação roda no plugin), e o
-  // plugin avisa pelos mesmos listeners das settings.
+
   const [, redesenhar] = useState(0);
   useEffect(
     () => plugin.onSettingsChange(() => redesenhar((n) => n + 1)),
@@ -50,9 +27,7 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
         aria-label={tr("Index settings")}
         onClick={() => openPluginSettings(plugin)}
       >
-        {/* O mesmo ícone nos dois estados: o que muda é a COR (ver o `is-on`
-            no CSS). Trocar o desenho junto faria parecer outra coisa, e é a
-            mesma coisa em dois estados. */}
+        {}
         <Icon name="database" size={14} />
         <span className="corvus-rag-text">
           {pronto ? (
@@ -64,9 +39,7 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
             </>
           ) : (
             <>
-              {/* Sem índice o app NÃO fica sem busca — ele cai na busca por
-                  palavra. Dizer "desligado" seria mentira; o que muda é achar
-                  por sentido ou só por palavra igual. */}
+              {}
               <strong>{tr("Local index")}</strong> ·{" "}
               {tr("not built yet — notes are found by keyword until you build it")}
             </>
@@ -74,8 +47,7 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
         </span>
       </button>
 
-      {/* Rodando, o mesmo botão CANCELA: é o gesto que a pessoa procura
-          quando percebe que começou na hora errada. */}
+      {}
       <button
         type="button"
         className={rodando ? "corvus-rag-refresh is-running" : "corvus-rag-refresh"}

@@ -69,7 +69,6 @@ describe("edge cases: empty + mode switching + backward compat", () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
 
-    // Build & save 3 shards
     const idx = new VectorIndex({
       provider: "openai",
       model: "text-embedding-3-small",
@@ -85,10 +84,6 @@ describe("edge cases: empty + mode switching + backward compat", () => {
 
     await saveIndex(app, PATH, idx, { shardSize: 1 });
 
-    // Corrompe o shard do MEIO de verdade (nome real vem do manifesto — os
-    // shards têm prefixo único por save, então hardcodar o nome não corromperia
-    // nada). O arquivo ainda EXISTE (loadIndex valida existência), mas o JSON é
-    // inválido → searchStreamed pula na leitura.
     const files = adapter.files;
     const manifest = JSON.parse(files.get(manifestFilePath(PATH))!);
     files.set(`${PATH}/${manifest.shards[1]}`, "not valid json");
@@ -96,9 +91,6 @@ describe("edge cases: empty + mode switching + backward compat", () => {
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded).not.toBeNull();
 
-    // searchStreamed must not crash; should get results from shards 0 and 2.
-    // Query dim = índice dim (1): searchStreamed agora pula vetores de dim
-    // divergente (corrupção/mistura de modelos), então a query precisa casar. v0.1.227
     const results = await loaded!.searchStreamed([1], 10, 0.5);
     expect(results.length).toBeGreaterThan(0);
     expect(results.map((r) => r.entry.path)).toContain("a.md");

@@ -1,25 +1,16 @@
-// src/usage/freeTokens.ts
-// Programa de "data-sharing" da OpenAI: compartilhar o tráfego da API com a
-// OpenAI rende TOKENS GRÁTIS por dia — MAS só em modelos de TEXTO listados, e só
-// a partir do Usage Tier 1. Geração de imagem (gpt-image-1 / dall-e) NÃO entra
-// na lista de modelos elegíveis → os créditos NÃO cobrem imagem.
-//
-// Fonte: help.openai.com (data sharing) + OpenAI Developer Community (jun/2026).
-// Os termos do programa mudam de tempos em tempos — revisar `asOf`.
 export const FREE_TOKENS_AS_OF = "2026-06";
 
 export interface OpenAIFreeAllowance {
-  /** Conta elegível (data-sharing ligado + tier ≥ 1). */
+
   eligible: boolean;
-  /** Tokens/dia nos modelos "grandes" (gpt-5 / gpt-4.1 / gpt-4o / o1 / o3). */
+
   bigPerDay: number;
-  /** Tokens/dia nos "mini/nano" (gpt-5-mini/nano, gpt-4o-mini, o4-mini…). */
+
   miniPerDay: number;
-  /** Geração de imagem é coberta? NÃO — modelos de imagem não estão na lista. */
+
   imageEligible: boolean;
 }
 
-// Modelos de TEXTO elegíveis (prefixos). MINI conferido antes de BIG.
 const MINI_MODELS = [
   "gpt-5-mini",
   "gpt-5-nano",
@@ -33,11 +24,6 @@ const MINI_MODELS = [
 ];
 const BIG_MODELS = ["gpt-5", "gpt-4.1", "gpt-4o", "chatgpt-4o", "o1", "o3"];
 
-/**
- * Cota diária de tokens grátis por tier (data-sharing ligado).
- * Tier 1–2: 250k/dia (grandes) + 2.5M/dia (mini). Tier 3–5: 1M + 10M.
- * Imagem NUNCA é coberta.
- */
 export function openaiFreeAllowance(
   tier: number,
   dataSharing: boolean
@@ -54,12 +40,10 @@ export function openaiFreeAllowance(
   };
 }
 
-/** Classifica um modelo de TEXTO na lista elegível do data-sharing (ou null). */
 export function openaiFreeTierForModel(model: string): "big" | "mini" | null {
   const m = (model || "").toLowerCase();
   if (MINI_MODELS.some((p) => m.startsWith(p))) return "mini";
-  // GPT-5.x novos (gpt-5.1-mini, gpt-5.2-nano…): sem isto o prefixo "gpt-5"
-  // abaixo os punha no balde dos GRANDES — 250k em vez de 2,5M por dia.
+
   if (/^gpt-5(\.\d+)?-(mini|nano)/.test(m)) return "mini";
   if (BIG_MODELS.some((p) => m.startsWith(p))) return "big";
   return null;

@@ -2,15 +2,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// O balão do ⋯ também abre FORA da `.corvus-root` — nas settings, que são um
-// modal do Obsidian. Pra isso o CSS dele começa pela camada, e a camada traz
-// os tokens que só a raiz define.
-
 const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
 const SEM_COMENTARIO = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 
-/** O corpo da primeira regra cujo seletor é EXATAMENTE `seletor` — começando
- *  a regra, não no fim de um seletor descendente (`body.x .corvus-root {`). */
 function bloco(seletor: string): string {
   const escapado = seletor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const m = SEM_COMENTARIO.match(new RegExp(`(?:^|\\})\\s*${escapado}\\s*\\{([^}]*)\\}`, "m"));
@@ -42,7 +36,7 @@ describe("o balão não depende da raiz", () => {
   it("o balão de escolha é a continuação do botão: rola, e sem largura própria", () => {
     const corpo = bloco(".corvus-pop-layer .corvus-pop.is-pick");
     expect(corpo).toMatch(/overflow-y:\s*auto/);
-    // a largura é a do botão (o JS põe); nada de teto próprio que a desfaça
+
     expect(corpo).toMatch(/max-width:\s*none/);
     expect(corpo).toMatch(/background-color:\s*var\(--dropdown-background\)/);
   });
@@ -83,15 +77,14 @@ describe("o menu.ts decide onde o balão mora pelo BOTÃO", () => {
   const MENU = readFileSync(resolve(__dirname, "../src/ui/menu.ts"), "utf8");
 
   it("procura a raiz a partir da âncora, não no documento inteiro", () => {
-    // `doc.querySelector(".corvus-root")` acharia o painel do chat ATRÁS do
-    // modal das settings — o balão abriria escondido.
+
     expect(MENU).toMatch(/ancoraEl\.closest<HTMLElement>\("\.corvus-root"\)/);
   });
 
   it("o ▶ não fecha o balão nem escolhe a linha, e quem abriu sabe quando ele fecha", () => {
-    // O clique do ▶ não pode subir pra camada (que fecha no clique).
+
     expect(MENU).toMatch(/cls: "corvus-pop-extra"[\s\S]{0,400}e\.stopPropagation\(\);\s*run\(x\);/);
-    // Fechar por qualquer caminho avisa (a amostra de uma voz para junto).
+
     expect(MENU).toMatch(/camada\.remove\(\);\s*opts\.aoFechar\?\.\(\);/);
   });
 

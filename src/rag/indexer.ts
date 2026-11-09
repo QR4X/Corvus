@@ -1,17 +1,3 @@
-// src/rag/indexer.ts
-// Orquestra a indexação RAG:
-//   1. Walks vault (skip pastas internas do Corvus + arquivos de áudio)
-//   2. Pra cada .md: hash → compara com índice → chunk + re-embedda
-//   3. Pra cada imagem (se modelo suporta): hash → re-embedda inteira (1 chunk)
-//   4. Batch embedding (16 por API call no OpenAI, 1-por-1 no OpenRouter)
-//   5. Persiste a cada batch (durável contra crash)
-//
-// Áudio (mp3/wav/etc): detectado e CONTADO em progress mas SKIPADO — modelos
-// VL atuais não embedam áudio. Pipeline Whisper → texto → embed vem em sprint
-// próprio (precisa lidar com API Whisper paga ou whisper.cpp local).
-//
-// Cancelamento: aceita AbortSignal — checa antes/depois de cada batch.
-
 import type { App, CachedMetadata, TFile } from "obsidian";
 import {
   arrayBufferToDataUrl,
@@ -29,53 +15,50 @@ import {
   isImagePath,
   type VectorEntry,
 } from "./types";
-import { texto } from "../core/texto";
+import { texto } from "../core/text";
 
 export interface IndexProgress {
-  /** "scanning" → percorrendo vault | "embedding" → embedando chunks | "done" */
+
   phase: "scanning" | "embedding" | "done";
   filesScanned: number;
   filesTotal: number;
-  /** Quantos arquivos vão ser efetivamente re-embedados (diff vs índice). */
+
   filesToEmbed: number;
   filesEmbedded: number;
   chunksEmbedded: number;
-  /** Quantas imagens foram embedadas no run (pra mostrar separado de texto). */
+
   imagesEmbedded: number;
-  /** Quantos áudios foram pulados (modelo VL atual não suporta). */
+
   audioSkipped: number;
-  /** Estimativa rude de tokens consumidos. */
+
   tokensUsed: number;
-  /** Caminho do arquivo atual sendo processado (opcional, pra UI). */
+
   currentFile?: string;
 }
 
 export interface IndexerOptions {
   app: App;
-  /** API keys de TODOS os providers (router escolhe via spec do modelo). */
+
   openaiApiKey: string;
   openrouterApiKey: string;
   geminiApiKey?: string;
   nimApiKey?: string;
-  /** O endereço do Ollama (embedding local). */
+
   ollamaEndpoint?: string;
   model: string;
-  /** Perfil de quantização (precision/balanced/light/minimal). */
+
   profile: string;
   indexPath: string;
-  /** Pastas a IGNORAR (paths absolutos no vault). Sempre inclui o indexPath. */
+
   excludePaths: string[];
-  /** Callback chamado a cada update de progresso. */
+
   onProgress?: (p: IndexProgress) => void;
-  /** Sinal pra cancelar a indexação. */
+
   signal?: AbortSignal;
-  /** > 0 → salva SHARDED (manifesto + shards de N entries; busca depois streama,
-   *  memória limitada). 0/ausente → single-file. Sharded = rebuild completo
-   *  (sem incremental). v0.1.200 */
+
   shardSize?: number;
 }
 
-/** Extensões de áudio que detectamos pra avisar/pular. */
 const AUDIO_EXTENSIONS = ["mp3", "wav", "webm", "m4a", "ogg", "flac"];
 
 function isAudioPath(path: string): boolean {
@@ -86,31 +69,15 @@ function isAudioPath(path: string): boolean {
 const BATCH_SIZE = 16;
 const CHUNK_MAX_CHARS = 1500;
 const CHUNK_OVERLAP = 200;
-/**
- * v0.1.29 fix mobile crash: salvar o índice inteiro a cada batch causava
- * out-of-memory no WebView do Android (40MB JSON × dezenas de saves).
- * Agora salvamos a cada N arquivos processados + sempre no final.
- * Trade-off: durabilidade reduzida (perde até N arquivos se crashar) por
- * estabilidade (não crasha).
- */
+
 const SAVE_EVERY_N_FILES = 25;
 
-/**
- * Monta um cabeçalho de contexto Obsidian-native pra prefixar nos chunks antes
- * de embedar. Melhora o recall porque a query passa a casar com título, tags,
- * aliases e wikilinks mesmo quando esses termos não estão no corpo do chunk.
- * Usa o `metadataCache` nativo do Obsidian (sem regex/parse YAML na mão).
- *
- * Ex: "Nota: Arquitetura · Tags: projeto, corvus · Links: RAG, Effort Engine"
- */
 function buildObsidianContext(
   file: TFile,
   cache: CachedMetadata | null
 ): string {
   const parts: string[] = [`Nota: ${file.basename}`];
-  // `frontmatter` é `any` na tipagem do Obsidian — e é conteúdo do usuário,
-  // que pode ter qualquer forma. Lido como registro aberto e filtrado por
-  // `texto`, que descarta o que não é primitivo (ver core/texto.ts).
+
   const fm: Record<string, unknown> | undefined = cache?.frontmatter;
   if (fm) {
     const aliases = fm.aliases ?? fm.alias;
@@ -121,7 +88,7 @@ function buildObsidianContext(
       if (arr.length) parts.push(`Aliases: ${arr.join(", ")}`);
     }
   }
-  // Tags: frontmatter (tags/tag) + inline (#tag) — dedupe, sem o "#"
+
   const tagSet = new Set<string>();
   const fmTags = fm?.tags ?? fm?.tag;
   if (fmTags) {
@@ -132,7 +99,7 @@ function buildObsidianContext(
   }
   cache?.tags?.forEach((t) => tagSet.add(t.tag.replace(/^#/, "")));
   if (tagSet.size) parts.push(`Tags: ${Array.from(tagSet).join(", ")}`);
-  // Wikilinks do corpo — nomes/displayText, dedupe, cap 25 pra não inflar
+
   if (cache?.links?.length) {
     const linked = Array.from(
       new Set(cache.links.map((l) => l.displayText || l.link))
@@ -142,13 +109,6 @@ function buildObsidianContext(
   return parts.join(" · ");
 }
 
-/**
- * Indexa o vault. Reutiliza entries existentes pra arquivos NÃO modificados
- * (incremental). Devolve o índice atualizado.
- *
- * Se o modelo suporta imagem (`spec.supportsImage`), também indexa arquivos
- * de imagem (png/jpg/jpeg/webp/gif). Áudio é detectado mas pulado.
- */
 export async function indexVault(
   prev: VectorIndex | null,
   opts: IndexerOptions
@@ -170,23 +130,18 @@ export async function indexVault(
   const spec = getEmbeddingSpec(model);
   const prof = getQuantProfile(profile);
   const creds = { openaiApiKey, openrouterApiKey, geminiApiKey, nimApiKey, ollamaEndpoint };
-  // Dim efetiva: reduzida (Matryoshka) só se o modelo suporta `dimensions`.
-  // Senão, perfis "Leve/Mínimo" caem pra dim cheia (só a precisão int8 vale).
+
   let effectiveDim =
     prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;
-  // Modelo LOCAL (Ollama): a dimensão do spec é palpite pelo nome. Uma sonda
-  // mede a de verdade antes de criar (ou comparar) o índice — com o palpite
-  // errado, todo reindex achava que a dimensão tinha mudado.
+
   if (spec.local) {
     const [sonda] = await embedItems([{ kind: "text", text: "dimension probe" }], creds, model);
     if (sonda && sonda.length > 0) effectiveDim = sonda.length;
   }
   const embedDims = spec.supportsDimensions ? effectiveDim : undefined;
 
-  // Modo sharded → SEMPRE rebuild completo (o índice anterior é streamed, sem
-  // entries na RAM pra incremental; e queremos um índice limpo pra reshard).
   const sharded = (opts.shardSize ?? 0) > 0;
-  // Recomeça do zero se modelo, dim OU precisão mudaram desde o índice anterior.
+
   const startFresh =
     sharded ||
     !prev ||
@@ -206,9 +161,6 @@ export async function indexVault(
 
   const prevHashes = startFresh ? new Map<string, string>() : prev.hashMap();
 
-  // ============================================================
-  // Walk vault — markdown SEMPRE, imagens só se modelo suportar
-  // ============================================================
   const includedFiles: TFile[] = [];
   let audioSkipped = 0;
 
@@ -219,13 +171,10 @@ export async function indexVault(
     });
   }
 
-  // Markdown
   for (const f of app.vault.getMarkdownFiles()) {
     if (!isExcluded(f.path)) includedFiles.push(f);
   }
 
-  // Imagens (e detecção de áudio) — só varremos `getFiles()` se modelo é VL
-  // ou se queremos contar áudio pulado. Por economia, fazemos sempre.
   for (const f of app.vault.getFiles()) {
     if (isExcluded(f.path)) continue;
     const path = f.path;
@@ -241,13 +190,8 @@ export async function indexVault(
   const filesTotal = includedFiles.length;
   const stillPresent = new Set(includedFiles.map((f) => f.path));
 
-  // Remove entries de arquivos deletados ou que não estão mais no escopo
   index.pruneToPaths(stillPresent);
 
-  // ============================================================
-  // Phase 1: Scan — descobre quais arquivos precisam re-embed
-  // ============================================================
-  // toEmbed armazena ENTRIES no formato unificado: text ou image
   type PendingFile =
     | { kind: "text"; file: TFile; content: string; hash: string }
     | { kind: "image"; file: TFile; dataUrl: string; hash: string };
@@ -312,14 +256,6 @@ export async function indexVault(
     return index;
   }
 
-  // ============================================================
-  // Phase 2: Embed — UM ARQUIVO POR VEZ com try-catch isolado
-  //
-  // v0.1.29 fix: antes batchávamos chunks de múltiplos arquivos juntos e
-  // salvávamos o índice (40MB+) a CADA batch — explodia o WebView no Android.
-  // Agora: processa file → embeda todos chunks dele → adiciona ao índice →
-  // salva A CADA N arquivos. Erros em 1 arquivo não derrubam o resto.
-  // ============================================================
   let filesEmbedded = 0;
   let chunksEmbedded = 0;
   let imagesEmbedded = 0;
@@ -334,17 +270,14 @@ export async function indexVault(
       const fileEntries: VectorEntry[] = [];
 
       if (item.kind === "text") {
-        // Contexto Obsidian-native (título · tags · aliases · wikilinks) —
-        // prefixado SÓ no texto que vai pro embed (enriquece recall). O `text`
-        // guardado na entry segue sendo o chunk puro (excerpt limpo na busca).
+
         const cache = app.metadataCache.getFileCache(item.file);
         const ctxHeader = buildObsidianContext(item.file, cache);
         const chunks = chunkMarkdown(item.content, CHUNK_MAX_CHARS, CHUNK_OVERLAP);
         for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
           if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
           const slice = chunks.slice(i, i + BATCH_SIZE);
-          // Texto embedado = contexto Obsidian (título/tags/links) + breadcrumb
-          // de heading + o chunk. O `text` guardado fica puro (excerpt limpo).
+
           const embedTexts = slice.map((c) => {
             const prefix = [ctxHeader, c.breadcrumb].filter(Boolean).join(" · ");
             return prefix ? `${prefix}\n\n${c.text}` : c.text;
@@ -368,7 +301,7 @@ export async function indexVault(
           }
         }
       } else {
-        // Imagem: 1 entry, 1 request
+
         const embeddings = await embedItems(
           [{ kind: "image", dataUrl: item.dataUrl }],
           creds,
@@ -387,15 +320,11 @@ export async function indexVault(
         imagesEmbedded++;
       }
 
-      // Substitui (ou adiciona) as entries deste arquivo no índice
       index.replaceFile(item.file.path, fileEntries);
       chunksEmbedded += fileEntries.length;
       filesEmbedded++;
       filesSinceLastSave++;
 
-      // Save periódico — controla o I/O em vez de salvar cada batch. No modo
-      // sharded pulamos (re-escrever todos os shards a cada N seria custoso);
-      // salva só no fim. v0.1.200
       if (filesSinceLastSave >= SAVE_EVERY_N_FILES && !sharded) {
         await saveIndex(app, indexPath, index);
         filesSinceLastSave = 0;
@@ -414,32 +343,27 @@ export async function indexVault(
         currentFile: item.file.path,
       });
     } catch (err) {
-      // Cancelamento tem prioridade: `embedItems`/`requestUrl` não propagam o
-      // signal, então um cancel no meio do request volta como erro de rede.
-      // Re-checamos o signal ANTES de classificar/logar pra parar na hora, sem
-      // registrar o arquivo como "falho" indevidamente. v0.1.228
+
       if (signal?.aborted) throw new DOMException("cancelled", "AbortError");
-      // Skip arquivo com erro, log, continua próximo
+
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
         `[corvus/rag] file failed: ${item.file.path}`,
         err
       );
       failedFiles.push({ path: item.file.path, error: msg });
-      // Abort propagado deve parar tudo
+
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      // Senão continua
+
     }
   }
 
-  // Save final — garante que tudo que rolou tá no disco
   index.lastIndexedAt = new Date().toISOString();
   await saveIndex(app, indexPath, index, { shardSize: opts.shardSize });
 
-  // Log final de arquivos que falharam (pra user inspeccionar no DevTools)
   if (failedFiles.length > 0) {
     console.warn(
-      `[corvus/rag] ${failedFiles.length} arquivos falharam durante indexação:`,
+      `[corvus/rag] ${failedFiles.length} files failed during indexing:`,
       failedFiles
     );
   }

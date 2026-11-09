@@ -1,22 +1,3 @@
-// src/core/session.ts
-// ChatSession — o controller da conversa. É a "API CRUD" que a casca (UI)
-// consome; não sabe de React nem de DOM. Qualquer redesign da interface fala
-// com o app por aqui (+ o store zustand pra ler mensagens).
-//
-//   estado da conversa .......... store zustand (src/store/chat.ts)
-//   seleção pré-lock ............ aqui (provider / modelo / modo / effort)
-//   persistência ................ .md no vault (chatPersistence) + cache de
-//                                 summaries do plugin (main.ts)
-//   stream / agente ............. chatEngine.ts / agentTurn.ts
-//
-// Regras herdadas do app antigo (validadas em uso):
-//   - a 1ª mensagem cria id/título e TRAVA provider+modelo+modo da sessão
-//     (consistência de contexto); "New chat" destrava;
-//   - auto-save debounced a cada mudança nas mensagens; abrir um chat NÃO
-//     regrava o arquivo (pula um ciclo); fechar a view flusha o save pendente;
-//   - erros (isError) não persistem; fontes de projeto entram como notas de
-//     contexto no 1º envio de um chat criado "dentro" do projeto.
-
 import { Notice, TFile } from "obsidian";
 import type CorvusPlugin from "../main";
 import {
@@ -26,8 +7,8 @@ import {
   type UserMessage,
 } from "../store/chat";
 import { getProvider } from "../providers";
-import { modeloSalvoPara } from "./modeloPadrao";
-import { nomeCompleto } from "./ollamaPadrao";
+import { modeloSalvoPara } from "./defaultModel";
+import { nomeCompleto } from "./ollamaDefault";
 import { getTranslations } from "../i18n";
 import { tr } from "../i18n/tr";
 import {
@@ -68,38 +49,28 @@ export interface SessionConfig {
   model: string;
   mode: ChatMode;
   effort: string;
-  /** As suas notas entram como contexto nesta conversa? (ver
-   *  core/vaultContext.ts — o padrão vem do modo, a escolha é da pessoa.) */
+
   vault: boolean;
-  /** true após a 1ª mensagem: provider/modelo/modo não mudam mais neste chat. */
+
   locked: boolean;
 }
 
-/** O mínimo que `load()` precisa pra achar o .md (um ChatSummary serve). */
 export interface ChatRef {
   id: string;
   mode: string;
 }
 
 export class ChatSession {
-  /**
-   * O dicionário é lido A CADA USO, não guardado na construção.
-   *
-   * A sessão vive enquanto o painel existir, e o idioma muda nas settings no
-   * meio disso. Fixando na construção, trocar pra português deixava todo erro
-   * de chat em inglês até reabrir o Obsidian — e ninguém liga uma coisa na
-   * outra.
-   */
+
   private get t() {
     return getTranslations(this.plugin.settings.language);
   }
   private readonly abortRef = { current: null as AbortController | null };
   private readonly approveAllRef = { current: false };
-  /** Projeto que vai receber o chat criado no próximo 1º envio. */
+
   private pendingProjectId: string | null = null;
   private saveTimer: number | null = null;
-  /** Já avisei que a gravação da conversa está falhando? (ver
-   *  `avisarFalhaDeGravacao`) */
+
   private avisoDeGravacaoDado = false;
   private pendingSave: (() => void) | null = null;
   private skipNextSave = false;
@@ -110,7 +81,7 @@ export class ChatSession {
   private model: string;
   private mode: ChatMode;
   private effort: string;
-  /** null = ninguém mexeu no interruptor das notas; vale o padrão do modo. */
+
   private vaultEscolha: boolean | null = null;
 
   constructor(private readonly plugin: CorvusPlugin) {
@@ -119,28 +90,16 @@ export class ChatSession {
     this.model = this.modelFor(this.provider);
     this.mode = isChatMode(s.defaultMode) ? s.defaultMode : "chat";
     this.effort = s.defaultEffort || "med";
-    // Auto-save: qualquer mudança no array de mensagens agenda um save.
+
     this.unsubStore = useChatStore.subscribe((state, prev) => {
       if (state.messages !== prev.messages) this.scheduleSave();
     });
-    // A lista do Ollama muda com a conversa aberta (a busca nas settings, a
-    // conferência ao abrir o Obsidian). Sem isto, o modelo que saiu dela
-    // continuava escolhido aqui — e o seletor o mostrava na frente da lista.
+
     this.unsubSettings = plugin.onSettingsChange(() => this.seguirOllama());
-    // Cache de summaries aquecido — o upsert incremental depende dele.
+
     void plugin.loadChatSummaries();
   }
 
-  /** Chamar ao fechar a view: flusha o save pendente e cancela o stream. */
-  /**
-   * Grava agora a conversa que está respondendo FORA da tela.
-   *
-   * `flushSave` não serve pra isso: ele grava a conversa VISÍVEL, e a de
-   * segundo plano não está no store de ninguém — ela vive no `background`.
-   * Sem esta chamada, fechar a view com um turno rodando fora da tela jogava
-   * a resposta fora: o arquivo nunca tinha sido escrito, porque a gravação do
-   * segundo plano só acontecia no fim do turno.
-   */
   async flushBackground(): Promise<void> {
     await this.gravarFundo();
   }
@@ -149,15 +108,12 @@ export class ChatSession {
     this.unsubStore();
     this.unsubSettings();
     this.flushSave();
-    // Rede de segurança pra quem chama `dispose` sem poder esperar (o await
-    // de verdade está no onClose da view). Dispara antes do abort: depois
-    // dele o `background` é limpo pelo `finally` do turno.
+
     void this.gravarFundo();
     this.abortRef.current?.abort();
     this.listeners.clear();
   }
 
-  /** Inscreve um callback pra mudanças de seleção/sessão. Retorna unsubscribe. */
   onChange(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
@@ -167,14 +123,11 @@ export class ChatSession {
       try {
         cb();
       } catch (err) {
-        console.error("[corvus] session listener falhou:", err);
+        console.error("[corvus] session listener failed:", err);
       }
     });
   }
 
-  // ── Seleção (provider / modelo / modo / effort) ─────────────────────────
-
-  /** Config efetiva: a travada na sessão (se houver) ou a seleção atual. */
   get config(): SessionConfig {
     const st = useChatStore.getState();
     const locked = st.sessionProvider !== null;
@@ -192,19 +145,10 @@ export class ChatSession {
     };
   }
 
-  /** Modelo salvo pro provider (ver core/modeloPadrao.ts). */
   modelFor(provider: string): string {
     return modeloSalvoPara(this.plugin.settings, provider);
   }
 
-  /**
-   * O modelo do Ollama escolhido aqui não está mais na lista do que está
-   * instalado (ou nunca teve modelo): volta pro modelo salvo, que a busca já
-   * acertou. Vale também com uma conversa enviada na tela — ela lê o modelo
-   * dela (o travado), e este é o que a PRÓXIMA conversa usa. Sem isso, quem
-   * buscou os modelos olhando uma conversa e depois abriu outra nova caía
-   * de novo no modelo que não tem.
-   */
   private seguirOllama(): void {
     if (this.provider !== "ollama") return;
     const ativos = this.plugin.settings.activeModels?.ollama ?? [];
@@ -216,7 +160,6 @@ export class ChatSession {
     this.emit();
   }
 
-  /** Opções do seletor de modelo (modelos ativos + o atual, se faltar). */
   modelOptions(provider: string): string[] {
     const list = this.plugin.settings.activeModels?.[provider] ?? [];
     const cfg = this.config;
@@ -224,7 +167,6 @@ export class ChatSession {
     return cur && !list.includes(cur) ? [cur, ...list] : list;
   }
 
-  /** Credencial do provider (Ollama: o endpoint faz o papel da key). */
   apiKeyFor(provider: string): string {
     return this.plugin.providerCredential(provider);
   }
@@ -273,12 +215,6 @@ export class ChatSession {
     this.emit();
   }
 
-  /**
-   * Liga/desliga as notas como contexto. Vale pra conversa inteira e persiste
-   * com ela — diferente de provider e modo, isto NÃO trava no primeiro envio:
-   * é a única decisão da barra que continua fazendo sentido no meio de uma
-   * conversa ("agora eu quero que você olhe minhas notas").
-   */
   setVault(on: boolean): void {
     this.vaultEscolha = on;
     this.emit();
@@ -291,40 +227,23 @@ export class ChatSession {
     this.emit();
   }
 
-  // ── Conversa ────────────────────────────────────────────────────────────
-
-  /** Envia uma mensagem no modo ativo (chat / vault-qa / agent). */
-  /**
-   * Envia a mensagem. Devolve `false` quando a rodada NEM COMEÇOU (texto vazio,
-   * outra rodada em curso, provider sem key no 1º envio) — nesses casos a
-   * mensagem do usuário não chega a existir em lugar nenhum, e quem chamou
-   * precisa saber pra devolver o texto ao campo em vez de perdê-lo.
-   */
   async send(text: string): Promise<boolean> {
     const trimmed = text.trim();
     if (!trimmed) return false;
     let st = useChatStore.getState();
     if (st.isLoading) return false;
-    // O aviso do pre-flight (sem chave, sem modelo) não é conversa: quem
-    // seguiu o aviso e mandou de novo está mandando a PRIMEIRA mensagem. Com
-    // o aviso na lista, a conversa nova nunca ganhava id, trava nem gravação.
+
     if (
       !st.currentChatId &&
       st.messages.length > 0 &&
       st.messages.every((m) => m.type === "ai-response" && m.isError === true)
     ) {
       st.setMessages([]);
-      st = useChatStore.getState(); // o retrato anterior ainda tem o aviso
+      st = useChatStore.getState(); 
     }
     const cfg = this.config;
     const provider = getProvider(cfg.provider);
 
-    // Pre-flight de key ANTES de criar o chat — senão o 1º envio sem key
-    // persistia um chat-fantasma (só a pergunta). O Ollama entra também: o
-    // que falta nele é o endereço.
-    // Sem modelo também para aqui: mandar `model: ""` dava erro do servidor
-    // E travava a conversa nova num modelo vazio (o Ollama recém-configurado,
-    // antes da primeira busca, não tem nenhum).
     const falta =
       st.messages.length === 0
         ? (semCredencial(cfg.provider, this.apiKeyFor(cfg.provider), this.t, provider.name) ??
@@ -340,7 +259,6 @@ export class ChatSession {
       return false;
     }
 
-    // 1ª mensagem: id + título + lock da sessão (+ associação ao projeto).
     if (st.messages.length === 0) {
       const id = makeId();
       st.setCurrentChatId(id);
@@ -359,13 +277,10 @@ export class ChatSession {
       }
     }
 
-    // Anexos escolhidos no composer (nota, imagem, texto colado) — o store é
-    // quem guarda, porque é ele que a tela observa pra desenhar os chips.
     const pendentes = st.attachments;
     let attachments = pendentes.length > 0 ? [...pendentes] : undefined;
     if (pendentes.length > 0) st.setAttachments([]);
 
-    // Auto-detect Instagram Reel URL in user prompt
     if (this.plugin.settings.instagramReelsEnabled !== false) {
       const igUrl = findInstagramUrlInText(trimmed);
       if (igUrl) {
@@ -392,10 +307,6 @@ export class ChatSession {
       }
     }
 
-    // Imagem local (`data:`): grava os bytes UMA vez na pasta de geração e
-    // guarda o path no anexo — é esse descritor pequeno que persiste no .md
-    // (embutir os bytes deixaria o arquivo do chat gigante). Falha não derruba
-    // o envio: sem path a imagem mostra no turno, só não sobrevive ao reload.
     if (attachments) {
       attachments = await Promise.all(
         attachments.map(async (a) =>
@@ -409,9 +320,7 @@ export class ChatSession {
       content: trimmed,
       ...(attachments ? { attachments } : {}),
     });
-    // Carimba de quem é este turno ANTES de começar. É por este id que a tela
-    // sabe se quem está respondendo é a conversa que ela mostra, e é ele que
-    // vai junto se a conversa sair de cena no meio.
+
     st.setTurnChatId(useChatStore.getState().currentChatId);
     this.emit();
 
@@ -439,40 +348,23 @@ export class ChatSession {
         await streamReply(ctx, trimmed, attachments);
       }
     } finally {
-      // A conversa saiu da tela durante a resposta? Então é ela que grava o
-      // próprio arquivo — o store agora é de outra pessoa.
+
       await this.gravarFundo();
       useChatStore.getState().setTurnChatId(null);
       this.emit();
     }
 
-    // Quem escreveu enquanto a resposta chegava entra agora. Fica AQUI, e não
-    // na tela, porque a tela pode ter sido desmontada no meio (Projects,
-    // Skills, gaveta fechada) — e a mensagem não pode evaporar por isso.
     const fila = useChatStore.getState().queued;
     if (fila.length > 0) {
       const [proxima, ...resto] = fila;
       useChatStore.getState().setAttachments([]);
       useChatStore.setState({ queued: resto });
-      // A recursão esvazia o resto da fila, uma rodada de cada vez.
+
       await this.send(proxima);
     }
     return true;
   }
 
-  /**
-   * Tira o turno da tela sem matá-lo: a conversa que está respondendo vira um
-   * `BackgroundRun` e o motor passa a escrever LÁ.
-   *
-   * Chamado quando a pessoa abre outra conversa (ou uma nova) no meio de uma
-   * resposta. Antes disto, o caminho era `abort()` — e como o motor só morre
-   * um tique depois, a mensagem de "Interrompido", os passos do agente e os
-   * tokens caíam no arquivo da conversa recém-aberta.
-   *
-   * A fila NÃO vai junto: ela volta a ser rascunho da conversa de onde saiu.
-   * Mandar sozinha numa conversa que não está na tela seria escrever no nome
-   * de alguém que não está olhando.
-   */
   private destacarTurno(): boolean {
     const st = useChatStore.getState();
     if (!st.isLoading || st.background) return false;
@@ -500,15 +392,12 @@ export class ChatSession {
     return true;
   }
 
-  /** Grava o arquivo da conversa que respondeu fora da tela e a esquece. */
   private async gravarFundo(): Promise<void> {
     const st = useChatStore.getState();
     const run = st.background;
     if (!run) return;
     st.clearBackground();
-    // Mesmo filtro do save normal: só user e ai-response que não é erro. O
-    // `as` é o que diz ao compilador o que o filtro já garantiu — ai-options
-    // não tem `content` e não passa por aqui.
+
     const guardadas = run.messages.filter(
       keepConversationMessage
     ) as Array<Extract<ChatMessage, { content: string }>>;
@@ -563,12 +452,10 @@ export class ChatSession {
         ),
         filePath: path,
         starred: false,
-        // Da última fala que já está aqui: reler do disco o arquivo que
-        // acabamos de escrever seria trabalho por nada, e deixar vazio
-        // APAGARIA a linha do cartão a cada gravação.
+
         preview: previewFromText(ultima?.content ?? ""),
       });
-      // Respondeu com você em outro lugar: fica marcada até você abrir.
+
       this.plugin.markChatUnread(chat.id);
       this.avisoDeGravacaoDado = false;
     } catch (err) {
@@ -576,14 +463,12 @@ export class ChatSession {
     }
   }
 
-  /** Interrompe o stream / o turno do agente em andamento. */
   stop(): void {
     this.abortRef.current?.abort();
-    // Parar é parar: o que estava na fila não pode disparar sozinho depois.
+
     useChatStore.getState().clearQueued();
   }
 
-  /** Traz de volta pra tela a conversa que estava respondendo em segundo plano. */
   private reanexarTurno(): void {
     const st = useChatStore.getState();
     const run = st.attachTurn();
@@ -597,22 +482,17 @@ export class ChatSession {
     st.resetUsage();
     st.addUsage(run.tokensIn, run.tokensOut);
     if (run.effort) this.effort = run.effort;
-    // Volta exatamente onde a leitura parou: o que chegou enquanto você não
-    // estava olhando fica logo abaixo, em vez de você cair no fim e ter que
-    // subir pra procurar onde a resposta começou.
+
     st.setResume({ scroll: run.scrollTop });
     this.emit();
   }
 
-  /** Nova conversa (destrava a sessão). `mode` opcional já fixa o modo. */
   newChat(mode?: ChatMode): void {
-    // Mesmo trato do `load`: o turno em andamento sai de cena, não morre.
+
     if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
     this.pendingProjectId = null;
-    // Conversa nova começa sem escolha: o interruptor das notas volta a
-    // seguir o modo. Herdar a escolha da conversa anterior faria um Chat
-    // nascer vasculhando o vault porque a sessão de Agent de ontem fazia.
+
     this.vaultEscolha = null;
     useChatStore.getState().newChat();
     if (mode) {
@@ -623,13 +503,10 @@ export class ChatSession {
     this.emit();
   }
 
-  /** Nova conversa DENTRO de um projeto: fontes viram contexto no 1º envio. */
   async newChatInProject(project: Project): Promise<void> {
     this.newChat();
     this.pendingProjectId = project.id;
-    // As instruções do projeto entram AGORA, e ficam gravadas nesta conversa.
-    // Não são lidas do projeto na hora de responder: mudar as instruções
-    // amanhã não pode reescrever o que já foi combinado ontem.
+
     useChatStore.getState().setSessionInstructions(project.instructions ?? "");
     const notes: NoteAttachment[] = [];
     const missing: string[] = [];
@@ -653,20 +530,18 @@ export class ChatSession {
     this.emit();
   }
 
-  /** Abre uma conversa salva (.md) — reidrata o store e trava a sessão. */
   async load(ref: ChatRef): Promise<void> {
     const store = useChatStore.getState();
     if (store.currentChatId === ref.id) return;
-    // Voltando pra conversa que está respondendo em segundo plano: ela não vem
-    // do disco — o que vale é o que o turno já escreveu, que está na memória.
+
     if (store.background?.chatId === ref.id) {
       this.reanexarTurno();
       this.plugin.clearChatUnread(ref.id);
       return;
     }
-    // Saber ANTES de limpar: `clearChatUnread` roda no fim deste método.
+
     const naoLida = this.plugin.unreadSet().has(ref.id);
-    // Turno em andamento continua rodando, agora escrevendo fora da tela.
+
     if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
     store.setLoadingChat(true);
@@ -697,7 +572,7 @@ export class ChatSession {
       );
 
       const st = useChatStore.getState();
-      // Abrir um chat NÃO é atividade: pula o próximo ciclo do auto-save.
+
       this.skipNextSave = true;
       this.pendingProjectId = null;
       st.setAttachments([]);
@@ -710,22 +585,20 @@ export class ChatSession {
       st.setSessionPersona(chat.persona ?? "");
       st.setSessionInstructions(chat.instructions ?? "");
       st.setCurrentChatStarred(chat.starred === true);
-      // Conversa que respondeu sem você ver abre NA RESPOSTA, não no fim dela:
-      // aqui não há px guardados (a conversa veio do disco), então o ponto é a
-      // última fala do modelo — que é justamente o que chegou sem você.
+
       if (naoLida) {
         const nova = [...restored]
           .reverse()
           .find((m) => m.type === "ai-response");
         if (nova) st.setResume({ messageId: nova.id });
       }
-      // Abrir É ler.
+
       this.plugin.clearChatUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
-      // Sem campo no arquivo, volta a valer o padrão do modo.
+
       this.vaultEscolha = chat.vault ?? null;
     } catch (err) {
-      console.error("[corvus] loadChat falhou:", err);
+      console.error("[corvus] loadChat failed:", err);
       new Notice(
         `${this.t.ai.errorPrefix} ${err instanceof Error ? err.message : this.t.ai.unknownError}`
       );
@@ -735,7 +608,6 @@ export class ChatSession {
     }
   }
 
-  /** Apaga uma conversa (vai pra lixeira do sistema, recuperável). */
   async delete(ref: ChatRef): Promise<void> {
     try {
       await deleteChat(
@@ -745,7 +617,7 @@ export class ChatSession {
         ref.id
       );
       this.plugin.removeChatSummary(ref.id);
-      // Tira a referência dos projetos (sem chatId órfão).
+
       await this.updateProjects((prev) =>
         prev.map((p) =>
           p.chatIds.includes(ref.id)
@@ -756,14 +628,13 @@ export class ChatSession {
       if (useChatStore.getState().currentChatId === ref.id) this.newChat();
       new Notice(this.t.chat.deletedToTrash);
     } catch (err) {
-      console.error("[corvus] deleteChat falhou:", err);
+      console.error("[corvus] deleteChat failed:", err);
       new Notice(
         `${this.t.ai.errorPrefix} ${err instanceof Error ? err.message : ""}`
       );
     }
   }
 
-  /** Renomeia o título (frontmatter + H1) sem mudar id/arquivo. */
   async rename(ref: ChatRef, newTitle: string): Promise<void> {
     const clean = newTitle.trim();
     if (!clean) return;
@@ -787,16 +658,12 @@ export class ChatSession {
     }
   }
 
-  // ── Projetos (persistidos em settings.projects) ─────────────────────────
-
   async updateProjects(
     update: (prev: Project[]) => Project[]
   ): Promise<void> {
     this.plugin.settings.projects = update(this.plugin.settings.projects ?? []);
     await this.plugin.saveSettings();
   }
-
-  // ── Auto-save ───────────────────────────────────────────────────────────
 
   private scheduleSave(): void {
     const st = useChatStore.getState();
@@ -814,7 +681,6 @@ export class ChatSession {
     }, 500);
   }
 
-  /** Grava AGORA um save agendado (fechar a view, trocar de chat). */
   flushSave(): void {
     if (this.saveTimer !== null) {
       window.clearTimeout(this.saveTimer);
@@ -825,19 +691,8 @@ export class ChatSession {
     pending?.();
   }
 
-  /**
-   * A gravação da conversa falhou — e quem está conversando precisa saber.
-   *
-   * As mensagens ficam na tela mesmo quando o arquivo não foi escrito, então
-   * sem isto a pessoa continua digitando por cima de uma conversa que não
-   * existe em disco e só descobre ao reabrir o Obsidian. Um `console.error`
-   * não é aviso: ninguém conversa com o devtools aberto.
-   *
-   * Uma vez por sequência de falhas (disco cheio avisa uma vez, não a cada
-   * mensagem); volta a avisar depois que uma gravação dá certo.
-   */
   private avisarFalhaDeGravacao(err: unknown): void {
-    console.error("[corvus] não consegui gravar a conversa:", err);
+    console.error("[corvus] failed to save conversation:", err);
     if (this.avisoDeGravacaoDado) return;
     this.avisoDeGravacaoDado = true;
     new Notice(
@@ -870,9 +725,7 @@ export class ChatSession {
       persona: st.sessionPersona || undefined,
       instructions: st.sessionInstructions || undefined,
       starred: st.currentChatStarred || undefined,
-      // `?? undefined` e não `?? false`: gravar um false de nascença faria a
-      // conversa reabrir com o interruptor travado em desligado, mesmo num
-      // modo cujo padrão é ligado.
+
       vault: this.vaultEscolha ?? undefined,
       messages: userOrAi.map((m) => ({
         type: m.type,

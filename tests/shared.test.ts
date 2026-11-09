@@ -5,10 +5,6 @@ import {
   parseOpenAIChatMessage,
 } from "../src/providers/_shared";
 
-// Núcleo compartilhado dos providers (extraído na v0.1.156). O parser SSE e o
-// ensureOk* já são exercidos pelos testes de stream; aqui foco em mapHttpError
-// e buildChatBody (que aplica a paramPolicy).
-
 const userReq = (extra: Record<string, unknown> = {}) => ({
   model: "gpt-4o",
   messages: [{ role: "user" as const, content: "hi" }],
@@ -32,16 +28,14 @@ describe("mapHttpError", () => {
     expect(mapHttpError(429, {}, { label: "X" })?.code).toBe("rate-limit");
   });
   it("5xx/408/409 → rate-limit (transiente/retryável, inclui 529 overloaded)", () => {
-    // v0.1.228: erros de servidor são transientes — a UI re-localiza rate-limit
-    // como "tente de novo".
+
     expect(mapHttpError(500, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(503, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(529, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(408, {}, { label: "X" })?.code).toBe("rate-limit");
   });
   it("outro erro → unknown com o detalhe da API", () => {
-    // 422: não é auth, rate-limit nem 5xx — cai no ramo genérico que preserva
-    // a mensagem da API.
+
     const err = mapHttpError(422, { error: { message: "boom" } }, { label: "NIM" });
     expect(err?.code).toBe("unknown");
     expect(err?.message).toContain("boom");
@@ -54,7 +48,7 @@ describe("buildChatBody", () => {
       provider: "openai",
       maxTokensField: "max_completion_tokens",
     });
-    expect(b.max_completion_tokens).toBe(16384); // teto gpt-4o
+    expect(b.max_completion_tokens).toBe(16384); 
     expect(b.max_tokens).toBeUndefined();
   });
 
@@ -89,13 +83,6 @@ describe("buildChatBody", () => {
     expect(b.tool_choice).toBe("auto");
   });
 });
-
-// ============================================================
-// parseOpenAIChatMessage — o que chega no fio pode estar torto
-// ============================================================
-// Estas garantias entraram quando os shapes do fio ganharam tipo: com `any`,
-// uma tool call sem `function` estourava aqui dentro ("cannot read name of
-// undefined") e derrubava a resposta inteira, em vez de descartar a entrada.
 
 describe("parseOpenAIChatMessage — tool calls tortas", () => {
   const msg = (tool_calls: unknown[]) =>

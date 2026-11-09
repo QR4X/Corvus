@@ -6,12 +6,6 @@ import {
 import type { Project } from "../src/projects";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
-// Um projeto é a única coisa do app que mora INTEIRA fora do vault: nome,
-// notas de origem, instruções e conversas vivem nas settings, que é um JSON
-// que ninguém abre, não entra na busca e não aparece no grafo. O índice
-// exportado é a porta — e por isso as fontes têm que sair como link de
-// verdade, não como texto.
-
 const proj = (over: Partial<Project> = {}): Project => ({
   id: "p1",
   name: "Thesis",
@@ -44,14 +38,12 @@ const quando = new Date("2026-09-27T12:00:00.000Z");
 
 describe("noteLink", () => {
   it("vira wikilink sem o .md", () => {
-    // Com a extensão o link funciona, mas aparece escrito "nota.md" em todo
-    // lugar que o mostra.
+
     expect(noteLink("Refs/Kuhn.md")).toBe("[[Refs/Kuhn]]");
   });
 
   it("guarda o caminho inteiro, não só o nome", () => {
-    // Duas notas "Index" em pastas diferentes é o caso normal num vault; o
-    // nome sozinho manda pra errada.
+
     expect(noteLink("a/b/Index.md")).toBe("[[a/b/Index]]");
   });
 });
@@ -67,8 +59,7 @@ describe("exportProjectMarkdown", () => {
   });
 
   it("leva as instruções por extenso", () => {
-    // Elas só existem nas settings: sem isto, a cópia não carrega a parte que
-    // mais custou a escrever.
+
     expect(exportProjectMarkdown(proj(), [], quando)).toContain(
       "## Custom instructions\n\nSempre citar a fonte."
     );
@@ -104,8 +95,7 @@ describe("exportProjectMarkdown", () => {
   });
 
   it("seção vazia não aparece", () => {
-    // Um título seguido de nada não informa que não há — informa que o
-    // exportador não olhou.
+
     const md = exportProjectMarkdown(
       proj({ sources: [], instructions: "", chatIds: [] }),
       [],

@@ -1,15 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useChatStore, type BackgroundRun } from "../src/store/chat";
 
-/**
- * O DESVIO de escrita do turno.
- *
- * O motor não sabe de conversa nenhuma: ele pega as ações do store uma vez, no
- * topo, e escreve. Quem decide se aquilo cai na conversa da tela ou na que
- * saiu de cena é o store. Estes testes são o contrato desse desvio — e cada um
- * deles é um jeito que a versão anterior tinha de escrever na conversa errada.
- */
-
 const inicial = useChatStore.getState();
 
 const run = (over: Partial<BackgroundRun> = {}): BackgroundRun => ({
@@ -56,7 +47,7 @@ describe("escrita do turno com a conversa FORA da tela", () => {
     const id = st.addMessage({ type: "user", content: "pergunta" });
     expect(id).toBeTruthy();
     st.detachTurn(run({ messages: useChatStore.getState().messages }));
-    // a tela agora é de OUTRA conversa
+
     useChatStore.getState().setMessages([]);
     useChatStore.getState().setCurrentChatId("chat-B");
   });
@@ -84,8 +75,7 @@ describe("escrita do turno com a conversa FORA da tela", () => {
   });
 
   it("os passos do agente não vazam pra conversa aberta", () => {
-    // Era isto que acontecia: o turno morria DEPOIS da troca e pendurava os
-    // passos da conversa A numa mensagem da conversa B.
+
     const id = useChatStore
       .getState()
       .addMessage({ type: "ai-response", content: "Interrompido" });
@@ -112,8 +102,7 @@ describe("escrita do turno com a conversa FORA da tela", () => {
   });
 
   it("reagir e apagar continuam mexendo na conversa DA TELA", () => {
-    // O desvio é só das escritas do turno. Um toque da pessoa numa conversa
-    // não pode mexer em outra.
+
     const visivel = useChatStore
       .getState()
       .background;
@@ -128,9 +117,7 @@ describe("escrita do turno com a conversa FORA da tela", () => {
   });
 
   it("limpar a tela não desliga o turno que roda fora dela", () => {
-    // `clearMessages` zera `isLoading`; com um turno vivo em segundo plano
-    // isso liberaria o guarda de envio e deixaria dois turnos disputando o
-    // mesmo AbortController.
+
     useChatStore.setState({ isLoading: true, streamingMessageId: "m9" });
     useChatStore.getState().clearMessages();
     const s = useChatStore.getState();
@@ -140,7 +127,7 @@ describe("escrita do turno com a conversa FORA da tela", () => {
   });
 
   it("abrir uma conversa NOVA também não desliga o turno de fundo", () => {
-    // `newChat` tem o próprio reset — e ele zerava `isLoading` do mesmo jeito.
+
     useChatStore.setState({ isLoading: true, streamingMessageId: "m9" });
     useChatStore.getState().newChat();
     const s = useChatStore.getState();

@@ -1,13 +1,9 @@
-// src/main.ts
-// Entry point do plugin. O Obsidian instancia CorvusPlugin ao carregar o plugin.
-// É como o "componente raiz" no Figma — todo o resto é montado a partir daqui.
-
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { settingsReadLooksBroken } from "./core/settingsGuard";
 import { CORVUS_HIDDEN, CHATS_FOLDER, HIDDEN_MOVES, shouldMigrate } from "./core/vaultPaths";
 import { getProvider } from "./providers";
 import { CorvusView, VIEW_TYPE_CORVUS } from "./ui/CorvusView";
-import { FONTE_DO_HOVER } from "./ui/linksDaResposta";
+import { FONTE_DO_HOVER } from "./ui/responseLinks";
 import { registerBrandLogos } from "./ui/brandLogos";
 import { CorvusSettingsTab } from "./ui/SettingsTab";
 import { startupOpensPanel } from "./ui/modules";
@@ -41,213 +37,156 @@ import type {
   EffortConfig,
   EffortLevel,
 } from "./core/effort";
-import { limparCamposMortos } from "./core/settingsLegado";
-import { EMBEDDING_PROVIDERS, somarDescobertos } from "./rag/descobertos";
+import { limparCamposMortos } from "./core/legacySettings";
+import { EMBEDDING_PROVIDERS, somarDescobertos } from "./rag/discovered";
 import { chatIndexSignature } from "./core/chatIndex";
 import {
   FABRICA_ATE_0923,
   alinharAoInstalado,
   listaDeFabrica,
   revisarOllamaPadrao,
-} from "./core/ollamaPadrao";
+} from "./core/ollamaDefault";
 import { definirGratisConhecidos } from "./usage/pricing";
-import { lancar, podar, type LivroDoDia } from "./usage/livroDoDia";
-import { definirAnotadorDeUso, definirGuardaDeGasto } from "./usage/anotador";
-import { ehPago, gastoDeHoje, marcosCruzados, usd } from "./usage/gastoDoDia";
+import { lancar, podar, type LivroDoDia } from "./usage/dailyLedger";
+import { definirAnotadorDeUso, definirGuardaDeGasto } from "./usage/recorder";
+import { ehPago, gastoDeHoje, marcosCruzados, usd } from "./usage/dailySpend";
 import { ProviderError } from "./providers/base";
 import { esquecerDesfazeres } from "./agent/undo";
-import { registrarComandosDoEditor } from "./editor/comandos";
-import { esquecerPedidos } from "./editor/ponte";
-import { LOCALES, resolverIdioma } from "./i18n";
-import { definirIdiomaDaInterface, tr } from "./i18n/tr";
+import { registrarComandosDoEditor } from "./editor/commands";
+import { esquecerPedidos } from "./editor/bridge";
+import { LOCALES, resolveLocale } from "./i18n";
+import { setUiLocale, tr } from "./i18n/tr";
 import { openOrCreateAgentMd } from "./core/agentMd";
 import { acompanharEscrita } from "./core/wakeLock";
 
-/** Resultado do último teste de credencial de um provider. */
 export interface ProviderStatus {
   ok: boolean;
-  /** Epoch ms do teste — mostrado como "testado há X". */
+
   at: number;
-  /** Contagem de modelos (ok) ou a mensagem de erro (falha). */
+
   detail?: string;
 }
 
 export interface CorvusSettings {
-  // ---- Providers (BYOK). As chaves vivem no SecretStorage do SO; aqui só em
-  // memória (persistableSettings() zera antes de gravar o data.json).
+
   openaiApiKey: string;
   anthropicApiKey: string;
   geminiApiKey: string;
   openrouterApiKey: string;
   nimApiKey: string;
-  /** Endereço do servidor Ollama. Vazio = Ollama desligado (ver core/ollamaPadrao.ts). */
+
   ollamaEndpoint: string;
-  /** A migração única do endereço de fábrica do Ollama já rodou. */
+
   ollamaPadraoRevisto?: boolean;
-  /** Provider pré-selecionado num chat novo. */
+
   defaultProvider: string;
-  /** Modelo por provider (o que a casca usa ao selecionar o provider). */
+
   defaultModel: string;
   anthropicModel: string;
   geminiModel: string;
   openrouterModel: string;
   nimModel: string;
   ollamaModel: string;
-  /** O que o Ollama tinha instalado na última busca — o que vier além disso
-   *  é modelo novo e entra na lista (ver core/ollamaPadrao.ts). */
+
   ollamaVistos?: string[];
-  /** Modelos conhecidos por provider — opções do seletor de modelo. */
+
   activeModels: Record<string, string[]>;
-  /** Modelos FAVORITOS por provider — aparecem na tela inicial. Máx. 5. */
+
   favoriteModels: Record<string, string[]>;
-  /**
-   * Quais modelos são GRÁTIS, por provider — descoberto no SCAN, pelo PREÇO
-   * que o catálogo publica.
-   *
-   * Até aqui free era adivinhado pelo NOME (o sufixo `:free` do OpenRouter).
-   * Isso acerta a maioria e perde os outros — e quem paga por essa perda é
-   * justamente quem não quer pagar nada. Vazio = ainda não escaneou, e aí o
-   * sufixo volta a ser o palpite (ver assistant/model.ts: ehFree).
-   */
+
   freeModels: Record<string, string[]>;
-  /** A cota diária dos grátis por provider (OpenRouter), de quando o fetch
-   *  rodou: a etiqueta "free" mostra o número ("free · 50/day"). */
+
   freeQuota: Record<string, { limit: number; remaining?: number; at: number }>;
-  /** O livro do dia: pedidos e tokens por modelo, hora a hora, nas últimas
-   *  ~48h (ver usage/livroDoDia.ts). Sai daqui o "quanto sobra hoje". */
+
   usoDoDia: LivroDoDia;
-  /** Limites diários que a PESSOA informou ("provider\u0001modelo" → pedidos
-   *  por dia) — o Gemini não publica os do tier grátis: eles moram no AI
-   *  Studio de cada projeto. */
+
   limitesDiarios: Record<string, number>;
-  /** Limite de gasto do dia em USD (0 = sem limite) — ver usage/gastoDoDia. */
+
   limiteGastoDiario: number;
-  /** No limite, os modelos pagos param até a meia-noite (os grátis e os
-   *  locais seguem). Desligado, o limite só avisa. */
+
   travarNoLimite: boolean;
-  // ---- A assistente de criação (skills e projetos)
-  /**
-   * Onde a ASSISTENTE roda — separada do modelo do chat de propósito.
-   *
-   * Escrever um skill é trabalho de formulário: texto curto, estruturado,
-   * revisado por quem pediu antes de virar qualquer coisa. Não é a tarefa que
-   * justifica o modelo caro da conversa. Vazio = a gente descobre sozinha o
-   * favorito free do OpenRouter (ver assistant/model.ts): id de modelo free
-   * muda de nome, e um id fixo aqui viraria um 404 num dia qualquer.
-   */
+
   assistantProvider: string;
   assistantModel: string;
-  /**
-   * A assistente de PROJETO pode ver os NOMES das notas do vault, pra sugerir
-   * quais anexar como fonte. Só os caminhos, nunca o conteúdo — mas caminho de
-   * nota já é assunto de quem escreveu, então isto é uma escolha explícita e
-   * nasce DESLIGADA. Sem ela, a assistente é instruída a não sugerir nota
-   * nenhuma (ver prompt.ts).
-   */
+
   assistantSeesVault: boolean;
-  /** O "Data controls" da OpenAI está ligado na conta? Ligando lá, ela dá uma
-   *  cota diária de tokens sem custo. É um interruptor DELES — aqui a gente só
-   *  registra, pra poder mostrar a cota certa em vez de prometer desconto que
-   *  a conta não tem. */
+
   openaiDataSharing: boolean;
-  /** Usage tier da conta OpenAI (1–5). A cota diária dobra e quadruplica com
-   *  ele (250k/2.5M nos tiers 1–2; 1M/10M do 3 em diante). */
+
   openaiTier: number;
-  /** Último teste de conexão por provider (Settings → Test). Persiste porque
-   *  quem precisa do resultado é o CHAT: ele não vai testar sozinho na hora de
-   *  abrir a folha de modelos. */
+
   providerStatus: Record<string, ProviderStatus>;
-  // ---- Voz (as duas direções passam pela OpenAI)
-  /** Ditado: o microfone do composer. Desligado, o botão nem aparece. */
+
   voiceEnabled: boolean;
-  /** Modelo de transcrição (fala → texto). */
+
   voiceModel: string;
-  /** Idioma da fala em ISO-639-1. Vazio = o modelo detecta. */
+
   voiceLanguage: string;
-  /** Leitura em voz alta: o botão de ouvir a resposta. */
+
   ttsEnabled: boolean;
-  /** Quem fala: "openai" ou "eleven". */
+
   ttsProvider: string;
-  /** Modelo de TTS da OpenAI (texto → fala). */
+
   ttsModel: string;
-  /** Voz da OpenAI (alloy, nova, …). */
+
   ttsVoice: string;
-  /** Key da ElevenLabs — é ela que dá acesso à VOZ CLONADA do usuário. */
+
   elevenApiKey: string;
   elevenModel: string;
-  /** voice_id escolhido na conta ElevenLabs. */
+
   elevenVoice: string;
-  /** Vozes lidas da conta (id + nome), pra não pedir a lista toda hora. */
+
   elevenVoices: { id: string; name: string; category?: string }[];
-  /** Feedback tátil nos toques (só no celular, e só onde o aparelho suporta). */
+
   hapticsEnabled: boolean;
-  /** Modelos de embedding descobertos via API, por provider (RAG). O "Fetch
-   *  models" de cada provider grava aqui (ver plugin.scanEmbeddings). */
+
   discoveredEmbeddings: Record<string, string[]>;
-  /** Catálogo descoberto no `/models` de cada provider (o "Fetch models").
-   *
-   *  Ao contrário do catálogo das Settings (que vive só enquanto a aba está
-   *  aberta), este fica gravado: é o que deixa a folha de modelos do CHAT
-   *  procurar num modelo que existe mas não foi marcado como ativo — sem
-   *  passar por Settings › Providers › Fetch models a cada vez. */
+
   discoveredModels: Record<string, string[]>;
-  // ---- Sessão
-  /**
-   * Conversas que responderam SEM você ver — o ponto de "não lida".
-   *
-   * Mora aqui, e não no frontmatter nem no chatIndex.json, por dois motivos:
-   * o índice é reconstruído do disco a cada varredura e apagaria a marca, e
-   * "eu já li" é uma verdade DESTE aparelho — a mesma conversa sincronizada
-   * pra outro celular não foi lida lá. É o mesmo lugar onde os projetos já
-   * guardam a associação chat↔projeto, pela mesma razão.
-   */
+
   unreadChats: string[];
-  /** chat | vault-qa | agent */
+
   defaultMode: string;
-  /** Ao abrir o painel, começa direto numa conversa NOVA deste modo
-   *  (chat | vault-qa | agent). Vazio = o painel de sempre (dashboard). */
+
   startupChatMode: string;
-  /** low | med | high | xhigh | max */
+
   defaultEffort: string;
-  /** Overrides do usuário por nível de effort (ausente = DEFAULT_EFFORT_CONFIGS). */
+
   effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
-  /** Só "en-us" por enquanto. */
+
   language: string;
-  // ---- Vault
+
   chatsPath: string;
   skillsPath: string;
-  /** Projetos (agrupam chats + notas-fonte). */
+
   projects: Project[];
-  // ---- RAG (Vault Q&A)
+
   ragIndexPath: string;
   ragEmbeddingProvider: string;
   ragEmbeddingModel: string;
-  /** precision | balanced | light | minimal */
+
   ragQuantProfile: string;
-  /** Índice em shards (memória limitada; busca lê do disco). */
+
   ragStreamShards: boolean;
-  /** Reindexa sozinho quando notas mudam (opt-in — custa tokens). */
+
   ragAutoReindex: boolean;
-  /** Já avisamos uma vez que o índice é grande demais pro mobile. */
+
   ragMobileSkipNoticeShown?: boolean;
-  // ---- Agent
-  /** ask | vault | yolo */
+
   agentPermissionLevel: string;
-  /** Caminho do arquivo de instruções lido a cada turno (vazio = busca AGENT.md, CLAUDE.md, etc). */
+
   agentInstructionsPath: string;
-  /** Preview/diff antes de gravar qualquer escrita do agente. */
+
   agentDiffApproval: boolean;
-  /** O agente pode buscar na web e abrir páginas (agent/web.ts). */
+
   agentWeb: boolean;
-  /** Chave da busca na web (Tavily). Vai pro keychain, como as outras. */
+
   tavilyApiKey: string;
-  // ---- Extensions
-  /** Transcrição de Instagram Reels via link com Whisper (sem upload de arquivo de vídeo). */
+
   instagramReelsEnabled: boolean;
-  // ---- Mobile
-  /** Tela cheia no mobile: esconde o chrome da gaveta e a navbar global. */
+
   mobileFullscreen: boolean;
-  /** A tela fica acesa enquanto a IA escreve (Screen Wake Lock), como um vídeo. */
+
   keepAwakeWhileWriting: boolean;
 }
 
@@ -257,8 +196,7 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   geminiApiKey: "",
   openrouterApiKey: "",
   nimApiKey: "",
-  // Vazio: o Ollama começa desligado, e quem usa coloca o endereço (o campo
-  // sugere http://localhost:11434). Ver core/ollamaPadrao.ts.
+
   ollamaEndpoint: "",
   defaultProvider: "openai",
   defaultModel: "gpt-4o",
@@ -266,8 +204,7 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   geminiModel: "gemini-2.5-flash",
   openrouterModel: "anthropic/claude-3.5-sonnet",
   nimModel: "meta/llama-3.3-70b-instruct",
-  // Vazio de fábrica: o modelo e a lista do Ollama saem do que ele tem
-  // instalado, na primeira busca (ver core/ollamaPadrao.ts).
+
   ollamaModel: "",
   activeModels: {
     openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3", "gpt-5"],
@@ -311,9 +248,9 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   travarNoLimite: false,
   assistantProvider: "",
   assistantModel: "",
-  // Desligada: mandar o nome das suas notas pra fora é escolha, não padrão.
+
   assistantSeesVault: false,
-  // Desligado e tier 1: o padrão é o que a conta nova TEM, não o melhor caso.
+
   openaiDataSharing: false,
   openaiTier: 1,
   providerStatus: {},
@@ -333,17 +270,13 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   discoveredModels: {},
   unreadChats: [],
   defaultMode: "chat",
-  // Vazio: quem instala abre no painel (dashboard), como sempre. Quem quer cair
-  // direto numa conversa nova escolhe o modo nas settings.
+
   startupChatMode: "",
   defaultEffort: "med",
   effortConfigs: {},
-  // Quem instala agora começa no idioma do Obsidian; quem já tinha o
-  // data.json fica com o que estava gravado.
+
   language: "auto",
-  // Conversas vão pra pasta VISÍVEL (ver core/vaultPaths.ts): file-sync
-  // (Google Drive, Obsidian Sync…) copiam ela entre aparelhos. Só o índice do
-  // RAG continua oculto — é cache, se refaz com o rerun.
+
   chatsPath: CHATS_FOLDER,
   skillsPath: "corvus-ai/skills",
   projects: [],
@@ -361,51 +294,34 @@ const DEFAULT_SETTINGS: CorvusSettings = {
   tavilyApiKey: "",
   instagramReelsEnabled: true,
   mobileFullscreen: false,
-  // Acesa enquanto escreve por padrão: é o que a pessoa espera quando pede
-  // uma resposta. Quem não quer desliga nas settings mobile.
+
   keepAwakeWhileWriting: true,
 };
 
 export default class CorvusPlugin extends Plugin {
   settings!: CorvusSettings;
-  /** Índice vetorial RAG carregado em memória — compartilhado entre Settings
-   *  (indexação) e CorvusApp (busca). null = ainda não foi carregado/indexado. */
+
   vectorIndex: VectorIndex | null = null;
-  /** Indexação em curso (o mesmo botão cancela). */
+
   indexing: AbortController | null = null;
-  /** (P1-69) Ref da settings tab — permite abrir numa aba específica. */
+
   settingsTab: CorvusSettingsTab | null = null;
-  /** Listeners avisados a cada saveSettings — usados pra re-renderizar o
-   *  React tree quando o user troca idioma ou outro setting reativo. */
+
   private settingsListeners = new Set<() => void>();
-  /** Debounce + cancelamento do auto-reindex do RAG (opt-in). */
+
   private autoReindexTimer: number | null = null;
   private autoReindexController: AbortController | null = null;
 
-  /** Skills carregados da pasta (settings.skillsPath) — viram slash-commands. */
   skills: Skill[] = [];
-  /** Debounce do hot reload das skills (watcher do vault). v0.1.247 */
+
   private skillsReloadTimer: number | null = null;
 
-  // ============================================================
-  // Cache ÚNICO de summaries de conversa (v0.1.175) — UMA fonte da verdade
-  // pra TODOS os consumidores (StarterScreen, Sidebar, ConversationsList,
-  // Statistics, Usage, hot). Antes cada um fazia seu próprio listAllChats
-  // (disk-walk) → várias passadas no abrir = lento. Agora: 1 walk, cacheado,
-  // reusado, atualizado INCREMENTAL no save/rename/delete (sem re-walk).
-  // ============================================================
   chatSummaries: ChatSummary[] | null = null;
   private chatSummariesPromise: Promise<ChatSummary[]> | null = null;
   private chatsListeners = new Set<() => void>();
   private reconcilingChats = false;
   private chatIndexWriteTimer: number | null = null;
 
-  /**
-   * Marca uma conversa como não lida — a resposta chegou sem ninguém olhando.
-   *
-   * Passa pelo mesmo aviso do cache de conversas (`notifyChats`) porque quem
-   * desenha a marca é a mesma lista: um aviso só, uma re-renderização só.
-   */
   markChatUnread(id: string): void {
     if (!id || this.settings.unreadChats.includes(id)) return;
     this.settings.unreadChats = [...this.settings.unreadChats, id];
@@ -413,7 +329,6 @@ export default class CorvusPlugin extends Plugin {
     this.notifyUnread();
   }
 
-  /** Abriu a conversa: a marca sai. */
   clearChatUnread(id: string): void {
     if (!id || !this.settings.unreadChats.includes(id)) return;
     this.settings.unreadChats = this.settings.unreadChats.filter(
@@ -423,20 +338,12 @@ export default class CorvusPlugin extends Plugin {
     this.notifyUnread();
   }
 
-  /** As não lidas, prontas pra consulta rápida na lista. */
   unreadSet(): Set<string> {
     return new Set(this.settings.unreadChats);
   }
 
   private unreadListeners = new Set<() => void>();
 
-  /**
-   * Canal PRÓPRIO — não dá pra pegar carona no aviso do cache de conversas.
-   *
-   * Aquele aviso reentrega o MESMO array de summaries (nada mudou nele), o
-   * React compara a identidade, não vê diferença e não redesenha: a marca
-   * saía do disco e continuava na tela.
-   */
   onUnreadChange(cb: () => void): () => void {
     this.unreadListeners.add(cb);
     return () => this.unreadListeners.delete(cb);
@@ -447,12 +354,11 @@ export default class CorvusPlugin extends Plugin {
       try {
         cb();
       } catch (err) {
-        console.error("[corvus] listener de não lidas falhou:", err);
+        console.error("[corvus] unread listener failed:", err);
       }
     });
   }
 
-  /** Inscreve um callback chamado quando o cache de conversas muda. */
   onChatsChange(cb: () => void): () => void {
     this.chatsListeners.add(cb);
     return () => this.chatsListeners.delete(cb);
@@ -462,39 +368,30 @@ export default class CorvusPlugin extends Plugin {
       try {
         cb();
       } catch (err) {
-        console.error("[corvus] chats listener falhou:", err);
+        console.error("[corvus] chats listener failed:", err);
       }
     });
   }
 
-  /** Índice persistido (JSON no diretório do plugin, fora do vault content). */
   private chatIndexPath(): string {
-    // A pasta de configuração NÃO é necessariamente `.obsidian` — quem usa
-    // pode renomear. `vault.configDir` devolve a de verdade.
+
     const dir =
       this.manifest.dir ??
       `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
     return `${dir}/chatIndex.json`;
   }
-  /** Versão do schema do índice persistido. Caches de versão desconhecida são
-   *  descartados (cai pro walk, que reescreve no formato atual). v0.1.228
-   *
-   *  2 (0.6.16): entrou o `preview` — a última fala que o cartão do Agent
-   *  mostra. Sem subir a versão, o índice antigo continuava valendo e a linha
-   *  simplesmente não existia pra quem já usava o app. */
+
   private static readonly CHAT_INDEX_VERSION = 2;
   private async readChatIndex(): Promise<ChatSummary[] | null> {
     try {
       const p = this.chatIndexPath();
       if (!(await this.app.vault.adapter.exists(p))) return null;
-      // `JSON.parse` devolve `any` e `any` desliga a checagem de tudo que
-      // encosta nele; o envelope é lido como forma aberta e validado abaixo.
+
       const parsed = JSON.parse(await this.app.vault.adapter.read(p)) as
         | { v?: unknown; items?: unknown }
         | unknown[]
         | null;
-      // Aceita o envelope versionado { v, items } e, por retrocompat, o array
-      // cru de versões antigas. Versão desconhecida → descarta (volta pro walk).
+
       let items: unknown;
       if (Array.isArray(parsed)) {
         items = parsed;
@@ -508,8 +405,7 @@ export default class CorvusPlugin extends Plugin {
         return null;
       }
       if (!Array.isArray(items)) return null;
-      // Valida o shape mínimo de cada item — descarta o cache se algo destoar
-      // (JSON corrompido / formato antigo) e força o walk pra reconstruir.
+
       const valid = items.every(
         (it): it is ChatSummary =>
           !!it &&
@@ -518,37 +414,34 @@ export default class CorvusPlugin extends Plugin {
           typeof (it as ChatSummary).date === "string"
       );
       if (!valid) return null;
-      // Normaliza o `starred` — caches gravados antes do campo existir não o
-      // trazem, e um undefined vazaria pro tipo (que promete boolean).
+
       return (items as ChatSummary[]).map((it) => ({
         ...it,
         starred: it.starred === true,
       }));
     } catch (err) {
-      console.error("[corvus] readChatIndex falhou:", err);
+      console.error("[corvus] readChatIndex failed:", err);
       return null;
     }
   }
   private async writeChatIndex(arr: ChatSummary[]): Promise<void> {
-    // Toda escrita do índice passa por aqui — cancela um write debounced ainda
-    // pendente pra não disparar dois adapter.write concorrentes no mesmo path
-    // (o snapshot que escrevemos agora já é o mais fresco). v0.1.228
+
     if (this.chatIndexWriteTimer !== null) {
       window.clearTimeout(this.chatIndexWriteTimer);
       this.chatIndexWriteTimer = null;
     }
     try {
-      // Envelope versionado pra detectar/descartar caches de schema antigo.
+
       const envelope = { v: CorvusPlugin.CHAT_INDEX_VERSION, items: arr };
       await this.app.vault.adapter.write(
         this.chatIndexPath(),
         JSON.stringify(envelope)
       );
     } catch (err) {
-      console.error("[corvus] writeChatIndex falhou:", err);
+      console.error("[corvus] writeChatIndex failed:", err);
     }
   }
-  /** Persiste o índice debounced (após upsert/remove). */
+
   private scheduleChatIndexWrite(): void {
     if (this.chatIndexWriteTimer != null) {
       window.clearTimeout(this.chatIndexWriteTimer);
@@ -559,13 +452,6 @@ export default class CorvusPlugin extends Plugin {
     }, 800);
   }
 
-  /**
-   * Carrega os summaries com PINTURA INSTANTÂNEA (v0.1.176):
-   *   1. Índice JSON persistido → cache na hora (sem disk-walk, sem cache frio).
-   *   2. Reconcilia em BACKGROUND (walk) pra pegar mudanças externas.
-   * Sem índice (1ª vez) ou `force` → walk completo + grava o índice.
-   * Concorrentes compartilham a mesma Promise.
-   */
   async loadChatSummaries(force = false): Promise<ChatSummary[]> {
     if (!force && this.chatSummaries) return this.chatSummaries;
     if (!force && this.chatSummariesPromise) return this.chatSummariesPromise;
@@ -576,7 +462,7 @@ export default class CorvusPlugin extends Plugin {
           if (cached) {
             this.chatSummaries = cached;
             this.notifyChats();
-            void this.reconcileChatSummaries(); // background, não bloqueia
+            void this.reconcileChatSummaries(); 
             return cached;
           }
         }
@@ -586,7 +472,7 @@ export default class CorvusPlugin extends Plugin {
         void this.writeChatIndex(all);
         return all;
       } catch (err) {
-        console.error("[corvus] loadChatSummaries falhou:", err);
+        console.error("[corvus] loadChatSummaries failed:", err);
         return this.chatSummaries ?? [];
       } finally {
         this.chatSummariesPromise = null;
@@ -595,15 +481,12 @@ export default class CorvusPlugin extends Plugin {
     return this.chatSummariesPromise;
   }
 
-  /** Walk em background: se o disco divergir do cache, atualiza + reescreve. */
   private async reconcileChatSummaries(): Promise<void> {
     if (this.reconcilingChats) return;
     this.reconcilingChats = true;
     try {
       const fresh = await listAllChats(this.app, this.settings.chatsPath, 100_000);
-      // A assinatura mora em core/chatIndex.ts, testada: campo que aparece num
-      // cartão e falta nela é uma diferença INVISÍVEL — a varredura acha tudo
-      // igual e joga fora o resultado novo.
+
       const sig = chatIndexSignature;
       if (!this.chatSummaries || sig(fresh) !== sig(this.chatSummaries)) {
         this.chatSummaries = fresh;
@@ -611,18 +494,15 @@ export default class CorvusPlugin extends Plugin {
         void this.writeChatIndex(fresh);
       }
     } catch (err) {
-      console.error("[corvus] reconcileChatSummaries falhou:", err);
+      console.error("[corvus] reconcileChatSummaries failed:", err);
     } finally {
       this.reconcilingChats = false;
     }
   }
 
-  /** Upsert INCREMENTAL após salvar um chat — evita re-walk do disco. */
   upsertChatSummary(s: ChatSummary): void {
     if (!this.chatSummaries) return;
-    // IMUTÁVEL (auditoria jul/2026): mutar in place mantinha a MESMA referência
-    // de array — consumidores React que comparam referência (useEffect deps,
-    // memo) nunca viam a mudança e as listas ficavam stale a sessão inteira.
+
     this.chatSummaries = [
       ...this.chatSummaries.filter((c) => c.id !== s.id),
       s,
@@ -631,10 +511,8 @@ export default class CorvusPlugin extends Plugin {
     this.scheduleChatIndexWrite();
   }
 
-  /** Remove um chat do cache (após delete). */
   removeChatSummary(id: string): void {
-    // A marca de não lida sai junto: conversa apagada não pode continuar
-    // pedindo atenção do fundo do data.json pelo resto da vida.
+
     this.clearChatUnread(id);
     if (!this.chatSummaries) return;
     this.chatSummaries = this.chatSummaries.filter((c) => c.id !== id);
@@ -642,7 +520,6 @@ export default class CorvusPlugin extends Plugin {
     this.scheduleChatIndexWrite();
   }
 
-  /** Credencial (key/endpoint) do provider — pro SCAN do seletor de modelo. */
   providerCredential(id: string): string {
     const s = this.settings;
     switch (id) {
@@ -660,15 +537,13 @@ export default class CorvusPlugin extends Plugin {
         return s.openaiApiKey ?? "";
     }
   }
-  /** "SCAN" — lista os modelos do catálogo do provider (pode lançar). v0.1.223 */
+
   async scanModels(providerId: string): Promise<string[]> {
     const p = getProvider(providerId);
     if (!p.listModels) return [];
     const desde = this.settings.ollamaEndpoint;
     const lista = await p.listModels(this.providerCredential(providerId));
-    // No Ollama a resposta é o que está INSTALADO: a lista do chat passa a
-    // ser ela (sem os palpites de fábrica nem o que saiu com `ollama rm`).
-    // Se o endereço mudou enquanto ela vinha, é a lista de OUTRO servidor.
+
     if (
       providerId === "ollama" &&
       this.settings.ollamaEndpoint === desde &&
@@ -676,10 +551,7 @@ export default class CorvusPlugin extends Plugin {
     ) {
       await this.saveSettings();
     }
-    // O catálogo fica GRAVADO (não só no campo da aba das Settings): é o que
-    // a folha de modelos do chat consulta pra procurar um modelo que existe
-    // mas ainda não foi marcado como ativo. No Ollama o mesmo cuidado do
-    // endereço vale — uma resposta do servidor de antes não vira catálogo.
+
     if (lista.length > 0 && (providerId !== "ollama" || this.settings.ollamaEndpoint === desde)) {
       this.settings.discoveredModels = {
         ...(this.settings.discoveredModels ?? {}),
@@ -687,32 +559,15 @@ export default class CorvusPlugin extends Plugin {
       };
       await this.saveSettings();
     }
-    // Aproveita a volta pra saber quais são GRÁTIS. O preço vem no mesmo
-    // `/models`, então isto não custa uma chamada a mais — e sem isto o app
-    // continuaria adivinhando free pelo nome.
+
     await this.scanFreeModels(providerId);
-    // E o que cada um ACEITA (imagem? tools?) — é o que o composer lê pra
-    // habilitar o anexo de imagem. Antes isto só era escrito por um "Fetch
-    // info" por card, que saiu na migração pra src/ui: sem ele, todo modelo
-    // fora da tabela por prefixo aparecia como modelo sem visão.
+
     if ((await this.enriquecerCapacidades(providerId, lista)) > 0) {
       await this.saveModelInfoCache();
     }
     return lista;
   }
 
-  /**
-   * O que cada modelo ACEITA (imagem? tools?), com dado REAL por provider:
-   *   - **ollama**: o próprio servidor declara (`capabilities` no /api/show);
-   *   - **demais**: catálogo público do OpenRouter, casado por id/cauda — um
-   *     GET só, sem key, e memoizado por sessão.
-   *
-   * O overlay em getModelCapabilities é upgrade-only: isto LIGA o que faltava
-   * e nunca desliga o que a tabela curada já sabia. Nunca lança — sem rede,
-   * ficam as tabelas. Devolve quantos modelos foram gravados; quem chama
-   * persiste (saveModelInfoCache), pra uma rodada sobre vários providers
-   * gravar uma vez só.
-   */
   async enriquecerCapacidades(
     providerId: string,
     models: readonly string[]
@@ -724,23 +579,16 @@ export default class CorvusPlugin extends Plugin {
         ? await enriquecerCapacidadesOllama(this.settings.ollamaEndpoint, lista)
         : await enrichModelsFromCatalog(providerId, lista);
     } catch (err) {
-      console.error("[corvus] enriquecerCapacidades falhou:", err);
+      console.error("[corvus] enriquecerCapacidades failed:", err);
       return 0;
     }
   }
 
-  /**
-   * O mesmo, pros modelos que a pessoa PODE escolher (ativos + favoritos) de
-   * cada provider configurado. É a lista pequena que o composer consulta, e o
-   * catálogo do OpenRouter é um GET compartilhado — por isso roda sozinho na
-   * abertura, sem esperar um "Fetch models" no meio da conversa. Com o cache
-   * já quente (o normal), não vai à rede nenhuma vez.
-   */
   private async enriquecerCapacidadesAtivas(): Promise<void> {
     const s = this.settings;
     let gravados = 0;
     for (const providerId of Object.keys(s.activeModels ?? {})) {
-      // Sem chave (ou sem endereço, no Ollama) não há o que perguntar.
+
       if (!this.providerCredential(providerId)) continue;
       const modelos = [
         ...(s.activeModels?.[providerId] ?? []),
@@ -751,11 +599,6 @@ export default class CorvusPlugin extends Plugin {
     if (gravados > 0) await this.saveModelInfoCache();
   }
 
-  /**
-   * Acerta as listas do Ollama (ativos, favoritos, modelo de conversa nova)
-   * com o que ele tem instalado — a regra mora em core/ollamaPadrao.ts.
-   * Devolve se mudou alguma coisa; quem chama decide gravar.
-   */
   alinharOllama(instalados: readonly string[]): boolean {
     const s = this.settings;
     const antes = {
@@ -773,17 +616,6 @@ export default class CorvusPlugin extends Plugin {
     return true;
   }
 
-  /**
-   * A mesma conferência sem a pessoa pedir. Só age quando o Ollama RESPONDE
-   * — fora de alcance (o celular longe de casa), tudo fica como estava.
-   * Devolve o que ele tem instalado (null quando não perguntou ou não ouviu).
-   *
-   * `soDeFabrica` (a de quando o Obsidian abre) só troca lista que ninguém
-   * escolheu: os palpites de fábrica, ou vazia. Lista escolhida é da pessoa,
-   * e o data.json viaja entre aparelhos — num notebook com outro Ollama, a
-   * poda sozinha apagaria os favoritos do desktop. Lá, quem poda é o "Fetch
-   * models" ou o "Test", que a pessoa aperta NAQUELE aparelho.
-   */
   async conferirOllama(opts: { soDeFabrica: boolean }): Promise<string[] | null> {
     const s = this.settings;
     if (!s.ollamaEndpoint) return null;
@@ -804,26 +636,16 @@ export default class CorvusPlugin extends Plugin {
     try {
       instalados = await p.listModels(this.providerCredential("ollama"));
     } catch {
-      return null; // Ollama desligado ou longe: a lista de antes vale.
+      return null; 
     }
-    // O endereço mudou enquanto a resposta vinha: ela é de outro servidor.
+
     if (s.ollamaEndpoint !== desde) return null;
-    // Uma resposta vazia, sem ninguém ter pedido, não apaga nada.
+
     if (opts.soDeFabrica && instalados.length === 0) return null;
     if (this.alinharOllama(instalados)) await this.saveSettings();
     return instalados;
   }
 
-  /**
-   * Os modelos de EMBEDDING que a conta do provider oferece — o "Fetch models"
-   * de cada provider traz junto, como era até a 0.3.x. O redesign da 0.4.0
-   * perdeu esse caminho: o registro dos descobertos ficou só com o que versões
-   * antigas tinham salvo, e um modelo de embedding novo de um provider não
-   * aparecia no Q&A. Grava em `discoveredEmbeddings` (somando ao que já havia;
-   * no Ollama, trocando — é a lista do que está instalado) e reconstrói o
-   * registro. Só os providers que o RAG usa; nunca lança —
-   * embedding é o extra da busca, não o motivo dela.
-   */
   async scanEmbeddings(providerId: string): Promise<string[]> {
     if (!EMBEDDING_PROVIDERS.includes(providerId)) return [];
     const p = getProvider(providerId) as {
@@ -837,15 +659,11 @@ export default class CorvusPlugin extends Plugin {
     } catch {
       return [];
     }
-    // Ollama: uma resposta do endereço de antes não troca a lista deste.
+
     if (providerId === "ollama" && this.settings.ollamaEndpoint !== desde) return [];
     const map = this.settings.discoveredEmbeddings ?? {};
     if (providerId === "ollama") {
-      // O Ollama responde com o que está INSTALADO: o que saiu dele sai
-      // daqui também (somar deixaria um embedding apagado na lista do Q&A).
-      // Menos o que o Q&A está USANDO: sem o registro dele, o modelo vira
-      // desconhecido, e um id desconhecido cai no embedding padrão — que é
-      // da OpenAI. As notas iriam pra nuvem sem ninguém ter pedido.
+
       const emUso = [
         this.settings.ragEmbeddingProvider === "ollama" ? this.settings.ragEmbeddingModel : "",
         this.vectorIndex?.provider === "ollama" ? this.vectorIndex.model : "",
@@ -855,7 +673,7 @@ export default class CorvusPlugin extends Plugin {
       if (antes.length === novo.length && antes.every((m) => novo.includes(m))) return ids;
       map.ollama = novo;
     } else {
-      // Dos de nuvem, soma: um modelo some do /models por um dia e volta.
+
       if (ids.length === 0) return [];
       map[providerId] = somarDescobertos(map[providerId], ids);
     }
@@ -865,8 +683,6 @@ export default class CorvusPlugin extends Plugin {
     return ids;
   }
 
-  /** Atualiza a lista de grátis do provider. Silencioso: não saber quais são
-   *  é pior que a lista velha, mas não é motivo pra derrubar o SCAN. */
   async scanFreeModels(providerId: string): Promise<void> {
     const p = getProvider(providerId);
     if (!p.listFreeModels) return;
@@ -884,22 +700,10 @@ export default class CorvusPlugin extends Plugin {
       }
       if (cota || livres.length) await this.saveSettings();
     } catch (err) {
-      console.error("[corvus] não consegui listar os modelos grátis:", err);
+      console.error("[corvus] failed to list free models:", err);
     }
   }
 
-  /**
-   * Indexa (ou reindexa) o vault pro RAG. É INCREMENTAL: só re-embeda o que
-   * mudou desde a última vez, que é o que faz "atualizar" caber num botão.
-   *
-   * Mora aqui, e não na aba de settings onde nasceu, porque agora tem dois
-   * chamadores — a linha do índice na home e o botão das settings — e a
-   * segunda cópia divergiria na primeira mudança de opção de embedding.
-   *
-   * Chamar de novo enquanto roda CANCELA: é o mesmo botão, e um segundo
-   * índice rodando por cima do primeiro gastaria tokens duas vezes pelo mesmo
-   * resultado.
-   */
   async runVaultIndex(): Promise<void> {
     if (this.indexing) {
       this.indexing.abort();
@@ -920,8 +724,7 @@ export default class CorvusPlugin extends Plugin {
         model: s.ragEmbeddingModel,
         profile: s.ragQuantProfile,
         indexPath: s.ragIndexPath,
-        // O índice e as conversas ficam de fora: indexar o que o app escreve
-        // faria o vault responder com as próprias respostas.
+
         excludePaths: [s.ragIndexPath, s.chatsPath],
         shardSize: s.ragStreamShards ? RAG_SHARD_SIZE : 0,
         signal: this.indexing.signal,
@@ -952,7 +755,7 @@ export default class CorvusPlugin extends Plugin {
       if (err instanceof DOMException && err.name === "AbortError") {
         new Notice(tr("Indexing cancelled."));
       } else {
-        console.error("[corvus] indexVault falhou:", err);
+        console.error("[corvus] indexVault failed:", err);
         new Notice(
           tr("Indexing failed: {error}", {
             error: err instanceof Error ? err.message : String(err),
@@ -961,38 +764,11 @@ export default class CorvusPlugin extends Plugin {
       }
     } finally {
       this.indexing = null;
-      // Avisa a tela: o número de trechos mudou, e quem o mostra precisa
-      // saber. Indexar não mexe em settings, então não há saveSettings pra
-      // disparar isso sozinho.
+
       this.notifyListeners();
     }
   }
 
-  /**
-   * `corvus-has-navbar` no body enquanto a navbar global do celular estiver NO
-   * DOM. Substitui um `body:has(.mobile-navbar)` no CSS — a regra que dá ao
-   * composer a folga acima dessa barra — e tem o mesmo valor de verdade que
-   * ele tinha: presença no DOM, não visibilidade.
-   *
-   * O Obsidian tira a navbar de três jeitos, e só um passa por aqui:
-   *   - teclado aberto / toolbar de edição: ele a DESANEXA (`detach()`) e
-   *     depois a põe de volta no `.app-container`. Esse é o que o observador
-   *     vê — e o `:has` antigo também só via esse;
-   *   - tela cheia automática ao rolar (celular): ele NÃO desanexa, põe
-   *     `is-hidden-nav` no body e a esconde por CSS. Quem trata esse caso é o
-   *     `:not(.is-hidden-nav)` do seletor, não esta classe;
-   *   - tablet: ela fica no DOM com `display: none` pelo app.css.
-   * Ela é filha direta do `.app-container`, então observar só a lista de
-   * filhos dele basta; o MutationObserver roda antes da próxima pintura.
-   *
-   * Chamado no onload, e não no onLayoutReady: o Obsidian cria a navbar e o
-   * `.app-container` ANTES de carregar qualquer plugin, então a classe já
-   * existe quando a nossa view for restaurada — como o `:has` existia. No
-   * onLayoutReady ela chegaria alguns ticks depois da primeira pintura.
-   *
-   * No nível do plugin, e não da view: o body é um só, e com duas views
-   * abertas o onClose de uma tiraria a classe da outra.
-   */
   private observarNavbar(): void {
     if (!Platform.isMobile) return;
     const doc = activeDocument;
@@ -1011,52 +787,27 @@ export default class CorvusPlugin extends Plugin {
     });
   }
 
-  /**
-   * O que o plugin lê do disco depois que a interface já está de pé.
-   *
-   * Separado do `onload` de propósito: ali dentro, cada `await` é atraso na
-   * abertura do Obsidian inteiro — e isto aqui abre cache de modelos, varre a
-   * pasta de skills e parseia o índice RAG.
-   */
   private async carregarEmSegundoPlano(): Promise<void> {
-    // Cache de specs dos modelos (Fetch info / OpenRouter) — hidrata o store.
+
     await this.loadModelInfoCache();
 
-    // O que os modelos ATIVOS aceitam (imagem? tools?) — fire-and-forget: é o
-    // que habilita o anexo de imagem no composer, e um provider fora do ar
-    // não pode segurar a abertura do Obsidian.
     void this.enriquecerCapacidadesAtivas();
 
-    // Embeddings descobertos (fetch anterior) → registro global do RAG.
     this.refreshDiscoveredEmbeddings();
 
-    // Os grátis de verdade do último fetch → o painel de uso: custo zero só
-    // pra eles (o NIM, por exemplo, não é grátis no resto).
     for (const [provider, ids] of Object.entries(this.settings.freeModels ?? {})) {
       definirGratisConhecidos(provider, ids);
     }
 
-    // "Hot" dos modelos a partir do uso local — fire-and-forget (não bloqueia).
     void this.refreshLocalUsageHot();
 
-    // A lista do Ollama que ainda é a de fábrica vira a do que ele tem
-    // instalado — fire-and-forget: um Ollama fora de alcance não segura nada.
     void this.conferirOllama({ soDeFabrica: true });
 
-    // Skills (.md na pasta de skills) → slash-commands no composer.
     await this.reloadSkills();
 
     await this.loadVectorIndex();
   }
 
-  /**
-   * Carrega o índice RAG da pasta das settings — no load e quando a pasta muda
-   * nas settings. Sem índice lá, fica null: o Q&A cai na busca por palavra até
-   * alguém indexar. Falhas são silenciosas — só significa que o user ainda não
-   * rodou "Indexar vault".
-   * No MOBILE, gateia por tamanho: um índice grande estoura o heap do WebView
-   * e derruba o Obsidian no parse (OOM). Acima do teto, pula → keyword. v0.1.198
-   */
   async loadVectorIndex(): Promise<void> {
     this.vectorIndex = null;
     try {
@@ -1064,8 +815,7 @@ export default class CorvusPlugin extends Plugin {
         ? {
             maxBytes: 16 * 1024 * 1024,
             onSkip: (mb: number) => {
-              // Só avisa UMA vez por dispositivo — senão o Notice volta a cada
-              // onload enquanto o índice continuar grande. v0.1.228
+
               if (this.settings.ragMobileSkipNoticeShown) return;
               new Notice(
                 tr(
@@ -1075,7 +825,7 @@ export default class CorvusPlugin extends Plugin {
               );
               this.settings.ragMobileSkipNoticeShown = true;
               void this.saveSettings().catch((err) =>
-                console.error("[corvus] não consegui persistir o flag do Notice RAG mobile:", err)
+                console.error("[corvus] failed to persist mobile RAG notice flag:", err)
               );
             },
           }
@@ -1086,37 +836,30 @@ export default class CorvusPlugin extends Plugin {
         mobileGuard
       );
     } catch (err) {
-      console.error("[corvus] falha ao carregar índice RAG:", err);
+      console.error("[corvus] failed to load RAG index:", err);
     }
   }
 
-  /** Inscreve um callback chamado a cada saveSettings. Retorna unsubscribe. */
   onSettingsChange(cb: () => void): () => void {
     this.settingsListeners.add(cb);
     return () => this.settingsListeners.delete(cb);
   }
 
-  /** Notifica os listeners (re-render do React tree). */
   private notifyListeners(): void {
     this.settingsListeners.forEach((cb) => {
       try {
         cb();
       } catch (err) {
-        console.error("[corvus] settings listener falhou:", err);
+        console.error("[corvus] settings listener failed:", err);
       }
     });
   }
 
-  /**
-   * Reconstrói o registro global de embeddings descobertos a partir dos ids
-   * salvos em settings.discoveredEmbeddings (infere spec de cada um). Chamado
-   * no load e após cada "Buscar da API". v0.1.151
-   */
   refreshDiscoveredEmbeddings(): void {
     const specs: EmbeddingModelSpec[] = [];
     const map = this.settings.discoveredEmbeddings ?? {};
     for (const [provider, ids] of Object.entries(map)) {
-      // Só providers que o RAG suporta como fonte de embedding.
+
       if (!EMBEDDING_PROVIDERS.includes(provider)) continue;
       for (const id of ids) {
         specs.push(inferEmbeddingSpec(provider as EmbeddingProvider, id));
@@ -1125,11 +868,6 @@ export default class CorvusPlugin extends Plugin {
     registerDiscoveredEmbeddings(specs);
   }
 
-  /**
-   * Coleta o uso LOCAL (nº de chats por modelo) e alimenta o "hot" do
-   * dataCollect. Best-effort — nunca quebra o load. Sem telemetria: é só o
-   * seu próprio histórico, no device. v0.1.152
-   */
   async refreshLocalUsageHot(): Promise<void> {
     try {
       const chats = await this.loadChatSummaries();
@@ -1139,39 +877,34 @@ export default class CorvusPlugin extends Plugin {
       }
       registerLocalUsage(byModel);
     } catch (err) {
-      console.error("[corvus] refreshLocalUsageHot falhou:", err);
+      console.error("[corvus] refreshLocalUsageHot failed:", err);
     }
   }
 
-  /** (Re)carrega os skills da pasta e re-renderiza. v0.1.139 */
   async reloadSkills(): Promise<void> {
     try {
       this.skills = await loadSkills(this.app, this.settings.skillsPath);
     } catch (err) {
-      console.error("[corvus] reloadSkills falhou:", err);
+      console.error("[corvus] reloadSkills failed:", err);
       this.skills = [];
     }
     this.notifyListeners();
   }
 
-  /** Cria os skills de exemplo (se faltarem) + recarrega. Retorna nº criados. */
   async seedExampleSkills(): Promise<number> {
     const n = await seedExampleSkills(this.app, this.settings.skillsPath);
     await this.reloadSkills();
     return n;
   }
 
-  /** Caminho do cache de specs dos modelos (JSON no diretório do plugin). */
   private modelInfoCachePath(): string {
-    // A pasta de configuração NÃO é necessariamente `.obsidian` — quem usa
-    // pode renomear. `vault.configDir` devolve a de verdade.
+
     const dir =
       this.manifest.dir ??
       `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
     return `${dir}/modelInfoCache.json`;
   }
 
-  /** Lê o cache de specs do disco e hidrata o store em memória. v0.1.130 */
   private async loadModelInfoCache(): Promise<void> {
     try {
       const path = this.modelInfoCachePath();
@@ -1182,11 +915,10 @@ export default class CorvusPlugin extends Plugin {
         );
       }
     } catch (err) {
-      console.error("[corvus] falha ao carregar modelInfoCache:", err);
+      console.error("[corvus] failed to load modelInfoCache:", err);
     }
   }
 
-  /** Persiste o cache de specs no disco (chamado após Fetch info). */
   async saveModelInfoCache(): Promise<void> {
     try {
       await this.app.vault.adapter.write(
@@ -1194,14 +926,10 @@ export default class CorvusPlugin extends Plugin {
         JSON.stringify(getModelInfoCache(), null, 2)
       );
     } catch (err) {
-      console.error("[corvus] falha ao salvar modelInfoCache:", err);
+      console.error("[corvus] failed to save modelInfoCache:", err);
     }
   }
 
-  /**
-   * Busca specs do modelo via OpenRouter (Fetch info) e persiste no cache.
-   * Retorna a info enriquecida ou null se não houve correspondência.
-   */
   async fetchModelInfo(
     provider: string,
     model: string
@@ -1214,42 +942,24 @@ export default class CorvusPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
-    // Antes de QUALQUER coisa ler conversa: se os arquivos ainda estão na
-    // pasta antiga, é aqui que eles mudam de lugar. Depois disso o resto do
-    // app já encontra tudo no caminho novo.
     await this.migrarParaPastaOculta();
 
-    // ── REGISTRO: o que o Obsidian precisa saber agora ──────────────────
-    // Nada aqui toca o disco. O que lê arquivo foi pro onLayoutReady, lá
-    // embaixo: `onload` roda ANTES do Obsidian montar a interface, então tudo
-    // que espera aqui é tempo que todo mundo passa olhando tela vazia — e o
-    // índice RAG sozinho pode ser dezesseis megabytes de JSON pra parsear.
-
-    // Registra a view na sidebar direita.
-    // É como registrar um componente custom no design system — depois pode ser instanciado.
     this.registerView(
       VIEW_TYPE_CORVUS,
       (leaf) => new CorvusView(leaf, this)
     );
 
-    // Os [[links]] das respostas mostram a prévia da nota ao passar o mouse,
-    // como os de uma nota (o "Page preview" lista a fonte e o atalho).
     this.registerHoverLinkSource(FONTE_DO_HOVER, {
       display: "Corvus",
       defaultMod: true,
     });
 
-    // Ícone na ribbon (sidebar esquerda do Obsidian).
     this.addRibbonIcon("bot", "Corvus", () => {
       void this.activateView();
     });
 
-    // Comando para abrir via Command Palette (Ctrl/Cmd + P).
-    // Logos dos providers como ícones do Obsidian (setIcon("logo-openai")…).
     registerBrandLogos();
 
-    // O Obsidian já prefixa o comando com o nome do plugin na paleta, então
-    // "Open Corvus" viraria "Corvus: Open Corvus".
     this.addCommand({
       id: "open-panel",
       name: tr("Open panel"),
@@ -1264,72 +974,39 @@ export default class CorvusPlugin extends Plugin {
       },
     });
 
-    // O Corvus a partir da nota: comandos (perguntar, resumir, reescrever,
-    // corrigir, traduzir, continuar) e o clique direito no texto e na nota.
     registrarComandosDoEditor(this);
 
-    // Settings tab — aparece em Settings -> Community Plugins -> Corvus.
     this.settingsTab = new CorvusSettingsTab(this.app, this);
     this.addSettingTab(this.settingsTab);
 
-    // Auto-reindex do RAG (opt-in) — re-embeda notas modificadas em background
     this.setupAutoReindex();
 
-    // Skills editadas no vault recarregam sozinhas (SKL-03)
     this.setupSkillsWatcher();
 
-    // A navbar do celular já existe a esta altura (o Obsidian a cria antes dos
-    // plugins), e a classe que ela liga tem de estar lá antes da view pintar.
     this.observarNavbar();
 
-    // A tela fica acesa enquanto a IA escreve (setting mobile) — como um vídeo
-    // do YouTube. Escuta o store (início/fim do turno) e o toggle (mudança no
-    // meio do turno). Sem suporte do navegador, vira no-op.
     const vigiaEscrita = acompanharEscrita(() => this.settings.keepAwakeWhileWriting);
     this.register(() => vigiaEscrita.dispose());
     this.register(this.onSettingsChange(() => vigiaEscrita.recheck()));
 
-    // ── CARGA: o que pode chegar depois ─────────────────────────────────
-    // `onLayoutReady` dispara quando a interface do Obsidian já está de pé.
-    // A UI não perde nada por esperar: ela assina `onSettingsChange`, e
-    // `reloadSkills` notifica ao terminar; o índice é lido na hora da busca,
-    // e até chegar a busca cai em keyword, que é o comportamento de quem
-    // ainda não indexou.
     this.app.workspace.onLayoutReady(() => {
       void this.carregarEmSegundoPlano();
     });
 
-    // O livro do dia: todo pedido de chat a um provider soma ali (ver
-    // providers/index.ts). Grava agrupado — um gravar por resposta seria
-    // um data.json reescrito a cada mensagem.
     definirAnotadorDeUso((provider, model, delta) => this.anotarUso(provider, model, delta));
     definirGuardaDeGasto((provider, model) => this.conferirLimiteDeGasto(provider, model));
 
-    // NÃO auto-abrimos o painel no startup — o Obsidian abre "normal". O AI
-    // Agent abre sob demanda pela ribbon (ícone do robô) ou pelo comando
-    // "Abrir AI Agent". Se o painel estava aberto ao fechar o Obsidian, o
-    // próprio Obsidian restaura o layout — respeitando o que o usuário deixou.
-    //
-    // EXCEÇÃO: quem escolheu "Start with a new chat" (startupChatMode) quer
-    // cair direto na conversa nova. Sem abrir o painel aqui, a conversa nova
-    // ficava pronta ATRÁS da sidebar fechada — e ainda era preciso deslizar
-    // pra dentro pra ver. Com o modo escolhido, revelamos a view de propósito.
     if (startupOpensPanel(this.settings.startupChatMode)) {
-      // Um instante DEPOIS do layout: no celular o Obsidian reativa o editor
-      // (a última nota aberta) logo após o onLayoutReady, e um reveal imediato
-      // era desfeito — o chat abria e o editor voltava por cima. Deferir um
-      // tico faz o reveal pegar DEPOIS da restauração da nota.
+
       window.setTimeout(() => void this.activateView(), 250);
     }
   }
 
-  /** Soma um pedido (ou os tokens dele) no livro do dia e agenda a gravação. */
   anotarUso(provider: string, model: string, delta: { r?: number; i?: number; o?: number }): void {
     const agora = new Date();
     const livro = (this.settings.usoDoDia ??= {});
     const limite = this.settings.limiteGastoDiario ?? 0;
-    // O gasto só anda com tokens; pedido sem token (o "aceito" do começo do
-    // stream) não muda a conta, e não precisa recalcular nada.
+
     const conta = limite > 0 && ((delta.i ?? 0) > 0 || (delta.o ?? 0) > 0);
     const antes = conta ? gastoDeHoje(livro, agora).total : 0;
     lancar(livro, agora, provider, model, delta);
@@ -1347,7 +1024,6 @@ export default class CorvusPlugin extends Plugin {
 
   private usoTimer: number | null = null;
 
-  /** O aviso de quando o gasto do dia cruza 80% e 100% do limite. */
   private avisarGasto(marco: 80 | 100, gasto: number, limite: number): void {
     const valores = { limit: usd(limite), spent: usd(gasto) };
     if (marco === 80) {
@@ -1368,12 +1044,6 @@ export default class CorvusPlugin extends Plugin {
     );
   }
 
-  /**
-   * A guarda dos pedidos (ver usage/anotador.ts): com o limite batido e a
-   * trava ligada, modelo PAGO não sai. Grátis, local e sem preço público
-   * passam — do último, o plugin não sabe o custo, e barrar às cegas seria
-   * pior que avisar.
-   */
   conferirLimiteDeGasto(provider: string, model: string): void {
     const s = this.settings;
     const limite = s.limiteGastoDiario ?? 0;
@@ -1392,16 +1062,16 @@ export default class CorvusPlugin extends Plugin {
   onunload() {
     definirAnotadorDeUso(null);
     definirGuardaDeGasto(null);
-    // As cópias do Undo do agente não sobrevivem ao plugin (ver agent/undo.ts).
+
     esquecerDesfazeres();
     esquecerPedidos();
-    // O que o livro anotou e ainda não gravou não se perde ao sair.
+
     if (this.usoTimer !== null) {
       window.clearTimeout(this.usoTimer);
       this.usoTimer = null;
       void this.saveSettings();
     }
-    // Cancela timers/abort pendentes pra não vazar entre reloads (v0.1.228)
+
     if (this.autoReindexTimer !== null) {
       window.clearTimeout(this.autoReindexTimer);
       this.autoReindexTimer = null;
@@ -1418,16 +1088,8 @@ export default class CorvusPlugin extends Plugin {
     this.autoReindexController = null;
   }
 
-  /**
-   * Auto-reindex do RAG (opt-in via settings.ragAutoReindex). Quando uma nota
-   * .md muda / é criada / deletada / renomeada, agenda um reindex incremental
-   * debounced (4s — só re-embeda o que mudou via hash). Só roda se JÁ existe
-   * índice (não cria do nada). Desligado por padrão porque re-embed custa $.
-   */
   private setupAutoReindex() {
-    // Listeners ficam sempre registrados (leves — só checam um if); o `schedule`
-    // consulta o setting em runtime → o toggle nas Settings vale na hora, sem
-    // precisar reativar o plugin.
+
     const schedule = (file: TAbstractFile) => {
       if (!this.settings.ragAutoReindex) return;
       if (!this.vectorIndex || this.vectorIndex.size === 0) return;
@@ -1447,15 +1109,6 @@ export default class CorvusPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("rename", schedule));
   }
 
-  /**
-   * Hot reload das skills (SKL-03). Criar/editar/renomear/apagar um .md dentro
-   * de settings.skillsPath recarrega a lista sozinho — antes o autor editava a
-   * skill e o /comando continuava com o corpo velho até reabrir o Obsidian.
-   *
-   * Debounce de 600ms: salvar no Obsidian dispara `modify` em rajada, e ler a
-   * pasta inteira a cada tecla seria desperdício. O rename entrega o caminho
-   * ANTIGO no 2º argumento — checa os dois pra pegar a saída da pasta também.
-   */
   private setupSkillsWatcher() {
     const schedule = (file: TAbstractFile, oldPath?: string) => {
       const path = file?.path ?? "";
@@ -1480,13 +1133,11 @@ export default class CorvusPlugin extends Plugin {
     );
   }
 
-  /** Reindex incremental em background (re-embeda só o que mudou via hash). */
   private async runAutoReindex() {
     this.autoReindexTimer = null;
     if (!this.settings.ragAutoReindex) return;
     if (!this.vectorIndex || this.vectorIndex.size === 0) return;
 
-    // Cancela um reindex anterior ainda em andamento
     this.autoReindexController?.abort();
     this.autoReindexController = new AbortController();
 
@@ -1510,7 +1161,7 @@ export default class CorvusPlugin extends Plugin {
       });
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
-        console.error("[corvus] auto-reindex falhou:", err);
+        console.error("[corvus] auto-reindex failed:", err);
       }
     }
   }
@@ -1523,96 +1174,61 @@ export default class CorvusPlugin extends Plugin {
     if (leaves.length > 0) {
       leaf = leaves[0];
     } else {
-      // getRightLeaf(false) pode retornar null (sem split direito disponível);
-      // força a criação como fallback pra view não falhar em silêncio. v0.1.228
+
       leaf = workspace.getRightLeaf(false) ?? workspace.getRightLeaf(true);
       await leaf?.setViewState({ type: VIEW_TYPE_CORVUS, active: true });
     }
 
     if (leaf) {
       void workspace.revealLeaf(leaf);
-      // No CELULAR, revelar a view não basta: ela pode ficar ATRÁS de uma
-      // gaveta direita FECHADA, e o Obsidian mobile só abre o drawer quando o
-      // split é expandido. É este expand que traz o painel pra frente — o
-      // inverso já é usado em linksDaResposta (rightSplit.collapse).
+
       if (Platform.isMobile) workspace.rightSplit?.expand();
     } else {
       new Notice(tr("Couldn't open the Corvus panel — try toggling the right sidebar."));
     }
   }
 
-  /** Campos de chave de API que NÃO ficam em plaintext no data.json — vão pro
-   *  SecretStorage do SO (keychain), conforme guideline do Obsidian (1.11.4+).
-   *  `ollamaEndpoint` NÃO entra aqui: é uma URL local, não um segredo. */
   private static readonly SECRET_FIELDS = [
     "openaiApiKey",
     "anthropicApiKey",
     "geminiApiKey",
     "openrouterApiKey",
     "nimApiKey",
-    // A da ElevenLabs faltava aqui até a 0.9.13: ia em texto puro pro
-    // data.json, que mora dentro do vault — e o vault sincroniza (Sync,
-    // iCloud, git). Entrando na lista, o loadSecrets a migra pro keychain no
-    // próximo carregamento, pelo mesmo caminho das outras. O teste
-    // tests/secretFields.test.ts impede uma chave nova de ficar de fora.
+
     "elevenApiKey",
     "tavilyApiKey",
   ] as const;
 
-  /** ID do segredo no SecretStorage (lowercase + dashes). Ex: corvus-openai-key. */
   private secretId(field: string): string {
     return `corvus-${field.replace(/ApiKey$/, "")}-key`;
   }
 
-  /**
-   * True quando o `data.json` EXISTE mas veio ilegível. Enquanto isso valer,
-   * `saveSettings` se recusa a gravar: o que está na memória são os PADRÕES, e
-   * gravá-los por cima transforma uma leitura falha numa perda permanente.
-   */
   private settingsUnsafe = false;
-  /** Já avisei que a gravação das settings está falhando? Zera quando volta a
-   *  gravar — senão o aviso vira parede numa falha que persiste. */
+
   private avisoDeSaveDado = false;
 
-  /** Caminho do arquivo de settings do plugin. */
   private dataPath(nome = "data.json"): string {
-    // A pasta de configuração NÃO é necessariamente `.obsidian` — quem usa
-    // pode renomear. `vault.configDir` devolve a de verdade.
+
     const dir =
       this.manifest.dir ??
       `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
     return `${dir}/${nome}`;
   }
 
-  /**
-   * Cópia de segurança das settings, reescrita a cada carga bem-sucedida.
-   *
-   * É uma linha de código contra um estrago que não tem volta: quem perde o
-   * `data.json` perde chaves, modelos, providers e projetos, e não há de onde
-   * tirar isso de novo — as conversas sobrevivem (são .md no vault), as
-   * configurações não.
-   */
   private async backupSettings(bruto: string): Promise<void> {
     try {
       if (bruto.trim().length > 2) {
         await this.app.vault.adapter.write(this.dataPath("data.backup.json"), bruto);
       }
     } catch (err) {
-      console.error("[corvus] backup das settings falhou:", err);
+      console.error("[corvus] settings backup failed:", err);
     }
   }
 
   async loadSettings() {
-    // loadData() lê do arquivo do plugin no vault — substitui localStorage.
-    // loadData() devolve `any`; o arquivo é do usuário e pode estar em
-    // qualquer estado, então a forma declarada é "pedaço de CorvusSettings".
+
     const saved = ((await this.loadData()) ?? {}) as Partial<CorvusSettings>;
 
-    // `loadData` devolve null tanto pra "primeira instalação" quanto pra
-    // "o arquivo está lá e não deu pra ler" (JSON quebrado, escrita
-    // interrompida). São coisas MUITO diferentes: no primeiro caso os padrões
-    // são a resposta certa; no segundo, gravar os padrões apaga tudo que a
-    // pessoa configurou. Então a diferença é checada, não presumida.
     if (Object.keys(saved).length === 0) {
       try {
         const caminho = this.dataPath();
@@ -1630,11 +1246,10 @@ export default class CorvusPlugin extends Plugin {
           ) {
             this.settingsUnsafe = true;
             console.error(
-              "[corvus] data.json existe mas não foi lido — settings NÃO serão gravadas até reiniciar."
+              "[corvus] data.json exists but could not be read — settings will NOT be saved until restart."
             );
-            // O idioma escolhido mora justamente no arquivo que não deu pra
-            // ler: o aviso sai no do Obsidian ("auto"), o melhor palpite.
-            definirIdiomaDaInterface(resolverIdioma(DEFAULT_SETTINGS.language));
+
+            setUiLocale(resolveLocale(DEFAULT_SETTINGS.language));
             new Notice(
               tr(
                 "Corvus: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed."
@@ -1644,76 +1259,47 @@ export default class CorvusPlugin extends Plugin {
           }
         }
       } catch (err) {
-        console.error("[corvus] checagem do data.json falhou:", err);
+        console.error("[corvus] data.json check failed:", err);
       }
     } else {
       void this.backupSettings(JSON.stringify(saved, null, 2));
     }
 
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
-    // O idioma volta a ser escolha (0.7.14): a linha que forçava "en-us" aqui
-    // era de quando o PT-BR tinha saído do dicionário. Com os dois de volta,
-    // ela apagava a escolha da pessoa a cada carregamento — e nada na tela
-    // explicaria por quê. Um valor que não conhecemos cai no inglês na hora de
-    // traduzir (ver i18n/index.ts), então não precisa ser consertado aqui.
+
     if (!LOCALES.some((l) => l.id === this.settings.language))
       this.settings.language = "auto";
-    definirIdiomaDaInterface(resolverIdioma(this.settings.language));
-    // O Ollama não vem mais ligado de fábrica. Quem herdou o endereço padrão
-    // gravado e nunca usou o Ollama volta pro vazio — uma vez só: a marca vai
-    // pro disco na próxima gravação, e daí um localhost digitado de propósito
-    // fica.
-    // Compara com a fábrica ANTIGA: é ela que está gravada em quem herdou.
+    setUiLocale(resolveLocale(this.settings.language));
+
     const ollama = revisarOllamaPadrao(saved, FABRICA_ATE_0923);
     if (ollama !== null) this.settings.ollamaEndpoint = ollama;
     this.settings.ollamaPadraoRevisto = true;
-    // Object.assign é shallow — pra activeModels (Record por provider),
-    // mescla por provider: providers não tocados pelo user mantêm defaults.
+
     this.settings.activeModels = {
       ...DEFAULT_SETTINGS.activeModels,
       ...(saved.activeModels ?? {}),
     };
     this.settings.discoveredEmbeddings = saved.discoveredEmbeddings ?? {};
     this.settings.discoveredModels = saved.discoveredModels ?? {};
-    // ★ por papel e provider preferido: da casca antiga, nada lê (ver
-    // core/settingsLegado.ts). A revisão do Ollama acima já leu o `saved`.
+
     limparCamposMortos(this.settings);
-    // Same pra effortConfigs — preserva overrides salvos do usuário.
+
     this.settings.effortConfigs = saved.effortConfigs ?? {};
 
-    // Chaves de API: carrega do SecretStorage do SO (keychain), não do
-    // data.json. Migra chaves legadas que ainda estejam em plaintext.
     this.loadSecrets(saved);
   }
 
-  /**
-   * Move o dado do app pra onde ele deve morar hoje, UMA vez.
-   *
-   * Conversas (que nasceram no legado `corvus-ai/chats` ou no default oculto
-   * `.corvus/chats`) passam pra pasta VISÍVEL — é o que um file-sync de arquivos
-   * copia entre aparelhos. O índice do RAG faz o caminho inverso (pra oculta):
-   * cache, se refaz.
-   *
-   * Move de verdade — copia, confere e só então apaga a origem. O contrário
-   * (apagar antes) transforma qualquer falha de escrita em conversa perdida,
-   * e conversa é a única coisa aqui que não se refaz.
-   *
-   * Roda em silêncio quando não há nada a fazer, que é o caso de toda
-   * instalação nova.
-   */
   private async migrarParaPastaOculta(): Promise<void> {
     if (this.settingsUnsafe) return;
     const ad = this.app.vault.adapter;
-    // Destino conta como "ocupado" só se tiver CONTEÚDO. Uma pasta vazia (ex:
-    // um `corvus/chats` criado cedo e nunca usado) não pode travar a migração —
-    // senão ninguém saía do `.corvus/chats` e o sync continuava quebrado.
+
     const destinoOcupado = async (pasta: string): Promise<boolean> => {
       if (!(await ad.exists(pasta))) return false;
       try {
         const listing = await ad.list(pasta);
         return listing.files.length + listing.folders.length > 0;
       } catch {
-        // Não deu pra inspecionar → trata como ocupado (não arrisca mesclar).
+
         return true;
       }
     };
@@ -1728,8 +1314,7 @@ export default class CorvusPlugin extends Plugin {
         origemExiste: await ad.exists(mv.legado),
         destinoExiste: await destinoOcupado(mv.novo),
       });
-      // O caminho pode já ser o novo (instalação nova) — nada a fazer, e
-      // também nada a avisar.
+
       if (!podeIr) continue;
       try {
         await this.moverPasta(mv.legado, mv.novo);
@@ -1737,9 +1322,8 @@ export default class CorvusPlugin extends Plugin {
         else this.settings.ragIndexPath = mv.novo;
         mudou = true;
       } catch (err) {
-        // Falhou? A origem continua lá, intacta, e o caminho não muda: o app
-        // segue lendo de onde sempre leu.
-        console.error(`[corvus] migração de ${mv.legado} falhou:`, err);
+
+        console.error(`[corvus] migration of ${mv.legado} failed:`, err);
       }
     }
     if (mudou) {
@@ -1753,8 +1337,6 @@ export default class CorvusPlugin extends Plugin {
     }
   }
 
-  /** Copia recursivamente de → para, conferindo cada arquivo antes de apagar
-   *  o original. Devolve quantos arquivos foram. */
   private async moverPasta(de: string, para: string): Promise<number> {
     const ad = this.app.vault.adapter;
     if (!(await ad.exists(para))) await ad.mkdir(para);
@@ -1766,17 +1348,16 @@ export default class CorvusPlugin extends Plugin {
     for (const arq of listing.files) {
       const nome = arq.split("/").pop() as string;
       const destino = `${para}/${nome}`;
-      // Binário serve pra tudo: o .md passa intacto e o shard do índice
-      // também, sem depender de encoding.
+
       const dados = await ad.readBinary(arq);
       await ad.writeBinary(destino, dados);
       if (!(await ad.exists(destino))) {
-        throw new Error(`não consegui escrever ${destino}`);
+        throw new Error(`failed to write ${destino}`);
       }
       await ad.remove(arq);
       n += 1;
     }
-    // A pasta vazia sai por último, e só se esvaziou mesmo.
+
     const sobrou = await ad.list(de);
     if (sobrou.files.length === 0 && sobrou.folders.length === 0) {
       await ad.rmdir(de, false);
@@ -1784,11 +1365,9 @@ export default class CorvusPlugin extends Plugin {
     return n;
   }
 
-  /** Popula as chaves em memória a partir do SecretStorage e migra o legado
-   *  (chaves que ainda estavam em plaintext no data.json de versões antigas). */
   private loadSecrets(saved: Record<string, unknown>) {
     const ss = this.app.secretStorage;
-    if (!ss) return; // runtime < 1.11.4 (sideload): mantém fallback no data.json
+    if (!ss) return; 
     let migrated = false;
     for (const f of CorvusPlugin.SECRET_FIELDS) {
       const id = this.secretId(f);
@@ -1796,72 +1375,48 @@ export default class CorvusPlugin extends Plugin {
       if (stored) {
         this.settings[f] = stored;
       } else if (typeof saved[f] === "string" && saved[f]) {
-        // Legado: chave em plaintext no data.json → move pro keychain do SO.
+
         ss.setSecret(id, saved[f]);
         this.settings[f] = saved[f];
         migrated = true;
       }
     }
-    // Reescreve o data.json já sem as chaves em plaintext. Fire-and-forget
-    // (não dá pra await aqui — loadSecrets é chamado no fim do loadSettings),
-    // mas encadeia um .catch pra não engolir falha de IO em silêncio. v0.1.228
-    // Mesma trava do saveSettings: a migração também grava o arquivo inteiro,
-    // e com a leitura falha o "arquivo inteiro" é o padrão de fábrica.
+
     if (migrated && !this.settingsUnsafe) {
       void this.saveData(this.persistableSettings()).catch((err) =>
-        console.error("[corvus] migração de secrets (saveData) falhou:", err)
+        console.error("[corvus] secrets migration (saveData) failed:", err)
       );
     }
   }
 
-  /** Cópia das settings com as chaves zeradas — é isso que vai pro data.json
-   *  (os valores reais vivem só em memória + no SecretStorage do SO). */
   private persistableSettings(): CorvusSettings {
     const copy = { ...this.settings };
     for (const f of CorvusPlugin.SECRET_FIELDS) copy[f] = "";
     return copy;
   }
 
-  /**
-   * Grava as settings — e, se a gravação falhar, DIZ.
-   *
-   * A maior parte das chamadas é `void this.saveSettings()`: quem mexeu num
-   * interruptor não espera o disco. Sete desses pontos não tinham `catch`
-   * nenhum, então disco cheio, pasta sincronizada travada ou permissão negada
-   * davam no mesmo: a configuração não gravava, a tela não mudava, e na
-   * abertura seguinte a mudança tinha sumido. Perda silenciosa de dado — a
-   * mesma doença que a lixeira do agente resolveu, num lugar mais barato.
-   *
-   * O tratamento fica AQUI, e não espalhado em sete `.catch`, porque a decisão
-   * é uma só: avisar. Um catch por chamador seria a mesma frase escrita sete
-   * vezes, e a oitava esqueceria.
-   */
   async saveSettings() {
-    // Leitura falhou: o que está na memória é o padrão de fábrica, não o que a
-    // pessoa configurou. Gravar aqui é apagar de verdade.
+
     if (this.settingsUnsafe) {
-      console.error("[corvus] saveSettings bloqueado: as settings não foram lidas.");
+      console.error("[corvus] saveSettings blocked: settings were not read.");
       return;
     }
     try {
       const ss = this.app.secretStorage;
       if (ss) {
-        // Chaves vão pro SecretStorage; data.json é salvo sem elas.
+
         for (const f of CorvusPlugin.SECRET_FIELDS) {
           ss.setSecret(this.secretId(f), this.settings[f] ?? "");
         }
         await this.saveData(this.persistableSettings());
       } else {
-        // Fallback (runtime sem SecretStorage): salva tudo no data.json.
+
         await this.saveData(this.settings);
       }
       this.avisoDeSaveDado = false;
     } catch (err) {
-      console.error("[corvus] não consegui gravar as settings:", err);
-      // UMA vez por sequência de falhas: se o disco está cheio, cada
-      // interruptor tocado dispararia um aviso e a tela viraria uma parede de
-      // avisos sobre o mesmo problema. Volta a avisar depois de uma gravação
-      // que deu certo — aí é um problema novo.
+      console.error("[corvus] failed to save settings:", err);
+
       if (!this.avisoDeSaveDado) {
         this.avisoDeSaveDado = true;
         new Notice(
@@ -1873,15 +1428,14 @@ export default class CorvusPlugin extends Plugin {
       }
       return;
     }
-    // O idioma da interface muda ANTES de avisar: quem re-renderiza já pega
-    // o texto novo.
-    definirIdiomaDaInterface(resolverIdioma(this.settings.language));
-    // Avisa quem tá escutando (ex.: CorvusApp pra re-renderizar com novo idioma)
+
+    setUiLocale(resolveLocale(this.settings.language));
+
     this.settingsListeners.forEach((cb) => {
       try {
         cb();
       } catch (err) {
-        console.error("[corvus] settings listener falhou:", err);
+        console.error("[corvus] settings listener failed:", err);
       }
     });
   }

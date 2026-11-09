@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for reporting. Corvus is built by one person, so a clear, reproducible report gets fixed fastest.
-        Questions and ideas belong in [Discussions](https://github.com/QR4X/M.I.L.A/discussions).
+        Questions and ideas belong in [Discussions](https://github.com/QR4X/Corvus/discussions).
   - type: checkboxes
     id: checks
     attributes:

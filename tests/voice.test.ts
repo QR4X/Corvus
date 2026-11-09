@@ -23,8 +23,7 @@ describe("formatDuration", () => {
 
 describe("extensionFor", () => {
   it("acompanha o contêiner que o aparelho escolheu", () => {
-    // É por esta extensão que o motor monta o content-type do multipart, e é
-    // por ela que a API sniffa o formato — errar aqui é 400 na transcrição.
+
     expect(extensionFor("audio/webm;codecs=opus")).toBe("webm");
     expect(extensionFor("audio/mp4")).toBe("mp4");
     expect(extensionFor("audio/ogg;codecs=opus")).toBe("ogg");

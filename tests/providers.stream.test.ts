@@ -10,12 +10,6 @@ import { __setRequestUrl } from "./obsidian-stub";
 import { parseOpenAICompatSSE } from "../src/providers/_shared";
 import { responseIssue } from "../src/providers/base";
 
-// Dirige o streamChat REAL de cada provider com a rede mockada. Cobre o parser
-// de verdade (buffer de linha, acumulação de delta, tool_calls, usage, [DONE]),
-// não uma reimplementação.
-//   - via fetch (SSE/NDJSON): openai / gemini / anthropic / openrouter / ollama
-//   - via requestUrl do Obsidian (pseudo-stream): nim
-
 const userReq = (model: string) => ({
   model,
   messages: [{ role: "user" as const, content: "hi" }],
@@ -99,11 +93,6 @@ describe("SSE completion diagnostics", () => {
   });
 });
 
-/**
- * O `fetchStream` chama `window.fetch` (o MESMO fetch — ver a nota em
- * src/providers/_shared.ts). No Node dos testes não existe `window`, então a
- * simulação põe o fetch falso nos dois lugares.
- */
 function stubFetch(fn: (...args: never[]) => unknown) {
   vi.stubGlobal("fetch", fn);
   vi.stubGlobal("window", { fetch: fn });
@@ -702,9 +691,6 @@ describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobil
     __setRequestUrl(null);
   });
 
-  // Simula o WebView do mobile barrando o stream: o fetch REJEITA na conexão
-  // (não é AbortError, não é HTTP do servidor). O provider deve cair pro chat()
-  // via requestUrl (fura CORS) e emitir a resposta inteira de uma vez. v0.1.232
   function mockFetchThrows() {
     stubFetch(
       vi.fn(async () => {

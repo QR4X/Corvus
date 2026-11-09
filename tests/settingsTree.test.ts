@@ -11,11 +11,6 @@ import { isControlKey } from "../src/ui/settings/values";
 import { PROVIDERS } from "../src/core/providersMeta";
 import type { CorvusSettings } from "../src/main";
 
-// A árvore é o que o Obsidian 1.13 desenha e indexa na busca, e o que o
-// display() desenha antes do 1.13. Estes testes cobram as regras que o
-// desenhista do 1.13 impõe (app.js 1.13.7) — quebrar uma delas não dá erro
-// na hora: dá "duplicate setting key" no console e linha reaproveitada errada.
-
 type Row = {
   name?: unknown;
   desc?: unknown;
@@ -76,7 +71,6 @@ function groupsOf(ui: SettingsUi): Group[] {
   return buildSettingsTree(ui).items as unknown as Group[];
 }
 
-/** A chave que o 1.13 dá a uma linha (Q2 no app.js 1.13.7). */
 function rowKey(r: Row, i: number): string {
   if (r.control) return "ctrl:" + r.control.key;
   if (typeof r.name === "string" && r.name) return "name:" + r.name;
@@ -124,7 +118,7 @@ describe("regras do desenhista do 1.13", () => {
 });
 
 describe("o que a busca acha", () => {
-  // Os nomes que a pessoa procura. Sumir um daqui é sumir uma setting.
+
   const NOMES = [
     ...PROVIDERS.filter((p) => p.id !== "ollama").map((p) => `${p.name} API key`),
     "Ollama endpoint",
@@ -172,9 +166,7 @@ describe("o que a busca acha", () => {
   });
 
   it("nenhum nome repetido na busca", () => {
-    // A busca mostra só o nome. Os dois "Quality" (OpenAI e ElevenLabs) viraram
-    // linhas `render` — chaveadas pelo nome —, então ganharam nome longo na
-    // busca e o curto na tela; a busca não acha mais duas linhas iguais.
+
     const nomes = all(fakeUi({ isMobile: true }))
       .filter((r) => r.searchable !== false)
       .map((r) => r.name as string);
@@ -197,9 +189,7 @@ describe("o que a busca acha", () => {
   });
 
   it('"voice" acha os interruptores de voz mesmo com tudo desligado', () => {
-    // A busca do 1.13 casa cada palavra no nome, na descrição ou num alias, e
-    // pula linha com `visible` falso. Com ditado e leitura desligados, só os
-    // dois interruptores estão à vista — e nenhum tem "voice" no nome.
+
     const ui = fakeUi({ settings: { voiceEnabled: false, ttsEnabled: false } });
     const casa = (r: Row) =>
       [r.name, r.desc, ...(r.aliases ?? [])].some(
@@ -258,7 +248,7 @@ describe("abas", () => {
   });
 
   it("o CSS esconde cada aba e cada provider que a árvore usa", () => {
-    // Uma aba ou provider novo sem a regra apareceria EMPILHADO com os outros.
+
     const css = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
     for (const t of TABS) {
       expect(css, t.id).toContain(
@@ -274,8 +264,7 @@ describe("abas", () => {
 });
 
 describe("a aba Chat só tem menus de escolha com ícone", () => {
-  // No Android, o <select> abre a caixa do sistema: rádio, letra enorme,
-  // nenhum ícone. A aba Chat troca todos pelo balão do ⋯ das conversas.
+
   type Pego = { key: string; tab: string; itens: { value: string; label: string; icon?: string; glyph?: string }[] };
   const pegos: Pego[] = [];
   const ui = { ...fakeUi({ isMobile: true }) } as SettingsUi;
@@ -291,7 +280,7 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
       .filter((r) => r.control?.type === "dropdown")
       .map((r) => r.name);
     expect(nativos).toEqual([]);
-    // e o desenho à mão também não usa o <select> do Obsidian
+
     expect(readFileSync(resolve(__dirname, "../src/ui/SettingsTab.ts"), "utf8")).not.toContain(
       "addDropdown("
     );
@@ -306,12 +295,12 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
     expect(tier.itens.map((i) => i.glyph)).toEqual(["1", "2", "3", "4", "5"]);
     const perm = pegos.find((p) => p.key === "agentPermissionLevel")!;
     expect(perm.itens.map((i) => i.value)).toEqual(["ask", "vault", "yolo"]);
-    // a interface é em inglês: o rótulo era metade português
+
     for (const i of perm.itens) expect(i.label, i.value).not.toMatch(/confirma |sem confirmações|pergunta/);
   });
 
   it("os menus que existiam viraram escolha, e moram na aba Chat", () => {
-    // A precisão do índice também é escolha, mas mora no Q&A.
+
     expect(pegos.filter((p) => p.tab === "rag").map((p) => p.key)).toEqual(["ragQuantProfile"]);
     const daChat = pegos.filter((p) => p.tab === "chat");
     const chaves = daChat.map((p) => p.key).sort();
@@ -369,9 +358,9 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
     expect(modo.itens.map((i) => i.label)).toEqual(["Chat", "Vault Q&A", "Agent"]);
   });
 
-  it("idiomas usam o código no lugar do ícone (o Auto, o desenho de idiomas)", () => {
+  it("languages use code glyph instead of icon (Auto uses languages icon)", () => {
     const lang = pegos.find((p) => p.key === "language")!;
-    expect(lang.itens.map((i) => i.glyph)).toEqual([undefined, "EN", "PT"]);
+    expect(lang.itens.map((i) => i.glyph)).toEqual([undefined, "EN"]);
     expect(lang.itens[0].icon).toBe("languages");
   });
 });

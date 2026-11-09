@@ -6,11 +6,6 @@ import {
   type ChatData,
 } from "../src/core/chatPersistence";
 
-// Round-trip do .md de chat: render → parse tem que devolver o MESMO chat.
-// É o teste de INTEGRIDADE DE DADOS — se quebrar, o user perde conversa.
-// Invariante: vale pra conteúdo já trimado (o render trima) e sem linhas que
-// colidam com os headings de seção (`## You` / `## Assistant`).
-
 const baseChat: ChatData = {
   id: "abc123",
   title: "Conversa de teste",
@@ -86,8 +81,6 @@ describe("chat persistence round-trip", () => {
     expect(() => parseChatMarkdown("sem frontmatter aqui")).toThrow();
   });
 
-  // Audit do ecossistema de providers: model ids variam muito (slash, colon,
-  // :free, datado). Tudo tem que sobreviver ao YAML do frontmatter.
   it("preserva agentSteps (result com '-->') + tools_used no frontmatter", () => {
     const steps = [
       {
@@ -107,13 +100,13 @@ describe("chat persistence round-trip", () => {
       ],
     };
     const md = renderChatMarkdown(chat);
-    // frontmatter legível pro RAG
+
     expect(md).toContain("tools_used:");
     expect(md).toContain("vault_create notes/projeto.md");
-    // round-trip exato (base64 protege o "-->" do result)
+
     const r = parseChatMarkdown(md);
     expect(r.messages[1].agentSteps).toEqual(steps);
-    expect(r.messages[1].content).toBe("Pronto"); // comentário sai do conteúdo
+    expect(r.messages[1].content).toBe("Pronto"); 
   });
 
   it.each([
@@ -131,8 +124,6 @@ describe("chat persistence round-trip", () => {
     expect(r.model).toBe(model);
   });
 
-  // Anexos de mensagens enviadas: persistem como DESCRITORES pequenos (path,
-  // tipo, nome) — nunca os bytes da imagem (o .md é reescrito a cada msg).
   it("anexos persistem como descritores pequenos (round-trip exato)", () => {
     const chat: ChatData = {
       ...baseChat,
@@ -157,10 +148,10 @@ describe("chat persistence round-trip", () => {
       ],
     };
     const md = renderChatMarkdown(chat);
-    // nunca os bytes no .md — só o descritor, que é pequeno e estável
+
     expect(md).not.toContain("data:image");
     const r = parseChatMarkdown(md);
-    // o comentário de anexo não vaza pro conteúdo visível
+
     expect(r.messages[0].content).toBe("olha o print");
     expect(r.messages[0].attachments).toEqual(chat.messages[0].attachments);
   });
@@ -173,9 +164,6 @@ describe("chat persistence round-trip", () => {
   });
 });
 
-// Star (menu ⋮): a marca vive no frontmatter. O risco real é o auto-save —
-// ele reescreve o .md INTEIRO a cada mensagem, então se o campo não sobrevive
-// ao round-trip a estrela some sozinha depois de favoritar.
 describe("chat starred", () => {
   it("sobrevive ao round-trip quando favoritado", () => {
     const starred: ChatData = { ...baseChat, starred: true };
@@ -204,7 +192,7 @@ describe("chat starred", () => {
     expect(summaryFromFrontmatter({ ...base, starred: true }, "chat", "p.md").starred).toBe(true);
     expect(summaryFromFrontmatter({ ...base, starred: "true" }, "chat", "p.md").starred).toBe(true);
     expect(summaryFromFrontmatter(base, "chat", "p.md").starred).toBe(false);
-    // Só `true`/"true" contam — qualquer outro valor é não-favoritado.
+
     expect(summaryFromFrontmatter({ ...base, starred: "sim" }, "chat", "p.md").starred).toBe(false);
   });
 });

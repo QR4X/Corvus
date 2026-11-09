@@ -1,12 +1,3 @@
-// src/providers/hotData.generated.ts
-// AUTO-GERADO por scripts/collect-hot.mjs — NÃO editar à mão.
-// Popularidade ("hot") por padrão de id de modelo (0..1).
-//   OPEN  = HuggingFace (downloads + trending, dado REAL)
-//   CLOSED = baseline curado (gpt/claude/gemini não têm API pública de uso)
-// Atualiza semanal: `node scripts/collect-hot.mjs` + commit se houver diff.
-
-/** [padrão (string de RegExp), score 0..1]. O dataCollect pega o MAIOR score
- *  entre todos os padrões que casam o id do modelo. */
 export const HOT_DATA: [string, number][] = [
   ["claude-(fable|opus|sonnet)", 0.96],
   ["(^|/)gpt-5", 0.95],

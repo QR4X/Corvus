@@ -10,7 +10,6 @@ import { quantizeEmbedding } from "../src/rag/quant";
 import type { VectorEntry } from "../src/rag/types";
 import type { App, DataAdapter } from "obsidian";
 
-// FS em memória — captura writes, serve reads. Cobre o round-trip sharded.
 function memAdapter() {
   const files = new Map<string, string>();
   const adapter = {
@@ -78,13 +77,13 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
     expect(manifest.sharded).toBe(true);
     expect(manifest.totalEntries).toBe(3);
-    expect(manifest.shardCount).toBe(2); // 3 entries / 2 por shard
+    expect(manifest.shardCount).toBe(2); 
     expect(manifest.shards).toHaveLength(2);
-    // os arquivos de shard existem
+
     for (const s of manifest.shards) {
       expect(adapter.files.has(`${PATH}/${s}`)).toBe(true);
     }
-    // o single-file NÃO existe (modo sharded é exclusivo)
+
     expect(adapter.files.has(`${PATH}/embeddings.json`)).toBe(false);
   });
 
@@ -96,8 +95,8 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded).not.toBeNull();
     expect(loaded!.streamed).toBe(true);
-    expect(loaded!.size).toBe(3); // vem do manifesto
-    expect(loaded!.entries).toHaveLength(0); // NÃO materializou na RAM
+    expect(loaded!.size).toBe(3); 
+    expect(loaded!.entries).toHaveLength(0); 
     expect(loaded!.model).toBe("text-embedding-3-small");
     expect(loaded!.dim).toBe(4);
   });
@@ -113,8 +112,6 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const streamed = await loaded!.searchStreamed(query, 2, 0);
     const memory = inMem.search(query, 2, 0);
 
-    // top-2 esperado: a.md (1.0) depois c.md (0.8) — c.md vem do shard1 e
-    // precisa "passar na frente" de b.md (0.0) do shard0 no merge.
     expect(streamed.map((r) => r.entry.path)).toEqual(["a.md", "c.md"]);
     expect(streamed.map((r) => r.entry.path)).toEqual(
       memory.map((r) => r.entry.path)
@@ -130,7 +127,7 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     expect(adapter.files.size).toBeGreaterThan(0);
 
     await deleteIndex(adapter as unknown as DataAdapter, PATH);
-    // sobra nada de índice
+
     const leftover = [...adapter.files.keys()].filter((k) =>
       k.includes("embeddings")
     );
@@ -141,12 +138,12 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
-    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); // reindex
+    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); 
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
     const shardFiles = [...adapter.files.keys()].filter((k) =>
       k.includes(".shard")
     );
-    // só os shards do manifesto atual sobram — nada do save anterior
+
     expect(shardFiles).toHaveLength(manifest.shardCount);
     for (const s of manifest.shards) {
       expect(adapter.files.has(`${PATH}/${s}`)).toBe(true);
@@ -158,16 +155,15 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
-    adapter.files.delete(`${PATH}/${manifest.shards[0]}`); // some um shard
+    adapter.files.delete(`${PATH}/${manifest.shards[0]}`); 
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
-    expect(loaded).toBeNull(); // validação no load pega
+    expect(loaded).toBeNull(); 
   });
 
   it("shard por ORÇAMENTO DE BYTES: trechos grandes forçam mais shards que a contagem", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
-    // 5 entries com ~1.5MB de texto cada; shardSize alto (count não corta) →
-    // o orçamento de bytes (4MB) deve cortar em ~2 por shard → 3 shards.
+
     const big = "x".repeat(1_500_000);
     const entries: VectorEntry[] = Array.from({ length: 5 }, (_, i) => ({
       path: `n${i}.md`,
@@ -194,12 +190,12 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
   it("trocar sharded→single limpa os shards (sem estado misto)", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
-    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); // sharded
-    await saveIndex(app, PATH, buildIndex()); // single (sem shardSize)
+    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); 
+    await saveIndex(app, PATH, buildIndex()); 
 
     expect(adapter.files.has(manifestFilePath(PATH))).toBe(false);
     expect(adapter.files.has(`${PATH}/embeddings.json`)).toBe(true);
-    // load agora pega o single-file (não streamed)
+
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded!.streamed).toBe(false);
     expect(loaded!.size).toBe(3);

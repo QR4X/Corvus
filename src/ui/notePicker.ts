@@ -1,23 +1,12 @@
-// src/ui/notePicker.ts
-// Achar uma nota do vault pra anexar à conversa — pelo `+` do composer ou
-// digitando `[[`.
-//
-// A ordem importa mais do que parece num vault grande: quem digita "fram"
-// quer FRAMEWORKS.md, não "Notas/2024/framing-de-produto/rascunho.md" só
-// porque apareceu primeiro na lista do vault. Por isso o ranking é por onde o
-// texto casou (nome exato > começo do nome > dentro do nome > caminho) e,
-// empatando, pela nota mexida mais recentemente.
-
 import type { App } from "obsidian";
 
 export interface NoteLike {
   path: string;
   basename: string;
-  /** Última modificação (ms). Desempata o ranking. */
+
   mtime: number;
 }
 
-/** Quanto pior, mais alto. Ordena crescente. */
 function posicao(nota: NoteLike, busca: string): number {
   const nome = nota.basename.toLowerCase();
   const caminho = nota.path.toLowerCase();
@@ -28,7 +17,6 @@ function posicao(nota: NoteLike, busca: string): number {
   return 4;
 }
 
-/** Ordena e corta a lista de notas pra uma busca. Busca vazia = mais recentes. */
 export function rankNotes(
   notas: readonly NoteLike[],
   busca: string,
@@ -48,12 +36,6 @@ export function rankNotes(
   return candidatas.slice(0, limite);
 }
 
-/** As notas do vault no formato do ranking. */
-/**
- * A nota que a pessoa tem aberta (ou teve por último): o "This note" do "+".
- * `getActiveFile` devolve a do painel em foco e, com o foco no Corvus, a
- * última aberta — que é justamente a que se quer anexar.
- */
 export function notaAberta(app: App): { path: string; basename: string } | null {
   const f = app.workspace.getActiveFile();
   return f && f.extension === "md" ? { path: f.path, basename: f.basename } : null;
@@ -67,13 +49,12 @@ export function vaultNotes(app: App): NoteLike[] {
   }));
 }
 
-/** Lê a nota pra virar anexo. Devolve null se sumiu no meio do caminho. */
 export async function readNote(
   app: App,
   path: string
 ): Promise<{ path: string; content: string } | null> {
   const file = app.vault.getAbstractFileByPath(path);
-  // `instanceof TFile` não vale aqui: o que importa é dar pra ler.
+
   if (!file || !("stat" in file)) return null;
   try {
     const content = await app.vault.cachedRead(file as never);
@@ -83,9 +64,6 @@ export async function readNote(
   }
 }
 
-/** O `[[` aberto ANTES do cursor, se houver — devolve a busca já digitada.
- *  Fecha (devolve null) se o link já foi fechado com `]]` ou se quebrou linha,
- *  que é quando a pessoa claramente desistiu. */
 export function wikilinkQuery(
   texto: string,
   cursor: number
@@ -95,8 +73,7 @@ export function wikilinkQuery(
   if (abre === -1) return null;
   const meio = antes.slice(abre + 2);
   if (meio.includes("]]") || meio.includes("\n")) return null;
-  // Um `[[` esquecido lá atrás não pode manter a lista aberta pelo resto do
-  // texto: acima disso ninguém está mais buscando nota.
+
   if (meio.length > 80) return null;
   return { start: abre, query: meio };
 }

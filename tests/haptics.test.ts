@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ehToque } from "../src/ui/haptics";
 
-// A regra que separa TOCAR de ROLAR. Ela existe porque o tato antes saía no
-// `pointerdown`, e em pointerdown ninguém sabe ainda o que o dedo vai fazer:
-// encostar numa lista pra rolar começa igual a tocar, e a lista é feita de
-// botões — descer a home virava uma sequência de pulsos sem ação nenhuma.
 describe("ehToque", () => {
   it("dedo parado e rápido é toque", () => {
     expect(ehToque(0, 0, 90)).toBe(true);

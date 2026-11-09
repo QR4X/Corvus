@@ -15,7 +15,7 @@
     "deploy:output": "node scripts/deploy.mjs",
     "preview": "node scripts/preview/preview.mjs",
     "gen:logos": "node scripts/genLogos.mjs",
-    "lote": "node scripts/lote.mjs"
+    "batch": "node scripts/batch.mjs"
   },
   "dependencies": {
     "preact": "^10.29.2",

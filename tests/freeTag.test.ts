@@ -30,8 +30,7 @@ describe("freeTag", () => {
   });
 
   it("com data-sharing ligado, a etiqueta carrega a COTA do dia", () => {
-    // 250k e 2,5M são cotas diferentes: dizer só "free" nas duas esconde
-    // justamente o que separa uma da outra.
+
     expect(freeTag("openai", "gpt-5", cfg({ dataSharing: true })).label).toBe(
       "250k/day"
     );
@@ -47,22 +46,21 @@ describe("freeTag", () => {
   });
 
   it("sem data-sharing a cota vira OFERTA, não fato", () => {
-    // Mostrar "free" numa conta que não ligou o programa é prometer desconto
-    // que não existe — a fatura desmentiria a tela.
+
     const t = freeTag("openai", "gpt-4o", cfg({ dataSharing: false }));
     expect(t?.kind).toBe("offer");
-    // O "+" é o que separa "você ganharia" de "você tem".
+
     expect(t?.label).toBe("+250k/day");
     expect(t?.detail).toMatch(/data sharing/i);
   });
 
   it("modelo OpenAI fora da lista elegível não vira cota", () => {
-    // Imagem nunca entra no programa (ver usage/freeTokens.ts).
+
     expect(freeTag("openai", "gpt-image-1", cfg({ dataSharing: true }))).toBeNull();
   });
 
   it("a cota vence o 'free' de fábrica quando os dois valem", () => {
-    // O número diz mais: a pessoa precisa saber que existe um limite.
+
     const t = freeTag("openai", "gpt-4o-mini", cfg({ free: true, dataSharing: true }));
     expect(t?.kind).toBe("daily");
   });

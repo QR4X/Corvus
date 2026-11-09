@@ -1,39 +1,18 @@
-// src/agent/web.ts
-// As duas ferramentas de WEB do agente: `web_search` (busca, pela Tavily, com
-// a chave de quem usa) e `web_fetch` (ler uma página). São as primeiras
-// ferramentas que mandam algo pra FORA do vault — e é isso que decide como
-// elas se comportam:
-//
-//   · Perguntam antes nos níveis Ask e Vault (ver permissions.ts), mostrando
-//     a URL ou a consulta: a URL é o canal por onde uma nota com instrução
-//     plantada tentaria vazar conteúdo ("abra https://x.com/?dados=…").
-//   · Endereço LOCAL é recusado: localhost, a rede de casa, o link-local. O
-//     agente não é um jeito de uma nota alcançar o Ollama, o roteador ou
-//     qualquer serviço da máquina de quem usa.
-//   · Só texto volta: página vira texto legível (o mesmo extrator do anexo de
-//     link da conversa), com teto; PDF, imagem e binário são recusados.
-
 import { requestUrl } from "obsidian";
 import { htmlTitle, htmlToText } from "../ui/attachSources";
 import type { ToolContext } from "./types";
 
-/** Teto do texto de uma página — o mesmo do anexo de link. */
 const MAX_PAGINA = 20_000;
 
 const TAVILY_SEARCH = "https://api.tavily.com/search";
 
-/**
- * O endereço aponta pra dentro (a máquina ou a rede local)? Pelo NOME do host:
- * resolução de DNS não é algo que o plugin faz, então um nome público que
- * resolve pra um IP privado passa — o que fecha esse buraco é a confirmação.
- */
 export function ehEnderecoLocal(host: string): boolean {
   const h = host.toLowerCase().replace(/^\[|\]$/g, "");
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) {
     return true;
   }
   if (h === "::1" || h === "::" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) {
-    // IPv6: loopback, não especificado, link-local, únicos-locais (fc00::/7)
+
     return h.includes(":");
   }
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
@@ -46,11 +25,10 @@ export function ehEnderecoLocal(host: string): boolean {
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127) // CGNAT (Tailscale e afins)
+    (a === 100 && b >= 64 && b <= 127) 
   );
 }
 
-/** Valida a URL que o modelo pediu: http(s), com host público. */
 export function urlPermitida(entrada: string): URL {
   let u: URL;
   try {
@@ -71,7 +49,6 @@ interface FetchArgs {
   url: string;
 }
 
-/** Ler uma página: o texto dela, com o título e o endereço no topo. */
 export async function toolWebFetch(_ctx: ToolContext, args: FetchArgs): Promise<string> {
   const u = urlPermitida(String(args.url ?? ""));
   const res = await requestUrl({
@@ -110,7 +87,6 @@ interface ResultadoTavily {
   content?: unknown;
 }
 
-/** Monta o texto que o modelo lê a partir da resposta da Tavily. */
 export function formatarBusca(query: string, json: unknown): string {
   const lista = (json as { results?: unknown } | null)?.results;
   const resultados = Array.isArray(lista) ? (lista as ResultadoTavily[]) : [];
@@ -125,7 +101,6 @@ export function formatarBusca(query: string, json: unknown): string {
   return `Web search — ${linhas.length} result(s) for "${query}":\n\n${linhas.join("\n\n")}\n\nOpen a result with web_fetch before relying on it, and cite the URLs you use.`;
 }
 
-/** Buscar na web pela Tavily, com a chave de quem usa. */
 export async function toolWebSearch(ctx: ToolContext, args: SearchArgs): Promise<string> {
   const query = String(args.query ?? "").trim();
   if (!query) throw new Error("Empty 'query' parameter.");

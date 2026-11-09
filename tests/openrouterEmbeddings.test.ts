@@ -2,10 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import { openrouterProvider, proximaPagina } from "../src/providers/openrouter";
 
-// Os modelos de embedding do OpenRouter saíram do catálogo geral e ganharam
-// endereço próprio (/api/v1/embeddings/models): pelo caminho antigo, o fetch
-// voltava sem nenhum.
-
 afterEach(() => __setRequestUrl(null));
 
 describe("embeddings do OpenRouter", () => {
