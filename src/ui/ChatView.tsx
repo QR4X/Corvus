@@ -64,13 +64,8 @@ import {
   GENERATION_DIR,
   type ArtifactLike,
 } from "./attachSources";
-import {
-  isInstagramUrl,
-  transcribeInstagramReel,
-  reelAttachment,
-  getTranscriptionCredential,
-} from "../core/instagramResolver";
 import { getModelCapabilities } from "../providers/modelCapabilities";
+import { getTranscriptionCredential } from "../providers/transcribe";
 import { ConfirmModal, PromptModal, openPluginSettings } from "./modals";
 import { desfaziveis, desfazerRodada, desfazerUma, idDesfazivel } from "./agentUndo";
 import { VoiceDock } from "./VoiceBar";
@@ -670,43 +665,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  const processarInstagramReel = async (url: string) => {
-    if (plugin.settings.instagramReelsEnabled === false) return;
-    const cred = getTranscriptionCredential(plugin.settings);
-    if (!cred) {
-      new Notice(
-        tr("OpenAI or OpenRouter API key required for Reel transcription (Settings › Providers).")
-      );
-      return;
-    }
-    const notice = new Notice(tr("Transcribing Instagram Reel…"), 0);
-    try {
-      const res = await transcribeInstagramReel(url, {
-        apiKey: cred.apiKey,
-        provider: cred.provider,
-        model: plugin.settings.voiceModel || (cred.provider === "openrouter" ? "openai/whisper-1" : "whisper-1"),
-        language: plugin.settings.voiceLanguage || undefined,
-      });
-      addAttachment(reelAttachment(res));
-      notice.hide();
-      new Notice(tr("Reel transcript attached!"));
-    } catch (err: unknown) {
-      notice.hide();
-      const msg = err instanceof Error ? err.message : String(err);
-      new Notice(`Instagram Reel: ${msg}`);
-    }
-  };
-
   const aoColar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const dados = e.clipboardData;
     if (!dados) return;
 
     const textoColado = dados.getData("text");
-    if (plugin.settings.instagramReelsEnabled !== false && textoColado && isInstagramUrl(textoColado)) {
-      e.preventDefault();
-      void processarInstagramReel(textoColado.trim());
-      return;
-    }
 
     const imagens = Array.from(dados.files ?? []).filter((f) =>
       f.type.startsWith("image/")

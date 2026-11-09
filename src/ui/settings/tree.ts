@@ -33,7 +33,6 @@ export type TabId =
   | "vault"
   | "rag"
   | "agent"
-  | "extensions"
   | "mobile";
 
 export interface TabDef {
@@ -65,11 +64,6 @@ export const TABS: TabDef[] = [
     id: "agent",
     label: mark("Agent"),
     blurb: mark("What the agent may do to your notes without asking."),
-  },
-  {
-    id: "extensions",
-    label: mark("Extensions"),
-    blurb: mark("Optional extensions and link-based media tools."),
   },
   {
     id: "mobile",
@@ -840,35 +834,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ),
       ui.tavilyKey,
       { visible: () => s().agentWeb !== false, aliases: [...KEY_ALIASES, "tavily", "web search"] }
-    ),
-  ]);
-
-  group({ tab: "extensions" }, { heading: tr("Instagram Reels") }, [
-    toggle(
-      tr("Instagram Reels transcription"),
-      tr(
-        "Transcribe public Instagram Reels automatically via link when pasted or sent in chat. Works strictly with URLs — no video files required."
-      ),
-      "instagramReelsEnabled",
-      {
-        aliases: [
-          "instagram",
-          "reels",
-          "transcribe",
-          "transcription",
-          "whisper",
-          "video",
-          "link",
-          "url",
-        ],
-      }
-    ),
-    hintRow(
-      ui.hint(tr("Add your OpenAI or OpenRouter key in Providers to transcribe reels.")),
-      () =>
-        s().instagramReelsEnabled !== false &&
-        !ui.hasCredential("openai") &&
-        !ui.hasCredential("openrouter")
     ),
   ]);
 

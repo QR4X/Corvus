@@ -30,13 +30,6 @@ import type { Project } from "../projects";
 import { previewFromText } from "./chatPreview";
 import { vaultAtivo } from "./vaultContext";
 import { keepConversationMessage } from "../agent/conversation";
-import {
-  findInstagramUrlInText,
-  extractInstagramShortcode,
-  transcribeInstagramReel,
-  reelAttachment,
-  getTranscriptionCredential,
-} from "./instagramResolver";
 
 export type ChatMode = "chat" | "vault-qa" | "agent";
 export const CHAT_MODES: ChatMode[] = ["chat", "vault-qa", "agent"];
@@ -280,32 +273,6 @@ export class ChatSession {
     const pendentes = st.attachments;
     let attachments = pendentes.length > 0 ? [...pendentes] : undefined;
     if (pendentes.length > 0) st.setAttachments([]);
-
-    if (this.plugin.settings.instagramReelsEnabled !== false) {
-      const igUrl = findInstagramUrlInText(trimmed);
-      if (igUrl) {
-        const shortcode = extractInstagramShortcode(igUrl);
-        const alreadyAttached = (attachments ?? []).some(
-          (a) => a.type === "note" && shortcode && a.path.includes(shortcode)
-        );
-        const cred = getTranscriptionCredential(this.plugin.settings);
-        if (!alreadyAttached && cred) {
-          try {
-            new Notice(tr("Transcribing Instagram Reel…"));
-            const res = await transcribeInstagramReel(igUrl, {
-              apiKey: cred.apiKey,
-              provider: cred.provider,
-              model: this.plugin.settings.voiceModel || (cred.provider === "openrouter" ? "openai/whisper-1" : "whisper-1"),
-              language: this.plugin.settings.voiceLanguage || undefined,
-            });
-            const reelAtt = reelAttachment(res);
-            attachments = attachments ? [...attachments, reelAtt] : [reelAtt];
-          } catch (err) {
-            console.warn("[Corvus] Auto-Transkription des Instagram Reels fehlgeschlagen:", err);
-          }
-        }
-      }
-    }
 
     if (attachments) {
       attachments = await Promise.all(

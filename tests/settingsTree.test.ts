@@ -154,7 +154,6 @@ describe("o que a busca acha", () => {
     "Index",
     "Permission level",
     "Show diff before applying edits",
-    "Instagram Reels transcription",
     "Keep screen on while writing",
     "Fullscreen",
     "Haptics",

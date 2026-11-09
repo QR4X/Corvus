@@ -164,6 +164,51 @@ describe("chat persistence round-trip", () => {
   });
 });
 
+describe("legacy axxa markers", () => {
+  it("parse de chats antigos com marcadores axxa: preserva ts, reaction e agentSteps", () => {
+    const oldMd = `---
+id: "old1"
+title: "Alter Chat"
+date: "2026-10-01T10:00:00.000Z"
+mode: "agent"
+provider: "openrouter"
+model: "deepseek/deepseek-v4-flash-0731"
+effort: "low"
+tokens_in: 100
+tokens_out: 50
+message_count: 2
+tags:
+  - axxa-chat
+  - axxa-mode-agent
+---
+
+## You
+<!-- axxa: ts=1792000000000 -->
+
+Frage
+
+## Assistant
+<!-- axxa: ts=1792000001000 -->
+
+Antwort
+
+<!-- axxa-steps: ${Buffer.from(JSON.stringify([{ id: "s1", name: "vault_search", arguments: { query: "x" }, result: "ok", ok: true }])).toString("base64")} -->
+`;
+    const chat = parseChatMarkdown(oldMd);
+    expect(chat.messages[0].timestamp).toBe(1792000000000);
+    expect(chat.messages[1].timestamp).toBe(1792000001000);
+    expect(chat.messages[1].agentSteps?.[0].name).toBe("vault_search");
+    expect(chat.messages[1].content).toBe("Antwort");
+  });
+
+  it("comentário axxa não vaza pro conteúdo", () => {
+    const md = renderChatMarkdown(baseChat);
+    const oldMd = md.replaceAll("corvus:", "axxa:").replaceAll("corvus-steps:", "axxa-steps:").replaceAll("corvus-att:", "axxa-att:");
+    const r = parseChatMarkdown(oldMd);
+    expect(r.messages[1].content).toBe(baseChat.messages[1].content);
+  });
+});
+
 describe("chat starred", () => {
   it("sobrevive ao round-trip quando favoritado", () => {
     const starred: ChatData = { ...baseChat, starred: true };

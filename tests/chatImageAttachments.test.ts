@@ -37,7 +37,6 @@ function setup() {
       defaultEffort: "med",
       language: "en",
       chatsPath: ".corvus/chats",
-      instagramReelsEnabled: false,
     },
     onSettingsChange: () => () => {},
     loadChatSummaries: async () => [],
