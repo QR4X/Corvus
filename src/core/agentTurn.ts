@@ -27,6 +27,7 @@ import type { AIToolStep, PermissionLevel } from "../agent/types";
 import { loadAgentMd } from "./agentMd";
 import type { EngineCtx } from "./chatEngine";
 import { buscarContextoDoVault } from "./vaultLookup";
+import { createDeltaBatcher } from "./deltaBatcher";
 
 export interface AgentCtx extends EngineCtx {
 
@@ -174,7 +175,6 @@ export async function runAgentTurn(
   const controller = new AbortController();
   abortRef.current = controller;
   let responseId: string | null = null;
-  let reasoningBuf = "";
 
   try {
     while (true) {
@@ -184,21 +184,28 @@ export async function runAgentTurn(
       }
 
       responseId = null;
-      reasoningBuf = "";
+      let thoughtId: string | null = null;
+      const thoughtBatch = createDeltaBatcher((text) => {
+        if (thoughtId) useChatStore.getState().appendThought(thoughtId, text);
+      });
+      const contentBatch = createDeltaBatcher((text) => {
+        if (responseId) appendToMessage(responseId, text);
+      });
+      const flushStreams = () => {
+        thoughtBatch.flush();
+        contentBatch.flush();
+      };
       const onToken = (token: string) => {
         if (responseId === null) {
+          thoughtBatch.flush();
           if (firstTurn) {
             updateActivity(commentId, { phase: "done" });
             firstTurn = false;
           }
           responseId = addMessage({ type: "ai-response", content: token });
           setStreamingMessageId(responseId);
-          if (reasoningBuf) {
-            useChatStore.getState().appendReasoning(responseId, reasoningBuf);
-            reasoningBuf = "";
-          }
         } else {
-          appendToMessage(responseId, token);
+          contentBatch.push(token);
         }
         tickStreamTokens(token);
       };
@@ -228,10 +235,27 @@ export async function runAgentTurn(
         (usage) => addUsage(usage.input, usage.output),
         controller.signal,
         (delta) => {
-          if (responseId === null) reasoningBuf += delta;
-          else useChatStore.getState().appendReasoning(responseId, delta);
+          if (responseId !== null) {
+            useChatStore.getState().appendReasoning(responseId, delta);
+            return;
+          }
+          if (thoughtId === null) {
+            thoughtId = addMessage({ type: "ai-comment", content: "", thought: "" });
+          }
+          thoughtBatch.push(delta);
         }
-      );
+      ).catch((err: unknown) => {
+        flushStreams();
+        throw err;
+      });
+      flushStreams();
+      if (thoughtId === null && responseId === null && response.reasoning) {
+        thoughtId = addMessage({
+          type: "ai-comment",
+          content: "",
+          thought: response.reasoning,
+        });
+      }
       endStreamTimer();
       setStreamingMessageId(null);
 
@@ -246,9 +270,6 @@ export async function runAgentTurn(
           content: `${t.ai.errorPrefix} ${t.ai[issue]}`,
           isError: true,
         });
-        if (responseId === null && (reasoningBuf || response.reasoning)) {
-          useChatStore.getState().appendReasoning(errorId, reasoningBuf || response.reasoning || "");
-        }
         if (response.finishReason === "length" || response.streamCompleted === false) {
           useChatStore.getState().setTruncated(responseId ?? errorId, true);
         }
@@ -266,9 +287,6 @@ export async function runAgentTurn(
             type: "ai-response",
             content: response.content,
           });
-          if (response.reasoning) {
-            useChatStore.getState().appendReasoning(responseId, response.reasoning);
-          }
         }
         if (runSteps.length > 0 && responseId) {
           setAgentSteps(responseId, runSteps);
@@ -649,9 +667,6 @@ export async function runAgentTurn(
         isError: true,
         errorCode: code,
       });
-      if (responseId === null && reasoningBuf) {
-        useChatStore.getState().appendReasoning(errId, reasoningBuf);
-      }
       if (runSteps.length > 0) setAgentSteps(errId, runSteps);
     }
   } finally {

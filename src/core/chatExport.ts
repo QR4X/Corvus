@@ -7,6 +7,7 @@ export const EXPORTS_FOLDER = "corvus-ai/exports";
 export function limparMarcas(texto: string): string {
   return texto
     .replace(/<!--\s*corvus-steps:[\s\S]*?-->/g, "")
+    .replace(/<!--\s*corvus-trace:[\s\S]*?-->/g, "")
     .replace(/<!--\s*corvus:[^>]*-->\n?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

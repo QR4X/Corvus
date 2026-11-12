@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AIToolStep } from "../agent/types";
+import type { TraceItem } from "../ui/trace";
 import type { MessageAttachment } from "../providers/base";
 
 export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
@@ -42,6 +43,8 @@ export interface AIResponseMessage extends BaseMessage {
 
   reasoning?: string;
 
+  trace?: TraceItem[];
+
   variants?: string[];
   variantIndex?: number;
 }
@@ -78,6 +81,8 @@ export interface AICommentMessage extends BaseMessage {
   content: string;
 
   activity?: ActivityMeta;
+
+  thought?: string;
 }
 
 export interface AIOptionsMessage extends BaseMessage {
@@ -167,6 +172,7 @@ interface ChatState {
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
   appendReasoning: (id: string, text: string) => void;
+  appendThought: (id: string, text: string) => void;
 
   updateActivity: (
     id: string,
@@ -333,6 +339,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ms.map((m) =>
           m.id === id && m.type === "ai-response"
             ? { ...m, reasoning: (m.reasoning ?? "") + text }
+            : m
+        )
+      )
+    ),
+  appendThought: (id, text) =>
+    set((state) =>
+      escritaDoTurno(state, (ms) =>
+        ms.map((m) =>
+          m.id === id && m.type === "ai-comment"
+            ? { ...m, thought: (m.thought ?? "") + text }
             : m
         )
       )

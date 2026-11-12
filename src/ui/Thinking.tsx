@@ -1,25 +1,7 @@
 import { useEffect, useState } from "react";
-import { Icon } from "./Icon";
-import type { ActivityMeta } from "../store/chat";
 import { tr } from "../i18n/tr";
-
-export function elapsedLabel(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const resto = s % 60;
-  return `${m}m ${String(resto).padStart(2, "0")}s`;
-}
-
-export function thinkingStatus(activity?: ActivityMeta): string {
-  if (activity?.phase === "pending" && activity.toolName) {
-    return `${activity.toolName}(${JSON.stringify(activity.toolArguments ?? {})})`;
-  }
-  if (activity?.phase === "pending" && activity.iconPending !== "sparkles") {
-    return activity.pendingText;
-  }
-  return "Waiting for model response";
-}
+import { elapsedLabel } from "./trace";
+import { sharedTicker } from "./ticker";
 
 export function ThinkingGlyph() {
   return (
@@ -59,64 +41,18 @@ export function ThinkingGlyph() {
   );
 }
 
-export function ThinkingLine({
-
-  count,
-
-  since,
-
-  activity,
-  onOpen,
-}: {
-  count: number;
-  since: number;
-  activity?: ActivityMeta;
-  onOpen: () => void;
-}) {
-  const [agora, setAgora] = useState(() => Date.now());
-
-  useEffect(() => {
-    setAgora(Date.now());
-    const t = window.setInterval(() => setAgora(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, [since]);
-
-  const passado = Math.max(0, agora - since);
-  const texto = tr(thinkingStatus(activity));
-
-  return (
-    <button
-      type="button"
-      className="corvus-thinking"
-      disabled={count === 0}
-      onClick={onOpen}
-    >
-      <ThinkingGlyph />
-      <span className="corvus-thinking-label">
-        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
-        <span className="corvus-thinking-dot"> · </span>
-        {texto}
-      </span>
-      {count > 0 && <Icon name="chevron-right" size={15} />}
-    </button>
-  );
-}
-
 export function ThinkingInline({ since }: { since: number }) {
-  const [agora, setAgora] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    setAgora(Date.now());
-    const t = window.setInterval(() => setAgora(Date.now()), 1000);
-    return () => window.clearInterval(t);
+    setNow(Date.now());
+    return sharedTicker.subscribe(setNow);
   }, [since]);
-  const passado = Math.max(0, agora - since);
   return (
-    <span className="corvus-thinking is-inline">
-      <ThinkingGlyph />
-      <span className="corvus-thinking-label">
-        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
-        <span className="corvus-thinking-dot"> · </span>
-        {tr("Waiting for model response")}
+    <span className="corvus-trace-toggle is-inline">
+      <span className="corvus-trace-dot" aria-hidden="true" />
+      <span className="corvus-trace-shimmer">{tr("Thinking…")}</span>
+      <span className="corvus-trace-time">
+        {elapsedLabel(Math.max(0, now - since))}
       </span>
     </span>
   );
