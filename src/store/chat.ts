@@ -83,6 +83,8 @@ export interface AICommentMessage extends BaseMessage {
   activity?: ActivityMeta;
 
   thought?: string;
+
+  steer?: string;
 }
 
 export interface AIOptionsMessage extends BaseMessage {
@@ -237,6 +239,7 @@ interface ChatState {
   pushQueued: (text: string) => void;
   removeQueued: (index: number) => void;
   clearQueued: () => void;
+  drainQueued: () => string[];
   addAttachment: (att: MessageAttachment) => void;
   removeAttachment: (index: number) => void;
   setAttachments: (atts: MessageAttachment[]) => void;
@@ -572,6 +575,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   removeQueued: (index) =>
     set((state) => ({ queued: state.queued.filter((_, i) => i !== index) })),
   clearQueued: () => set({ queued: [] }),
+  drainQueued: () => {
+    let taken: string[] = [];
+    set((state) => {
+      taken = state.queued;
+      return taken.length > 0 ? { queued: [] } : state;
+    });
+    return taken;
+  },
   addAttachment: (att) =>
     set((state) => ({ attachments: [...state.attachments, att] })),
   removeAttachment: (index) =>

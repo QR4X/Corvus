@@ -1110,7 +1110,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                       <button
                         type="button"
                         className="corvus-round-btn"
-                        aria-label={tr("Send when this finishes")}
+                        aria-label={
+                          cfg.mode === "agent"
+                            ? tr("Queue message")
+                            : tr("Send when this finishes")
+                        }
                         onPointerDown={(e) => e.preventDefault()}
                         onClick={() => void submit()}
                       >

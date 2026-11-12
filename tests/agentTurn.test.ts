@@ -6,7 +6,7 @@ import { TOOL_REGISTRY } from "../src/agent/tools";
 import { ConfirmationModal } from "../src/agent/ConfirmationModal";
 import { getTranslations } from "../src/i18n";
 import { storeMessagesToProvider } from "../src/agent/conversation";
-import { type Provider, type ProviderResponse } from "../src/providers/base";
+import { type Provider, type ProviderMessage, type ProviderResponse } from "../src/providers/base";
 import { openrouterProvider } from "../src/providers/openrouter";
 import { fakeStreamResponse, sse } from "./helpers/streamMock";
 import { __setRequestUrl } from "./obsidian-stub";
@@ -165,6 +165,57 @@ describe("real Agent loop", () => {
     const messages = useChatStore.getState().background!.messages;
     expect(messages.at(-1)).toMatchObject({ isError: true, agentSteps: [expect.objectContaining({ id: "call-1" })] });
     expect(storeMessagesToProvider(messages, undefined, true).some((m) => m.role === "tool")).toBe(true);
+  });
+});
+
+describe("steering queue", () => {
+  function recording(responses: ProviderResponse[]) {
+    const seen: ProviderMessage[][] = [];
+    const p = provider(responses);
+    const inner = p.streamChat;
+    p.streamChat = vi.fn<Provider["streamChat"]>((req, ...rest) => {
+      seen.push([...req.messages]);
+      return inner(req, ...rest);
+    });
+    return { p, seen };
+  }
+
+  it("injects queued messages after the tool results and clears the queue", async () => {
+    vi.spyOn(TOOL_REGISTRY, "vault_list").mockImplementation(async () => {
+      useChatStore.getState().pushQueued("Also check B");
+      useChatStore.getState().pushQueued("Skip C");
+      return "listed";
+    });
+    const { p, seen } = recording([step(1), { content: "Final answer" }]);
+    await runAgentTurn(context(p), "Research and answer");
+    expect(seen).toHaveLength(2);
+    expect(seen[1].slice(-2)).toEqual([
+      { role: "tool", toolCallId: "call-1", content: "listed" },
+      { role: "user", content: "Also check B\n\nSkip C" },
+    ]);
+    expect(useChatStore.getState().queued).toEqual([]);
+    const messages = useChatStore.getState().messages;
+    const steerAt = messages.findIndex((m) => m.type === "ai-comment" && m.steer === "Also check B\n\nSkip C");
+    const toolAt = messages.findIndex((m) => m.type === "ai-comment" && m.activity?.toolName === "vault_list");
+    expect(steerAt).toBeGreaterThan(toolAt);
+    expect(messages.at(-1)).toMatchObject({ type: "ai-response", content: "Final answer" });
+    expect(messages.filter((m) => m.type === "user")).toHaveLength(1);
+    const history = storeMessagesToProvider(messages, undefined, true);
+    expect(history.slice(-3)).toEqual([
+      { role: "tool", toolCallId: "call-1", content: "listed" },
+      { role: "user", content: "Also check B\n\nSkip C" },
+      { role: "assistant", content: "Final answer" },
+    ]);
+  });
+
+  it("does not inject before the first model call and leaves the final-answer queue intact", async () => {
+    useChatStore.getState().pushQueued("Queued early");
+    const { p, seen } = recording([{ content: "Final answer" }]);
+    await runAgentTurn(context(p), "Research and answer");
+    expect(seen).toHaveLength(1);
+    expect(seen[0].some((m) => m.content === "Queued early")).toBe(false);
+    expect(useChatStore.getState().queued).toEqual(["Queued early"]);
+    expect(useChatStore.getState().messages.some((m) => m.type === "ai-comment" && m.steer !== undefined)).toBe(false);
   });
 });
 
