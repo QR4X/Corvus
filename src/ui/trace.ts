@@ -242,11 +242,20 @@ export function currentStepLabel(items: TraceItem[]): string {
   return "";
 }
 
-export function summaryLabel(items: TraceItem[], elapsedMs: number | null): string {
+export function summaryLabel(
+  items: TraceItem[],
+  elapsedMs: number | null,
+  stopped = false
+): string {
+  const time = elapsedMs === null ? "" : elapsedLabel(Math.max(1000, elapsedMs));
   const parts = [
-    elapsedMs === null
-      ? tr("Thought")
-      : tr("Thought for {time}", { time: elapsedLabel(Math.max(1000, elapsedMs)) }),
+    stopped
+      ? time
+        ? tr("Stopped after {time}", { time })
+        : tr("Stopped")
+      : time
+        ? tr("Thought for {time}", { time })
+        : tr("Thought"),
   ];
   const steps = countSteps(items);
   if (steps > 0) {

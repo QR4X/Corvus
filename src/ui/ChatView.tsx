@@ -891,7 +891,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
         {}
         {pensandoAgora && (
-          <ThinkingTrace group={liveGroup} live app={plugin.app} />
+          <ThinkingTrace
+            group={liveGroup}
+            live={isLoading}
+            stopped={!isLoading}
+            app={plugin.app}
+          />
         )}
       </div>
 
