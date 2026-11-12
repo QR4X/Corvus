@@ -93,6 +93,7 @@ import {
 } from "./notePicker";
 import { StarterScreen } from "./StarterScreen";
 import { ThinkingLine } from "./Thinking";
+import { compactActions } from "./thinkingSummary";
 import type { ComposerInject } from "./App";
 import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
@@ -276,7 +277,7 @@ export function ChatView({
           kind: "step",
           step,
         }));
-        const todas = [...narradas, ...passos];
+        const todas = compactActions([...narradas, ...passos]);
         if (todas.length > 0) actionsByResponse.set(m.id, todas);
         for (const c of bucket) hiddenIds.add(c.id);
         bucket = [];
@@ -296,7 +297,7 @@ export function ChatView({
         bucket.unshift({ kind: "activity", activity: m.activity });
       }
     }
-    return bucket;
+    return compactActions(bucket);
   }, [messages]);
   const pendingActivity = [...liveTurn]
     .reverse()

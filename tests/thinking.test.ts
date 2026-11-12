@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { elapsedLabel, thinkingStatus } from "../src/ui/Thinking";
+import { compactActions } from "../src/ui/thinkingSummary";
+import type { ActivityMeta } from "../src/store/chat";
 
 describe("thinkingStatus", () => {
   it("reports an honest model wait instead of a rotating placeholder", () => {
@@ -13,7 +15,7 @@ describe("thinkingStatus", () => {
     ).toBe("Waiting for model response");
   });
 
-  it("shows a real pending tool call and its exact arguments", () => {
+  it("shows a compact label for a pending tool call, never raw arguments", () => {
     expect(
       thinkingStatus({
         phase: "pending",
@@ -22,7 +24,7 @@ describe("thinkingStatus", () => {
         toolName: "vault_edit",
         toolArguments: { path: "Notes/example.md", oldStr: "old" },
       })
-    ).toBe('vault_edit({"path":"Notes/example.md","oldStr":"old"})');
+    ).toBe("Editing Notes/example.md");
   });
 
   it("shows a real non-agent operation while it is active", () => {
@@ -51,5 +53,33 @@ describe("elapsedLabel", () => {
 
   it("nunca mostra negativo", () => {
     expect(elapsedLabel(-3000)).toBe("0s");
+  });
+});
+
+describe("compactActions", () => {
+  const act = (text: string, phase: ActivityMeta["phase"] = "done") => ({
+    kind: "activity" as const,
+    activity: {
+      phase,
+      iconPending: "eye",
+      pendingText: text,
+      doneText: text,
+      toolName: "vault_read",
+    },
+  });
+
+  it("drops empty reasoning and consecutive duplicates", () => {
+    const out = compactActions([
+      { kind: "reasoning" as const, text: "  " },
+      act("Read A"),
+      act("Read A"),
+      act("Read B"),
+      act("Read A"),
+    ]);
+    expect(out).toHaveLength(3);
+  });
+
+  it("keeps the same entry when its phase differs", () => {
+    expect(compactActions([act("Read A", "pending"), act("Read A")])).toHaveLength(2);
   });
 });

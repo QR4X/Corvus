@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import type { ActivityMeta } from "../store/chat";
-import { tr } from "../i18n/tr";
+import { thinkingLabel } from "./thinkingSummary";
 
 export function elapsedLabel(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -11,15 +11,7 @@ export function elapsedLabel(ms: number): string {
   return `${m}m ${String(resto).padStart(2, "0")}s`;
 }
 
-export function thinkingStatus(activity?: ActivityMeta): string {
-  if (activity?.phase === "pending" && activity.toolName) {
-    return `${activity.toolName}(${JSON.stringify(activity.toolArguments ?? {})})`;
-  }
-  if (activity?.phase === "pending" && activity.iconPending !== "sparkles") {
-    return activity.pendingText;
-  }
-  return "Waiting for model response";
-}
+export { thinkingStatus } from "./thinkingSummary";
 
 export function ThinkingGlyph() {
   return (
@@ -82,7 +74,7 @@ export function ThinkingLine({
   }, [since]);
 
   const passado = Math.max(0, agora - since);
-  const texto = tr(thinkingStatus(activity));
+  const texto = thinkingLabel(activity);
 
   return (
     <button
@@ -116,7 +108,7 @@ export function ThinkingInline({ since }: { since: number }) {
       <span className="corvus-thinking-label">
         <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
         <span className="corvus-thinking-dot"> · </span>
-        {tr("Waiting for model response")}
+        {thinkingLabel()}
       </span>
     </span>
   );
