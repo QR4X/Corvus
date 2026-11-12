@@ -5,6 +5,7 @@ import { geminiProvider } from "./gemini";
 import { openrouterProvider } from "./openrouter";
 import { nimProvider } from "./nim";
 import { ollamaProvider } from "./ollama";
+import { raceAbort } from "./abort";
 import { anotarUso, conferirGasto } from "../usage/recorder";
 
 export const providers: Record<string, Provider> = {
@@ -30,24 +31,30 @@ function comRegistro(p: Provider): Provider {
     let aceito = false;
     let ultimo: Usage | null = null;
     try {
-      const res = await p.streamChat(
-        req,
-        apiKey,
-        (t) => {
-          aceito = true;
-          onToken(t);
-        },
-        (u) => {
-          aceito = true;
-          ultimo = u;
-          onUsage?.(u);
-        },
-        signal,
-        onReasoning &&
-          ((d) => {
+      const res = await raceAbort(
+        p.streamChat(
+          req,
+          apiKey,
+          (t) => {
+            if (signal?.aborted) return;
             aceito = true;
-            onReasoning(d);
-          })
+            onToken(t);
+          },
+          (u) => {
+            if (signal?.aborted) return;
+            aceito = true;
+            ultimo = u;
+            onUsage?.(u);
+          },
+          signal,
+          onReasoning &&
+            ((d) => {
+              if (signal?.aborted) return;
+              aceito = true;
+              onReasoning(d);
+            })
+        ),
+        signal
       );
       aceito = true;
       ultimo ??= res.usage ?? null;
