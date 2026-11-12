@@ -47,7 +47,7 @@ describe("switching the model in a running chat", () => {
     session.dispose();
   });
 
-  it("keeps history in the neutral format and adds a non-persisted marker", () => {
+  it("keeps the history unchanged in the neutral format", () => {
     const session = build();
     const st = useChatStore.getState();
     st.addMessage({ type: "user", content: "hi" });
@@ -57,9 +57,8 @@ describe("switching the model in a running chat", () => {
     session.selectModel("openai", "gpt-5");
 
     const msgs = useChatStore.getState().messages;
-    expect(msgs).toHaveLength(3);
-    expect(msgs[2].type).toBe("ai-comment");
-    expect(msgs[2].content).toMatch(/^Model switched to /);
+    expect(msgs).toHaveLength(2);
+    expect(session.config.model).toBe("gpt-5");
     expect(storeMessagesToProvider(msgs)).toEqual([
       { role: "user", content: "hi" },
       { role: "assistant", content: "hello" },
@@ -67,7 +66,7 @@ describe("switching the model in a running chat", () => {
     session.dispose();
   });
 
-  it("does nothing for the same model and adds no marker without a chat", () => {
+  it("does nothing for the same model and does not lock a fresh chat", () => {
     const session = build();
     session.selectModel("openai", "gpt-4o");
     expect(useChatStore.getState().messages).toHaveLength(0);

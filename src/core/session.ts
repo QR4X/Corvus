@@ -11,7 +11,6 @@ import { modeloSalvoPara } from "./defaultModel";
 import { nomeCompleto } from "./ollamaDefault";
 import { getTranslations } from "../i18n";
 import { tr } from "../i18n/tr";
-import { prettyModelName } from "../providers/modelDescriptions";
 import {
   saveChat,
   loadChat,
@@ -188,20 +187,6 @@ export class ChatSession {
     if (before.provider === provider && before.model === model) return;
     if (this.provider !== provider) this.setProvider(provider);
     this.setModel(model);
-    const st = useChatStore.getState();
-    if (before.locked && st.messages.length > 0) {
-      st.addMessage({
-        type: "ai-comment",
-        content: tr("Model switched to {model}", { model: prettyModelName(model) }),
-        activity: {
-          phase: "done",
-          iconPending: "repeat",
-          iconDone: "repeat",
-          pendingText: "",
-          doneText: tr("Model switched to {model}", { model: prettyModelName(model) }),
-        },
-      });
-    }
   }
 
   setModel(model: string): void {
