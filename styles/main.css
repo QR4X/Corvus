@@ -6512,14 +6512,18 @@ body.is-mobile .modal-container.corvus-prompt-container .modal {
 }
 
 .corvus-root .corvus-msg-text,
-.corvus-root .corvus-msg-text * {
+.corvus-root .corvus-msg-text *,
+.corvus-root .corvus-markdown,
+.corvus-root .corvus-markdown * {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
 }
 
 .corvus-root .corvus-msg-text button,
-.corvus-root .corvus-msg-text button * {
+.corvus-root .corvus-msg-text button *,
+.corvus-root .corvus-markdown button,
+.corvus-root .corvus-markdown button * {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;

@@ -22,8 +22,14 @@ describe("message text is selectable", () => {
     expect(b).toContain("-webkit-touch-callout: default");
   });
 
+  it("enables selection on rendered assistant markdown", () => {
+    const b = bloco(".corvus-root .corvus-markdown *");
+    expect(b).toContain("-webkit-user-select: text");
+    expect(b).toContain("user-select: text");
+  });
+
   it("keeps controls inside messages unselectable", () => {
-    const b = bloco(".corvus-root .corvus-msg-text button *");
+    const b = bloco(".corvus-root .corvus-markdown button *");
     expect(b).toContain("-webkit-user-select: none");
     expect(b).toContain("user-select: none");
   });
