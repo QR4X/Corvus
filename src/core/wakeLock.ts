@@ -23,9 +23,16 @@ export interface WakeLockWatch {
   dispose(): void;
 }
 
+export function ambienteDoNavegador(
+  nav: { wakeLock?: WakeLockEnv["wakeLock"] } = navigator,
+  doc: WakeLockEnv["document"] = document
+): WakeLockEnv {
+  return { wakeLock: nav.wakeLock, document: doc };
+}
+
 export function acompanharEscrita(
   ligado: () => boolean,
-  env: WakeLockEnv = window
+  env: WakeLockEnv = ambienteDoNavegador()
 ): WakeLockWatch {
   let sentinela: WakeLockSentinel | null = null;
 
