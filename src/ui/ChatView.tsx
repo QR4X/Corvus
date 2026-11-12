@@ -13,13 +13,11 @@ import {
   Notice,
   Platform,
   requestUrl,
-  type App,
 } from "obsidian";
 import type CorvusPlugin from "../main";
 import {
   NEW_CHAT_DRAFT,
   useChatStore,
-  type ActivityMeta,
   type ChatMessage,
 } from "../store/chat";
 import type { ChatSession } from "../core/session";
@@ -38,8 +36,6 @@ import {
   describeEffort,
   type EffortLevel,
 } from "../core/effort";
-import type { AIToolStep } from "../agent/types";
-import { agentActivitySpec } from "../core/helpers";
 import type { Skill } from "../skills/skills";
 import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
@@ -67,7 +63,6 @@ import {
 import { getModelCapabilities } from "../providers/modelCapabilities";
 import { getTranscriptionCredential } from "../providers/transcribe";
 import { ConfirmModal, PromptModal, openPluginSettings } from "./modals";
-import { desfaziveis, desfazerRodada, desfazerUma, idDesfazivel } from "./agentUndo";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -92,7 +87,8 @@ import {
   type NoteLike,
 } from "./notePicker";
 import { StarterScreen } from "./StarterScreen";
-import { ThinkingLine } from "./Thinking";
+import { ThinkingTrace } from "./ThinkingTrace";
+import { buildTurnTraces, type TraceGroup, type TurnTraces } from "./trace";
 import type { ComposerInject } from "./App";
 import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
@@ -195,8 +191,6 @@ export function ChatView({
   const cameraRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
-  const [tools, setTools] = useState<TurnAction[] | null>(null);
-  const [toolAt, setToolAt] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLElement>(null);
 
@@ -254,68 +248,21 @@ export function ChatView({
     []
   );
 
-  const { hiddenIds, actionsByResponse } = useMemo(() => {
-    const hiddenIds = new Set<string>();
-    const actionsByResponse = new Map<string, TurnAction[]>();
-    let bucket: ChatMessage[] = [];
-    for (const m of messages) {
-      if (m.type === "ai-comment" && m.activity) {
-        bucket.push(m);
-        hiddenIds.add(m.id);
-        continue;
-      }
-      if (m.type === "ai-response") {
-        const narradas: TurnAction[] = bucket
-          .map((c): TurnAction | null =>
-            c.type === "ai-comment" && c.activity
-              ? { kind: "activity", activity: c.activity }
-              : null
-          )
-          .filter((a): a is TurnAction => a !== null);
-        const passos: TurnAction[] = (m.agentSteps ?? []).map((step) => ({
-          kind: "step",
-          step,
-        }));
-        const todas = [...narradas, ...passos];
-        if (todas.length > 0) actionsByResponse.set(m.id, todas);
-        for (const c of bucket) hiddenIds.add(c.id);
-        bucket = [];
-      } else if (m.type === "user") {
-        bucket = [];
-      }
-    }
-    return { hiddenIds, actionsByResponse };
+  const tracesRef = useRef<TurnTraces | undefined>(undefined);
+  const traces = useMemo(() => {
+    const next = buildTurnTraces(messages, tracesRef.current);
+    tracesRef.current = next;
+    return next;
   }, [messages]);
-
-  const liveTurn = useMemo(() => {
-    const bucket: TurnAction[] = [];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.type === "ai-response" || m.type === "user") break;
-      if (m.type === "ai-comment" && m.activity) {
-        bucket.unshift({ kind: "activity", activity: m.activity });
-      }
-    }
-    return bucket;
-  }, [messages]);
-  const pendingActivity = [...liveTurn]
-    .reverse()
-    .find(
-      (action): action is Extract<TurnAction, { kind: "activity" }> =>
-        action.kind === "activity" && action.activity.phase === "pending"
-    )?.activity;
+  const { hidden: hiddenIds, byResponse: tracesByResponse, live: liveGroup } = traces;
 
   const ultima = messages[messages.length - 1];
   const jaEscrevendo =
     ultima?.type === "ai-response" &&
     ultima.id === streamingId &&
     ultima.content.length > 0;
-  const pensandoAgora = (isLoading || liveTurn.length > 0) && !jaEscrevendo;
+  const pensandoAgora = (isLoading || liveGroup !== null) && !jaEscrevendo;
 
-  const desdeRef = useRef(0);
-  if (pensandoAgora && desdeRef.current === 0) desdeRef.current = Date.now();
-  if (!pensandoAgora && desdeRef.current !== 0) desdeRef.current = 0;
-  const pensandoDesde = desdeRef.current || Date.now();
 
   const [seguindo, setSeguindo] = useState(true);
 
@@ -715,12 +662,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     leitor.readAsDataURL(file);
   };
 
-  const abrirAcoes = useCallback((acoes: TurnAction[]) => {
-    setTools(acoes);
-
-    setToolAt(acoes.length === 1 ? 0 : null);
-  }, []);
-
   const submit = async () => {
     const text = draft.trim();
     if (!text) return;
@@ -942,8 +883,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               plugin={plugin}
               streaming={m.id === streamingId}
               glow={m.id === avisoId}
-              actions={actionsByResponse.get(m.id)}
-              onOpenTools={abrirAcoes}
+              trace={tracesByResponse.get(m.id)}
               idioma={uiLocale()}
             />
           ))
@@ -951,16 +891,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
         {}
         {pensandoAgora && (
-          <ThinkingLine
-            count={liveTurn.length}
-            since={pensandoDesde}
-            activity={pendingActivity}
-            onOpen={() => {
-              if (liveTurn.length === 0) return;
-              setTools(liveTurn);
-              setToolAt(liveTurn.length === 1 ? 0 : null);
-            }}
-          />
+          <ThinkingTrace group={liveGroup} live app={plugin.app} />
         )}
       </div>
 
@@ -1549,66 +1480,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       </Sheet>
 
       {}
-      <Sheet
-        title={
-          toolAt !== null && tools
-            ? actionTitle(tools[toolAt])
-            : (tools?.length ?? 0) === 1
-              ? tr("Ran 1 action")
-              : tr("Ran {n} actions", { n: tools?.length ?? 0 })
-        }
-        open={tools !== null}
-        onClose={() => {
-          setTools(null);
-          setToolAt(null);
-        }}
-        onBack={
-          toolAt !== null && (tools?.length ?? 0) > 1
-            ? () => setToolAt(null)
-            : undefined
-        }
-      >
-        {toolAt !== null && tools ? (
-          <ToolDetail
-            action={tools[toolAt]}
-            app={plugin.app}
-
-            onUndone={(id) =>
-              setTools((ts) =>
-                ts
-                  ? ts.map((x) =>
-                      x.kind === "activity" && x.activity.undoId === id
-                        ? { ...x, activity: { ...x.activity, undone: true } }
-                        : x
-                    )
-                  : ts
-              )
-            }
-          />
-        ) : (
-          <SheetGroup>
-            {(tools ?? []).map((a, i) => (
-              <SheetRow
-                key={i}
-                dense
-                icon={actionIcon(a)}
-                iconTone={actionFailed(a) ? "danger" : undefined}
-                title={actionTitle(a)}
-                note={actionNote(a)}
-                tag={
-                  actionFailed(a)
-                    ? tr("failed")
-                    : a.kind === "activity" && a.activity.undone
-                      ? tr("undone")
-                      : undefined
-                }
-                onClick={() => setToolAt(i)}
-              />
-            ))}
-          </SheetGroup>
-        )}
-      </Sheet>
-
       <Sheet title={tr("Effort")} open={sheet === "effort"} onClose={closeSheet}>
         <SheetGroup>
           {EFFORT_LEVELS.map((l) => (
@@ -1789,182 +1660,6 @@ function Pill({
   );
 }
 
-function activityText(a: ActivityMeta): string {
-  if (a.phase === "pending") return a.pendingText;
-  if (a.phase === "done") return a.doneText ?? a.pendingText;
-  return a.failedText ?? tr("Failed");
-}
-
-export type TurnAction =
-  | { kind: "step"; step: AIToolStep }
-  | { kind: "activity"; activity: ActivityMeta }
-
-  | { kind: "reasoning"; text: string };
-
-function actionTitle(a: TurnAction): string {
-  if (a.kind === "step") return a.step.name;
-  if (a.kind === "activity") return activityText(a.activity);
-  return tr("Reasoning");
-}
-
-function actionNote(a: TurnAction): string | undefined {
-  if (a.kind === "step") return toolSummary(a.step);
-  if (a.kind === "reasoning") return tr("{n} chars", { n: a.text.length });
-  return undefined;
-}
-
-function actionFailed(a: TurnAction): boolean {
-  if (a.kind === "step") return !a.step.ok;
-  if (a.kind === "activity") return a.activity.phase === "failed";
-  return false;
-}
-
-function actionIcon(a: TurnAction): string {
-  if (a.kind === "reasoning") return "brain";
-  if (a.kind === "activity") {
-    return a.activity.phase === "failed"
-      ? a.activity.iconFailed ?? "circle-alert"
-      : a.activity.iconPending;
-  }
-  if (!a.step.ok) return "circle-alert";
-  return agentActivitySpec(a.step.name, a.step.arguments ?? {}).iconPending;
-}
-
-function toolSummary(step: AIToolStep): string {
-  const args = Object.entries(step.arguments ?? {});
-  if (args.length === 0) return step.ok ? tr("done") : tr("failed");
-  const [chave, valor] = args[0];
-  const texto = typeof valor === "string" ? valor : JSON.stringify(valor);
-  return `${chave}: ${texto}`.slice(0, 80);
-}
-
-function UndoChip({
-  plugin,
-  actions,
-}: {
-  plugin: CorvusPlugin;
-  actions: TurnAction[];
-}) {
-  const [rodando, setRodando] = useState(false);
-  const ids = desfaziveis(
-    actions.map((a) => (a.kind === "activity" ? a.activity : undefined))
-  );
-  if (ids.length === 0) return null;
-  return (
-    <button
-      type="button"
-      className="corvus-tools-chip"
-      disabled={rodando}
-      aria-label={
-        ids.length === 1
-          ? tr("Undo the agent's change")
-          : tr("Undo the agent's {n} changes", { n: ids.length })
-      }
-      onClick={() => {
-        setRodando(true);
-        void desfazerRodada(plugin.app, ids).finally(() => setRodando(false));
-      }}
-    >
-      <Icon name="undo-2" size={15} />
-      <span>{tr("Undo")}</span>
-    </button>
-  );
-}
-
-function ToolDetail({
-  action,
-  app,
-  onUndone,
-}: {
-  action: TurnAction;
-  app: App;
-  onUndone: (id: string) => void;
-}) {
-  const ok = !actionFailed(action);
-  const pending =
-    action.kind === "activity" && action.activity.phase === "pending";
-  const [rodando, setRodando] = useState(false);
-  const desfazivel =
-    action.kind === "activity" ? idDesfazivel(action.activity) : null;
-  const desfeita = action.kind === "activity" && action.activity.undone;
-  return (
-    <div className="corvus-tool-detail">
-      {action.kind !== "reasoning" && (
-        <p className={ok ? "corvus-tool-state is-ok" : "corvus-tool-state"}>
-          <Icon
-            name={pending ? "loader-circle" : ok ? "circle-check" : "circle-alert"}
-            size={15}
-          />
-          {pending ? tr("Running") : ok ? tr("Completed") : tr("Failed")}
-        </p>
-      )}
-      {desfeita && (
-        <p className="corvus-tool-state is-undone">
-          <Icon name="undo-2" size={15} />
-          {tr("Undone")}
-        </p>
-      )}
-      {desfazivel && (
-        <button
-          type="button"
-          className="corvus-tool-undo"
-          disabled={rodando}
-          onClick={() => {
-            setRodando(true);
-            void desfazerUma(app, desfazivel)
-              .then((feito) => {
-                if (feito) onUndone(desfazivel);
-              })
-              .finally(() => setRodando(false));
-          }}
-        >
-          <Icon name="undo-2" size={16} />
-          <span>{tr("Undo this change")}</span>
-        </button>
-      )}
-      {action.kind === "step" ? (
-        <>
-          <p className="corvus-tool-label">{tr("Arguments")}</p>
-          <pre className="corvus-tool-block">
-            {JSON.stringify(action.step.arguments ?? {}, null, 2)}
-          </pre>
-          <p className="corvus-tool-label">{tr("Result")}</p>
-          <pre className="corvus-tool-block">
-            {action.step.result || tr("(empty)")}
-          </pre>
-        </>
-      ) : action.kind === "activity" ? (
-        action.activity.toolName ? (
-          <>
-            <p className="corvus-tool-label">{tr("Tool call")}</p>
-            <pre className="corvus-tool-block">
-              {action.activity.toolName}(
-                {JSON.stringify(action.activity.toolArguments ?? {}, null, 2)})
-            </pre>
-            <p className="corvus-tool-label">
-              {pending ? tr("Status") : tr("Result")}
-            </p>
-            <pre className="corvus-tool-block">
-              {pending
-                ? activityText(action.activity)
-                : action.activity.detail || activityText(action.activity)}
-            </pre>
-          </>
-        ) : (
-          <>
-            <p className="corvus-tool-label">{tr("What happened")}</p>
-            <pre className="corvus-tool-block">
-              {action.activity.detail || activityText(action.activity)}
-            </pre>
-          </>
-        )
-      ) : (
-        <pre className="corvus-tool-block is-prose">{action.text}</pre>
-      )}
-    </div>
-  );
-}
-
 function ReadAloudButton({
   plugin,
   text,
@@ -1999,8 +1694,7 @@ const MessageRow = memo(function MessageRow({
   plugin,
   streaming,
   glow,
-  actions,
-  onOpenTools,
+  trace,
 }: {
   msg: ChatMessage;
   plugin: CorvusPlugin;
@@ -2008,8 +1702,7 @@ const MessageRow = memo(function MessageRow({
 
   glow?: boolean;
 
-  actions?: TurnAction[];
-  onOpenTools?: (actions: TurnAction[]) => void;
+  trace?: TraceGroup;
 
   idioma?: string;
 }) {
@@ -2063,18 +1756,7 @@ const MessageRow = memo(function MessageRow({
             (glow ? " is-done" : "")
           }
         >
-          {msg.reasoning && (
-            <button
-              type="button"
-              className="corvus-tools-chip"
-              onClick={() =>
-                onOpenTools?.([{ kind: "reasoning", text: msg.reasoning ?? "" }])
-              }
-            >
-              <span>{tr("Reasoning")}</span>
-              <Icon name="chevron-right" size={15} />
-            </button>
-          )}
+          {trace && <ThinkingTrace group={trace} live={false} app={plugin.app} />}
           {msg.isError ? (
             <div className="corvus-msg-text">{msg.content}</div>
           ) : (
@@ -2088,58 +1770,12 @@ const MessageRow = memo(function MessageRow({
             <ReadAloudButton plugin={plugin} text={msg.content} />
           )}
           {msg.truncated && <small className="corvus-msg-note">{tr("truncated")}</small>}
-          {actions && actions.length > 0 && (
-            <div className="corvus-tools-row">
-              {}
-              <button
-                type="button"
-                className="corvus-tools-chip"
-                onClick={() => onOpenTools?.(actions)}
-              >
-                <span>
-                  {actions.length === 1
-                    ? tr("Ran 1 action")
-                    : tr("Ran {n} actions", { n: actions.length })}
-                </span>
-                <Icon name="chevron-right" size={15} />
-              </button>
-              {}
-              <UndoChip plugin={plugin} actions={actions} />
-            </div>
-          )}
         </div>
       );
     case "ai-comment":
       return (
         <div className="corvus-msg corvus-msg-comment" data-msg={msg.id}>
-          <Icon
-            name={
-              msg.activity?.phase === "failed"
-                ? "alert-triangle"
-                : msg.activity?.phase === "done"
-                  ? "check"
-                  : "loader"
-            }
-            size={13}
-          />
-          <span>
-            {msg.activity ? activityText(msg.activity) : msg.content}
-            {msg.activity && msg.content ? ` — ${msg.content}` : ""}
-          </span>
-          {msg.activity?.detail && (
-
-            <button
-              type="button"
-              className="corvus-tools-chip is-inline"
-              onClick={() =>
-                msg.activity &&
-                onOpenTools?.([{ kind: "activity", activity: msg.activity }])
-              }
-            >
-              <span>{tr("details")}</span>
-              <Icon name="chevron-right" size={14} />
-            </button>
-          )}
+          <span>{msg.content}</span>
         </div>
       );
     case "ai-options":
