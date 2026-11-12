@@ -84,6 +84,29 @@ export interface StoreMessageLike {
   isError?: boolean;
 
   agentSteps?: AIToolStep[];
+
+  steer?: string;
+
+  trace?: ReadonlyArray<{ kind: string; text?: string }>;
+}
+
+function steersByResponse(messages: StoreMessageLike[]): Map<StoreMessageLike, string> {
+  const out = new Map<StoreMessageLike, string>();
+  let pending: string[] = [];
+  for (const m of messages) {
+    if (m.type === "ai-comment" && m.steer !== undefined) {
+      pending.push(m.steer);
+    } else if (m.type === "user") {
+      pending = [];
+    } else if (m.type === "ai-response") {
+      const steers = pending.length > 0
+        ? pending
+        : (m.trace ?? []).flatMap((i) => (i.kind === "steer" && i.text ? [i.text] : []));
+      if (steers.length > 0) out.set(m, steers.join("\n\n"));
+      pending = [];
+    }
+  }
+  return out;
 }
 
 export function keepConversationMessage(m: StoreMessageLike): boolean {
@@ -131,9 +154,11 @@ export function storeMessagesToProvider(
   lastUserAttachments?: MessageAttachment[],
   toolMode = false
 ): ProviderMessage[] {
+  const steers = steersByResponse(messages);
   const usable = messages.filter(keepConversationMessage);
   const out: ProviderMessage[] = [];
   usable.forEach((m, idx) => {
+    const steer = steers.get(m);
     if (m.type === "ai-response" && m.agentSteps && m.agentSteps.length > 0) {
       if (toolMode) {
 
@@ -155,9 +180,10 @@ export function storeMessagesToProvider(
             content: s.ok ? body : `ERROR: ${body}`,
           });
         }
+        if (steer) out.push({ role: "user", content: steer });
         if (m.content && !m.isError) out.push({ role: "assistant", content: m.content });
       } else {
-
+        if (steer) out.push({ role: "user", content: steer });
         out.push({
           role: "assistant",
           content: flattenAgentResponse(m.isError ? "" : m.content ?? "", m.agentSteps),
@@ -165,6 +191,7 @@ export function storeMessagesToProvider(
       }
       return;
     }
+    if (steer) out.push({ role: "user", content: steer });
     const base: ProviderMessage = {
       role: m.type === "user" ? "user" : "assistant",
       content: m.content ?? "",

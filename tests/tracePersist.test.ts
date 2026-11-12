@@ -12,6 +12,7 @@ import {
   toStoredTrace,
 } from "../src/core/tracePersist";
 import { buildTrace } from "../src/ui/trace";
+import { storeMessagesToProvider } from "../src/agent/conversation";
 import type { ChatMessage } from "../src/store/chat";
 
 const base = (): Omit<ChatData, "messages"> => ({
@@ -74,6 +75,40 @@ describe("trace persistence", () => {
       items.map(({ id: _id, ...rest }) => rest);
     expect(strip(restored.items)).toEqual(strip(original.items));
     expect(restored.items.map((i) => i.kind)).toEqual(["thought", "tool", "thought"]);
+  });
+
+  it("round-trips steering messages even without thoughts", () => {
+    const messages: ChatMessage[] = [
+      live[0],
+      live[2],
+      { id: "s", type: "ai-comment", content: "", steer: "Also B", timestamp: 4 },
+      live[4],
+    ];
+    const stored = storedTracesByResponse(messages).get("r");
+    expect(stored?.map((i) => i.kind)).toEqual(["tool", "steer"]);
+    const md = renderChatMarkdown({
+      ...base(),
+      messages: [
+        { type: "user", content: "hi", timestamp: 1 },
+        { type: "ai-response", content: "Done <b>", timestamp: 5, trace: stored },
+      ],
+    });
+    const loaded = parseChatMarkdown(md).messages[1];
+    expect(loaded.trace).toEqual(stored);
+    expect(limparMarcas(md)).not.toContain("corvus-trace");
+    const restored = buildTrace([], {
+      id: "r2", type: "ai-response", content: loaded.content, timestamp: 5,
+      trace: fromStoredTrace(loaded.trace ?? [], "trace"),
+    });
+    expect(restored.items[1]).toMatchObject({ kind: "steer", text: "Also B" });
+    expect(storeMessagesToProvider([
+      { type: "user", content: "hi" },
+      { type: "ai-response", content: "Done", trace: restored.items },
+    ])).toEqual([
+      { role: "user", content: "hi" },
+      { role: "user", content: "Also B" },
+      { role: "assistant", content: "Done" },
+    ]);
   });
 
   it("loads files without a trace comment unchanged", () => {
