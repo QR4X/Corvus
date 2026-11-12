@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { isAbortError } from "./abort";
 import {
   Provider,
   ProviderError,
@@ -390,7 +391,7 @@ export class AnthropicProvider implements Provider {
         signal,
       });
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (isAbortError(err)) throw err;
 
       return streamFallbackToChat(
         () => this.chat(req, apiKey),

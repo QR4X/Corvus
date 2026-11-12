@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { isAbortError } from "./abort";
 import { pareceEmbeddingDoOllama } from "../rag/types";
 import {
   Provider,
@@ -367,7 +368,7 @@ export class OllamaProvider implements Provider {
         signal,
       });
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (isAbortError(err)) throw err;
       throw new ProviderError(
         `Connection to Ollama at ${endpoint} failed. Is the server running?`,
         "network"
