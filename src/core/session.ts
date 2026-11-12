@@ -165,16 +165,32 @@ export class ChatSession {
   }
 
   setProvider(provider: string): void {
-    if (this.config.locked) return;
     this.provider = provider;
     this.model = this.modelFor(provider);
     this.plugin.settings.defaultProvider = provider;
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }
 
+  private syncLockedModel(): void {
+    if (useChatStore.getState().sessionProvider === null) return;
+    useChatStore.setState({
+      sessionProvider: this.provider,
+      sessionModel: this.model,
+    });
+  }
+
+  selectModel(provider: string, model: string): void {
+    if (!model) return;
+    const before = this.config;
+    if (before.provider === provider && before.model === model) return;
+    if (this.provider !== provider) this.setProvider(provider);
+    this.setModel(model);
+  }
+
   setModel(model: string): void {
-    if (this.config.locked || !model) return;
+    if (!model) return;
     this.model = model;
     const s = this.plugin.settings;
     switch (this.provider) {
@@ -196,6 +212,7 @@ export class ChatSession {
       default:
         s.defaultModel = model;
     }
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }
