@@ -11,6 +11,7 @@ import { modeloSalvoPara } from "./defaultModel";
 import { nomeCompleto } from "./ollamaDefault";
 import { getTranslations } from "../i18n";
 import { tr } from "../i18n/tr";
+import { prettyModelName } from "../providers/modelDescriptions";
 import {
   saveChat,
   loadChat,
@@ -165,16 +166,46 @@ export class ChatSession {
   }
 
   setProvider(provider: string): void {
-    if (this.config.locked) return;
     this.provider = provider;
     this.model = this.modelFor(provider);
     this.plugin.settings.defaultProvider = provider;
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }
 
+  private syncLockedModel(): void {
+    if (useChatStore.getState().sessionProvider === null) return;
+    useChatStore.setState({
+      sessionProvider: this.provider,
+      sessionModel: this.model,
+    });
+  }
+
+  selectModel(provider: string, model: string): void {
+    if (!model) return;
+    const before = this.config;
+    if (before.provider === provider && before.model === model) return;
+    if (this.provider !== provider) this.setProvider(provider);
+    this.setModel(model);
+    const st = useChatStore.getState();
+    if (before.locked && st.messages.length > 0) {
+      st.addMessage({
+        type: "ai-comment",
+        content: tr("Model switched to {model}", { model: prettyModelName(model) }),
+        activity: {
+          phase: "done",
+          iconPending: "repeat",
+          iconDone: "repeat",
+          pendingText: "",
+          doneText: tr("Model switched to {model}", { model: prettyModelName(model) }),
+        },
+      });
+    }
+  }
+
   setModel(model: string): void {
-    if (this.config.locked || !model) return;
+    if (!model) return;
     this.model = model;
     const s = this.plugin.settings;
     switch (this.provider) {
@@ -196,6 +227,7 @@ export class ChatSession {
       default:
         s.defaultModel = model;
     }
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }

@@ -884,8 +884,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   };
 
   const chooseModel = (model: string) => {
-    if (pickProvider !== cfg.provider) session.setProvider(pickProvider);
-    session.setModel(model);
+    session.selectModel(pickProvider, model);
     closeSheet();
   };
 
@@ -1225,7 +1224,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         onClose={closeSheet}
         onBack={modelView === "root" ? undefined : () => setModelView("root")}
       >
-        {modelView === "root" && !locked && (
+        {modelView === "root" && (
           <SheetSeg
             label={tr("Provider")}
             activeId={pickProvider}
@@ -1244,7 +1243,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         )}
 
         {}
-        {modelView === "root" && !locked && (
+        {modelView === "root" && (
           <SheetSearch
             value={modelQuery}
             placeholder={tr("Search models")}
@@ -1275,7 +1274,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             ))}
           </SheetGroup>
         ) : modelView === "list" ||
-          (modelView === "root" && !locked && modelQuery.trim().length > 0) ? (
+          (modelView === "root" && modelQuery.trim().length > 0) ? (
           <ListaDeModelos
             provider={pickProvider}
 
@@ -1294,16 +1293,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           />
         ) : (
           <>
-            {locked ? (
-              <SheetGroup>
-                <SheetNote>
-                  {tr(
-                    "This chat is locked to {model} — start a new chat to pick another model. Effort still changes freely.",
-                    { model: prettyModelName(cfg.model) }
-                  )}
-                </SheetNote>
-              </SheetGroup>
-            ) : favorites.length > 0 ? (
+            {favorites.length > 0 ? (
 
               <SheetGroup>
                 {favorites.map((m) => (
@@ -1335,7 +1325,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             {}
             <SheetGroup>
               {}
-              {!locked && rest.length > 0 && (
+              {rest.length > 0 && (
                 <SheetNavRow
                   icon="list"
                   title={tr("All models")}
