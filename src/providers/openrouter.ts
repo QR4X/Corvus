@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { isAbortError } from "./abort";
 import {
   Provider,
   ProviderError,
@@ -172,7 +173,7 @@ export class OpenRouterProvider implements Provider {
         signal,
       });
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (isAbortError(err)) throw err;
 
       return recover();
     }

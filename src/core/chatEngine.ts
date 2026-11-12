@@ -1,4 +1,5 @@
 import { useChatStore } from "../store/chat";
+import { isAbortError } from "../providers/abort";
 import type { getProvider } from "../providers";
 import { semCredencial, describeProviderError } from "./helpers";
 import { resolveEffortConfig, effortToMaxTokensSmart, isEffortLevel } from "./effort";
@@ -239,7 +240,7 @@ export async function streamReply(
     }
 
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
+    if (isAbortError(err)) {
       if (responseId === null) {
         updateActivity(commentId, {
           phase: "failed",
