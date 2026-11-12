@@ -162,6 +162,12 @@ describe("labels", () => {
     expect(summaryLabel(buildTrace([thought("x")]).items, 100)).toBe("Thought for 1s");
   });
 
+  it("labels a stopped turn with its frozen elapsed time", () => {
+    const one = buildTrace([tool("Read A")]).items;
+    expect(summaryLabel(one, 10_000, true)).toBe("Stopped after 10s · 1 step");
+    expect(summaryLabel(one, null, true)).toBe("Stopped · 1 step");
+  });
+
   it("formats elapsed time", () => {
     expect(elapsedLabel(72_000)).toBe("1m 12s");
     expect(elapsedLabel(-3000)).toBe("0s");

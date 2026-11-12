@@ -145,10 +145,12 @@ function UndoChip({ app, items }: { app: App; items: TraceItem[] }) {
 export const ThinkingTrace = memo(function ThinkingTrace({
   group,
   live,
+  stopped = false,
   app,
 }: {
   group: TraceGroup | null;
   live: boolean;
+  stopped?: boolean;
   app: App;
 }) {
   const items = group?.items ?? [];
@@ -160,15 +162,17 @@ export const ThinkingTrace = memo(function ThinkingTrace({
     if (open) setEverOpen(true);
   }, [open]);
   const now = useNow(live);
+  const lastLive = useRef<number | null>(null);
 
   if (items.length === 0 && !live) return null;
 
   const startedAt = group?.startedAt ?? mountedAt.current;
+  if (live) lastLive.current = Math.max(0, now - startedAt);
   const elapsed = live
-    ? Math.max(0, now - startedAt)
+    ? lastLive.current
     : group?.endedAt != null && group.startedAt !== null
       ? Math.max(0, group.endedAt - group.startedAt)
-      : null;
+      : lastLive.current;
 
   const toggle = () => setManual(!open);
   const step = live ? currentStepLabel(items) : "";
@@ -190,7 +194,7 @@ export const ThinkingTrace = memo(function ThinkingTrace({
               {step && <span className="corvus-trace-step">{step}</span>}
             </>
           ) : (
-            <span className="corvus-trace-summary">{summaryLabel(items, elapsed)}</span>
+            <span className="corvus-trace-summary">{summaryLabel(items, elapsed, stopped)}</span>
           )}
           <Icon name="chevron-right" size={14} className="corvus-trace-chevron" />
         </button>
