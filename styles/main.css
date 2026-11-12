@@ -4640,66 +4640,278 @@ input[type="range"].corvus-slider::-webkit-slider-thumb {
   pointer-events: auto;
 }
 
-.corvus-root .corvus-thinking.is-inline {
+.corvus-root .corvus-trace {
+  align-self: stretch;
+  contain: content;
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+}
+
+.corvus-root .corvus-trace-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--corvus-1) var(--corvus-3);
+}
+
+.corvus-root .corvus-trace-toggle {
   display: inline-flex;
   align-items: center;
   gap: var(--corvus-2);
   min-width: 0;
-  color: var(--text-accent);
-  font-family: var(--font-interface);
-  font-size: var(--font-ui-small);
-}
-
-.corvus-root button.corvus-thinking {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--corvus-2);
-  padding: 0;
+  max-width: 100%;
+  padding: var(--corvus-1) 0;
   border: none;
+  border-radius: 0;
   background: none;
   box-shadow: none;
-  color: var(--text-accent);
-  font-family: var(--font-interface);
-  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+  font: inherit;
   cursor: pointer;
-  max-width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.corvus-root button.corvus-thinking > svg {
-  flex: none;
+.corvus-root .corvus-trace-toggle:hover {
+  background: none;
+  color: var(--text-normal);
 }
 
-.corvus-root button.corvus-thinking:disabled {
+.corvus-root .corvus-trace-toggle.is-inline {
   cursor: default;
 }
 
-.corvus-root button.corvus-thinking:hover:not(:disabled) {
-  background: none;
+.corvus-root .corvus-trace-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+  animation: corvus-trace-pulse 1.4s ease-in-out infinite;
 }
 
-.corvus-root .corvus-thinking-label {
+.corvus-root .corvus-trace-shimmer {
+  flex: none;
+  color: var(--text-muted);
+  animation: corvus-trace-pulse 1.4s ease-in-out infinite;
+}
+
+.corvus-root .corvus-trace-time,
+.corvus-root .corvus-trace-step {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.corvus-root .corvus-trace-step {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--text-accent);
-  
-  animation: corvus-thinking-breathe 2.4s ease-in-out infinite;
 }
 
-.corvus-root .corvus-thinking-time,
-.corvus-root .corvus-thinking-dot {
-  opacity: 0.7;
+.corvus-root .corvus-trace-step::before {
+  content: "· ";
 }
 
-@keyframes corvus-thinking-breathe {
+.corvus-root .corvus-trace-chevron {
+  flex: none;
+  transition: transform 0.18s ease;
+}
+
+.corvus-root .corvus-trace.is-open .corvus-trace-chevron {
+  transform: rotate(90deg);
+}
+
+.corvus-root .corvus-trace-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.corvus-root .corvus-trace.is-open .corvus-trace-collapse {
+  grid-template-rows: 1fr;
+}
+
+.corvus-root .corvus-trace-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.corvus-root .corvus-trace-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--corvus-2);
+  padding: var(--corvus-1) 0 var(--corvus-2);
+}
+
+.corvus-root .corvus-trace-thought {
+  padding-left: var(--corvus-3);
+  border-left: 2px solid var(--background-modifier-border);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.corvus-root .corvus-trace-thought.is-live {
+  max-height: 9em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.5em);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 1.5em);
+}
+
+.corvus-root .corvus-trace-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.corvus-root button.corvus-trace-row {
+  display: flex;
+  align-items: center;
+  gap: var(--corvus-2);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.corvus-root button.corvus-trace-row:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.corvus-root button.corvus-trace-row:hover:not(:disabled) {
+  background: none;
+  color: var(--text-normal);
+}
+
+.corvus-root .corvus-trace-icon {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.corvus-root .corvus-trace-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.corvus-root .corvus-trace-mark {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.corvus-root .corvus-trace-tool.is-failed .corvus-trace-mark,
+.corvus-root .corvus-trace-tool.is-failed .corvus-trace-icon,
+.corvus-root .corvus-trace-tool.is-failed .corvus-trace-label {
+  color: var(--color-red);
+}
+
+.corvus-root .corvus-trace-tool.is-undone .corvus-trace-label {
+  text-decoration: line-through;
+}
+
+.corvus-root .corvus-trace-spinner {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--text-faint);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: corvus-trace-spin 0.8s linear infinite;
+}
+
+.corvus-root .corvus-trace-result {
+  padding-left: 21px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+}
+
+.corvus-root .corvus-trace-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--corvus-1);
+  padding-left: 21px;
+}
+
+.corvus-root .corvus-trace-pre {
+  margin: 0;
+  padding: var(--corvus-2);
+  max-height: 14em;
+  overflow: auto;
+  border-radius: var(--corvus-r);
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.corvus-root button.corvus-trace-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--corvus-1);
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.corvus-root button.corvus-trace-undo:hover:not(:disabled) {
+  background: none;
+  color: var(--text-normal);
+}
+
+@keyframes corvus-trace-pulse {
   0%,
   100% {
-    opacity: 0.72;
+    opacity: 0.35;
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes corvus-trace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .corvus-root .corvus-trace-dot,
+  .corvus-root .corvus-trace-shimmer,
+  .corvus-root .corvus-trace-spinner {
+    animation: none;
+  }
+  .corvus-root .corvus-trace-collapse,
+  .corvus-root .corvus-trace-chevron {
+    transition: none;
   }
 }
 
@@ -4756,9 +4968,6 @@ input[type="range"].corvus-slider::-webkit-slider-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .corvus-root .corvus-thinking-label {
-    animation: none;
-  }
   .corvus-root .corvus-thinking-glyph svg {
     animation: none;
     opacity: 0;
