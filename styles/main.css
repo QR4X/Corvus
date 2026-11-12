@@ -4765,6 +4765,25 @@ input[type="range"].corvus-slider::-webkit-slider-thumb {
   mask-image: linear-gradient(to bottom, transparent 0, #000 1.5em);
 }
 
+.corvus-root .corvus-trace-steer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--corvus-2);
+  color: var(--text-normal);
+}
+
+.corvus-root .corvus-trace-steer .corvus-trace-icon {
+  margin-top: 2px;
+}
+
+.corvus-root .corvus-trace-steer-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .corvus-root .corvus-trace-tool {
   display: flex;
   flex-direction: column;

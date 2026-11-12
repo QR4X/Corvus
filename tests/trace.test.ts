@@ -108,6 +108,15 @@ describe("buildTrace", () => {
     expect(g.endedAt).toBe(13000);
   });
 
+  it("places steering messages in order without counting them as steps or thoughts", () => {
+    const steer: ChatMessage = { id: `s${++n}`, type: "ai-comment", content: "", steer: "Also B", timestamp: 1000 };
+    const g = buildTrace([thought("plan"), tool("Read A"), steer, thought("next")]);
+    expect(g.items.map((i) => i.kind)).toEqual(["thought", "tool", "steer", "thought"]);
+    expect(g.items[2]).toMatchObject({ kind: "steer", text: "Also B" });
+    expect(summaryLabel(g.items, 2000)).toBe("Thought for 2s · 1 step");
+    expect(buildTurnTraces([user(), steer]).hidden.has(steer.id)).toBe(true);
+  });
+
   it("uses the tool summary as the result line and keeps full output for expansion", () => {
     const g = buildTrace([
       tool("Read A", "done", { detail: "line one\nline two" }, "1.2k chars"),

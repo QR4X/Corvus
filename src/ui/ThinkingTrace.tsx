@@ -91,12 +91,23 @@ function ToolRow({ tool }: { tool: TraceTool }) {
   );
 }
 
+function SteerRow({ text }: { text: string }) {
+  return (
+    <div className="corvus-trace-steer">
+      <Icon name="corner-down-right" size={13} className="corvus-trace-icon" />
+      <span className="corvus-trace-steer-text">{tr("You: {text}", { text })}</span>
+    </div>
+  );
+}
+
 function TraceBody({ items, live }: { items: TraceItem[]; live: boolean }) {
   return (
     <div className="corvus-trace-body">
       {items.map((item) =>
         item.kind === "thought" ? (
           <ThoughtSegment key={item.id} text={item.text} live={live} />
+        ) : item.kind === "steer" ? (
+          <SteerRow key={item.id} text={item.text} />
         ) : (
           <ToolRow key={item.id} tool={item} />
         )

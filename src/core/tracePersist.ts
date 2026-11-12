@@ -3,6 +3,7 @@ import { buildTurnTraces, type TraceItem, type TraceTool } from "../ui/trace";
 
 export type StoredTraceItem =
   | { kind: "thought"; text: string }
+  | { kind: "steer"; text: string }
   | {
       kind: "tool";
       label: string;
@@ -28,6 +29,10 @@ export function toStoredTrace(items: TraceItem[]): StoredTraceItem[] {
         item.text.length > budget ? item.text.slice(0, budget).trimEnd() + "…" : item.text;
       budget -= item.text.length;
       out.push({ kind: "thought", text });
+      continue;
+    }
+    if (item.kind === "steer") {
+      out.push({ kind: "steer", text: item.text });
       continue;
     }
     const args =
@@ -62,7 +67,7 @@ export function storedTracesByResponse(
   const out = new Map<string, StoredTraceItem[]>();
   for (const [id, group] of buildTurnTraces(messages).byResponse) {
     const stored = toStoredTrace(group.items);
-    if (stored.some((i) => i.kind === "thought")) out.set(id, stored);
+    if (stored.some((i) => i.kind !== "tool")) out.set(id, stored);
   }
   return out;
 }
@@ -74,7 +79,8 @@ export function isStoredTrace(value: unknown): value is StoredTraceItem[] {
       (v) =>
         v &&
         typeof v === "object" &&
-        ((v as { kind?: string }).kind === "thought"
+        ((v as { kind?: string }).kind === "thought" ||
+        (v as { kind?: string }).kind === "steer"
           ? typeof (v as { text?: unknown }).text === "string"
           : (v as { kind?: string }).kind === "tool" &&
             typeof (v as { label?: unknown }).label === "string")
