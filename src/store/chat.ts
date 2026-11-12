@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AIToolStep } from "../agent/types";
+import type { TraceItem } from "../ui/trace";
 import type { MessageAttachment } from "../providers/base";
 
 export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
@@ -41,6 +42,8 @@ export interface AIResponseMessage extends BaseMessage {
   truncated?: boolean;
 
   reasoning?: string;
+
+  trace?: TraceItem[];
 
   variants?: string[];
   variantIndex?: number;

@@ -163,8 +163,10 @@ export function buildTrace(
     }
   }
 
-  if (response) {
-    sources.push(response.reasoning, response.agentSteps);
+  if (response?.trace?.length && items.length === 0) {
+    items.push(...response.trace);
+  } else if (response) {
+    sources.push(response.reasoning, response.agentSteps, response.trace);
     const hasThought = items.some((i) => i.kind === "thought");
     if (response.reasoning && !hasThought) {
       items.unshift({

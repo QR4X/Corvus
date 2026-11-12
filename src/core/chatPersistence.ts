@@ -1,4 +1,5 @@
 import type { App, DataAdapter } from "obsidian";
+import { isStoredTrace, type StoredTraceItem } from "./tracePersist";
 import type { AIToolStep } from "../agent/types";
 import type { MessageAttachment } from "../providers/base";
 import { previewFromMarkdown } from "./chatPreview";
@@ -22,6 +23,8 @@ export interface ChatMessageStored {
   reaction?: "like" | "dislike" | null;
 
   agentSteps?: AIToolStep[];
+
+  trace?: StoredTraceItem[];
 
   attachments?: MessageAttachmentStored[];
   isError?: boolean;
@@ -236,11 +239,16 @@ function renderBody(chat: ChatData): string {
           ? `\n\n<!-- corvus-steps: ${b64encode(JSON.stringify(m.agentSteps))} -->`
           : "";
 
+      const traceLine =
+        m.trace && m.trace.length > 0
+          ? `\n\n<!-- corvus-trace: ${b64encode(JSON.stringify(m.trace))} -->`
+          : "";
+
       const attsLine =
         m.attachments && m.attachments.length > 0
           ? `\n\n<!-- corvus-att: ${b64encode(JSON.stringify(m.attachments))} -->`
           : "";
-      return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}${attsLine}\n`;
+      return `## ${label}\n\n${metaLine}${m.content.trim()}${stepsLine}${traceLine}${attsLine}\n`;
     })
     .join("\n");
   return `${heading}\n${sections}`;
@@ -331,6 +339,22 @@ function parseSimpleYaml(text: string): Record<string, string | number | string[
   return result;
 }
 
+function extractTrace(content: string): {
+  content: string;
+  trace?: StoredTraceItem[];
+} {
+  const re = /\n*<!--\s*corvus-trace:\s*([A-Za-z0-9+/=]+)\s*-->/;
+  const m = content.match(re);
+  if (!m || m.index === undefined) return { content };
+  const cleaned = (content.slice(0, m.index) + content.slice(m.index + m[0].length)).trim();
+  try {
+    const trace = JSON.parse(b64decode(m[1])) as unknown;
+    return isStoredTrace(trace) ? { content: cleaned, trace } : { content: cleaned };
+  } catch {
+    return { content: cleaned };
+  }
+}
+
 function extractAgentSteps(content: string): {
   content: string;
   agentSteps?: AIToolStep[];
@@ -393,9 +417,8 @@ function parseBody(body: string): ChatMessageStored[] {
 
     const { cleanContent, timestamp, reaction, isError } = parseMessageMeta(rawContent.trim());
 
-    const { content: finalContent, agentSteps } = extractAgentSteps(
-      cleanContent.trim()
-    );
+    const { content: withoutTrace, trace } = extractTrace(cleanContent.trim());
+    const { content: finalContent, agentSteps } = extractAgentSteps(withoutTrace);
 
     const { content: finalContent2, attachments } = extractAttachments(
       finalContent.trim()
@@ -407,6 +430,7 @@ function parseBody(body: string): ChatMessageStored[] {
       timestamp: timestamp ?? Date.now(),
       ...(reaction != null ? { reaction } : {}),
       ...(agentSteps ? { agentSteps } : {}),
+      ...(trace ? { trace } : {}),
       ...(attachments && attachments.length > 0 ? { attachments } : {}),
       ...(isError ? { isError } : {}),
     });
