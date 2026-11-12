@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   acompanharEscrita,
+  ambienteDoNavegador,
   type WakeLockEnv,
   type WakeLockSentinel,
 } from "../src/core/wakeLock";
@@ -149,5 +150,15 @@ describe("acompanharEscrita", () => {
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(pedidos).toEqual(["screen", "screen"]));
     vigia.dispose();
+  });
+});
+
+describe("ambienteDoNavegador", () => {
+  it("lê wakeLock de navigator, não de window", () => {
+    const wakeLock = { request: vi.fn() };
+    const doc = fakeEnv().document;
+    const env = ambienteDoNavegador({ wakeLock }, doc);
+    expect(env.wakeLock).toBe(wakeLock);
+    expect(env.document).toBe(doc);
   });
 });
