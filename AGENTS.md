@@ -20,10 +20,12 @@ edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 
 | Path | Purpose |
 | --- | --- |
-| `src/main.ts` | Plugin entry, lifecycle (onload/onunload), view + command wiring |
+| `src/main.ts` | Plugin entry: composition root, lifecycle, view + command wiring |
+| `src/settings.ts` | `CorvusSettings` shape, `DEFAULT_SETTINGS`, secret fields |
+| `src/settingsStore.ts` | Load (with legacy-field migration), backup, keychain secrets, save |
 | `src/agent/` | Agent mode: tools, permissions, loop detection, undo |
 | `src/assistant/` | Assistant mode: prompt, parsing, model helpers |
-| `src/core/` | Domain logic: chat engine, sessions, vault search, indexing |
+| `src/core/` | Domain logic: chat engine, sessions, chat library, vault paths/fs, provider table (`providersMeta`) |
 | `src/rag/` | Retrieval: embeddings, indexer, hybrid search, vector index |
 | `src/providers/` | LLM provider adapters (OpenAI, Anthropic, Gemini, OpenRouter, NIM, Ollama) |
 | `src/store/` | Zustand stores (chat, settings state) |
@@ -32,7 +34,7 @@ edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 | `src/usage/` | Usage and cost tracking |
 | `src/skills/` | Skill loading and execution |
 | `src/editor/` | Obsidian editor commands |
-| `tests/` | Vitest tests, mirrors `src/`; stubs in `tests/__stubs__` |
+| `tests/` | Vitest tests (flat folder); Obsidian stub in `tests/obsidian-stub.ts` |
 | `scripts/` | Build, release, and preview helpers |
 | `docs/` | Project documentation |
 
@@ -40,15 +42,20 @@ edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 
 - TypeScript strict. Avoid `any`; prefer explicit types at boundaries.
 - Keep files focused; prefer one responsibility per file.
-- User-visible settings: add a default in `src/ui/settings/values.ts`, the row
-  in `src/ui/settings/tree.ts`, the label in `src/i18n/`, and a test.
-- No hardcoded UI text; route through `src/i18n/`.
+- User-visible settings: add the field and default in `src/settings.ts`, the row
+  in `src/ui/settings/tree.ts` (and `src/ui/settings/values.ts` if it is a plain
+  bool/text/number control), and a test. Renaming or dropping a persisted field
+  goes through `RENAMED_FIELDS` / `DEAD_FIELDS` in `src/core/legacySettings.ts`.
+- Provider facts (credential field, model field, embeddings) live only in the
+  `PROVIDERS` table in `src/core/providersMeta.ts`.
+- Layering: `core/`, `agent/`, `rag/`, `usage/`, `providers/` never import `ui/`.
+- No bare UI text; wrap it in `tr()` from `src/i18n/tr.ts` (shared strings live in `src/i18n/en-us.ts`).
 - Do not add code comments; keep the repository 100% in English.
 - Match the patterns of neighboring files before adding new abstractions.
 
 ## Testing
 
-- Vitest. Test files live in `tests/` and mirror the `src/` layout.
+- Vitest. Test files live flat in `tests/`; test behavior, not source text.
 - Run `npm test` before finishing; use a single-file run while iterating.
 - Every new behavior ships with a test.
 
@@ -62,7 +69,7 @@ edit notes. TypeScript, Preact, Zustand, six LLM providers, user-supplied keys.
 
 ## Gotchas
 
-- The Obsidian API exists only at runtime; tests use the stubs in `tests/__stubs__`.
+- The Obsidian API exists only at runtime; tests use `tests/obsidian-stub.ts`.
 - Mobile builds are limited: guard platform-specific browser APIs.
 - `npm run build` runs `tsc` first; a type error fails the build.
 
