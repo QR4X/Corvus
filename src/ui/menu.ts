@@ -15,7 +15,7 @@ export interface MenuAction {
 
   children?: MenuAction[];
 
-  extra?: { icon: string; label: string; run: (botao: HTMLButtonElement) => void };
+  extra?: { icon: string; label: string; run: (button: HTMLButtonElement) => void };
   run?: () => void;
 }
 
@@ -25,10 +25,10 @@ interface MenuEvent {
   currentTarget?: EventTarget | null;
 }
 
-const VAO = 6;
-const MARGEM = 10;
+const GAP = 6;
+const MARGIN = 10;
 
-export interface Caixa {
+export interface Box {
   left: number;
   top: number;
   right: number;
@@ -37,67 +37,67 @@ export interface Caixa {
   height: number;
 }
 
-export function posicaoDoBalao(params: {
+export function popoverPosition(params: {
 
-  ancora: Pick<Caixa, "left" | "top" | "right" | "bottom">;
+  anchor: Pick<Box, "left" | "top" | "right" | "bottom">;
 
-  raiz: Caixa;
+  root: Box;
 
-  tela: { width: number; height: number };
+  viewport: { width: number; height: number };
 
-  balao: { width: number; height: number };
-}): { x: number; y: number; origem: "top right" | "bottom right" } {
-  const { ancora, raiz, tela, balao } = params;
+  popover: { width: number; height: number };
+}): { x: number; y: number; origin: "top right" | "bottom right" } {
+  const { anchor, root, viewport, popover } = params;
 
-  const topoVis = Math.max(0, -raiz.top);
-  const fundoVis = Math.min(raiz.height, tela.height - raiz.top);
-  const esqVis = Math.max(0, -raiz.left);
-  const dirVis = Math.min(raiz.width, tela.width - raiz.left);
+  const visTop = Math.max(0, -root.top);
+  const visBottom = Math.min(root.height, viewport.height - root.top);
+  const visLeft = Math.max(0, -root.left);
+  const visRight = Math.min(root.width, viewport.width - root.left);
 
-  let x = ancora.right - raiz.left - balao.width;
+  let x = anchor.right - root.left - popover.width;
   x = Math.min(
-    Math.max(x, esqVis + MARGEM),
-    Math.max(esqVis + MARGEM, dirVis - balao.width - MARGEM)
+    Math.max(x, visLeft + MARGIN),
+    Math.max(visLeft + MARGIN, visRight - popover.width - MARGIN)
   );
 
-  const abaixo = ancora.bottom - raiz.top + VAO;
-  const acima = ancora.top - raiz.top - balao.height - VAO;
+  const below = anchor.bottom - root.top + GAP;
+  const above = anchor.top - root.top - popover.height - GAP;
 
-  let y = abaixo + balao.height > fundoVis - MARGEM ? acima : abaixo;
+  let y = below + popover.height > visBottom - MARGIN ? above : below;
 
   y = Math.min(
-    Math.max(y, topoVis + MARGEM),
-    Math.max(topoVis + MARGEM, fundoVis - balao.height - MARGEM)
+    Math.max(y, visTop + MARGIN),
+    Math.max(visTop + MARGIN, visBottom - popover.height - MARGIN)
   );
 
   return {
     x: Math.round(x),
     y: Math.round(y),
 
-    origem: y > ancora.top - raiz.top ? "top right" : "bottom right",
+    origin: y > anchor.top - root.top ? "top right" : "bottom right",
   };
 }
 
 interface MenuOptions {
 
-  escolha?: boolean;
+  pick?: boolean;
 
-  aoFechar?: () => void;
+  onClose?: () => void;
 }
 
-export function ladoDaEscolha(params: {
-  ancora: Pick<Caixa, "top" | "bottom">;
-  alturaDaTela: number;
+export function pickSide(params: {
+  anchor: Pick<Box, "top" | "bottom">;
+  viewportHeight: number;
 
-  altura: number;
-}): { sentido: "baixo" | "cima"; maxHeight: number } {
-  const { ancora, alturaDaTela, altura } = params;
-  const embaixo = alturaDaTela - MARGEM - ancora.bottom;
-  const emCima = ancora.top - MARGEM;
-  const sentido = altura <= embaixo || embaixo >= emCima ? "baixo" : "cima";
+  popoverHeight: number;
+}): { direction: "down" | "up"; maxHeight: number } {
+  const { anchor, viewportHeight, popoverHeight } = params;
+  const spaceBelow = viewportHeight - MARGIN - anchor.bottom;
+  const spaceAbove = anchor.top - MARGIN;
+  const direction = popoverHeight <= spaceBelow || spaceBelow >= spaceAbove ? "down" : "up";
   return {
-    sentido,
-    maxHeight: Math.max(0, Math.floor(sentido === "baixo" ? embaixo : emCima)),
+    direction,
+    maxHeight: Math.max(0, Math.floor(direction === "down" ? spaceBelow : spaceAbove)),
   };
 }
 
@@ -108,37 +108,37 @@ export function openActions(
 ): void {
   if (actions.length === 0) return;
 
-  const ancoraEl = (ev.currentTarget as HTMLElement | null) ?? null;
+  const anchorEl = (ev.currentTarget as HTMLElement | null) ?? null;
 
-  const doc = ancoraEl?.ownerDocument ?? document;
+  const doc = anchorEl?.ownerDocument ?? document;
   const win = doc.defaultView ?? window;
 
-  const raizApp = ancoraEl
-    ? ancoraEl.closest<HTMLElement>(".corvus-root")
+  const appRoot = anchorEl
+    ? anchorEl.closest<HTMLElement>(".corvus-root")
     : doc.querySelector<HTMLElement>(".corvus-root");
-  const solto = !raizApp;
-  const raiz =
-    raizApp ??
-    ancoraEl?.closest<HTMLElement>(".modal-container") ??
+  const loose = !appRoot;
+  const root =
+    appRoot ??
+    anchorEl?.closest<HTMLElement>(".modal-container") ??
     doc.body;
 
-  const camada = raiz.createDiv({
-    cls: solto ? "corvus-pop-layer is-loose" : "corvus-pop-layer",
+  const layer = root.createDiv({
+    cls: loose ? "corvus-pop-layer is-loose" : "corvus-pop-layer",
   });
-  const balao = camada.createDiv({
-    cls: opts.escolha ? "corvus-pop is-pick" : "corvus-pop",
+  const popover = layer.createDiv({
+    cls: opts.pick ? "corvus-pop is-pick" : "corvus-pop",
     attr: { role: "menu" },
   });
-  let fechar = () => {};
+  let close = () => {};
 
   const item = (
-    pai: HTMLElement,
+    parent: HTMLElement,
     a: MenuAction,
-    aoTocar: () => void
+    onTap: () => void
   ): HTMLButtonElement => {
 
-    const linha = a.extra ? pai.createDiv({ cls: "corvus-pop-row", attr: { role: "none" } }) : pai;
-    const b = linha.createEl("button", {
+    const row = a.extra ? parent.createDiv({ cls: "corvus-pop-row", attr: { role: "none" } }) : parent;
+    const b = row.createEl("button", {
       cls:
         "corvus-pop-item" +
         (a.danger ? " is-danger" : "") +
@@ -169,11 +169,11 @@ export function openActions(
     }
     b.addEventListener("click", (e) => {
       e.stopPropagation();
-      aoTocar();
+      onTap();
     });
     if (a.extra) {
       const { icon, label, run } = a.extra;
-      const x = linha.createEl("button", {
+      const x = row.createEl("button", {
         cls: "corvus-pop-extra",
         attr: { type: "button", role: "menuitem", "aria-label": label },
       });
@@ -187,109 +187,109 @@ export function openActions(
     return b;
   };
 
-  const desenhar = (itens: MenuAction[], voltar: (() => void) | null): void => {
-    while (balao.firstChild) balao.removeChild(balao.firstChild);
-    if (voltar) {
-      const volta = item(balao, { label: tr("Back"), icon: "chevron-left" }, voltar);
-      volta.classList.add("is-back");
+  const render = (items: MenuAction[], back: (() => void) | null): void => {
+    while (popover.firstChild) popover.removeChild(popover.firstChild);
+    if (back) {
+      const backItem = item(popover, { label: tr("Back"), icon: "chevron-left" }, back);
+      backItem.classList.add("is-back");
     }
-    for (const a of itens) {
-      item(balao, a, () => {
+    for (const a of items) {
+      item(popover, a, () => {
         if (a.children) {
-          desenhar(a.children, () => desenhar(itens, voltar));
+          render(a.children, () => render(items, back));
           return;
         }
-        fechar();
+        close();
         a.run?.();
       });
     }
-    posicionar();
+    position();
   };
 
-  function posicionar(): void {
-    const r = ancoraEl?.getBoundingClientRect?.();
+  function position(): void {
+    const r = anchorEl?.getBoundingClientRect?.();
 
-    const base = camada.getBoundingClientRect();
+    const base = layer.getBoundingClientRect();
 
-    if (opts.escolha && r && ancoraEl) {
+    if (opts.pick && r && anchorEl) {
 
-      balao.addClass("is-down");
-      balao.removeClass("is-up");
-      balao.setCssStyles({ width: `${r.width}px`, maxHeight: "" });
-      const { sentido, maxHeight } = ladoDaEscolha({
-        ancora: r,
-        alturaDaTela: win.innerHeight,
-        altura: balao.offsetHeight,
+      popover.addClass("is-down");
+      popover.removeClass("is-up");
+      popover.setCssStyles({ width: `${r.width}px`, maxHeight: "" });
+      const { direction, maxHeight } = pickSide({
+        anchor: r,
+        viewportHeight: win.innerHeight,
+        popoverHeight: popover.offsetHeight,
       });
-      const baixo = sentido === "baixo";
-      balao.toggleClass("is-down", baixo);
-      balao.toggleClass("is-up", !baixo);
-      ancoraEl.toggleClass("is-open-down", baixo);
-      ancoraEl.toggleClass("is-open-up", !baixo);
+      const down = direction === "down";
+      popover.toggleClass("is-down", down);
+      popover.toggleClass("is-up", !down);
+      anchorEl.toggleClass("is-open-down", down);
+      anchorEl.toggleClass("is-open-up", !down);
 
-      balao.setCssStyles({
+      popover.setCssStyles({
         left: `${r.left - base.left}px`,
-        top: baixo ? `${r.bottom - base.top}px` : "auto",
-        bottom: baixo ? "auto" : `${base.bottom - r.top}px`,
+        top: down ? `${r.bottom - base.top}px` : "auto",
+        bottom: down ? "auto" : `${base.bottom - r.top}px`,
         maxHeight: `${maxHeight}px`,
-        transformOrigin: baixo ? "top center" : "bottom center",
+        transformOrigin: down ? "top center" : "bottom center",
       });
       return;
     }
-    const ancora = r ?? {
+    const anchor = r ?? {
       left: (ev.clientX ?? 0) - 1,
       right: (ev.clientX ?? 0) + 1,
       top: (ev.clientY ?? 0) - 1,
       bottom: (ev.clientY ?? 0) + 1,
     };
 
-    const { x, y, origem } = posicaoDoBalao({
-      ancora,
-      raiz: base,
-      tela: { width: win.innerWidth, height: win.innerHeight },
+    const { x, y, origin } = popoverPosition({
+      anchor,
+      root: base,
+      viewport: { width: win.innerWidth, height: win.innerHeight },
 
-      balao: { width: balao.offsetWidth, height: balao.offsetHeight },
+      popover: { width: popover.offsetWidth, height: popover.offsetHeight },
     });
 
-    balao.style.left = `${x}px`;
-    balao.style.top = `${y}px`;
-    balao.style.transformOrigin = origem;
+    popover.style.left = `${x}px`;
+    popover.style.top = `${y}px`;
+    popover.style.transformOrigin = origin;
   }
 
-  desenhar(actions, null);
+  render(actions, null);
 
-  const marcado = balao.querySelector<HTMLElement>(".corvus-pop-item.is-checked");
-  if (marcado && balao.scrollHeight > balao.clientHeight) {
-    balao.scrollTop = Math.max(
+  const checkedItem = popover.querySelector<HTMLElement>(".corvus-pop-item.is-checked");
+  if (checkedItem && popover.scrollHeight > popover.clientHeight) {
+    popover.scrollTop = Math.max(
       0,
-      marcado.offsetTop - (balao.clientHeight - marcado.offsetHeight) / 2
+      checkedItem.offsetTop - (popover.clientHeight - checkedItem.offsetHeight) / 2
     );
   }
-  camada.classList.add("is-open");
+  layer.classList.add("is-open");
   screen();
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
 
-      if (solto) e.stopPropagation();
-      fechar();
+      if (loose) e.stopPropagation();
+      close();
     }
   };
 
   const onScroll = (e: Event) => {
-    if (balao.contains(e.target as Node | null)) return;
-    fechar();
+    if (popover.contains(e.target as Node | null)) return;
+    close();
   };
-  const ondeRola: Document | HTMLElement = solto ? doc : raiz;
-  fechar = () => {
+  const scrollRoot: Document | HTMLElement = loose ? doc : root;
+  close = () => {
     doc.removeEventListener("keydown", onKey);
-    ondeRola.removeEventListener("scroll", onScroll, { capture: true });
-    ancoraEl?.removeClass("is-open-down", "is-open-up");
-    camada.remove();
-    opts.aoFechar?.();
+    scrollRoot.removeEventListener("scroll", onScroll, { capture: true });
+    anchorEl?.removeClass("is-open-down", "is-open-up");
+    layer.remove();
+    opts.onClose?.();
   };
-  camada.addEventListener("click", fechar);
+  layer.addEventListener("click", close);
   doc.addEventListener("keydown", onKey);
-  ondeRola.addEventListener("scroll", onScroll, { capture: true });
+  scrollRoot.addEventListener("scroll", onScroll, { capture: true });
 }

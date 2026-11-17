@@ -1,46 +1,46 @@
 import type { Provider, ProviderMessage } from "../providers/base";
-import { lerObjeto, lerOpcoes, lerPergunta } from "./parse";
+import { parseObject, parseOptions, parseQuestion } from "./parse";
 import { tr } from "../i18n/tr";
 
-export interface TurnoAssistente {
-  quem: "pessoa" | "assistente";
-  texto: string;
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  text: string;
 }
 
-interface PedidoAssistente {
+interface AssistantRequest {
   provider: Provider;
   apiKey: string;
   model: string;
 
-  sistema: string;
+  system: string;
 
-  turnos: TurnoAssistente[];
+  turns: AssistantTurn[];
 }
 
-interface RetornoAssistente {
-  pergunta?: string;
+interface AssistantReply {
+  question?: string;
 
-  opcoes?: string[];
+  options?: string[];
 
-  bruto?: Record<string, unknown>;
+  raw?: Record<string, unknown>;
 
-  erro?: string;
+  error?: string;
 }
 
-export async function pedirAjuda(
-  p: PedidoAssistente
-): Promise<RetornoAssistente> {
+export async function askAssistant(
+  p: AssistantRequest
+): Promise<AssistantReply> {
   const messages: ProviderMessage[] = [
-    { role: "system", content: p.sistema },
-    ...p.turnos.map((t): ProviderMessage => ({
-      role: t.quem === "pessoa" ? "user" : "assistant",
-      content: t.texto,
+    { role: "system", content: p.system },
+    ...p.turns.map((t): ProviderMessage => ({
+      role: t.role,
+      content: t.text,
     })),
   ];
 
-  let resposta;
+  let response;
   try {
-    resposta = await p.provider.chat(
+    response = await p.provider.chat(
       {
         model: p.model,
         messages,
@@ -52,25 +52,25 @@ export async function pedirAjuda(
     );
   } catch (e) {
     return {
-      erro: (e as Error).message || tr("The assistant could not answer."),
+      error: (e as Error).message || tr("The assistant could not answer."),
     };
   }
 
-  const obj = lerObjeto(resposta.content ?? "");
+  const obj = parseObject(response.content ?? "");
   if (!obj)
 
     return {
-      erro: tr(
+      error: tr(
         "The assistant answered in prose instead of the expected format. A stronger model usually fixes it."
       ),
     };
 
-  const pergunta = lerPergunta(obj);
-  if (pergunta) return { pergunta, opcoes: lerOpcoes(obj) };
+  const question = parseQuestion(obj);
+  if (question) return { question, options: parseOptions(obj) };
 
-  const bruto = obj.draft;
-  if (bruto && typeof bruto === "object" && !Array.isArray(bruto))
-    return { bruto: bruto as Record<string, unknown> };
+  const draft = obj.draft;
+  if (draft && typeof draft === "object" && !Array.isArray(draft))
+    return { raw: draft as Record<string, unknown> };
 
-  return { bruto: obj };
+  return { raw: obj };
 }

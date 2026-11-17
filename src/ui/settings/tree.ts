@@ -16,7 +16,7 @@ import {
 } from "../../core/effort";
 import { CHAT_MODES } from "../../core/session";
 import { MODULES, STARTUP_DASHBOARD } from "../modules";
-import { QUANT_ITENS } from "./searchIndex";
+import { QUANT_ITEMS } from "./searchIndex";
 import { mark, tr } from "../../i18n/tr";
 import { PERMISSION_ICONS, PERMISSION_LABELS } from "../../agent/permissions";
 import type { PermissionLevel } from "../../agent/types";
@@ -114,7 +114,7 @@ const ELEVEN_ICONS: Record<string, string> = {
   eleven_flash_v2_5: "zap",
 };
 
-export function nomeProprio(s: string): string {
+export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -257,16 +257,16 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     items.push(g);
   }
 
-  function escolha(
+  function pickRow(
     at: Place,
     name: string,
     shown: string | null,
     desc: string,
     key: TextKey,
-    itens: () => PickItem[],
+    getItems: () => PickItem[],
     more: RowExtras = {}
   ): SettingDefinition {
-    return custom(name, shown, desc, ui.pick(key, itens, at.tab), more);
+    return custom(name, shown, desc, ui.pick(key, getItems, at.tab), more);
   }
 
   group(null, { cls: "corvus-set-flat corvus-set-navgroup" }, [
@@ -324,7 +324,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           { aliases: ["free", "quota", "data controls", "tier"] }
         ),
 
-        escolha(
+        pickRow(
           at,
           tr("Usage tier"),
           null,
@@ -377,7 +377,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   const chat: Place = { tab: "chat" };
 
   group(chat, {}, [
-    escolha(
+    pickRow(
       chat,
       tr("Provider"),
       null,
@@ -386,7 +386,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       () => PROVIDERS.map((p) => ({ value: p.id, label: p.name, icon: p.icon })),
       { aliases: ["default provider"] }
     ),
-    escolha(
+    pickRow(
       chat,
       tr("Mode"),
       null,
@@ -400,7 +400,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         })),
       { aliases: ["mode"] }
     ),
-    escolha(
+    pickRow(
       chat,
       tr("Open on startup"),
       null,
@@ -431,7 +431,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         ],
       }
     ),
-    escolha(
+    pickRow(
       chat,
       tr("Effort"),
       null,
@@ -529,7 +529,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ui.hint(tr("Dictation runs on OpenAI or OpenRouter — add that key in Providers.")),
       () => voiceOn() && !ui.hasCredential("openai") && !ui.hasCredential("openrouter")
     ),
-    escolha(
+    pickRow(
       chat,
       tr("Ears"),
       null,
@@ -545,7 +545,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         })),
       { visible: voiceOn, aliases: ["transcription", "whisper"] }
     ),
-    escolha(
+    pickRow(
       chat,
       tr("What you speak"),
       null,
@@ -583,7 +583,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ui.hint(tr("Add your OpenAI key in Providers to hear anything.")),
       () => openaiReads() && !ui.hasCredential("openai")
     ),
-    escolha(
+    pickRow(
       chat,
       tr("Voice"),
       null,
@@ -592,13 +592,13 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       () =>
         OPENAI_VOICES.map((v) => ({
           value: v,
-          label: nomeProprio(v),
+          label: capitalize(v),
           icon: "audio-lines",
         })),
       { visible: openaiReads, aliases: ["voice"] }
     ),
 
-    escolha(
+    pickRow(
       chat,
       tr("OpenAI voice quality"),
       tr("Quality"),
@@ -653,7 +653,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       ui.hint(tr("No voices loaded yet — hit Fetch voices.")),
       () => elevenReads() && s().elevenVoices.length === 0 && !!s().elevenApiKey
     ),
-    escolha(
+    pickRow(
       chat,
       tr("ElevenLabs voice quality"),
       tr("Quality"),
@@ -714,7 +714,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       { aliases: ["embeddings", "rag", "model"] }
     ),
 
-    escolha(
+    pickRow(
       rag,
       tr("Index precision"),
       null,
@@ -722,7 +722,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         "How much detail each note keeps in the index. Lighter takes less space and memory; Light and Minimal also shrink the vectors on OpenAI's text-embedding-3. Applies on the next index update, which rebuilds it from scratch."
       ),
       "ragQuantProfile",
-      () => QUANT_ITENS.map((i) => ({ ...i, label: tr(i.label) })),
+      () => QUANT_ITEMS.map((i) => ({ ...i, label: tr(i.label) })),
       { aliases: ["quantization", "precision", "int8", "memory"] }
     ),
     toggle(
@@ -745,7 +745,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   ]);
 
   group({ tab: "agent" }, {}, [
-    escolha(
+    pickRow(
       { tab: "agent" },
       tr("Permission level"),
       null,

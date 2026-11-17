@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  diaCurto,
-  diasEntre,
-  janelaDoGrafico,
-  passoDe,
-  picoDa,
-  serieDoTempo,
+  shortDay,
+  daysBetween,
+  chartWindow,
+  stepFor,
+  peakOf,
+  timeSeries,
 } from "../src/usage/timeline";
 import type { UsageBucket } from "../src/usage/aggregate";
 
@@ -22,20 +22,20 @@ const b = (tokensIn: number, tokensOut: number, chats = 1): UsageBucket => ({
 describe("o passo do tempo", () => {
   it("dia até um mês, semana até meio ano, mês daí pra frente", () => {
 
-    expect(passoDe(1)).toBe("day");
-    expect(passoDe(30)).toBe("day");
-    expect(passoDe(31)).toBe("day");
-    expect(passoDe(32)).toBe("week");
-    expect(passoDe(182)).toBe("week");
-    expect(passoDe(183)).toBe("month");
-    expect(passoDe(3650)).toBe("month");
+    expect(stepFor(1)).toBe("day");
+    expect(stepFor(30)).toBe("day");
+    expect(stepFor(31)).toBe("day");
+    expect(stepFor(32)).toBe("week");
+    expect(stepFor(182)).toBe("week");
+    expect(stepFor(183)).toBe("month");
+    expect(stepFor(3650)).toBe("month");
   });
 
   it("conta os dois extremos", () => {
-    expect(diasEntre("2026-09-11", "2026-09-11")).toBe(1);
-    expect(diasEntre("2026-09-01", "2026-09-30")).toBe(30);
+    expect(daysBetween("2026-09-11", "2026-09-11")).toBe(1);
+    expect(daysBetween("2026-09-01", "2026-09-30")).toBe(30);
 
-    expect(diasEntre("2025-12-31", "2026-01-01")).toBe(2);
+    expect(daysBetween("2025-12-31", "2026-01-01")).toBe(2);
   });
 });
 
@@ -48,53 +48,53 @@ describe("a janela do gráfico", () => {
   const agora = Date.parse("2026-09-25T12:00:00Z");
 
   it("sem conversa nenhuma não há janela — nem gráfico", () => {
-    expect(janelaDoGrafico(0, {}, agora)).toBeNull();
+    expect(chartWindow(0, {}, agora)).toBeNull();
   });
 
   it("All time vai da primeira à última conversa", () => {
-    expect(janelaDoGrafico(0, byDay, agora)).toEqual({
-      de: "2026-09-01",
-      ate: "2026-09-20",
+    expect(chartWindow(0, byDay, agora)).toEqual({
+      from: "2026-09-01",
+      to: "2026-09-20",
     });
   });
 
   it("uma janela de N dias termina HOJE, com os dias vazios dentro", () => {
 
-    expect(janelaDoGrafico(7, { "2026-09-24": b(10, 5) }, agora)).toEqual({
-      de: "2026-09-19",
-      ate: "2026-09-25",
+    expect(chartWindow(7, { "2026-09-24": b(10, 5) }, agora)).toEqual({
+      from: "2026-09-19",
+      to: "2026-09-25",
     });
   });
 
   it("ela se ESTICA pra caber todo dia que a agregação trouxe", () => {
 
-    expect(janelaDoGrafico(7, byDay, agora)).toEqual({
-      de: "2026-09-01",
-      ate: "2026-09-25",
+    expect(chartWindow(7, byDay, agora)).toEqual({
+      from: "2026-09-01",
+      to: "2026-09-25",
     });
   });
 });
 
 describe("as colunas", () => {
   it("uma por dia, inclusive as vazias, na ordem", () => {
-    const s = serieDoTempo(
+    const s = timeSeries(
       { "2026-09-02": b(100, 40) },
       "2026-09-01",
       "2026-09-03",
       "day"
     );
-    expect(s.map((c) => c.inicio)).toEqual([
+    expect(s.map((c) => c.start)).toEqual([
       "2026-09-01",
       "2026-09-02",
       "2026-09-03",
     ]);
     expect(s.map((c) => c.total)).toEqual([0, 140, 0]);
-    expect(s[1]).toMatchObject({ entrada: 100, saida: 40, chats: 1 });
+    expect(s[1]).toMatchObject({ tokensIn: 100, tokensOut: 40, chats: 1 });
   });
 
   it("a semana começa na SEGUNDA, como o calendário do cartão da home", () => {
 
-    const s = serieDoTempo(
+    const s = timeSeries(
       { "2026-09-11": b(10, 1), "2026-09-13": b(20, 2) },
       "2026-09-11",
       "2026-09-13",
@@ -102,17 +102,17 @@ describe("as colunas", () => {
     );
     expect(s).toHaveLength(1);
 
-    expect(s[0]).toMatchObject({ inicio: "2026-09-07", entrada: 30, saida: 3 });
+    expect(s[0]).toMatchObject({ start: "2026-09-07", tokensIn: 30, tokensOut: 3 });
   });
 
   it("o mês junta o mês inteiro", () => {
-    const s = serieDoTempo(
+    const s = timeSeries(
       { "2026-08-31": b(5, 1), "2026-09-01": b(10, 2), "2026-09-30": b(20, 4) },
       "2026-08-31",
       "2026-09-30",
       "month"
     );
-    expect(s.map((c) => [c.inicio, c.entrada, c.saida])).toEqual([
+    expect(s.map((c) => [c.start, c.tokensIn, c.tokensOut])).toEqual([
       ["2026-08-01", 5, 1],
       ["2026-09-01", 30, 6],
     ]);
@@ -120,12 +120,12 @@ describe("as colunas", () => {
 
   it("o pedaço nunca anuncia dia que ainda não aconteceu", () => {
 
-    const s = serieDoTempo({}, "2026-09-07", "2026-09-09", "week");
-    expect(s[0].titulo).toBe("Sep 7 – Sep 9, 2026");
+    const s = timeSeries({}, "2026-09-07", "2026-09-09", "week");
+    expect(s[0].title).toBe("Sep 7 – Sep 9, 2026");
   });
 
   it("nada fora da janela entra, nem data ilegível", () => {
-    const s = serieDoTempo(
+    const s = timeSeries(
       { "2026-08-01": b(999, 999), "(sem data)": b(7, 7), "2026-09-02": b(1, 1) },
       "2026-09-01",
       "2026-09-03",
@@ -135,40 +135,40 @@ describe("as colunas", () => {
   });
 
   it("janela de trás pra frente não desenha nada", () => {
-    expect(serieDoTempo({}, "2026-09-10", "2026-09-01", "day")).toEqual([]);
+    expect(timeSeries({}, "2026-09-10", "2026-09-01", "day")).toEqual([]);
   });
 
   it("o pico é a coluna mais alta — é dele que sai a escala", () => {
-    const s = serieDoTempo(
+    const s = timeSeries(
       { "2026-09-01": b(10, 5), "2026-09-03": b(100, 50) },
       "2026-09-01",
       "2026-09-03",
       "day"
     );
-    expect(picoDa(s)).toBe(150);
-    expect(picoDa([])).toBe(0);
+    expect(peakOf(s)).toBe(150);
+    expect(peakOf([])).toBe(0);
   });
 });
 
 describe("os rótulos", () => {
   it("curtos pro eixo, inteiros pra quem foi ler", () => {
-    const [dia] = serieDoTempo({}, "2026-09-11", "2026-09-11", "day");
-    expect(dia.rotulo).toBe("Sep 11");
-    expect(dia.titulo).toBe("Sep 11, 2026");
+    const [dia] = timeSeries({}, "2026-09-11", "2026-09-11", "day");
+    expect(dia.label).toBe("Sep 11");
+    expect(dia.title).toBe("Sep 11, 2026");
 
-    const [semana] = serieDoTempo({}, "2026-09-07", "2026-09-13", "week");
-    expect(semana.rotulo).toBe("Sep 7");
-    expect(semana.titulo).toBe("Sep 7 – Sep 13, 2026");
+    const [semana] = timeSeries({}, "2026-09-07", "2026-09-13", "week");
+    expect(semana.label).toBe("Sep 7");
+    expect(semana.title).toBe("Sep 7 – Sep 13, 2026");
 
-    const [mes] = serieDoTempo({}, "2026-09-01", "2026-09-30", "month");
-    expect(mes.rotulo).toBe("Sep");
-    expect(mes.titulo).toBe("Sep 2026");
+    const [mes] = timeSeries({}, "2026-09-01", "2026-09-30", "month");
+    expect(mes.label).toBe("Sep");
+    expect(mes.title).toBe("Sep 2026");
   });
 
   it("diaCurto é o MESMO formatador da faixa do cabeçalho", () => {
-    expect(diaCurto("2026-09-11")).toBe("Sep 11");
-    expect(diaCurto("2026-09-11", true)).toBe("Sep 11, 2026");
-    expect(diaCurto("nada")).toBe("nada");
+    expect(shortDay("2026-09-11")).toBe("Sep 11");
+    expect(shortDay("2026-09-11", true)).toBe("Sep 11, 2026");
+    expect(shortDay("nada")).toBe("nada");
   });
 });
 
@@ -240,16 +240,16 @@ describe("o desenho do gráfico", () => {
   it("o número não depende de mouse: vai no title E no rótulo acessível", () => {
 
     expect(VIEW).toMatch(
-      /aria-label=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.titulo,\s*sent: formatCompact\(c\.entrada\)/
+      /aria-label=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.title,\s*sent: formatCompact\(c\.tokensIn\)/
     );
     expect(VIEW).toMatch(
-      /title=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.titulo,\s*sent: formatCompact\(c\.entrada\)/
+      /title=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.title,\s*sent: formatCompact\(c\.tokensIn\)/
     );
     expect(VIEW).toContain("corvus-chart-readout");
   });
 
   it("com uma coluna só não há série — seria o total desenhado de novo", () => {
-    expect(VIEW).toMatch(/serie\.colunas\.length > 1/);
+    expect(VIEW).toMatch(/series\.columns\.length > 1/);
   });
 });
 
@@ -257,9 +257,9 @@ describe("o gráfico VAZIO", () => {
   it("o lugar do gráfico não some: sem série, entra o vazio dele", () => {
 
     expect(VIEW).toMatch(
-      /serie\.colunas\.length > 1[\s\S]{0,120}\?\s*\(?\s*<GraficoNoTempo/
+      /series\.columns\.length > 1[\s\S]{0,120}\?\s*\(?\s*<TimeChart/
     );
-    expect(VIEW).toContain("<GraficoVazio");
+    expect(VIEW).toContain("<EmptyChart");
   });
 
   it("diz POR QUE está vazio — e cada motivo é um motivo diferente", () => {
@@ -285,11 +285,11 @@ describe("o gráfico VAZIO", () => {
   });
 
   it("as alturas de mentira são FIXAS — sorteio faria a tela piscar", () => {
-    const m = VIEW.match(/const FANTASMA = \[([^\]]+)\]/);
+    const m = VIEW.match(/const GHOST_BARS = \[([^\]]+)\]/);
     expect(m, "as alturas do fantasma sumiram").not.toBeNull();
     const hs = m![1].split(",").map((n) => Number(n.trim()));
     expect(hs.length).toBeGreaterThan(6);
-    expect(VIEW).not.toMatch(/FANTASMA[\s\S]{0,200}Math\.random/);
+    expect(VIEW).not.toMatch(/GHOST_BARS[\s\S]{0,200}Math\.random/);
 
     const subindo = hs.every((h, i) => i === 0 || h >= hs[i - 1]);
     const descendo = hs.every((h, i) => i === 0 || h <= hs[i - 1]);

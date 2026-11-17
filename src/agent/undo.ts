@@ -1,40 +1,40 @@
 import { TFile, TFolder, type App, type TAbstractFile } from "obsidian";
 import { tr } from "../i18n/tr";
 
-export class ConflitoAoDesfazer extends Error {}
+export class UndoConflict extends Error {}
 
-interface Desfazer {
+interface UndoAction {
 
-  executar(forcar?: boolean): Promise<string>;
+  run(force?: boolean): Promise<string>;
 }
 
-type Antes =
+type Snapshot =
   | { tool: "vault_create"; path: string }
-  | { tool: "vault_edit"; path: string; conteudo: string }
+  | { tool: "vault_edit"; path: string; content: string }
   | { tool: "vault_move"; from: string; to: string }
-  | { tool: "vault_delete"; path: string; pasta: true }
-  | { tool: "vault_delete"; path: string; pasta: false; bytes: ArrayBuffer }
+  | { tool: "vault_delete"; path: string; isFolder: true }
+  | { tool: "vault_delete"; path: string; isFolder: false; bytes: ArrayBuffer }
   | { tool: "vault_create_folder"; path: string };
 
-const MAX_COPIA_BYTES = 20 * 1024 * 1024;
+const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 
-function limpo(p: unknown): string {
+function cleanPath(p: unknown): string {
   return (typeof p === "string" ? p : "")
     .replace(/\\/g, "/")
     .replace(/^\/+|\/+$/g, "");
 }
 
-function pai(p: string): string {
+function parentDir(p: string): string {
   return p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "";
 }
 
-async function garantirPasta(app: App, pasta: string): Promise<void> {
-  if (!pasta || app.vault.getAbstractFileByPath(pasta)) return;
-  await garantirPasta(app, pai(pasta));
-  await app.vault.createFolder(pasta);
+async function ensureFolder(app: App, folder: string): Promise<void> {
+  if (!folder || app.vault.getAbstractFileByPath(folder)) return;
+  await ensureFolder(app, parentDir(folder));
+  await app.vault.createFolder(folder);
 }
 
-function lixeiraDoVault(app: App): "system" | "local" | "none" | null {
+function vaultTrashMode(app: App): "system" | "local" | "none" | null {
   const vault = app.vault as unknown as { getConfig?: (k: string) => unknown };
   try {
     const v = vault.getConfig?.("trashOption");
@@ -44,38 +44,38 @@ function lixeiraDoVault(app: App): "system" | "local" | "none" | null {
   }
 }
 
-export function apagarVaiPraLixeira(app: App): boolean {
-  const l = lixeiraDoVault(app);
+export function deleteGoesToTrash(app: App): boolean {
+  const l = vaultTrashMode(app);
   return l === "system" || l === "local";
 }
 
-export async function antesDe(
+export async function snapshotBefore(
   app: App,
   name: string,
   args: Record<string, unknown>
-): Promise<Antes | null> {
+): Promise<Snapshot | null> {
   switch (name) {
     case "vault_create":
-      return { tool: name, path: limpo(args.path) };
+      return { tool: name, path: cleanPath(args.path) };
     case "vault_edit": {
-      const path = limpo(args.path);
+      const path = cleanPath(args.path);
       const f = app.vault.getAbstractFileByPath(path);
       if (!(f instanceof TFile)) return null;
-      return { tool: name, path, conteudo: await app.vault.read(f) };
+      return { tool: name, path, content: await app.vault.read(f) };
     }
     case "vault_move":
-      return { tool: name, from: limpo(args.from), to: limpo(args.to) };
+      return { tool: name, from: cleanPath(args.from), to: cleanPath(args.to) };
     case "vault_delete": {
-      const path = limpo(args.path);
+      const path = cleanPath(args.path);
       const f = app.vault.getAbstractFileByPath(path);
-      if (f instanceof TFolder) return { tool: name, path, pasta: true };
+      if (f instanceof TFolder) return { tool: name, path, isFolder: true };
       if (!(f instanceof TFile)) return null;
-      if ((f.stat?.size ?? 0) > MAX_COPIA_BYTES) return null;
+      if ((f.stat?.size ?? 0) > MAX_BACKUP_BYTES) return null;
 
-      return { tool: name, path, pasta: false, bytes: await app.vault.readBinary(f) };
+      return { tool: name, path, isFolder: false, bytes: await app.vault.readBinary(f) };
     }
     case "vault_create_folder": {
-      const path = limpo(args.path);
+      const path = cleanPath(args.path);
 
       if (app.vault.getAbstractFileByPath(path)) return null;
       return { tool: name, path };
@@ -85,117 +85,117 @@ export async function antesDe(
   }
 }
 
-async function textoDe(app: App, path: string): Promise<{ f: TFile; texto: string } | null> {
+async function readText(app: App, path: string): Promise<{ f: TFile; text: string } | null> {
   const f = app.vault.getAbstractFileByPath(path);
   if (!(f instanceof TFile)) return null;
-  return { f, texto: await app.vault.read(f) };
+  return { f, text: await app.vault.read(f) };
 }
 
-export async function depoisDe(app: App, antes: Antes): Promise<Desfazer | null> {
-  switch (antes.tool) {
+export async function buildUndo(app: App, snapshot: Snapshot): Promise<UndoAction | null> {
+  switch (snapshot.tool) {
     case "vault_create": {
-      const agora = await textoDe(app, antes.path);
-      if (!agora) return null;
-      const escrito = agora.texto;
+      const now = await readText(app, snapshot.path);
+      if (!now) return null;
+      const written = now.text;
       return {
-        async executar(forcar) {
-          const atual = await textoDe(app, antes.path);
-          if (!atual) throw new Error(tr("{path} no longer exists.", { path: antes.path }));
-          if (atual.texto !== escrito && !forcar) {
-            throw new ConflitoAoDesfazer(
-              tr("{path} changed after the agent created it.", { path: antes.path })
+        async run(force) {
+          const current = await readText(app, snapshot.path);
+          if (!current) throw new Error(tr("{path} no longer exists.", { path: snapshot.path }));
+          if (current.text !== written && !force) {
+            throw new UndoConflict(
+              tr("{path} changed after the agent created it.", { path: snapshot.path })
             );
           }
-          await app.fileManager.trashFile(atual.f);
-          return tr("Removed {path}", { path: antes.path });
+          await app.fileManager.trashFile(current.f);
+          return tr("Removed {path}", { path: snapshot.path });
         },
       };
     }
     case "vault_edit": {
-      const agora = await textoDe(app, antes.path);
-      if (!agora) return null;
-      const escrito = agora.texto;
+      const now = await readText(app, snapshot.path);
+      if (!now) return null;
+      const written = now.text;
       return {
-        async executar(forcar) {
-          const atual = await textoDe(app, antes.path);
-          if (!atual) throw new Error(tr("{path} no longer exists.", { path: antes.path }));
-          if (atual.texto !== escrito && !forcar) {
-            throw new ConflitoAoDesfazer(
-              tr("{path} changed after the agent's edit.", { path: antes.path })
+        async run(force) {
+          const current = await readText(app, snapshot.path);
+          if (!current) throw new Error(tr("{path} no longer exists.", { path: snapshot.path }));
+          if (current.text !== written && !force) {
+            throw new UndoConflict(
+              tr("{path} changed after the agent's edit.", { path: snapshot.path })
             );
           }
-          await app.vault.process(atual.f, () => antes.conteudo);
-          return tr("Restored {path}", { path: antes.path });
+          await app.vault.process(current.f, () => snapshot.content);
+          return tr("Restored {path}", { path: snapshot.path });
         },
       };
     }
     case "vault_move":
       return {
-        async executar() {
-          const alvo: TAbstractFile | null = app.vault.getAbstractFileByPath(antes.to);
-          if (!alvo) throw new Error(tr("Nothing at {path} anymore.", { path: antes.to }));
-          if (app.vault.getAbstractFileByPath(antes.from)) {
-            throw new Error(tr("{path} is taken now — move it by hand.", { path: antes.from }));
+        async run() {
+          const target: TAbstractFile | null = app.vault.getAbstractFileByPath(snapshot.to);
+          if (!target) throw new Error(tr("Nothing at {path} anymore.", { path: snapshot.to }));
+          if (app.vault.getAbstractFileByPath(snapshot.from)) {
+            throw new Error(tr("{path} is taken now — move it by hand.", { path: snapshot.from }));
           }
-          await garantirPasta(app, pai(antes.from));
+          await ensureFolder(app, parentDir(snapshot.from));
 
-          await app.fileManager.renameFile(alvo, antes.from);
-          return tr("Moved back to {path}", { path: antes.from });
+          await app.fileManager.renameFile(target, snapshot.from);
+          return tr("Moved back to {path}", { path: snapshot.from });
         },
       };
     case "vault_delete":
       return {
-        async executar() {
-          if (app.vault.getAbstractFileByPath(antes.path)) {
+        async run() {
+          if (app.vault.getAbstractFileByPath(snapshot.path)) {
             throw new Error(
-              tr("{path} exists again — nothing to restore over.", { path: antes.path })
+              tr("{path} exists again — nothing to restore over.", { path: snapshot.path })
             );
           }
-          await garantirPasta(app, pai(antes.path));
-          if (antes.pasta) {
-            await app.vault.createFolder(antes.path);
+          await ensureFolder(app, parentDir(snapshot.path));
+          if (snapshot.isFolder) {
+            await app.vault.createFolder(snapshot.path);
           } else {
-            await app.vault.createBinary(antes.path, antes.bytes);
+            await app.vault.createBinary(snapshot.path, snapshot.bytes);
           }
-          return tr("Restored {path}", { path: antes.path });
+          return tr("Restored {path}", { path: snapshot.path });
         },
       };
     case "vault_create_folder":
       return {
-        async executar() {
-          const d = app.vault.getAbstractFileByPath(antes.path);
+        async run() {
+          const d = app.vault.getAbstractFileByPath(snapshot.path);
           if (!(d instanceof TFolder)) {
-            throw new Error(tr("{path} no longer exists.", { path: antes.path }));
+            throw new Error(tr("{path} no longer exists.", { path: snapshot.path }));
           }
 
           if (d.children.length > 0) {
-            throw new Error(tr("{path} has files in it now.", { path: antes.path }));
+            throw new Error(tr("{path} has files in it now.", { path: snapshot.path }));
           }
           await app.fileManager.trashFile(d);
-          return tr("Removed folder {path}", { path: antes.path });
+          return tr("Removed folder {path}", { path: snapshot.path });
         },
       };
   }
 }
 
-const registro = new Map<string, Desfazer>();
+const undoRegistry = new Map<string, UndoAction>();
 
-export function registrarDesfazer(id: string, d: Desfazer): void {
-  registro.set(id, d);
+export function registerUndo(id: string, d: UndoAction): void {
+  undoRegistry.set(id, d);
 }
 
-export function podeDesfazer(id: string | undefined): boolean {
-  return !!id && registro.has(id);
+export function canUndo(id: string | undefined): boolean {
+  return !!id && undoRegistry.has(id);
 }
 
-export async function desfazer(id: string, forcar = false): Promise<string> {
-  const d = registro.get(id);
+export async function undo(id: string, force = false): Promise<string> {
+  const d = undoRegistry.get(id);
   if (!d) throw new Error(tr("This change can no longer be undone."));
-  const feito = await d.executar(forcar);
-  registro.delete(id);
-  return feito;
+  const message = await d.run(force);
+  undoRegistry.delete(id);
+  return message;
 }
 
-export function esquecerDesfazeres(): void {
-  registro.clear();
+export function clearUndos(): void {
+  undoRegistry.clear();
 }

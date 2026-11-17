@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Platform, __avisos } from "obsidian";
 import type { App } from "obsidian";
-import { FONTE_DO_HOVER, abrirLinkDaResposta } from "../src/ui/responseLinks";
+import { HOVER_SOURCE, openResponseLink } from "../src/ui/responseLinks";
 import { VIEW_TYPE_CORVUS } from "../src/ui/CorvusView";
 
 interface Gaveta {
@@ -36,7 +36,7 @@ function montar(notas: string[], onde: "direita" | "esquerda" | "centro") {
       openLinkText: async (texto: string, origem: string, aba: unknown) => {
         abertos.push([texto, origem, aba]);
       },
-      getLeavesOfType: (tipo: string) => (tipo === FONTE_DO_HOVER ? [folha] : []),
+      getLeavesOfType: (tipo: string) => (tipo === HOVER_SOURCE ? [folha] : []),
     },
   } as unknown as App;
   return { app, abertos, rightSplit, leftSplit, dentro: dentro as unknown as Element };
@@ -51,13 +51,13 @@ describe("os links da resposta", () => {
   });
 
   it("a fonte do hover é o tipo da view", () => {
-    expect(FONTE_DO_HOVER).toBe(VIEW_TYPE_CORVUS);
+    expect(HOVER_SOURCE).toBe(VIEW_TYPE_CORVUS);
   });
 
   it("abre a nota citada, com a seção, e repassa o pedido de aba nova", () => {
     const m = montar(["2026-09-24 Northwind kickoff"], "direita");
-    expect(abrirLinkDaResposta(m.app, "2026-09-24 Northwind kickoff", false, m.dentro)).toBe(true);
-    expect(abrirLinkDaResposta(m.app, "2026-09-24 Northwind kickoff#Decisões", "tab", m.dentro)).toBe(true);
+    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff", false, m.dentro)).toBe(true);
+    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff#Decisões", "tab", m.dentro)).toBe(true);
     expect(m.abertos).toEqual([
       ["2026-09-24 Northwind kickoff", "", false],
       ["2026-09-24 Northwind kickoff#Decisões", "", "tab"],
@@ -67,39 +67,39 @@ describe("os links da resposta", () => {
 
   it("citação que não leva a nota nenhuma avisa e não cria nota", () => {
     const m = montar([], "direita");
-    expect(abrirLinkDaResposta(m.app, "Nota inventada#Seção", false, m.dentro)).toBe(false);
+    expect(openResponseLink(m.app, "Nota inventada#Seção", false, m.dentro)).toBe(false);
     expect(m.abertos).toEqual([]);
     expect(__avisos).toEqual(["Not found: Nota inventada"]);
   });
 
   it("no desktop a barra lateral fica aberta", () => {
     const m = montar(["Nota"], "direita");
-    abrirLinkDaResposta(m.app, "Nota", false, m.dentro);
+    openResponseLink(m.app, "Nota", false, m.dentro);
     expect(m.rightSplit.fechada).toBe(false);
   });
 
   it("no celular fecha a gaveta onde a conversa está", () => {
     Platform.isMobile = true;
     const d = montar(["Nota"], "direita");
-    abrirLinkDaResposta(d.app, "Nota", false, d.dentro);
+    openResponseLink(d.app, "Nota", false, d.dentro);
     expect([d.rightSplit.fechada, d.leftSplit.fechada]).toEqual([true, false]);
 
     const e = montar(["Nota"], "esquerda");
-    abrirLinkDaResposta(e.app, "Nota", false, e.dentro);
+    openResponseLink(e.app, "Nota", false, e.dentro);
     expect([e.rightSplit.fechada, e.leftSplit.fechada]).toEqual([false, true]);
   });
 
   it("no celular, com a conversa na área principal, nenhuma gaveta mexe", () => {
     Platform.isMobile = true;
     const m = montar(["Nota"], "centro");
-    abrirLinkDaResposta(m.app, "Nota", false, m.dentro);
+    openResponseLink(m.app, "Nota", false, m.dentro);
     expect([m.rightSplit.fechada, m.leftSplit.fechada]).toEqual([false, false]);
   });
 
   it("no celular, link sem destino não fecha a gaveta", () => {
     Platform.isMobile = true;
     const m = montar([], "direita");
-    abrirLinkDaResposta(m.app, "Sumiu", false, m.dentro);
+    openResponseLink(m.app, "Sumiu", false, m.dentro);
     expect(m.rightSplit.fechada).toBe(false);
   });
 });

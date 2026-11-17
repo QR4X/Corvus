@@ -11,10 +11,10 @@ import {
   type ReasoningHandler,
 } from "./base";
 import {
-  aplicarEsforco,
+  applyEffort,
   resolveTemperature,
   resolveMaxTokens,
-  semRaciocinioComFerramentas,
+  noReasoningWithTools,
 } from "./paramPolicy";
 
 export async function streamFallbackToChat(
@@ -148,7 +148,7 @@ export function buildChatBody(
     [field]: resolveMaxTokens(opts.provider, req.model, req.maxTokens ?? 2000, req.effort),
   };
 
-  aplicarEsforco(body, opts.provider, req.model, req.effort);
+  applyEffort(body, opts.provider, req.model, req.effort);
   if (opts.stream) {
     body.stream = true;
     if (opts.includeUsage) body.stream_options = { include_usage: true };
@@ -160,7 +160,7 @@ export function buildChatBody(
     body.tools = tools;
     body.tool_choice = "auto";
 
-    if (body.reasoning_effort !== undefined && semRaciocinioComFerramentas(opts.provider, req.model)) {
+    if (body.reasoning_effort !== undefined && noReasoningWithTools(opts.provider, req.model)) {
       body.reasoning_effort = "none";
     }
   }
@@ -272,65 +272,65 @@ export function ensureOkRequest(
   if (err) throw err;
 }
 
-interface ToolCallNoFio {
+interface WireToolCall {
   index?: number;
   type?: string;
   id?: string;
   function?: { name?: string; arguments?: string };
 }
 
-interface DeltaNoFio {
+interface WireDelta {
   content?: unknown;
   reasoning?: unknown;
   reasoning_content?: unknown;
-  tool_calls?: ToolCallNoFio[];
+  tool_calls?: WireToolCall[];
 }
 
-interface UsoNoFio {
+interface WireUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
 }
 
-interface ChunkNoFio {
-  choices?: Array<{ delta?: DeltaNoFio; finish_reason?: string }>;
-  usage?: UsoNoFio;
+interface WireChunk {
+  choices?: Array<{ delta?: WireDelta; finish_reason?: string }>;
+  usage?: WireUsage;
 }
 
-interface MensagemNoFio {
+interface WireMessage {
   content?: unknown;
-  tool_calls?: ToolCallNoFio[];
+  tool_calls?: WireToolCall[];
   reasoning_content?: unknown;
   reasoning?: unknown;
 }
 
-export interface ErroNoFio {
+export interface WireError {
   error?: { message?: string; code?: unknown; status?: unknown };
 }
 
-export interface RespostaNoFio {
-  choices?: Array<{ message?: MensagemNoFio; finish_reason?: string }>;
-  usage?: UsoNoFio;
+export interface WireResponse {
+  choices?: Array<{ message?: WireMessage; finish_reason?: string }>;
+  usage?: WireUsage;
 }
 
 export function parseOpenAIChatMessage(
-  message: MensagemNoFio
+  message: WireMessage
 ): Pick<ProviderResponse, "content" | "toolCalls" | "reasoning" | "invalidToolCalls"> {
   let toolCalls: ProviderToolCall[] | undefined;
   let invalidToolCalls = false;
   if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
-    const lidas: ProviderToolCall[] = [];
+    const calls: ProviderToolCall[] = [];
     for (const tc of message.tool_calls) {
       if (tc.type !== "function") continue;
 
-      const nome = tc.function?.name;
-      if (!nome) {
+      const toolName = tc.function?.name;
+      if (!toolName) {
         invalidToolCalls = true;
         continue;
       }
-      const brutos = tc.function?.arguments ?? "";
+      const rawArgs = tc.function?.arguments ?? "";
       let parsedArgs: Record<string, unknown> = {};
       try {
-        parsedArgs = brutos ? (JSON.parse(brutos) as Record<string, unknown>) : {};
+        parsedArgs = rawArgs ? (JSON.parse(rawArgs) as Record<string, unknown>) : {};
         if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
           invalidToolCalls = true;
           continue;
@@ -339,13 +339,13 @@ export function parseOpenAIChatMessage(
         invalidToolCalls = true;
         continue;
       }
-      lidas.push({
+      calls.push({
         id: tc.id || `call_${crypto.randomUUID()}`,
-        name: nome,
+        name: toolName,
         arguments: parsedArgs,
       });
     }
-    if (lidas.length > 0) toolCalls = lidas;
+    if (calls.length > 0) toolCalls = calls;
   }
 
   const content =
@@ -367,7 +367,7 @@ export function parseOpenAIChatMessage(
 }
 
 export function usageFrom(json: {
-  usage?: UsoNoFio;
+  usage?: WireUsage;
 }): { input: number; output: number } | undefined {
   return json.usage
     ? {
@@ -458,9 +458,9 @@ export async function parseOpenAICompatSSE(
         }
         return;
       }
-      let json: (ChunkNoFio & { error?: unknown; errors?: unknown }) | null = null;
+      let json: (WireChunk & { error?: unknown; errors?: unknown }) | null = null;
       try {
-        json = JSON.parse(data) as ChunkNoFio & { error?: unknown; errors?: unknown };
+        json = JSON.parse(data) as WireChunk & { error?: unknown; errors?: unknown };
       } catch {
 
         return;

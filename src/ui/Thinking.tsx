@@ -7,8 +7,8 @@ export function elapsedLabel(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
-  const resto = s % 60;
-  return `${m}m ${String(resto).padStart(2, "0")}s`;
+  const secs = s % 60;
+  return `${m}m ${String(secs).padStart(2, "0")}s`;
 }
 
 export function thinkingStatus(activity?: ActivityMeta): string {
@@ -73,16 +73,16 @@ export function ThinkingLine({
   activity?: ActivityMeta;
   onOpen: () => void;
 }) {
-  const [agora, setAgora] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    setAgora(Date.now());
-    const t = window.setInterval(() => setAgora(Date.now()), 1000);
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, [since]);
 
-  const passado = Math.max(0, agora - since);
-  const texto = tr(thinkingStatus(activity));
+  const elapsed = Math.max(0, now - since);
+  const label = tr(thinkingStatus(activity));
 
   return (
     <button
@@ -93,9 +93,9 @@ export function ThinkingLine({
     >
       <ThinkingGlyph />
       <span className="corvus-thinking-label">
-        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
+        <span className="corvus-thinking-time">{elapsedLabel(elapsed)}</span>
         <span className="corvus-thinking-dot"> · </span>
-        {texto}
+        {label}
       </span>
       {count > 0 && <Icon name="chevron-right" size={15} />}
     </button>
@@ -103,18 +103,18 @@ export function ThinkingLine({
 }
 
 export function ThinkingInline({ since }: { since: number }) {
-  const [agora, setAgora] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    setAgora(Date.now());
-    const t = window.setInterval(() => setAgora(Date.now()), 1000);
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, [since]);
-  const passado = Math.max(0, agora - since);
+  const elapsed = Math.max(0, now - since);
   return (
     <span className="corvus-thinking is-inline">
       <ThinkingGlyph />
       <span className="corvus-thinking-label">
-        <span className="corvus-thinking-time">{elapsedLabel(passado)}</span>
+        <span className="corvus-thinking-time">{elapsedLabel(elapsed)}</span>
         <span className="corvus-thinking-dot"> · </span>
         {tr("Waiting for model response")}
       </span>

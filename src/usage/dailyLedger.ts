@@ -1,42 +1,42 @@
-export interface Lancamento {
+export interface LedgerEntry {
   r: number;
   i: number;
   o: number;
 }
 
-export type LivroDoDia = Record<string, Record<string, Lancamento>>;
+export type DailyLedger = Record<string, Record<string, LedgerEntry>>;
 
 const SEP = "\u0001";
 
-export function horaDe(quando: Date): string {
-  return quando.toISOString().slice(0, 13);
+export function hourKey(when: Date): string {
+  return when.toISOString().slice(0, 13);
 }
 
-export function lancar(
-  livro: LivroDoDia,
-  quando: Date,
+export function addEntry(
+  ledger: DailyLedger,
+  when: Date,
   provider: string,
   model: string,
-  delta: Partial<Lancamento>
+  delta: Partial<LedgerEntry>
 ): void {
-  const hora = (livro[horaDe(quando)] ??= {});
-  const chave = `${provider}${SEP}${model}`;
-  const l = (hora[chave] ??= { r: 0, i: 0, o: 0 });
+  const hour = (ledger[hourKey(when)] ??= {});
+  const key = `${provider}${SEP}${model}`;
+  const l = (hour[key] ??= { r: 0, i: 0, o: 0 });
   l.r += delta.r ?? 0;
   l.i += delta.i ?? 0;
   l.o += delta.o ?? 0;
 }
 
-export function podar(livro: LivroDoDia, agora: Date, horas = 50): void {
-  const limite = horaDe(new Date(agora.getTime() - horas * 3_600_000));
-  for (const hora of Object.keys(livro)) {
-    if (hora < limite) delete livro[hora];
+export function prune(ledger: DailyLedger, now: Date, hours = 50): void {
+  const cutoff = hourKey(new Date(now.getTime() - hours * 3_600_000));
+  for (const hour of Object.keys(ledger)) {
+    if (hour < cutoff) delete ledger[hour];
   }
 }
 
-function relogioEm(quando: Date, fuso: string): { y: number; m: number; d: number; ms: number } {
-  const partes = new Intl.DateTimeFormat("en-US", {
-    timeZone: fuso,
+function wallClock(when: Date, timeZone: string): { y: number; m: number; d: number; ms: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
     hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
@@ -44,46 +44,46 @@ function relogioEm(quando: Date, fuso: string): { y: number; m: number; d: numbe
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).formatToParts(quando);
-  const n = (tipo: string) => Number(partes.find((p) => p.type === tipo)?.value ?? 0);
+  }).formatToParts(when);
+  const n = (unit: string) => Number(parts.find((p) => p.type === unit)?.value ?? 0);
   const y = n("year");
   const m = n("month");
   const d = n("day");
   return { y, m, d, ms: Date.UTC(y, m - 1, d, n("hour") % 24, n("minute"), n("second")) };
 }
 
-function deslocamento(quando: Date, fuso: string): number {
-  const semMs = Math.floor(quando.getTime() / 1000) * 1000;
-  return Math.round((relogioEm(quando, fuso).ms - semMs) / 60_000) * 60_000;
+function utcOffset(when: Date, timeZone: string): number {
+  const wholeSeconds = Math.floor(when.getTime() / 1000) * 1000;
+  return Math.round((wallClock(when, timeZone).ms - wholeSeconds) / 60_000) * 60_000;
 }
 
-export function inicioDoDia(agora: Date, fuso: string): Date {
-  const { y, m, d } = relogioEm(agora, fuso);
-  const meiaNoite = Date.UTC(y, m - 1, d);
-  const palpite = meiaNoite - deslocamento(agora, fuso);
-  return new Date(meiaNoite - deslocamento(new Date(palpite), fuso));
+export function startOfDay(now: Date, timeZone: string): Date {
+  const { y, m, d } = wallClock(now, timeZone);
+  const midnight = Date.UTC(y, m - 1, d);
+  const guess = midnight - utcOffset(now, timeZone);
+  return new Date(midnight - utcOffset(new Date(guess), timeZone));
 }
 
-export function faltaParaVirar(agora: Date, fuso: string): number {
-  const inicio = inicioDoDia(agora, fuso).getTime();
-  const proximo = inicioDoDia(new Date(inicio + 36 * 3_600_000), fuso).getTime();
-  return Math.max(0, proximo - agora.getTime());
+export function msUntilRollover(now: Date, timeZone: string): number {
+  const start = startOfDay(now, timeZone).getTime();
+  const next = startOfDay(new Date(start + 36 * 3_600_000), timeZone).getTime();
+  return Math.max(0, next - now.getTime());
 }
 
-export function somarDesde(
-  livro: LivroDoDia,
-  inicio: Date,
-  filtro: (provider: string, model: string) => boolean
-): Lancamento {
-  const desde = horaDe(inicio);
-  const total: Lancamento = { r: 0, i: 0, o: 0 };
-  for (const [hora, modelos] of Object.entries(livro)) {
-    if (hora < desde) continue;
-    for (const [chave, l] of Object.entries(modelos)) {
-      const corte = chave.indexOf(SEP);
-      const provider = chave.slice(0, corte);
-      const model = chave.slice(corte + 1);
-      if (!filtro(provider, model)) continue;
+export function sumSince(
+  ledger: DailyLedger,
+  start: Date,
+  matches: (provider: string, model: string) => boolean
+): LedgerEntry {
+  const since = hourKey(start);
+  const total: LedgerEntry = { r: 0, i: 0, o: 0 };
+  for (const [hour, models] of Object.entries(ledger)) {
+    if (hour < since) continue;
+    for (const [key, l] of Object.entries(models)) {
+      const cut = key.indexOf(SEP);
+      const provider = key.slice(0, cut);
+      const model = key.slice(cut + 1);
+      if (!matches(provider, model)) continue;
       total.r += l.r;
       total.i += l.i;
       total.o += l.o;
@@ -92,27 +92,27 @@ export function somarDesde(
   return total;
 }
 
-export function modelosDesde(
-  livro: LivroDoDia,
-  inicio: Date,
+export function modelsSince(
+  ledger: DailyLedger,
+  start: Date,
   provider: string
-): Array<{ model: string } & Lancamento> {
-  const desde = horaDe(inicio);
-  const porModelo = new Map<string, Lancamento>();
-  for (const [hora, modelos] of Object.entries(livro)) {
-    if (hora < desde) continue;
-    for (const [chave, l] of Object.entries(modelos)) {
-      const corte = chave.indexOf(SEP);
-      if (chave.slice(0, corte) !== provider) continue;
-      const model = chave.slice(corte + 1);
-      const acc = porModelo.get(model) ?? { r: 0, i: 0, o: 0 };
+): Array<{ model: string } & LedgerEntry> {
+  const since = hourKey(start);
+  const byModel = new Map<string, LedgerEntry>();
+  for (const [hour, models] of Object.entries(ledger)) {
+    if (hour < since) continue;
+    for (const [key, l] of Object.entries(models)) {
+      const cut = key.indexOf(SEP);
+      if (key.slice(0, cut) !== provider) continue;
+      const model = key.slice(cut + 1);
+      const acc = byModel.get(model) ?? { r: 0, i: 0, o: 0 };
       acc.r += l.r;
       acc.i += l.i;
       acc.o += l.o;
-      porModelo.set(model, acc);
+      byModel.set(model, acc);
     }
   }
-  return Array.from(porModelo.entries())
+  return Array.from(byModel.entries())
     .map(([model, l]) => ({ model, ...l }))
     .sort((a, b) => b.r - a.r || a.model.localeCompare(b.model));
 }

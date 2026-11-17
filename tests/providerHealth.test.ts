@@ -5,7 +5,7 @@ import {
   providerCredential,
   providerHealth,
 } from "../src/core/providersMeta";
-import { modeloSalvoPara } from "../src/core/defaultModel";
+import { savedModelFor } from "../src/core/defaultModel";
 import type { CorvusSettings } from "../src/settings";
 
 function fake(settings: Record<string, unknown>): CorvusSettings {
@@ -53,13 +53,13 @@ describe("provider table", () => {
     const s = fake({ anthropicApiKey: "a", nimApiKey: "n", nimModel: "m-nim", defaultModel: "m-oa" });
     expect(providerCredential(s, "anthropic")).toBe("a");
     expect(providerCredential(s, "nim")).toBe("n");
-    expect(modeloSalvoPara(s, "nim")).toBe("m-nim");
+    expect(savedModelFor(s, "nim")).toBe("m-nim");
   });
 
   it("an unknown provider id resolves to OpenAI, like getProvider does", () => {
     const s = fake({ openaiApiKey: "sk", defaultModel: "m-oa" });
     expect(providerCredential(s, "legacy")).toBe("sk");
-    expect(modeloSalvoPara(s, "legacy")).toBe("m-oa");
+    expect(savedModelFor(s, "legacy")).toBe("m-oa");
   });
 
   it("anthropic has no embedding models", () => {

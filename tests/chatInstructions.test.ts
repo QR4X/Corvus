@@ -59,7 +59,7 @@ describe("instruções por conversa", () => {
   });
 
   it("o ⋯ da conversa abre a folha, que mora no App", () => {
-    expect(ler("src/ui/ChatList.tsx")).toMatch(/label: tr\("Instructions…"\)[\s\S]{0,160}painel\.instrucoesDe\(c\)/);
+    expect(ler("src/ui/ChatList.tsx")).toMatch(/label: tr\("Instructions…"\)[\s\S]{0,160}panel\.instructionsFor\(c\)/);
     expect(ler("src/ui/App.tsx")).toContain("<ChatInstructionsSheet");
   });
 });

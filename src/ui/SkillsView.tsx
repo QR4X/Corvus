@@ -3,10 +3,10 @@ import { Notice, TFile, normalizePath } from "obsidian";
 import type CorvusPlugin from "../main";
 import type { Skill } from "../skills/skills";
 import {
-  SKILL_DRAFT_VAZIO,
+  EMPTY_SKILL_DRAFT,
   skillFileName,
   skillMarkdown,
-  skillProblema,
+  skillProblem,
   type SkillDraft,
 } from "../skills/skillFile";
 import { ensureFolder } from "../core/vaultFs";
@@ -17,14 +17,14 @@ import { Sheet, SheetSearch, useSheetFull } from "./Sheet";
 import { Segmented } from "./Segmented";
 import { projectColor } from "../projects";
 import { SheetProgress, SheetSubmit, SheetWizardFoot } from "./SheetForm";
-import { peDoWizard } from "./wizard";
-import { SkillForm, PASSOS_SKILL } from "./SkillSheet";
+import { wizardFoot } from "./wizard";
+import { SkillForm, SKILL_STEPS } from "./SkillSheet";
 import { openActions } from "./menu";
 import { MODULES, relativeShort } from "./modules";
 import { CHAT_MODES, isChatMode } from "../core/session";
 import { mark, tr } from "../i18n/tr";
 
-const ABAS: Array<{ id: string; label: string }> = [
+const TABS: Array<{ id: string; label: string }> = [
   { id: "all", label: mark("All") },
   ...CHAT_MODES.map((m) => ({ id: m, label: MODULES[m].short })),
 ];
@@ -42,14 +42,14 @@ export function SkillsView({
 }) {
   const [, force] = useReducer((n: number) => n + 1, 0);
   const [query, setQuery] = useState("");
-  const [aba, setAba] = useState("all");
+  const [tab, setTab] = useState("all");
   const [draft, setDraft] = useState<SkillDraft | null>(null);
 
-  const [editandoPath, setEditandoPath] = useState<string | null>(null);
+  const [editingPath, setEditingPath] = useState<string | null>(null);
 
-  const [passo, setPasso] = useState(0);
+  const [step, setStep] = useState(0);
 
-  const [procurando, setProcurando] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -60,44 +60,44 @@ export function SkillsView({
   const skills = plugin.skills;
   const folder = plugin.settings.skillsPath || SKILLS_FOLDER;
 
-  const visiveis = useMemo(() => {
+  const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    const noModo =
-      aba === "all" ? skills : skills.filter((s) => (s.mode ?? "") === aba);
-    if (!q) return noModo;
-    return noModo.filter(
+    const inMode =
+      tab === "all" ? skills : skills.filter((s) => (s.mode ?? "") === tab);
+    if (!q) return inMode;
+    return inMode.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
         s.body.toLowerCase().includes(q)
     );
-  }, [skills, query, aba]);
+  }, [skills, query, tab]);
 
-  const problema = draft
-    ? skillProblema(
+  const problem = draft
+    ? skillProblem(
         draft,
         skills.map((s) => s.path),
-        editandoPath ?? undefined
+        editingPath ?? undefined
       )
     : null;
 
-  const abrirNota = (path: string) => {
+  const openNote = (path: string) => {
     const f = plugin.app.vault.getAbstractFileByPath(path);
     if (f instanceof TFile) void plugin.app.workspace.getLeaf(true).openFile(f);
     else new Notice(tr("Not found: {path}", { path }));
   };
 
-  const criar = () => {
-    setEditandoPath(null);
-    setPasso(0);
-    setProcurando(false);
-    setDraft(SKILL_DRAFT_VAZIO);
+  const startCreate = () => {
+    setEditingPath(null);
+    setStep(0);
+    setBrowsing(false);
+    setDraft(EMPTY_SKILL_DRAFT);
   };
 
-  const editar = (s: Skill) => {
-    setEditandoPath(s.path);
-    setProcurando(false);
+  const startEdit = (s: Skill) => {
+    setEditingPath(s.path);
+    setBrowsing(false);
     setDraft({
       name: s.name,
       description: s.description,
@@ -108,37 +108,37 @@ export function SkillsView({
     });
   };
 
-  const fecharNivel = () => {
+  const closeForm = () => {
     setDraft(null);
-    setEditandoPath(null);
-    setProcurando(false);
-    setPasso(0);
+    setEditingPath(null);
+    setBrowsing(false);
+    setStep(0);
   };
 
-  const salvar = async () => {
-    if (!draft || problema) return;
-    const alvo = normalizePath(`${folder}/${skillFileName(draft.name)}`);
-    const conteudo = skillMarkdown(draft);
+  const save = async () => {
+    if (!draft || problem) return;
+    const targetPath = normalizePath(`${folder}/${skillFileName(draft.name)}`);
+    const content = skillMarkdown(draft);
     try {
       await ensureFolder(plugin.app.vault.adapter, folder);
-      const antigo = editandoPath
-        ? plugin.app.vault.getAbstractFileByPath(editandoPath)
+      const existing = editingPath
+        ? plugin.app.vault.getAbstractFileByPath(editingPath)
         : null;
-      if (antigo instanceof TFile) {
+      if (existing instanceof TFile) {
 
-        if (antigo.path !== alvo) {
-          await plugin.app.fileManager.renameFile(antigo, alvo);
+        if (existing.path !== targetPath) {
+          await plugin.app.fileManager.renameFile(existing, targetPath);
         }
-        const arquivo = plugin.app.vault.getAbstractFileByPath(alvo);
+        const file = plugin.app.vault.getAbstractFileByPath(targetPath);
 
-        if (arquivo instanceof TFile) {
-          await plugin.app.vault.modify(arquivo, conteudo);
+        if (file instanceof TFile) {
+          await plugin.app.vault.modify(file, content);
         }
       } else {
-        await plugin.app.vault.create(alvo, conteudo);
+        await plugin.app.vault.create(targetPath, content);
       }
       await plugin.reloadSkills();
-      fecharNivel();
+      closeForm();
       force();
     } catch (err) {
       new Notice(
@@ -149,7 +149,7 @@ export function SkillsView({
     }
   };
 
-  const apagar = async (s: Skill) => {
+  const deleteSkill = async (s: Skill) => {
     const ok = await new ConfirmModal(plugin.app, {
       title: tr("Delete \"{name}\"?", { name: s.name }),
       body: tr("The note goes to the trash — you can get it back from there."),
@@ -163,7 +163,7 @@ export function SkillsView({
     force();
   };
 
-  const exemplos = async () => {
+  const seedExamples = async () => {
     const n = await plugin.seedExampleSkills();
     new Notice(
       n === 1
@@ -175,102 +175,102 @@ export function SkillsView({
     force();
   };
 
-  const noFormulario = draft !== null;
+  const inForm = draft !== null;
 
-  const criando = noFormulario && editandoPath === null;
+  const creating = inForm && editingPath === null;
 
-  const rodape = procurando ? (
+  const footer = browsing ? (
 
     undefined
-  ) : criando ? (
+  ) : creating ? (
     <SheetWizardFoot
-      atual={passo}
-      total={PASSOS_SKILL.length}
-      onPasso={setPasso}
-      problema={problema}
+      current={step}
+      total={SKILL_STEPS.length}
+      onStep={setStep}
+      problem={problem}
       label={tr("Create skill")}
-      onSubmit={() => void salvar()}
+      onSubmit={() => void save()}
     />
-  ) : noFormulario ? (
+  ) : inForm ? (
     <SheetSubmit
       label={tr("Save skill")}
-      problema={problema}
-      onSubmit={() => void salvar()}
+      problem={problem}
+      onSubmit={() => void save()}
     />
   ) : undefined;
 
   return (
     <Sheet
-      footer={rodape}
+      footer={footer}
 
       progress={
-        criando && !procurando ? (
-          <SheetProgress atual={passo} total={PASSOS_SKILL.length} />
+        creating && !browsing ? (
+          <SheetProgress current={step} total={SKILL_STEPS.length} />
         ) : undefined
       }
 
       action={
-        noFormulario
+        inForm
           ? undefined
           : {
               icon: "plus",
               label: tr("New skill"),
               text: tr("New"),
-              onClick: criar,
+              onClick: startCreate,
             }
       }
 
       title={
-        criando
+        creating
           ? 
 
-            tr("New skill · {step}", { step: tr(PASSOS_SKILL[passo].label) })
-          : noFormulario
+            tr("New skill · {step}", { step: tr(SKILL_STEPS[step].label) })
+          : inForm
             ? tr("Edit skill")
             : tr("Skills")
       }
       open={open}
       onClose={() => {
-        fecharNivel();
+        closeForm();
         onClose();
       }}
 
       onBack={
-        !noFormulario
+        !inForm
           ? undefined
-          : criando &&
-              peDoWizard({ atual: passo, total: PASSOS_SKILL.length }).voltar ===
-                "passo"
-            ? () => setPasso(passo - 1)
-            : fecharNivel
+          : creating &&
+              wizardFoot({ current: step, total: SKILL_STEPS.length }).back ===
+                "step"
+            ? () => setStep(step - 1)
+            : closeForm
       }
 
       startFull
 
       focusOnOpen={false}
     >
-      {noFormulario ? (
+      {inForm ? (
         <SkillForm
-          draft={draft ?? SKILL_DRAFT_VAZIO}
-          focar={noFormulario}
+          draft={draft ?? EMPTY_SKILL_DRAFT}
+          focus={inForm}
           onDraft={setDraft}
           plugin={plugin}
-          passo={criando ? PASSOS_SKILL[passo].id : undefined}
-          procurando={procurando}
-          onProcurar={setProcurando}
+          step={creating ? SKILL_STEPS[step].id : undefined}
+          browsing={browsing}
+          onBrowse={setBrowsing}
         />
       ) : (
 
-        <ListaCheia>
+        <FullList>
         <div className="corvus-sheet-stack">
           {}
           {skills.length > 0 && (
             <Segmented
               label={tr("Filter skills by mode")}
-              value={aba}
-              onChange={setAba}
+              value={tab}
+              onChange={setTab}
 
-              options={ABAS.map((a) => ({
+              options={TABS.map((a) => ({
                 id: a.id,
                 label: a.id === "all" ? tr(a.label) : a.label,
               }))}
@@ -281,13 +281,13 @@ export function SkillsView({
           <SheetSearch
             value={query}
             placeholder={tr("Search skills")}
-            found={visiveis.length}
+            found={visible.length}
             onChange={setQuery}
           />
 
-          {visiveis.length > 0 && (
+          {visible.length > 0 && (
             <div className="corvus-tiles">
-              {visiveis.map((s) => (
+              {visible.map((s) => (
                 <div key={s.id} className="corvus-tile-wrap">
                   <button
                     type="button"
@@ -342,18 +342,18 @@ export function SkillsView({
                         {
                           label: tr("Edit"),
                           icon: "pencil",
-                          run: () => editar(s),
+                          run: () => startEdit(s),
                         },
                         {
                           label: tr("Open note"),
                           icon: "file-text",
-                          run: () => abrirNota(s.path),
+                          run: () => openNote(s.path),
                         },
                         {
                           label: tr("Delete"),
                           icon: "trash-2",
                           danger: true,
-                          run: () => void apagar(s),
+                          run: () => void deleteSkill(s),
                         },
                       ])
                     }
@@ -365,7 +365,7 @@ export function SkillsView({
             </div>
           )}
 
-          {visiveis.length === 0 && (
+          {visible.length === 0 && (
             <div className="corvus-home-empty">
               <Icon name="sparkles" size={42} />
               <p>
@@ -379,7 +379,7 @@ export function SkillsView({
                 <button
                   type="button"
                   className="corvus-home-pill"
-                  onClick={() => void exemplos()}
+                  onClick={() => void seedExamples()}
                 >
                   <Icon name="wand" size={18} />
                   <span>{tr("Start with three examples")}</span>
@@ -389,13 +389,13 @@ export function SkillsView({
           )}
 
         </div>
-        </ListaCheia>
+        </FullList>
       )}
     </Sheet>
   );
 }
 
-function ListaCheia({ children }: { children: ReactNode }) {
+function FullList({ children }: { children: ReactNode }) {
   useSheetFull();
   return <>{children}</>;
 }

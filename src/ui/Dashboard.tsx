@@ -13,13 +13,13 @@ import { MODULES, chatsOfModule, defaultSegment } from "./modules";
 import type { ChatSummary } from "../core/chatPersistence";
 import { tr } from "../i18n/tr";
 
-const RECENTES = 4;
+const RECENT_COUNT = 4;
 
 export function Dashboard({
   plugin,
   session,
-  aba,
-  onAba,
+  tab,
+  onTab,
   onOpenMenu,
   onNewChat,
   onOpenChat,
@@ -29,8 +29,8 @@ export function Dashboard({
   plugin: CorvusPlugin;
   session: ChatSession;
 
-  aba: string;
-  onAba: (id: string) => void;
+  tab: string;
+  onTab: (id: string) => void;
   onOpenMenu: () => void;
 
   onNewChat: (mode: ChatMode) => void;
@@ -39,19 +39,19 @@ export function Dashboard({
   onOpenUsage: () => void;
 }) {
 
-  const alternarTelaCheia = async () => {
+  const toggleFullscreen = async () => {
     plugin.settings.mobileFullscreen = !plugin.settings.mobileFullscreen;
     await plugin.saveSettings();
   };
 
   const chats = useChatSummaries(plugin);
-  const naoLidas = useUnreadChats(plugin);
-  const esperandoId = useChatStore((s) => s.waitingChatId);
+  const unread = useUnreadChats(plugin);
+  const waitingId = useChatStore((s) => s.waitingChatId);
 
-  const atual: ChatMode = isChatMode(aba)
-    ? aba
+  const activeMode: ChatMode = isChatMode(tab)
+    ? tab
     : defaultSegment(chats, plugin.settings.defaultMode);
-  const visiveis = chatsOfModule(chats, atual);
+  const visible = chatsOfModule(chats, activeMode);
 
   return (
     <div className="corvus-chat">
@@ -78,7 +78,7 @@ export function Dashboard({
                 : tr("Fullscreen")
             }
             aria-pressed={plugin.settings.mobileFullscreen === true}
-            onClick={() => void alternarTelaCheia()}
+            onClick={() => void toggleFullscreen()}
           >
             <Icon
               name={
@@ -101,34 +101,34 @@ export function Dashboard({
 
             dot:
               alertCount(chats, m, {
-                esperando: esperandoId,
-                naoLidas,
+                waitingId,
+                unread,
               }) > 0,
           }))}
-          value={atual}
+          value={activeMode}
           label={tr("Chat mode")}
-          onChange={onAba}
+          onChange={onTab}
         />
 
-        {visiveis.length > 0 && (
+        {visible.length > 0 && (
           <>
             <div className="corvus-home-headrow">
               <span className="corvus-section-label">
                 {tr("Pick up where you left")}
               </span>
               {}
-              {visiveis.length > RECENTES && (
+              {visible.length > RECENT_COUNT && (
                 <button
                   type="button"
 
                   className="corvus-home-filter is-accent"
 
                   onClick={() => {
-                    onAba(atual);
+                    onTab(activeMode);
                     onOpenHistory();
                   }}
                 >
-                  <span>{tr("See all {n}", { n: visiveis.length })}</span>
+                  <span>{tr("See all {n}", { n: visible.length })}</span>
                   <Icon name="chevron-right" size={16} />
                 </button>
               )}
@@ -136,23 +136,23 @@ export function Dashboard({
             <ChatList
               plugin={plugin}
               session={session}
-              chats={visiveis.slice(0, RECENTES)}
+              chats={visible.slice(0, RECENT_COUNT)}
               onOpen={onOpenChat}
             />
           </>
         )}
 
-        {visiveis.length === 0 && (
+        {visible.length === 0 && (
           <div className="corvus-home-empty">
-            <Icon name={MODULES[atual].icon} size={42} />
-            <p>{tr(MODULES[atual].emptyLine)}</p>
+            <Icon name={MODULES[activeMode].icon} size={42} />
+            <p>{tr(MODULES[activeMode].emptyLine)}</p>
           </div>
         )}
 
         {}
         <section className="corvus-start">
           {}
-          {visiveis.length > 0 && (
+          {visible.length > 0 && (
             <span className="corvus-or">
               <span>{tr("or")}</span>
             </span>

@@ -11,22 +11,22 @@ import {
 
 describe("para onde o app leva o que migra", () => {
   it("conversas vão pra pasta VISÍVEL; o índice vai pra oculta", () => {
-    const chats = HIDDEN_MOVES.filter((m) => m.campo === "chatsPath");
-    const index = HIDDEN_MOVES.filter((m) => m.campo === "ragIndexPath");
+    const chats = HIDDEN_MOVES.filter((m) => m.field === "chatsPath");
+    const index = HIDDEN_MOVES.filter((m) => m.field === "ragIndexPath");
     expect(chats.length).toBeGreaterThan(0);
     expect(index.length).toBeGreaterThan(0);
     for (const m of chats) {
-      expect(m.novo).toBe(CHATS_FOLDER);
-      expect(isHidden(m.novo)).toBe(false);
+      expect(m.target).toBe(CHATS_FOLDER);
+      expect(isHidden(m.target)).toBe(false);
     }
     for (const m of index) {
-      expect(m.novo.startsWith(`${CORVUS_HIDDEN}/`)).toBe(true);
-      expect(isHidden(m.novo)).toBe(true);
+      expect(m.target.startsWith(`${CORVUS_HIDDEN}/`)).toBe(true);
+      expect(isHidden(m.target)).toBe(true);
     }
   });
 
   it("migra o legado corvus-ai E o default oculto .corvus/chats", () => {
-    const legados = HIDDEN_MOVES.map((m) => m.legado);
+    const legados = HIDDEN_MOVES.map((m) => m.legacy);
     expect(legados).toContain("corvus-ai/chats");
     expect(legados).toContain(`${CORVUS_HIDDEN}/chats`);
     expect(legados).toContain("corvus-ai/index");
@@ -40,9 +40,9 @@ describe("para onde o app leva o que migra", () => {
 describe("legacyModeMoves", () => {
   it("aponta modos na raiz do app para dentro de corvus/chats", () => {
     const moves = legacyModeMoves("corvus", "corvus/chats", ["chat", "vault-qa", "agent"]);
-    expect(moves).toContainEqual({ de: "corvus/agent", para: "corvus/chats/agent" });
-    expect(moves).toContainEqual({ de: "corvus/chat", para: "corvus/chats/chat" });
-    expect(moves).toContainEqual({ de: "corvus/vault-qa", para: "corvus/chats/vault-qa" });
+    expect(moves).toContainEqual({ from: "corvus/agent", to: "corvus/chats/agent" });
+    expect(moves).toContainEqual({ from: "corvus/chat", to: "corvus/chats/chat" });
+    expect(moves).toContainEqual({ from: "corvus/vault-qa", to: "corvus/chats/vault-qa" });
   });
 
   it("não cria par quando a raiz já é o próprio chatsFolder", () => {
@@ -52,11 +52,11 @@ describe("legacyModeMoves", () => {
 
 describe("shouldMigrate", () => {
   const base = {
-    caminhoAtual: "corvus-ai/chats",
-    legado: "corvus-ai/chats",
-    novo: ".corvus/chats",
-    origemExiste: true,
-    destinoExiste: false,
+    currentPath: "corvus-ai/chats",
+    legacy: "corvus-ai/chats",
+    target: ".corvus/chats",
+    sourceExists: true,
+    targetExists: false,
   };
 
   it("caminho padrão antigo, com arquivos lá e destino livre: move", () => {
@@ -66,26 +66,26 @@ describe("shouldMigrate", () => {
   it("caminho ESCOLHIDO pela pessoa não se mexe", () => {
 
     expect(
-      shouldMigrate({ ...base, caminhoAtual: "Arquivo/minhas-conversas" })
+      shouldMigrate({ ...base, currentPath: "Arquivo/minhas-conversas" })
     ).toBe(false);
   });
 
   it("instalação nova (já no caminho novo) não tenta nada", () => {
-    expect(shouldMigrate({ ...base, caminhoAtual: ".corvus/chats" })).toBe(false);
+    expect(shouldMigrate({ ...base, currentPath: ".corvus/chats" })).toBe(false);
   });
 
   it("origem inexistente: não há o que mover", () => {
-    expect(shouldMigrate({ ...base, origemExiste: false })).toBe(false);
+    expect(shouldMigrate({ ...base, sourceExists: false })).toBe(false);
   });
 
   it("destino JÁ existe: não passa por cima", () => {
 
-    expect(shouldMigrate({ ...base, destinoExiste: true })).toBe(false);
+    expect(shouldMigrate({ ...base, targetExists: true })).toBe(false);
   });
 
   it("um 'não' basta, mesmo com todo o resto a favor", () => {
     expect(
-      shouldMigrate({ ...base, origemExiste: false, destinoExiste: true })
+      shouldMigrate({ ...base, sourceExists: false, targetExists: true })
     ).toBe(false);
   });
 });

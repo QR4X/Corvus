@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { __setRequestUrl } from "obsidian";
-import { definirGratisConhecidos, getPricing } from "../src/usage/pricing";
+import { setKnownFree, getPricing } from "../src/usage/pricing";
 import { enrichModelsFromCatalog, getEnrichedInfo } from "../src/providers/modelInfoStore";
 import { getModelCard } from "../src/providers/modelDescriptions";
 import { openaiFreeTierForModel } from "../src/usage/freeTokens";
-import { gratisDeVerdade } from "../src/usage/freeTag";
+import { isTrulyFree } from "../src/usage/freeTag";
 
 describe("painel de uso: custo zero só pro que é grátis de verdade", () => {
   it("NIM sem a mark Free Endpoint: custo desconhecido, não US$ 0", () => {
@@ -14,14 +14,14 @@ describe("painel de uso: custo zero só pro que é grátis de verdade", () => {
   });
 
   it("NIM com a mark (vinda do fetch): grátis, inclusive com o _ da NVIDIA", () => {
-    definirGratisConhecidos("nim", ["deepseek-ai/deepseek-v4.1-flash", "nvidia/llama-3_1-nemotron-safety-guard-8b-v3"]);
+    setKnownFree("nim", ["deepseek-ai/deepseek-v4.1-flash", "nvidia/llama-3_1-nemotron-safety-guard-8b-v3"]);
     expect(getPricing("nim", "deepseek-ai/deepseek-v4.1-flash")).toMatchObject({ tier: "free", inputPerMillion: 0 });
     expect(getPricing("nim", "nvidia/llama-3.1-nemotron-safety-guard-8b-v3").tier).toBe("free");
     expect(getPricing("nim", "meta/llama-3.1-70b-instruct").tier).toBe("unknown");
   });
 
   it("OpenRouter: grátis sem :free (descoberto pelo preço) custa zero; o resto segue a tabela", () => {
-    definirGratisConhecidos("openrouter", ["inclusionai/ling-3.1-flash"]);
+    setKnownFree("openrouter", ["inclusionai/ling-3.1-flash"]);
     expect(getPricing("openrouter", "inclusionai/ling-3.1-flash").tier).toBe("free");
     expect(getPricing("openrouter", "google/lyria-3-clip-preview").tier).toBe("unknown");
   });
@@ -83,6 +83,6 @@ describe("cota grátis da OpenAI (data sharing): o balde certo", () => {
 
 describe("a variante :free é grátis mesmo fora da lista do fetch", () => {
   it("o embedding Nemotron VL :free não depende da lista do chat", () => {
-    expect(gratisDeVerdade("nvidia/llama-nemotron-embed-vl-1b-v2:free", ["outro/modelo"], false)).toBe(true);
+    expect(isTrulyFree("nvidia/llama-nemotron-embed-vl-1b-v2:free", ["outro/modelo"], false)).toBe(true);
   });
 });

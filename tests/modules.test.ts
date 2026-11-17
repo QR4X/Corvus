@@ -194,7 +194,7 @@ describe("searchChats", () => {
     const r = searchChats(lista, "   ");
     expect(r.hits).toHaveLength(4);
     expect(r.regex).toBe(false);
-    expect(r.invalida).toBe(false);
+    expect(r.invalid).toBe(false);
   });
 
   it("palavra comum funciona como sempre — ela também é regex válida", () => {
@@ -221,18 +221,18 @@ describe("searchChats", () => {
   it("expressão quebrada NÃO zera a lista: cai em literal e avisa", () => {
 
     const r = searchChats(lista, "Draft (");
-    expect(r.invalida).toBe(true);
+    expect(r.invalid).toBe(true);
     expect(r.regex).toBe(false);
     expect(r.hits).toEqual([]);
     const r2 = searchChats(lista, "README (");
-    expect(r2.invalida).toBe(true);
+    expect(r2.invalid).toBe(true);
     expect(r2.hits).toEqual([]);
   });
 
   it("literal casa o texto cru quando a regex não compila", () => {
     const comParenteses = [chat({ id: "z", title: "Fix the (weird) title" })];
     const r = searchChats(comParenteses, "(weird");
-    expect(r.invalida).toBe(true);
+    expect(r.invalid).toBe(true);
     expect(r.hits.map((c) => c.id)).toEqual(["z"]);
   });
 });

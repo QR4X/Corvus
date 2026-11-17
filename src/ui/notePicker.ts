@@ -7,36 +7,36 @@ export interface NoteLike {
   mtime: number;
 }
 
-function posicao(nota: NoteLike, busca: string): number {
-  const nome = nota.basename.toLowerCase();
-  const caminho = nota.path.toLowerCase();
-  if (nome === busca) return 0;
-  if (nome.startsWith(busca)) return 1;
-  if (nome.includes(busca)) return 2;
-  if (caminho.includes(busca)) return 3;
+function matchRank(note: NoteLike, query: string): number {
+  const name = note.basename.toLowerCase();
+  const path = note.path.toLowerCase();
+  if (name === query) return 0;
+  if (name.startsWith(query)) return 1;
+  if (name.includes(query)) return 2;
+  if (path.includes(query)) return 3;
   return 4;
 }
 
 export function rankNotes(
-  notas: readonly NoteLike[],
-  busca: string,
-  limite = 30
+  notes: readonly NoteLike[],
+  query: string,
+  limit = 30
 ): NoteLike[] {
-  const q = busca.trim().toLowerCase();
-  const candidatas = q
-    ? notas.filter((n) => posicao(n, q) < 4)
-    : notas.slice();
-  candidatas.sort((a, b) => {
+  const q = query.trim().toLowerCase();
+  const candidates = q
+    ? notes.filter((n) => matchRank(n, q) < 4)
+    : notes.slice();
+  candidates.sort((a, b) => {
     if (q) {
-      const d = posicao(a, q) - posicao(b, q);
+      const d = matchRank(a, q) - matchRank(b, q);
       if (d !== 0) return d;
     }
     return b.mtime - a.mtime;
   });
-  return candidatas.slice(0, limite);
+  return candidates.slice(0, limit);
 }
 
-export function notaAberta(app: App): { path: string; basename: string } | null {
+export function activeNote(app: App): { path: string; basename: string } | null {
   const f = app.workspace.getActiveFile();
   return f && f.extension === "md" ? { path: f.path, basename: f.basename } : null;
 }
@@ -65,15 +65,15 @@ export async function readNote(
 }
 
 export function wikilinkQuery(
-  texto: string,
+  text: string,
   cursor: number
 ): { start: number; query: string } | null {
-  const antes = texto.slice(0, cursor);
-  const abre = antes.lastIndexOf("[[");
-  if (abre === -1) return null;
-  const meio = antes.slice(abre + 2);
-  if (meio.includes("]]") || meio.includes("\n")) return null;
+  const before = text.slice(0, cursor);
+  const openAt = before.lastIndexOf("[[");
+  if (openAt === -1) return null;
+  const typed = before.slice(openAt + 2);
+  if (typed.includes("]]") || typed.includes("\n")) return null;
 
-  if (meio.length > 80) return null;
-  return { start: abre, query: meio };
+  if (typed.length > 80) return null;
+  return { start: openAt, query: typed };
 }

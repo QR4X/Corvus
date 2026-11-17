@@ -7,16 +7,16 @@ import { ChatView } from "./ChatView";
 import { Dashboard } from "./Dashboard";
 import { History } from "./History";
 import { UsageView } from "./UsageView";
-import { FILTRO_VAZIO, type UsageFilter } from "../usage/filters";
+import { EMPTY_FILTER, type UsageFilter } from "../usage/filters";
 import { ModuleHome } from "./ModuleHome";
 import { ProjectsView } from "./ProjectsView";
 import { SkillsView } from "./SkillsView";
 import { Drawer, type ViewId } from "./Drawer";
-import { PainelCtx } from "./panel";
+import { PanelCtx } from "./panel";
 import { ChatInstructionsSheet } from "./ChatInstructionsSheet";
 import type { ChatSummary } from "../core/chatPersistence";
 import { Notice } from "obsidian";
-import { ouvirPedidos } from "../editor/bridge";
+import { listenForRequests } from "../editor/bridge";
 import { readNote } from "./notePicker";
 import { useChatStore } from "../store/chat";
 import { tr } from "../i18n/tr";
@@ -37,32 +37,32 @@ export function App({
   onScreenChange?: () => void;
 }) {
 
-  const modoDeAbertura = startupMode(plugin.settings.startupChatMode);
-  const [view, setView] = useState<ViewId>(modoDeAbertura ? "chat" : "home");
+  const startMode = startupMode(plugin.settings.startupChatMode);
+  const [view, setView] = useState<ViewId>(startMode ? "chat" : "home");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const [modulo, setModulo] = useState<string>(
-    () => modoDeAbertura ?? (plugin.settings.defaultMode || "chat")
+  const [moduleId, setModuleId] = useState<string>(
+    () => startMode ?? (plugin.settings.defaultMode || "chat")
   );
   const [inject, setInject] = useState<ComposerInject | null>(null);
 
-  const [voltarPara, setVoltarPara] = useState<
+  const [backTo, setBackTo] = useState<
     "home" | "history" | "module" | "usage" | "projects" | "skills"
   >("module");
 
-  const [projetoAberto, setProjetoAberto] = useState<string | null>(null);
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
 
-  const [filtroDeUso, setFiltroDeUso] = useState<UsageFilter>(FILTRO_VAZIO);
+  const [usageFilter, setUsageFilter] = useState<UsageFilter>(EMPTY_FILTER);
 
-  const [painel, setPainel] = useState<"projects" | "skills" | null>(null);
+  const [panel, setPanel] = useState<"projects" | "skills" | null>(null);
 
-  const [chatParaProjeto, setChatParaProjeto] = useState<string | null>(null);
+  const [pendingChatId, setPendingChatId] = useState<string | null>(null);
 
-  const [escolhaPara, setEscolhaPara] = useState<string | null>(null);
+  const [pickFor, setPickFor] = useState<string | null>(null);
 
-  const [instrucoesPara, setInstrucoesPara] = useState<ChatSummary | null>(null);
+  const [instructionsChat, setInstructionsChat] = useState<ChatSummary | null>(null);
 
-  const [aba, setAba] = useState(SEGMENT_ALL);
+  const [tab, setTab] = useState(SEGMENT_ALL);
   const [, force] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
@@ -83,37 +83,37 @@ export function App({
     if (!m) return;
     session.newChat(m);
     setInject({ text: "", nonce: Date.now() });
-    setVoltarPara("home");
+    setBackTo("home");
     setView("chat");
   }, [session, plugin]);
 
   useEffect(
     () =>
-      ouvirPedidos((p) => {
+      listenForRequests((p) => {
         void (async () => {
           const st = useChatStore.getState();
-          if (p.tipo === "nota") {
-            const nota = await readNote(plugin.app, p.path);
-            if (!nota) {
+          if (p.kind === "note") {
+            const note = await readNote(plugin.app, p.path);
+            if (!note) {
               new Notice(tr("Note not found: {path}", { path: p.path }));
               return;
             }
             session.newChat();
-            useChatStore.getState().addAttachment({ type: "note", path: nota.path, content: nota.content });
+            useChatStore.getState().addAttachment({ type: "note", path: note.path, content: note.content });
           } else {
 
             if (view !== "chat" && st.messages.length === 0) session.newChat();
             useChatStore.getState().addAttachment({
               type: "note",
               path: `${p.path} (selection)`,
-              content: p.texto,
+              content: p.text,
             });
           }
-          setPainel(null);
+          setPanel(null);
           setMenuOpen(false);
-          setVoltarPara("home");
+          setBackTo("home");
           setView("chat");
-          if (p.tipo === "nota" && p.enviar) await session.send(p.enviar);
+          if (p.kind === "note" && p.send) await session.send(p.send);
           else setInject({ text: "", nonce: Date.now() });
         })();
       }),
@@ -122,24 +122,24 @@ export function App({
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  const navegar = useCallback((id: ViewId) => {
+  const navigate = useCallback((id: ViewId) => {
     if (id === "projects" || id === "skills") {
-      setPainel(id);
+      setPanel(id);
       return;
     }
 
-    if (id === "usage") setFiltroDeUso(FILTRO_VAZIO);
+    if (id === "usage") setUsageFilter(EMPTY_FILTER);
     setView(id);
   }, []);
 
-  const entrarNoModulo = useCallback((mode: string) => {
-    setModulo(mode);
+  const enterModule = useCallback((mode: string) => {
+    setModuleId(mode);
     setView("module");
-    setPainel(null);
+    setPanel(null);
     setMenuOpen(false);
   }, []);
 
-  const usarSkill = (skill: Skill) => {
+  const applySkill = (skill: Skill) => {
 
     if (isChatMode(skill.mode)) session.setMode(skill.mode);
     setInject({ text: skill.body, nonce: Date.now() });
@@ -147,21 +147,21 @@ export function App({
   };
 
   return (
-    <PainelCtx.Provider
+    <PanelCtx.Provider
       value={{
-        novoProjetoCom: (chatId: string) => {
-          setChatParaProjeto(chatId);
-          setEscolhaPara(null);
-          setProjetoAberto(null);
-          setPainel("projects");
+        newProjectWith: (chatId: string) => {
+          setPendingChatId(chatId);
+          setPickFor(null);
+          setOpenProjectId(null);
+          setPanel("projects");
         },
-        escolherProjetoPara: (chatId: string) => {
-          setEscolhaPara(chatId);
-          setChatParaProjeto(chatId);
-          setProjetoAberto(null);
-          setPainel("projects");
+        pickProjectFor: (chatId: string) => {
+          setPickFor(chatId);
+          setPendingChatId(chatId);
+          setOpenProjectId(null);
+          setPanel("projects");
         },
-        instrucoesDe: (chat: ChatSummary) => setInstrucoesPara(chat),
+        instructionsFor: (chat: ChatSummary) => setInstructionsChat(chat),
       }}
     >
     <div className={view === "chat" ? "corvus-root corvus-chat-open" : "corvus-root"}>
@@ -169,24 +169,24 @@ export function App({
         <Dashboard
           plugin={plugin}
           session={session}
-          aba={aba}
-          onAba={setAba}
+          tab={tab}
+          onTab={setTab}
           onOpenHistory={() => setView("history")}
           onOpenUsage={() => {
-            setFiltroDeUso(FILTRO_VAZIO);
+            setUsageFilter(EMPTY_FILTER);
             setView("usage");
           }}
           onOpenMenu={() => setMenuOpen(true)}
 
           onNewChat={(m) => {
             session.newChat(m);
-            setModulo(m);
+            setModuleId(m);
             setInject({ text: "", nonce: Date.now() });
-            setVoltarPara("home");
+            setBackTo("home");
             setView("chat");
           }}
           onOpenChat={() => {
-            setVoltarPara("home");
+            setBackTo("home");
             setView("chat");
           }}
         />
@@ -195,11 +195,11 @@ export function App({
           plugin={plugin}
           session={session}
           onBack={() => setView("home")}
-          filtro={filtroDeUso}
-          onFiltro={setFiltroDeUso}
+          filter={usageFilter}
+          onFilter={setUsageFilter}
 
           onOpenChat={() => {
-            setVoltarPara("usage");
+            setBackTo("usage");
             setView("chat");
           }}
         />
@@ -207,11 +207,11 @@ export function App({
         <History
           plugin={plugin}
           session={session}
-          aba={aba}
-          onAba={setAba}
+          tab={tab}
+          onTab={setTab}
           onBack={() => setView("home")}
           onOpenChat={() => {
-            setVoltarPara("history");
+            setBackTo("history");
             setView("chat");
           }}
         />
@@ -219,19 +219,19 @@ export function App({
         <ModuleHome
           plugin={plugin}
           session={session}
-          modulo={modulo}
+          moduleId={moduleId}
           onBack={() => setView("home")}
 
           onOpenChat={() => {
-            setVoltarPara("module");
+            setBackTo("module");
             setView("chat");
           }}
           onNewChat={() => {
-            if (isChatMode(modulo)) session.newChat(modulo);
-            setVoltarPara("module");
+            if (isChatMode(moduleId)) session.newChat(moduleId);
+            setBackTo("module");
             setView("chat");
           }}
-          onOpenSkills={() => setPainel("skills")}
+          onOpenSkills={() => setPanel("skills")}
         />
       ) : view === "chat" ? (
         <ChatView
@@ -241,20 +241,20 @@ export function App({
 
           onBackHome={() => {
 
-            if (voltarPara === "projects" || voltarPara === "skills") {
-              setPainel(voltarPara);
+            if (backTo === "projects" || backTo === "skills") {
+              setPanel(backTo);
               setView("home");
               return;
             }
-            if (voltarPara !== "module") {
-              setView(voltarPara);
+            if (backTo !== "module") {
+              setView(backTo);
               return;
             }
             const m = session.config.mode;
-            setModulo(m);
+            setModuleId(m);
             setView("module");
           }}
-          onUseSkill={usarSkill}
+          onUseSkill={applySkill}
         />
       ) : null}
 
@@ -262,57 +262,57 @@ export function App({
       <ProjectsView
         plugin={plugin}
         session={session}
-        open={painel === "projects"}
-        abertoId={projetoAberto}
-        onAbrir={setProjetoAberto}
-        chatPendente={chatParaProjeto}
-        onChatPendente={setChatParaProjeto}
-        escolhaPara={escolhaPara}
-        onEscolha={() => {
-          setEscolhaPara(null);
-          setChatParaProjeto(null);
-          setPainel(null);
+        open={panel === "projects"}
+        openId={openProjectId}
+        onOpenProject={setOpenProjectId}
+        pendingChatId={pendingChatId}
+        onPendingChat={setPendingChatId}
+        pickFor={pickFor}
+        onPicked={() => {
+          setPickFor(null);
+          setPendingChatId(null);
+          setPanel(null);
         }}
         onClose={() => {
-          setPainel(null);
-          setEscolhaPara(null);
-          setChatParaProjeto(null);
+          setPanel(null);
+          setPickFor(null);
+          setPendingChatId(null);
         }}
         onOpenChat={() => {
 
-          setPainel(null);
-          setVoltarPara("projects");
+          setPanel(null);
+          setBackTo("projects");
           setView("chat");
         }}
       />
       <SkillsView
         plugin={plugin}
-        open={painel === "skills"}
-        onClose={() => setPainel(null)}
+        open={panel === "skills"}
+        onClose={() => setPanel(null)}
         onUse={(sk) => {
-          setPainel(null);
-          setVoltarPara("skills");
-          usarSkill(sk);
+          setPanel(null);
+          setBackTo("skills");
+          applySkill(sk);
         }}
       />
 
       <ChatInstructionsSheet
         plugin={plugin}
-        chat={instrucoesPara}
-        open={instrucoesPara !== null}
-        onClose={() => setInstrucoesPara(null)}
+        chat={instructionsChat}
+        open={instructionsChat !== null}
+        onClose={() => setInstructionsChat(null)}
       />
 
       <Drawer
         plugin={plugin}
         open={menuOpen}
-        view={painel ?? view}
-        modulo={modulo}
-        onEnterModule={entrarNoModulo}
-        onNavigate={navegar}
+        view={panel ?? view}
+        moduleId={moduleId}
+        onEnterModule={enterModule}
+        onNavigate={navigate}
         onClose={closeMenu}
       />
     </div>
-    </PainelCtx.Provider>
+    </PanelCtx.Provider>
   );
 }

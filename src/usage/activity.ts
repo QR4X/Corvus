@@ -1,69 +1,69 @@
 import type { ChatSummary } from "../core/chatPersistence";
-import { diaLocal, type Celula } from "./heatmap";
+import { localDay, type HeatCell } from "./heatmap";
 
-export function sequenciaDeDias(
+export function dayStreak(
   chats: readonly ChatSummary[],
-  agora: number = Date.now()
+  now: number = Date.now()
 ): number {
-  const usados = new Set<string>();
+  const usedDays = new Set<string>();
   for (const c of chats) {
     const t = Date.parse(c.date);
     if (!Number.isFinite(t)) continue;
     const tin = Number.isFinite(c.tokensIn) ? c.tokensIn : 0;
     const tout = Number.isFinite(c.tokensOut) ? c.tokensOut : 0;
     if (tin + tout <= 0 && !Number.isFinite(c.messageCount)) continue;
-    usados.add(diaLocal(t));
+    usedDays.add(localDay(t));
   }
-  if (usados.size === 0) return 0;
+  if (usedDays.size === 0) return 0;
 
-  const hoje = new Date(agora);
-  const cursor = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const today = new Date(now);
+  const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  if (!usados.has(diaLocal(cursor.getTime()))) {
+  if (!usedDays.has(localDay(cursor.getTime()))) {
     cursor.setDate(cursor.getDate() - 1);
   }
   let n = 0;
-  while (usados.has(diaLocal(cursor.getTime()))) {
+  while (usedDays.has(localDay(cursor.getTime()))) {
     n += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
   return n;
 }
 
-interface DiasAtivos {
-  ativos: number;
+interface ActiveDays {
+  active: number;
   total: number;
 }
 
-export function diasAtivos(celulas: readonly Celula[]): DiasAtivos {
-  const dias = celulas.filter((c) => c.dia !== null);
+export function activeDays(cells: readonly HeatCell[]): ActiveDays {
+  const days = cells.filter((c) => c.day !== null);
   return {
-    ativos: dias.filter((c) => c.tokens > 0).length,
-    total: dias.length,
+    active: days.filter((c) => c.tokens > 0).length,
+    total: days.length,
   };
 }
 
-export interface Trabalho {
+export interface PeriodWork {
 
-  acoes: number;
-  mensagens: number;
+  actions: number;
+  messages: number;
 }
 
-export function trabalhoDoPeriodo(
+export function periodWork(
   chats: readonly ChatSummary[],
-  desde: string
-): Trabalho {
-  let acoes = 0;
-  let mensagens = 0;
+  since: string
+): PeriodWork {
+  let actions = 0;
+  let messages = 0;
   for (const c of chats) {
-    if (desde && (c.date ?? "").slice(0, 10) < desde) continue;
-    acoes += Number.isFinite(c.toolCount) ? c.toolCount : 0;
-    mensagens += Number.isFinite(c.messageCount) ? c.messageCount : 0;
+    if (since && (c.date ?? "").slice(0, 10) < since) continue;
+    actions += Number.isFinite(c.toolCount) ? c.toolCount : 0;
+    messages += Number.isFinite(c.messageCount) ? c.messageCount : 0;
   }
-  return { acoes, mensagens };
+  return { actions, messages };
 }
 
-export interface ModeloUsado {
+export interface ModelUsage {
   model: string;
   provider: string;
   tokens: number;
@@ -72,40 +72,40 @@ export interface ModeloUsado {
   pct: number;
 }
 
-export function modelosMaisUsados(
+export function topModels(
   chats: readonly ChatSummary[],
-  desde: string,
-  limite: number = 3
-): ModeloUsado[] {
-  const porModelo = new Map<string, ModeloUsado>();
+  since: string,
+  limit: number = 3
+): ModelUsage[] {
+  const byModel = new Map<string, ModelUsage>();
   let total = 0;
   for (const c of chats) {
-    if (desde && (c.date ?? "").slice(0, 10) < desde) continue;
+    if (since && (c.date ?? "").slice(0, 10) < since) continue;
     if (!c.model) continue;
     const tin = Number.isFinite(c.tokensIn) ? c.tokensIn : 0;
     const tout = Number.isFinite(c.tokensOut) ? c.tokensOut : 0;
-    const atual = porModelo.get(c.model) ?? {
+    const entry = byModel.get(c.model) ?? {
       model: c.model,
       provider: c.provider,
       tokens: 0,
       chats: 0,
       pct: 0,
     };
-    atual.tokens += tin + tout;
-    atual.chats += 1;
-    if (!atual.provider) atual.provider = c.provider;
-    porModelo.set(c.model, atual);
+    entry.tokens += tin + tout;
+    entry.chats += 1;
+    if (!entry.provider) entry.provider = c.provider;
+    byModel.set(c.model, entry);
     total += tin + tout;
   }
 
-  const lista = [...porModelo.values()].sort((a, b) => {
+  const ranked = [...byModel.values()].sort((a, b) => {
     if (b.tokens !== a.tokens) return b.tokens - a.tokens;
 
     if (b.chats !== a.chats) return b.chats - a.chats;
     return a.model.localeCompare(b.model);
   });
-  for (const m of lista) {
+  for (const m of ranked) {
     m.pct = total > 0 ? Math.round((m.tokens / total) * 100) : 0;
   }
-  return lista.slice(0, limite);
+  return ranked.slice(0, limit);
 }

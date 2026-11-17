@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  diasAtivos,
-  modelosMaisUsados,
-  sequenciaDeDias,
-  trabalhoDoPeriodo,
+  activeDays,
+  topModels,
+  dayStreak,
+  periodWork,
 } from "../src/usage/activity";
-import type { Celula } from "../src/usage/heatmap";
+import type { HeatCell } from "../src/usage/heatmap";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
 const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
@@ -37,7 +37,7 @@ describe("sequenciaDeDias", () => {
       chat({ id: "b", date: local(2026, 9, 15) }),
       chat({ id: "c", date: local(2026, 9, 16) }),
     ];
-    expect(sequenciaDeDias(c, AGORA)).toBe(3);
+    expect(dayStreak(c, AGORA)).toBe(3);
   });
 
   it("HOJE em branco não zera: a conta parte do último dia fechado", () => {
@@ -46,12 +46,12 @@ describe("sequenciaDeDias", () => {
       chat({ id: "a", date: local(2026, 9, 14) }),
       chat({ id: "b", date: local(2026, 9, 15) }),
     ];
-    expect(sequenciaDeDias(c, AGORA)).toBe(2);
+    expect(dayStreak(c, AGORA)).toBe(2);
   });
 
   it("dois dias em branco quebram", () => {
     const c = [chat({ id: "a", date: local(2026, 9, 13) })];
-    expect(sequenciaDeDias(c, AGORA)).toBe(0);
+    expect(dayStreak(c, AGORA)).toBe(0);
   });
 
   it("a sequência ATRAVESSA a virada do mês", () => {
@@ -63,7 +63,7 @@ describe("sequenciaDeDias", () => {
       chat({ id: "c", date: local(2026, 10, 1) }),
       chat({ id: "d", date: local(2026, 10, 2) }),
     ];
-    expect(sequenciaDeDias(c, agora)).toBe(4);
+    expect(dayStreak(c, agora)).toBe(4);
   });
 
   it("várias conversas no mesmo dia contam UM dia", () => {
@@ -71,20 +71,20 @@ describe("sequenciaDeDias", () => {
       chat({ id: "a", date: local(2026, 9, 16, 9) }),
       chat({ id: "b", date: local(2026, 9, 16, 18) }),
     ];
-    expect(sequenciaDeDias(c, AGORA)).toBe(1);
+    expect(dayStreak(c, AGORA)).toBe(1);
   });
 
   it("sem conversa nenhuma, sem sequência", () => {
-    expect(sequenciaDeDias([], AGORA)).toBe(0);
+    expect(dayStreak([], AGORA)).toBe(0);
   });
 
   it("data ilegível não quebra a conta", () => {
-    expect(sequenciaDeDias([chat({ date: "sei lá" })], AGORA)).toBe(0);
+    expect(dayStreak([chat({ date: "sei lá" })], AGORA)).toBe(0);
   });
 });
 
 describe("diasAtivos", () => {
-  const dias = (tokens: number[]): Celula[] =>
+  const dias = (tokens: number[]): HeatCell[] =>
     tokens.map((t, i) => ({
       dia: `2026-09-${String(i + 1).padStart(2, "0")}`,
       tokens: t,
@@ -92,38 +92,38 @@ describe("diasAtivos", () => {
     }));
 
   it("conta em quantos dias houve uso", () => {
-    expect(diasAtivos(dias([1, 0, 2, 0, 3]))).toEqual({ ativos: 3, total: 5 });
+    expect(activeDays(dias([1, 0, 2, 0, 3]))).toEqual({ active: 3, total: 5 });
   });
 
   it("casa vazia da grade não conta nem como dia", () => {
-    const grade: Celula[] = [...dias([1, 0]), { dia: null, tokens: 0, nivel: 0 }];
-    expect(diasAtivos(grade)).toEqual({ ativos: 1, total: 2 });
+    const grade: HeatCell[] = [...dias([1, 0]), { day: null, tokens: 0, level: 0 }];
+    expect(activeDays(grade)).toEqual({ active: 1, total: 2 });
   });
 });
 
 describe("trabalhoDoPeriodo", () => {
   it("soma ações do agente e mensagens", () => {
-    const t = trabalhoDoPeriodo([chat(), chat({ id: "b" })], "2026-09-01");
-    expect(t.acoes).toBe(14);
-    expect(t.mensagens).toBe(8);
+    const t = periodWork([chat(), chat({ id: "b" })], "2026-09-01");
+    expect(t.actions).toBe(14);
+    expect(t.messages).toBe(8);
   });
 
   it("o que é de antes do mês fica de fora", () => {
 
-    const t = trabalhoDoPeriodo(
+    const t = periodWork(
       [chat(), chat({ id: "velho", date: "2026-08-02T10:00:00.000Z" })],
       "2026-09-01"
     );
-    expect(t.acoes).toBe(7);
+    expect(t.actions).toBe(7);
   });
 
   it("número quebrado no frontmatter não envenena o total", () => {
-    const t = trabalhoDoPeriodo(
+    const t = periodWork(
       [chat({ toolCount: NaN as unknown as number })],
       "2026-09-01"
     );
-    expect(t.acoes).toBe(0);
-    expect(t.mensagens).toBe(4);
+    expect(t.actions).toBe(0);
+    expect(t.messages).toBe(4);
   });
 });
 
@@ -131,7 +131,7 @@ describe("modelosMaisUsados", () => {
   const desde = "2026-09-01";
 
   it("ordena por tokens e calcula a fatia de cada um", () => {
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [
         chat({ id: "a", model: "gpt-5", tokensIn: 700, tokensOut: 0 }),
         chat({ id: "b", model: "claude-sonnet-4-6", tokensIn: 300, tokensOut: 0 }),
@@ -144,7 +144,7 @@ describe("modelosMaisUsados", () => {
 
   it("a fatia é de TOKENS, não de conversas", () => {
 
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [
         chat({ id: "a", model: "gpt-5", tokensIn: 10, tokensOut: 0 }),
         chat({ id: "b", model: "gpt-5", tokensIn: 10, tokensOut: 0 }),
@@ -157,7 +157,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("soma as conversas de cada modelo e guarda o provider pro logo", () => {
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [
         chat({ id: "a", model: "gemini-2.5-flash", provider: "gemini" }),
         chat({ id: "b", model: "gemini-2.5-flash", provider: "gemini" }),
@@ -169,7 +169,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("corta no limite pedido", () => {
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [
         chat({ id: "a", model: "m1", tokensIn: 400 }),
         chat({ id: "b", model: "m2", tokensIn: 300 }),
@@ -184,7 +184,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("o que é de antes do mês não entra", () => {
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [
         chat({ id: "a", model: "gpt-5" }),
         chat({ id: "b", model: "antigo", date: "2026-08-20T10:00:00.000Z" }),
@@ -197,7 +197,7 @@ describe("modelosMaisUsados", () => {
 
   it("modelo sem nome não vira linha", () => {
 
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [chat({ id: "a", model: "" }), chat({ id: "b", model: "gpt-5" })],
       desde
     );
@@ -206,7 +206,7 @@ describe("modelosMaisUsados", () => {
   });
 
   it("mês sem token nenhum não divide por zero", () => {
-    const lista = modelosMaisUsados(
+    const lista = topModels(
       [chat({ model: "gpt-5", tokensIn: 0, tokensOut: 0 })],
       desde
     );
@@ -214,6 +214,6 @@ describe("modelosMaisUsados", () => {
   });
 
   it("mês vazio devolve lista vazia", () => {
-    expect(modelosMaisUsados([], desde)).toEqual([]);
+    expect(topModels([], desde)).toEqual([]);
   });
 });

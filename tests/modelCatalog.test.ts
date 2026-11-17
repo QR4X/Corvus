@@ -3,7 +3,7 @@ import {
   getFreeDailyTokens,
   getModelCapabilities,
 } from "../src/providers/modelCapabilities";
-import { buildModelCatalog, porFabricante } from "../src/ui/modelCatalog";
+import { buildModelCatalog, byVendor } from "../src/ui/modelCatalog";
 
 describe("getFreeDailyTokens", () => {
   it("as duas cotas do programa de tráfego compartilhado", () => {
@@ -120,7 +120,7 @@ describe("buildModelCatalog", () => {
     expect(roles[0].families[0].id).toBe("router");
     expect(roles[0].families[0].label).toBe("Auto Router");
 
-    const porFab = porFabricante(roles);
-    expect(porFab[0].fabricante.nome).toBe("OpenRouter");
+    const porFab = byVendor(roles);
+    expect(porFab[0].vendor.name).toBe("OpenRouter");
   });
 });

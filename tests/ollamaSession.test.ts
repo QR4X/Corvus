@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ChatSession } from "../src/core/session";
 import { useChatStore } from "../src/store/chat";
-import { alinharAoInstalado } from "../src/core/ollamaDefault";
-import { modeloSalvoPara } from "../src/core/defaultModel";
-import { pareceEmbeddingDoOllama } from "../src/rag/types";
+import { alignToInstalled } from "../src/core/ollamaDefault";
+import { savedModelFor } from "../src/core/defaultModel";
+import { looksLikeOllamaEmbedding } from "../src/rag/types";
 import type { CorvusSettings } from "../src/settings";
 
 function montar(extra: Record<string, unknown> = {}) {
@@ -30,19 +30,19 @@ function montar(extra: Record<string, unknown> = {}) {
   const sessao = new ChatSession(plugin as never);
 
   const buscar = async (instalados: string[]) => {
-    const d = alinharAoInstalado(
+    const d = alignToInstalled(
       {
-        ativos: settings.activeModels.ollama ?? [],
-        favoritos: [],
-        modelo: settings.ollamaModel,
-        vistos: settings.ollamaSeenModels ?? null,
+        active: settings.activeModels.ollama ?? [],
+        favorites: [],
+        model: settings.ollamaModel,
+        seen: settings.ollamaSeenModels ?? null,
       },
       instalados,
-      pareceEmbeddingDoOllama
+      looksLikeOllamaEmbedding
     );
-    settings.activeModels = { ...settings.activeModels, ollama: [...d.ativos] };
-    settings.ollamaModel = d.modelo;
-    settings.ollamaSeenModels = [...d.vistos];
+    settings.activeModels = { ...settings.activeModels, ollama: [...d.active] };
+    settings.ollamaModel = d.model;
+    settings.ollamaSeenModels = [...d.seen];
     await plugin.saveSettings();
   };
   return { sessao, settings, buscar };
@@ -99,7 +99,7 @@ describe("o modelo salvo do Ollama nunca cai num embedding", () => {
   it("com o campo vazio, o primeiro da lista que conversa — ou nenhum", () => {
     const s = (ativos: string[]) =>
       ({ ollamaModel: "", activeModels: { ollama: ativos } }) as unknown as CorvusSettings;
-    expect(modeloSalvoPara(s(["nomic-embed-text:latest", "qwen3.5:9b"]), "ollama")).toBe("qwen3.5:9b");
-    expect(modeloSalvoPara(s(["nomic-embed-text:latest"]), "ollama")).toBe("");
+    expect(savedModelFor(s(["nomic-embed-text:latest", "qwen3.5:9b"]), "ollama")).toBe("qwen3.5:9b");
+    expect(savedModelFor(s(["nomic-embed-text:latest"]), "ollama")).toBe("");
   });
 });

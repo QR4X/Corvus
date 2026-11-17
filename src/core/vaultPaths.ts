@@ -16,29 +16,29 @@ export const INDEX_FOLDER = `${CORVUS_HIDDEN}/index`;
 
 interface HiddenMove {
 
-  legado: string;
+  legacy: string;
 
-  novo: string;
+  target: string;
 
-  campo: "chatsPath" | "ragIndexPath";
+  field: "chatsPath" | "ragIndexPath";
 }
 
 export const HIDDEN_MOVES: HiddenMove[] = [
-  { legado: "corvus-ai/chats", novo: CHATS_FOLDER, campo: "chatsPath" },
-  { legado: `${CORVUS_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
-  { legado: "corvus-ai/index", novo: INDEX_FOLDER, campo: "ragIndexPath" },
+  { legacy: "corvus-ai/chats", target: CHATS_FOLDER, field: "chatsPath" },
+  { legacy: `${CORVUS_HIDDEN}/chats`, target: CHATS_FOLDER, field: "chatsPath" },
+  { legacy: "corvus-ai/index", target: INDEX_FOLDER, field: "ragIndexPath" },
 ];
 
 export function shouldMigrate(p: {
-  caminhoAtual: string;
-  legado: string;
-  novo: string;
-  origemExiste: boolean;
-  destinoExiste: boolean;
+  currentPath: string;
+  legacy: string;
+  target: string;
+  sourceExists: boolean;
+  targetExists: boolean;
 }): boolean {
-  if (p.caminhoAtual !== p.legado) return false;
-  if (!p.origemExiste) return false;
-  if (p.destinoExiste) return false;
+  if (p.currentPath !== p.legacy) return false;
+  if (!p.sourceExists) return false;
+  if (p.targetExists) return false;
   return true;
 }
 
@@ -46,8 +46,8 @@ export function legacyModeMoves(
   appRoot: string,
   chatsFolder: string,
   modes: readonly string[]
-): { de: string; para: string }[] {
+): { from: string; to: string }[] {
   return modes
-    .map((mode) => ({ de: `${appRoot}/${mode}`, para: `${chatsFolder}/${mode}` }))
-    .filter((m) => m.de !== m.para);
+    .map((mode) => ({ from: `${appRoot}/${mode}`, to: `${chatsFolder}/${mode}` }))
+    .filter((m) => m.from !== m.to);
 }

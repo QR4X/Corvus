@@ -34,7 +34,7 @@ export function SearchField({
     ref.current?.focus({ preventScroll: true });
   }, [autoFocus]);
 
-  const procurando = value.trim().length > 0;
+  const searching = value.trim().length > 0;
 
   if (onOpen) {
     return (
@@ -45,10 +45,10 @@ export function SearchField({
         onClick={onOpen}
       >
         <Icon name="search" size={18} />
-        <span className={procurando ? "corvus-search-text" : "corvus-search-text is-empty"}>
-          {procurando ? value : placeholder}
+        <span className={searching ? "corvus-search-text" : "corvus-search-text is-empty"}>
+          {searching ? value : placeholder}
         </span>
-        {procurando && found !== undefined && (
+        {searching && found !== undefined && (
           <span className="corvus-search-found">
             {found === 1 ? tr("1 found") : tr("{n} found", { n: found })}
           </span>
@@ -68,7 +68,7 @@ export function SearchField({
         aria-label={label ?? placeholder}
         onChange={(e) => onChange(e.currentTarget.value)}
       />
-      {procurando && found !== undefined && (
+      {searching && found !== undefined && (
         <span className="corvus-search-found">
           {}
           {invalid ? `${tr("literal")} · ` : ""}

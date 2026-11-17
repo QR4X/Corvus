@@ -7,20 +7,20 @@ import { tr } from "../i18n/tr";
 
 export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
 
-  const [, redesenhar] = useState(0);
+  const [, rerender] = useState(0);
   useEffect(
-    () => plugin.onSettingsChange(() => redesenhar((n) => n + 1)),
+    () => plugin.onSettingsChange(() => rerender((n) => n + 1)),
     [plugin]
   );
 
   const idx = plugin.rag.index;
-  const trechos = idx?.size ?? 0;
-  const notas = idx?.fileCount ?? 0;
-  const pronto = trechos > 0;
-  const rodando = plugin.rag.indexing !== null;
+  const chunks = idx?.size ?? 0;
+  const notes = idx?.fileCount ?? 0;
+  const ready = chunks > 0;
+  const running = plugin.rag.indexing !== null;
 
   return (
-    <div className={pronto ? "corvus-rag-line is-on" : "corvus-rag-line"}>
+    <div className={ready ? "corvus-rag-line is-on" : "corvus-rag-line"}>
       <button
         type="button"
         className="corvus-rag-open"
@@ -30,11 +30,11 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
         {}
         <Icon name="database" size={14} />
         <span className="corvus-rag-text">
-          {pronto ? (
+          {ready ? (
             <>
               <strong>{tr("Local index")}</strong> ·{" "}
-              {notas === 1 ? tr("1 note") : tr("{n} notes", { n: formatCompact(notas) })} ·{" "}
-              {trechos === 1 ? tr("1 chunk") : tr("{n} chunks", { n: formatCompact(trechos) })} ·{" "}
+              {notes === 1 ? tr("1 note") : tr("{n} notes", { n: formatCompact(notes) })} ·{" "}
+              {chunks === 1 ? tr("1 chunk") : tr("{n} chunks", { n: formatCompact(chunks) })} ·{" "}
               {tr("searched on this device")}
             </>
           ) : (
@@ -50,12 +50,12 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
       {}
       <button
         type="button"
-        className={rodando ? "corvus-rag-refresh is-running" : "corvus-rag-refresh"}
-        aria-label={rodando ? tr("Cancel indexing") : tr("Update index")}
-        title={rodando ? tr("Cancel indexing") : tr("Update index with new notes")}
+        className={running ? "corvus-rag-refresh is-running" : "corvus-rag-refresh"}
+        aria-label={running ? tr("Cancel indexing") : tr("Update index")}
+        title={running ? tr("Cancel indexing") : tr("Update index with new notes")}
         onClick={() => void plugin.rag.run()}
       >
-        <Icon name={rodando ? "square" : "refresh-cw"} size={14} />
+        <Icon name={running ? "square" : "refresh-cw"} size={14} />
       </button>
     </div>
   );

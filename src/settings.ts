@@ -1,4 +1,4 @@
-import type { LivroDoDia } from "./usage/dailyLedger";
+import type { DailyLedger } from "./usage/dailyLedger";
 import type { EffortConfig, EffortLevel } from "./core/effort";
 import type { Project } from "./projects";
 import { CHATS_FOLDER, INDEX_FOLDER, SKILLS_FOLDER } from "./core/vaultPaths";
@@ -42,7 +42,7 @@ export interface CorvusSettings {
 
   freeQuota: Record<string, { limit: number; remaining?: number; at: number }>;
 
-  dailyUsage: LivroDoDia;
+  dailyUsage: DailyLedger;
 
   dailyLimits: Record<string, number>;
 

@@ -17,21 +17,21 @@ import {
   usageFrom,
   parseOpenAICompatSSE,
 } from "./_shared";
-import type { RespostaNoFio } from "./_shared";
+import type { WireResponse } from "./_shared";
 
-interface ErroNim {
+interface NimErrorBody {
   detail?: string;
   error?: { message?: string };
   message?: string;
 }
 
-interface RespostaDeImagemNim extends ErroNim {
+interface NimImageResponse extends NimErrorBody {
   artifacts?: Array<{ base64?: unknown; image?: unknown }>;
   image?: unknown;
   b64_json?: unknown;
 }
 
-interface CatalogoNim {
+interface NimModelList {
   data?: Array<{ id?: unknown }>;
 }
 
@@ -238,14 +238,14 @@ class NimProvider implements Provider {
       );
       throw this.nimError(
         res.status,
-        res.json as ErroNim | undefined,
+        res.json as NimErrorBody | undefined,
         res.text,
         req.model
       );
     }
 
-    const corpo = res.json as RespostaNoFio | undefined;
-    const message = corpo?.choices?.[0]?.message;
+    const payload = res.json as WireResponse | undefined;
+    const message = payload?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Empty response from NIM.", "unknown");
     const { content, toolCalls, reasoning, invalidToolCalls } = parseOpenAIChatMessage(message);
     if (invalidToolCalls) {
@@ -254,7 +254,7 @@ class NimProvider implements Provider {
     if (!toolCalls && !content) {
       throw new ProviderError("Empty response from NIM (no text or tool_calls).", "unknown");
     }
-    return { content, toolCalls, usage: usageFrom(corpo ?? {}), reasoning };
+    return { content, toolCalls, usage: usageFrom(payload ?? {}), reasoning };
   }
 
   async streamChat(
@@ -326,9 +326,9 @@ class NimProvider implements Provider {
 
     if (resp.status < 200 || resp.status >= 300) {
       const text = await readAllText(resp.body).catch(() => "");
-      let json: ErroNim | undefined;
+      let json: NimErrorBody | undefined;
       try {
-        json = JSON.parse(text) as ErroNim;
+        json = JSON.parse(text) as NimErrorBody;
       } catch { void 0; }
 
       if (
@@ -393,19 +393,19 @@ class NimProvider implements Provider {
     }
     if (res.status < 200 || res.status >= 300) {
       console.error("[corvus] NIM image gen failed:", res.status, res.json ?? res.text);
-      const erro = res.json as ErroNim | undefined;
+      const errBody = res.json as NimErrorBody | undefined;
       const detail =
-        erro?.detail ??
-        erro?.error?.message ??
-        erro?.message ??
+        errBody?.detail ??
+        errBody?.error?.message ??
+        errBody?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 280) : null) ??
         `HTTP ${res.status}`;
       throw new ProviderError(`NIM image gen (${res.status}): ${detail}`, "unknown");
     }
 
     const items: MediaGenerationItem[] = [];
-    const imagem = res.json as RespostaDeImagemNim | undefined;
-    const artifacts = imagem?.artifacts;
+    const imageRes = res.json as NimImageResponse | undefined;
+    const artifacts = imageRes?.artifacts;
     if (Array.isArray(artifacts)) {
       for (const a of artifacts) {
         const b64 =
@@ -417,11 +417,11 @@ class NimProvider implements Provider {
         if (b64) items.push({ data: base64ToBytes(b64), mime: "image/png" });
       }
     }
-    if (items.length === 0 && typeof imagem?.image === "string") {
-      items.push({ data: base64ToBytes(imagem.image), mime: "image/png" });
+    if (items.length === 0 && typeof imageRes?.image === "string") {
+      items.push({ data: base64ToBytes(imageRes.image), mime: "image/png" });
     }
-    if (items.length === 0 && typeof imagem?.b64_json === "string") {
-      items.push({ data: base64ToBytes(imagem.b64_json), mime: "image/png" });
+    if (items.length === 0 && typeof imageRes?.b64_json === "string") {
+      items.push({ data: base64ToBytes(imageRes.b64_json), mime: "image/png" });
     }
     if (items.length === 0) {
       console.error("[corvus] NIM unknown response shape:", res.json);
@@ -452,7 +452,7 @@ class NimProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`NIM: HTTP ${res.status}`, "unknown");
     }
-    const all: string[] = ((res.json as CatalogoNim | undefined)?.data ?? [])
+    const all: string[] = ((res.json as NimModelList | undefined)?.data ?? [])
       .map((m) => m?.id)
       .filter((id): id is string => typeof id === "string");
     return all.filter(isRelevantNimModel).sort();
@@ -468,7 +468,7 @@ class NimProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return [];
-      const all: string[] = ((res.json as CatalogoNim | undefined)?.data ?? [])
+      const all: string[] = ((res.json as NimModelList | undefined)?.data ?? [])
         .map((m) => m?.id)
         .filter((id): id is string => typeof id === "string");
       return all.filter(isEmbeddingModelId).sort();
@@ -488,53 +488,53 @@ class NimProvider implements Provider {
           filters: [{ field: "nimType", value: "nim_type_preview" }],
         });
         const res = await requestUrl({
-          url: `${NGC_CATALOGO}?q=${encodeURIComponent(q)}`,
+          url: `${NGC_CATALOG}?q=${encodeURIComponent(q)}`,
           method: "GET",
           throw: false,
         });
         if (res.status < 200 || res.status >= 300) break;
-        const { ids: pagina, total } = gratisDoCatalogoNvidia(res.json);
-        for (const id of pagina) ids.add(id);
-        if (pagina.length === 0 || (page + 1) * 100 >= total) break;
+        const { ids: pageIds, total } = freeFromNvidiaCatalog(res.json);
+        for (const id of pageIds) ids.add(id);
+        if (pageIds.length === 0 || (page + 1) * 100 >= total) break;
       }
     } catch { void 0; }
     return Array.from(ids).sort();
   }
 }
 
-const NGC_CATALOGO = "https://api.ngc.nvidia.com/v2/search/catalog/resources/ENDPOINT";
+const NGC_CATALOG = "https://api.ngc.nvidia.com/v2/search/catalog/resources/ENDPOINT";
 
-interface RecursoDoCatalogo {
+interface CatalogResource {
   name?: unknown;
   labels?: unknown;
 }
 
-interface EtiquetaDoCatalogo {
+interface CatalogLabel {
   key?: unknown;
   values?: unknown;
   unresolvedValues?: unknown;
 }
 
-export function gratisDoCatalogoNvidia(json: unknown): { ids: string[]; total: number } {
+export function freeFromNvidiaCatalog(json: unknown): { ids: string[]; total: number } {
   const j = json as { resultTotal?: unknown; results?: unknown } | undefined;
-  const grupos = Array.isArray(j?.results)
+  const groups = Array.isArray(j?.results)
     ? (j.results as Array<{ groupValue?: unknown; resources?: unknown }>)
     : [];
   const ids = new Set<string>();
-  for (const g of grupos) {
+  for (const g of groups) {
     if (g?.groupValue === "_scored" || !Array.isArray(g?.resources)) continue;
-    for (const r of g.resources as RecursoDoCatalogo[]) {
+    for (const r of g.resources as CatalogResource[]) {
       if (typeof r?.name !== "string") continue;
-      const etiquetas = Array.isArray(r.labels) ? (r.labels as EtiquetaDoCatalogo[]) : [];
-      const valores = (e: EtiquetaDoCatalogo | undefined, campo: "values" | "unresolvedValues") =>
-        Array.isArray(e?.[campo]) ? (e[campo] as unknown[]).filter((v): v is string => typeof v === "string") : [];
-      const marcadoGratis = etiquetas.some(
+      const labels = Array.isArray(r.labels) ? (r.labels as CatalogLabel[]) : [];
+      const stringsOf = (e: CatalogLabel | undefined, field: "values" | "unresolvedValues") =>
+        Array.isArray(e?.[field]) ? (e[field] as unknown[]).filter((v): v is string => typeof v === "string") : [];
+      const markedFree = labels.some(
         (e) =>
-          valores(e, "unresolvedValues").includes("nim_type_preview") ||
-          valores(e, "values").includes("Free Endpoint")
+          stringsOf(e, "unresolvedValues").includes("nim_type_preview") ||
+          stringsOf(e, "values").includes("Free Endpoint")
       );
-      const publisher = valores(etiquetas.find((e) => e?.key === "publisher"), "values")[0];
-      if (!marcadoGratis || !publisher) continue;
+      const publisher = stringsOf(labels.find((e) => e?.key === "publisher"), "values")[0];
+      if (!markedFree || !publisher) continue;
       ids.add(`${publisher}/${r.name}`.toLowerCase().replace(/_/g, "."));
     }
   }

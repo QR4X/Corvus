@@ -33,52 +33,52 @@ function isClaude(provider: string, model: string): boolean {
   return provider === "anthropic" || id.includes("claude") || id.includes("anthropic/");
 }
 
-interface ClaudeVersao {
-  familia: "opus" | "sonnet" | "haiku" | "fable" | "mythos";
-  maior: number;
-  menor: number;
+interface ClaudeVersion {
+  family: "opus" | "sonnet" | "haiku" | "fable" | "mythos";
+  major: number;
+  minor: number;
 }
 
-export function claudeVersao(model: string): ClaudeVersao | null {
+export function claudeVersion(model: string): ClaudeVersion | null {
   const id = (model || "").toLowerCase();
   let m = /claude-(opus|sonnet|haiku|fable|mythos)(?:-(\d+)(?:[-.](\d{1,2})(?!\d))?)?/.exec(id);
   if (m) {
     return {
-      familia: m[1] as ClaudeVersao["familia"],
-      maior: m[2] ? Number(m[2]) : NaN,
-      menor: m[3] ? Number(m[3]) : 0,
+      family: m[1] as ClaudeVersion["family"],
+      major: m[2] ? Number(m[2]) : NaN,
+      minor: m[3] ? Number(m[3]) : 0,
     };
   }
   m = /claude-(\d+)(?:[-.](\d))?-(opus|sonnet|haiku)/.exec(id);
   if (m) {
     return {
-      familia: m[3] as ClaudeVersao["familia"],
-      maior: Number(m[1]),
-      menor: m[2] ? Number(m[2]) : 0,
+      family: m[3] as ClaudeVersion["family"],
+      major: Number(m[1]),
+      minor: m[2] ? Number(m[2]) : 0,
     };
   }
   return null;
 }
 
-function noMinimo(c: ClaudeVersao, maior: number, menor = 0): boolean {
-  if (Number.isNaN(c.maior)) return true;
-  return c.maior > maior || (c.maior === maior && c.menor >= menor);
+function atLeast(c: ClaudeVersion, major: number, minor = 0): boolean {
+  if (Number.isNaN(c.major)) return true;
+  return c.major > major || (c.major === major && c.minor >= minor);
 }
 
-function claudeNovo(c: ClaudeVersao): boolean {
-  return c.familia === "fable" || c.familia === "mythos";
+function isNewClaude(c: ClaudeVersion): boolean {
+  return c.family === "fable" || c.family === "mythos";
 }
 
-function claudeAceitaTemperatura(model: string): boolean {
-  const c = claudeVersao(model);
-  if (!c || claudeNovo(c) || Number.isNaN(c.maior)) return false;
-  return !noMinimo(c, 4, 7);
+function claudeAcceptsTemperature(model: string): boolean {
+  const c = claudeVersion(model);
+  if (!c || isNewClaude(c) || Number.isNaN(c.major)) return false;
+  return !atLeast(c, 4, 7);
 }
 
 export function paramPolicy(provider: string, model: string): ParamPolicy {
   const reasoning = isReasoningModel(model);
   const claude = isClaude(provider, model);
-  const supportsTemperature = !reasoning && (!claude || claudeAceitaTemperatura(model));
+  const supportsTemperature = !reasoning && (!claude || claudeAcceptsTemperature(model));
 
   const tempMax = claude || provider === "nim" ? 1 : 2;
   const tempMin = provider === "nim" ? 0.01 : 0;
@@ -96,21 +96,21 @@ export function resolveTemperature(
   return Math.max(p.tempMin, Math.min(p.tempMax, requested));
 }
 
-function tetoClaude(c: ClaudeVersao): number {
-  if (claudeNovo(c) || Number.isNaN(c.maior)) return 128000;
-  if (c.familia !== "haiku" && noMinimo(c, 4, 6)) return 128000; 
-  if (noMinimo(c, 4, 5)) return 64000; 
-  if (c.familia === "sonnet" && noMinimo(c, 3, 7)) return 64000; 
-  if (c.familia === "opus" && noMinimo(c, 4, 0)) return 32000; 
-  if (noMinimo(c, 3, 5)) return 8192; 
+function claudeOutputCap(c: ClaudeVersion): number {
+  if (isNewClaude(c) || Number.isNaN(c.major)) return 128000;
+  if (c.family !== "haiku" && atLeast(c, 4, 6)) return 128000; 
+  if (atLeast(c, 4, 5)) return 64000; 
+  if (c.family === "sonnet" && atLeast(c, 3, 7)) return 64000; 
+  if (c.family === "opus" && atLeast(c, 4, 0)) return 32000; 
+  if (atLeast(c, 3, 5)) return 8192; 
   return 4096; 
 }
 
 export function maxOutputTokens(provider: string, model: string): number {
   const id = (model || "").toLowerCase();
   const tail = tailOf(model);
-  const claude = claudeVersao(model);
-  if (claude) return tetoClaude(claude);
+  const claude = claudeVersion(model);
+  if (claude) return claudeOutputCap(claude);
 
   if (/(^|[-/])gpt-5/.test(tail)) return 128000;
   if (/^o[1-9]([-.]|$)/.test(tail)) return 100000;
@@ -128,20 +128,20 @@ export function maxOutputTokens(provider: string, model: string): number {
   return 16384;
 }
 
-export function pensaAntes(model: string): boolean {
+export function thinksFirst(model: string): boolean {
   const id = (model || "").toLowerCase();
   if (/deepseek-v4(?:[.-]\d+)?-(flash|pro)(?:[-:]|$)/.test(id)) return true;
   if (id === "openrouter/auto" || id.endsWith("/auto") || id.includes("router")) return true;
   if (isReasoningModel(model)) return true;
-  const c = claudeVersao(model);
-  if (c) return claudeNovo(c) || noMinimo(c, 5, 0);
+  const c = claudeVersion(model);
+  if (c) return isNewClaude(c) || atLeast(c, 5, 0);
   if (/gemini-2\.5-(pro|flash)(?!-lite)/.test(id) || /gemini-([3-9]|\d{2})/.test(id)) return true;
   if (/gpt-oss/.test(id)) return true;
   if (/qwen3(?![\w.-]*instruct)/.test(id)) return true;
   return false;
 }
 
-export function pisoPensando(effort?: EffortLevel): number {
+export function thinkingFloor(effort?: EffortLevel): number {
   if (effort === "xhigh" || effort === "max") return 64000;
   if (effort === "high") return 32000;
   return 16000;
@@ -153,91 +153,91 @@ export function resolveMaxTokens(
   requested: number,
   effort?: EffortLevel
 ): number {
-  const pedido = pensaAntes(model) ? Math.max(requested, pisoPensando(effort)) : requested;
-  return Math.min(pedido, maxOutputTokens(provider, model));
+  const wanted = thinksFirst(model) ? Math.max(requested, thinkingFloor(effort)) : requested;
+  return Math.min(wanted, maxOutputTokens(provider, model));
 }
 
-function degrauBasico(effort: EffortLevel): "low" | "medium" | "high" {
+function basicEffortLevel(effort: EffortLevel): "low" | "medium" | "high" {
   return effort === "low" ? "low" : effort === "med" ? "medium" : "high";
 }
 
-function nivelClaude(c: ClaudeVersao, effort: EffortLevel): string | null {
-  const temControle =
-    claudeNovo(c) ||
-    (c.familia === "opus" && noMinimo(c, 4, 5)) ||
-    (c.familia === "sonnet" && noMinimo(c, 4, 6));
-  if (!temControle) return null;
-  const temXhigh =
-    (claudeNovo(c) && !Number.isNaN(c.maior)) ||
-    (c.familia === "opus" && noMinimo(c, 4, 7)) ||
-    (c.familia === "sonnet" && noMinimo(c, 5, 0));
-  const temMax = !(c.familia === "opus" && c.maior === 4 && c.menor === 5);
-  if (effort === "xhigh") return temXhigh ? "xhigh" : "high";
-  if (effort === "max") return temMax ? "max" : "high";
-  return degrauBasico(effort);
+function claudeEffortLevel(c: ClaudeVersion, effort: EffortLevel): string | null {
+  const hasControl =
+    isNewClaude(c) ||
+    (c.family === "opus" && atLeast(c, 4, 5)) ||
+    (c.family === "sonnet" && atLeast(c, 4, 6));
+  if (!hasControl) return null;
+  const hasXhigh =
+    (isNewClaude(c) && !Number.isNaN(c.major)) ||
+    (c.family === "opus" && atLeast(c, 4, 7)) ||
+    (c.family === "sonnet" && atLeast(c, 5, 0));
+  const hasMax = !(c.family === "opus" && c.major === 4 && c.minor === 5);
+  if (effort === "xhigh") return hasXhigh ? "xhigh" : "high";
+  if (effort === "max") return hasMax ? "max" : "high";
+  return basicEffortLevel(effort);
 }
 
-type EsforcoNoCorpo =
-  | { campo: "reasoning_effort"; valor: "low" | "medium" | "high" }
-  | { campo: "output_config"; valor: { effort: string } }
-  | { campo: "reasoning"; valor: { effort: "low" | "medium" | "high" } };
+type BodyEffort =
+  | { field: "reasoning_effort"; value: "low" | "medium" | "high" }
+  | { field: "output_config"; value: { effort: string } }
+  | { field: "reasoning"; value: { effort: "low" | "medium" | "high" } };
 
-export function esforcoDoProvider(
+export function providerEffort(
   provider: string,
   model: string,
   effort?: EffortLevel
-): EsforcoNoCorpo | null {
+): BodyEffort | null {
   if (!effort) return null;
   if (provider === "anthropic") {
-    const c = claudeVersao(model);
-    const nivel = c ? nivelClaude(c, effort) : null;
-    return nivel ? { campo: "output_config", valor: { effort: nivel } } : null;
+    const c = claudeVersion(model);
+    const level = c ? claudeEffortLevel(c, effort) : null;
+    return level ? { field: "output_config", value: { effort: level } } : null;
   }
-  if (!pensaAntes(model)) return null;
+  if (!thinksFirst(model)) return null;
   const tail = tailOf(model);
-  const daOpenAI = /^o[1-9]([-.]|$)/.test(tail) || /(^|[-/])gpt-5/.test(tail);
-  const semEscolha = /-pro\b/.test(tail) || /^o1-(mini|preview)/.test(tail);
+  const isOpenAI = /^o[1-9]([-.]|$)/.test(tail) || /(^|[-/])gpt-5/.test(tail);
+  const fixedEffort = /-pro\b/.test(tail) || /^o1-(mini|preview)/.test(tail);
   if (provider === "openai") {
-    return daOpenAI && !semEscolha ? { campo: "reasoning_effort", valor: degrauBasico(effort) } : null;
+    return isOpenAI && !fixedEffort ? { field: "reasoning_effort", value: basicEffortLevel(effort) } : null;
   }
-  if (provider === "gemini") return { campo: "reasoning_effort", valor: degrauBasico(effort) };
-  if (provider === "openrouter" && /^openai\//.test((model || "").toLowerCase()) && daOpenAI && !semEscolha) {
-    return { campo: "reasoning", valor: { effort: degrauBasico(effort) } };
+  if (provider === "gemini") return { field: "reasoning_effort", value: basicEffortLevel(effort) };
+  if (provider === "openrouter" && /^openai\//.test((model || "").toLowerCase()) && isOpenAI && !fixedEffort) {
+    return { field: "reasoning", value: { effort: basicEffortLevel(effort) } };
   }
   return null;
 }
 
-const aprendidosSemRaciocinioComFerramentas = new Set<string>();
+const learnedNoReasoningWithTools = new Set<string>();
 
-export function semRaciocinioComFerramentas(provider: string, model: string): boolean {
+export function noReasoningWithTools(provider: string, model: string): boolean {
   if (provider !== "openai") return false;
   const tail = tailOf(model);
-  if (aprendidosSemRaciocinioComFerramentas.has(tail)) return true;
+  if (learnedNoReasoningWithTools.has(tail)) return true;
   const m = /(?:^|[-/])gpt-(\d+)(?:\.(\d+))?/.exec(tail);
   if (!m) return false;
-  const maior = Number(m[1]);
-  const menor = m[2] === undefined ? 0 : Number(m[2]);
-  return maior > 5 || (maior === 5 && menor >= 4);
+  const major = Number(m[1]);
+  const minor = m[2] === undefined ? 0 : Number(m[2]);
+  return major > 5 || (major === 5 && minor >= 4);
 }
 
-export function lembrarSemRaciocinioComFerramentas(model: string): void {
-  aprendidosSemRaciocinioComFerramentas.add(tailOf(model));
+export function rememberNoReasoningWithTools(model: string): void {
+  learnedNoReasoningWithTools.add(tailOf(model));
 }
 
-export function ehRecusaDeRaciocinioComFerramentas(mensagem: string): boolean {
+export function isReasoningWithToolsRejection(message: string): boolean {
   return (
-    /reasoning_effort/i.test(mensagem) &&
-    /tools?\b/i.test(mensagem) &&
-    /not supported/i.test(mensagem)
+    /reasoning_effort/i.test(message) &&
+    /tools?\b/i.test(message) &&
+    /not supported/i.test(message)
   );
 }
 
-export function aplicarEsforco(
+export function applyEffort(
   body: Record<string, unknown>,
   provider: string,
   model: string,
   effort?: EffortLevel
 ): void {
-  const e = esforcoDoProvider(provider, model, effort);
-  if (e) body[e.campo] = e.valor;
+  const e = providerEffort(provider, model, effort);
+  if (e) body[e.field] = e.value;
 }

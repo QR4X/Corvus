@@ -18,23 +18,23 @@ import {
   providerMeta,
   type ProviderHealth,
 } from "../core/providersMeta";
-import { escolherAssistente, ehFree } from "../assistant/model";
+import { pickAssistant, isFree } from "../assistant/model";
 import { getAllEmbeddingModels } from "../rag/types";
 import { deleteIndex } from "../rag/vectorIndex";
 import { getModelCapabilities } from "../providers/modelCapabilities";
-import { freeTag, geminiTemTierGratis, gratisDeVerdade, type FreeTag } from "../usage/freeTag";
+import { freeTag, geminiHasFreeTier, isTrulyFree, type FreeTag } from "../usage/freeTag";
 import { openaiFreeTierForModel } from "../usage/freeTokens";
-import { buildModelCatalog, porFabricante, soltosPorFabricante } from "./modelCatalog";
-import { PROVIDERS_MULTI_FABRICANTE } from "../providers/vendors";
+import { buildModelCatalog, byVendor, looseByVendor } from "./modelCatalog";
+import { MULTI_VENDOR_PROVIDERS } from "../providers/vendors";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { speak, stopSpeaking, TTS_PROVIDERS, ttsReady } from "./readAloud";
-import { fraseDaAmostra, idiomaDaAmostra } from "./settings/voiceSample";
+import { samplePhrase, pickSampleLanguage } from "./settings/voiceSample";
 import { elevenVoices } from "../providers/elevenlabs";
 import { hapticsOn, setHapticsEnabled, tap } from "./haptics";
-import { marcarPerigoso } from "./modals";
+import { markDangerous } from "./modals";
 import {
   buildSettingsTree,
-  nomeProprio,
+  capitalize,
   tabsFor,
   type PickItem,
   type Place,
@@ -52,11 +52,11 @@ import {
 import { openActions } from "./menu";
 import { modelLogo } from "../providers/modelLogo";
 import { putThumb, seedThumb, thumbOf, type Thumb } from "./settings/thumb";
-import { pendenciaDoIndice } from "./settings/searchIndex";
+import { pendingIndexUpdate } from "./settings/searchIndex";
 import {
   EffortLevelModal,
-  nivelEditado,
-  resumoDoNivel,
+  isLevelEdited,
+  levelSummary,
 } from "./settings/effortEditor";
 import { EFFORT_ICONS, type EffortLevel } from "../core/effort";
 import { uiLocale, mark, tr } from "../i18n/tr";
@@ -112,11 +112,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
   private fetchingFor: string | null = null;
   private fetchingVoices = false;
 
-  private amostra: HTMLButtonElement | null = null;
+  private sampleButton: HTMLButtonElement | null = null;
 
-  private timerDoIndice = 0;
+  private indexTimer = 0;
 
-  private timerDoOllama: number | null = null;
+  private ollamaTimer: number | null = null;
   private hapticsOff: (() => void) | null = null;
 
   private slots = new Map<string, Slot>();
@@ -150,10 +150,10 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   display(): void {
-    this.desenharLegado();
+    this.drawLegacy();
   }
 
-  private desenharLegado(): void {
+  private drawLegacy(): void {
     this.legacy?.dispose();
     this.slots.clear();
     this.containerEl.empty();
@@ -165,7 +165,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   hide(): void {
-    this.pararAmostra();
+    this.stopSample();
     super.hide();
   }
 
@@ -228,8 +228,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
       case "ragIndexPath":
 
         this.repaint("index");
-        window.clearTimeout(this.timerDoIndice);
-        this.timerDoIndice = window.setTimeout(() => {
+        window.clearTimeout(this.indexTimer);
+        this.indexTimer = window.setTimeout(() => {
           void this.plugin.rag.load().then(() => this.repaint("index"));
         }, 800);
         break;
@@ -515,25 +515,25 @@ export class CorvusSettingsTab extends PluginSettingTab {
             s.ollamaEndpoint = v.trim();
             await this.save();
             changed();
-            this.conferirOllamaDepois();
+            this.recheckOllamaSoon();
           })
       );
     }
   }
 
-  private conferirOllamaDepois(): void {
+  private recheckOllamaSoon(): void {
 
     if (this.catalog.ollama) {
       delete this.catalog.ollama;
       this.repaint("catalog:ollama");
     }
-    if (this.timerDoOllama !== null) window.clearTimeout(this.timerDoOllama);
-    this.timerDoOllama = window.setTimeout(() => {
-      this.timerDoOllama = null;
+    if (this.ollamaTimer !== null) window.clearTimeout(this.ollamaTimer);
+    this.ollamaTimer = window.setTimeout(() => {
+      this.ollamaTimer = null;
       void (async () => {
-        const instalados = await this.plugin.models.syncOllama({ onlyFactoryList: false });
-        if (instalados === null) return;
-        this.catalog.ollama = instalados;
+        const installed = await this.plugin.models.syncOllama({ onlyFactoryList: false });
+        if (installed === null) return;
+        this.catalog.ollama = installed;
         this.repaint("catalog:ollama");
         this.repaint("model:ollama");
 
@@ -565,11 +565,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.conn[providerId] = { state: "testing" };
     this.repaint(`conn:${providerId}`);
     try {
-      const desde = this.s.ollamaEndpoint;
+      const endpointBefore = this.s.ollamaEndpoint;
       const models = await this.plugin.models.scanModels(providerId);
 
-      const doEnderecoAtual = providerId !== "ollama" || this.s.ollamaEndpoint === desde;
-      if (doEnderecoAtual && (models.length > 0 || providerId === "ollama")) {
+      const sameEndpoint = providerId !== "ollama" || this.s.ollamaEndpoint === endpointBefore;
+      if (sameEndpoint && (models.length > 0 || providerId === "ollama")) {
         this.catalog[providerId] = models;
       }
       this.conn[providerId] = {
@@ -634,30 +634,30 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.repaint(`catalog:${providerId}`);
     try {
 
-      const desde = this.s.ollamaEndpoint;
+      const endpointBefore = this.s.ollamaEndpoint;
       const [models, embeds] = await Promise.all([
         this.plugin.models.scanModels(providerId),
         this.plugin.models.scanEmbeddings(providerId),
       ]);
 
-      if (providerId === "ollama" && this.s.ollamaEndpoint !== desde) return;
+      if (providerId === "ollama" && this.s.ollamaEndpoint !== endpointBefore) return;
       this.catalog[providerId] = models;
 
       if (embeds.length > 0 || providerId === "ollama") this.repaint("embedding");
 
-      const gratis = models.filter((m) => this.tagGratis(providerId, m) !== null).length;
-      const partes = [
+      const freeCount = models.filter((m) => this.freeTagFor(providerId, m) !== null).length;
+      const parts = [
         models.length === 1
           ? tr("1 model found")
           : tr("{n} models found", { n: models.length }),
-        ...(gratis > 0 ? [tr("{n} free", { n: gratis })] : []),
+        ...(freeCount > 0 ? [tr("{n} free", { n: freeCount })] : []),
         ...(embeds.length > 0
           ? [tr("{n} for Vault Q&A embeddings", { n: embeds.length })]
           : []),
       ];
       new Notice(
         models.length > 0
-          ? `${partes.join(" · ")}.`
+          ? `${parts.join(" · ")}.`
           : tr("No models returned — check the key or the endpoint.")
       );
     } catch (err) {
@@ -707,8 +707,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
   private paintCatalog(row: Setting, providerId: string): void {
     const el = row.settingEl;
 
-    const velho = el.querySelector<HTMLElement>(".corvus-models-filter");
-    const thumb = velho ? thumbOf(velho) : null;
+    const oldFilter = el.querySelector<HTMLElement>(".corvus-models-filter");
+    const thumb = oldFilter ? thumbOf(oldFilter) : null;
     el.empty();
     el.addClass("corvus-set-block", "corvus-set-catalog");
     if (providerId !== this.provider) return;
@@ -759,32 +759,32 @@ export class CorvusSettingsTab extends PluginSettingTab {
 
     if (favs.length > 0) {
       const sec = list.createDiv({ cls: "corvus-models-fav" });
-      const cab = sec.createDiv({ cls: "corvus-models-fav-head" });
-      const ico = cab.createSpan({ cls: "corvus-models-fav-ico" });
+      const favHead = sec.createDiv({ cls: "corvus-models-fav-head" });
+      const ico = favHead.createSpan({ cls: "corvus-models-fav-ico" });
       setIcon(ico, "star");
-      cab.createSpan({ text: tr("Favorites") });
-      cab.createSpan({
+      favHead.createSpan({ text: tr("Favorites") });
+      favHead.createSpan({
         cls: "corvus-model-section-count",
         text: `${favs.length}/${FAVORITE_LIMIT}`,
       });
       for (const m of [...favs].sort()) this.modelRow(sec, providerId, m, redraw);
     }
 
-    const gratis = models.filter((m) => this.tagGratis(providerId, m) !== null);
-    if (gratis.length > 0) {
+    const freeIds = models.filter((m) => this.freeTagFor(providerId, m) !== null);
+    if (freeIds.length > 0) {
       head.firstElementChild?.setText(
         models.length === 1
-          ? tr("1 model · {free} free", { free: gratis.length })
-          : tr("{n} models · {free} free", { n: models.length, free: gratis.length })
+          ? tr("1 model · {free} free", { free: freeIds.length })
+          : tr("{n} models · {free} free", { n: models.length, free: freeIds.length })
       );
     }
 
-    if (groups.length > 1 || gratis.length > 0) {
+    if (groups.length > 1 || freeIds.length > 0) {
       const filter = list.createDiv({ cls: "corvus-seg corvus-models-filter" });
       seedThumb(filter, thumb);
       const items = [
         { id: "all", label: tr("All"), icon: "layers" },
-        ...(gratis.length > 0
+        ...(freeIds.length > 0
           ? [{ id: "free", label: tr("Free"), icon: "gift" }]
           : []),
         ...groups.map((g) => ({ id: g.id, label: g.label, icon: g.icon })),
@@ -812,7 +812,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
       this.placeThumb(filter);
     }
 
-    const multi = PROVIDERS_MULTI_FABRICANTE.has(providerId);
+    const multi = MULTI_VENDOR_PROVIDERS.has(providerId);
 
     const panes: { key: string; sec: HTMLElement; wrap: HTMLElement }[] = [];
     const vendors: { key: string; sec: HTMLElement; body: HTMLElement }[] = [];
@@ -831,15 +831,15 @@ export class CorvusSettingsTab extends PluginSettingTab {
       }
     };
 
-    const fabricanteSec = (chave: string, nome: string, total: number, exemplo: string) => {
-      const key = `${providerId}:v:${chave}`;
+    const vendorSection = (vendorKey: string, label: string, total: number, sampleModel: string) => {
+      const key = `${providerId}:v:${vendorKey}`;
       const closed = key !== this.openVendor;
       const sec = list.createEl("button", {
         cls: closed ? "corvus-model-vendor is-closed" : "corvus-model-vendor",
         attr: { type: "button", "aria-expanded": String(!closed) },
       });
-      setIcon(sec.createSpan({ cls: "corvus-model-vendor-ico" }), modelLogo(exemplo));
-      sec.createSpan({ cls: "corvus-model-vendor-name", text: nome });
+      setIcon(sec.createSpan({ cls: "corvus-model-vendor-ico" }), modelLogo(sampleModel));
+      sec.createSpan({ cls: "corvus-model-vendor-name", text: label });
       sec.createSpan({ cls: "corvus-model-section-count", text: String(total) });
       setIcon(sec.createSpan({ cls: "corvus-model-section-chev" }), "chevron-down");
       const body = list.createDiv({
@@ -853,27 +853,27 @@ export class CorvusSettingsTab extends PluginSettingTab {
       return body;
     };
 
-    const classeSec = (
+    const familySection = (
       host: HTMLElement,
       key: string,
       g: { id: string; label: string; icon: string },
       fam: { id: string; label: string; icon: string; models: string[] }
     ) => {
 
-      const orfa = fam.id === "other";
+      const orphan = fam.id === "other";
       const closed = key !== this.openFam;
       const sec = host.createEl("button", {
         cls: closed ? "corvus-model-section is-closed" : "corvus-model-section",
         attr: { type: "button", "aria-expanded": String(!closed) },
       });
       const mark = sec.createSpan({ cls: "corvus-model-section-ico" });
-      setIcon(mark, orfa ? g.icon : fam.icon);
+      setIcon(mark, orphan ? g.icon : fam.icon);
       sec.createSpan({
         cls: "corvus-model-section-name",
-        text: orfa ? g.label : fam.label,
+        text: orphan ? g.label : fam.label,
       });
 
-      if (this.kind === "all" && !orfa) {
+      if (this.kind === "all" && !orphan) {
         sec.createSpan({ cls: "corvus-model-section-role", text: g.label });
       }
       sec.createSpan({
@@ -896,9 +896,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
     };
 
     if (this.kind === "free") {
-      const nota = this.notaGratis(providerId);
-      if (nota) list.createEl("p", { cls: "corvus-models-free-note", text: nota });
-      if (gratis.length === 0) {
+      const note = this.freeNote(providerId);
+      if (note) list.createEl("p", { cls: "corvus-models-free-note", text: note });
+      if (freeIds.length === 0) {
         list.createEl("p", {
           cls: "corvus-models-empty",
           text: tr("Nothing free in this catalog."),
@@ -907,11 +907,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
       }
       if (!multi) {
         const wrap = list.createDiv({ cls: "corvus-model-fam" });
-        for (const m of gratis) this.modelRow(wrap, providerId, m, redraw);
+        for (const m of freeIds) this.modelRow(wrap, providerId, m, redraw);
         return;
       }
-      for (const v of soltosPorFabricante(gratis)) {
-        const body = fabricanteSec(v.fabricante.chave, v.fabricante.nome, v.models.length, v.models[0]);
+      for (const v of looseByVendor(freeIds)) {
+        const body = vendorSection(v.vendor.key, v.vendor.name, v.models.length, v.models[0]);
         const wrap = body.createDiv({ cls: "corvus-model-fam" });
         for (const m of v.models) this.modelRow(wrap, providerId, m, redraw);
       }
@@ -924,28 +924,28 @@ export class CorvusSettingsTab extends PluginSettingTab {
     if (!multi) {
       for (const g of visible) {
         for (const fam of g.families) {
-          classeSec(list, `${providerId}:${g.id}:${fam.id}`, g, fam);
+          familySection(list, `${providerId}:${g.id}:${fam.id}`, g, fam);
         }
       }
       return;
     }
 
-    for (const v of porFabricante(visible)) {
-      const body = fabricanteSec(
-        v.fabricante.chave,
-        v.fabricante.nome,
+    for (const v of byVendor(visible)) {
+      const body = vendorSection(
+        v.vendor.key,
+        v.vendor.name,
         v.total,
-        v.secoes[0].family.models[0]
+        v.sections[0].family.models[0]
       );
-      if (v.secoes.length === 1) {
+      if (v.sections.length === 1) {
         const wrap = body.createDiv({ cls: "corvus-model-fam" });
-        for (const m of v.secoes[0].family.models) this.modelRow(wrap, providerId, m, redraw);
+        for (const m of v.sections[0].family.models) this.modelRow(wrap, providerId, m, redraw);
         continue;
       }
-      for (const s of v.secoes) {
-        classeSec(
+      for (const s of v.sections) {
+        familySection(
           body,
-          `${providerId}:${v.fabricante.chave}:${s.roleId}:${s.family.id}`,
+          `${providerId}:${v.vendor.key}:${s.roleId}:${s.family.id}`,
           { id: s.roleId, label: s.roleLabel, icon: s.roleIcon },
           s.family
         );
@@ -953,20 +953,20 @@ export class CorvusSettingsTab extends PluginSettingTab {
     }
   }
 
-  private tagGratis(providerId: string, m: string): FreeTag | null {
+  private freeTagFor(providerId: string, m: string): FreeTag | null {
     return freeTag(providerId, m, {
-      free: gratisDeVerdade(
+      free: isTrulyFree(
         m,
         this.s.freeModels?.[providerId],
         getModelCapabilities(providerId, m).free === true
       ),
       dataSharing: this.s.openaiDataSharing === true,
       tier: this.s.openaiTier ?? 1,
-      cota: this.s.freeQuota?.[providerId],
+      quota: this.s.freeQuota?.[providerId],
     });
   }
 
-  private notaGratis(providerId: string): string | null {
+  private freeNote(providerId: string): string | null {
     if (providerId === "openrouter") {
 
       const c = this.s.freeQuota?.[providerId];
@@ -1008,7 +1008,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     const title = info.createDiv({ cls: "corvus-model-name" });
     title.createSpan({ text: prettyModelName(m) });
 
-    const tag = this.tagGratis(providerId, m);
+    const tag = this.freeTagFor(providerId, m);
     if (tag) {
       title.createSpan({
         cls: `corvus-tag is-free is-${tag.kind}`,
@@ -1095,28 +1095,28 @@ export class CorvusSettingsTab extends PluginSettingTab {
       value: string;
       onPick: (value: string) => void | Promise<void>;
 
-      ouvir?: (value: string) => string;
+      listen?: (value: string) => string;
     }
   ): void {
-    const { items, value, ouvir } = opts;
-    const atual = items.find((i) => i.value === value);
+    const { items, value, listen } = opts;
+    const current = items.find((i) => i.value === value);
     const btn = row.controlEl.createEl("button", {
       cls: "corvus-pick",
       attr: {
         type: "button",
         "aria-haspopup": "menu",
-        "aria-label": `${row.nameEl.textContent ?? ""}: ${atual?.label ?? value}`,
+        "aria-label": `${row.nameEl.textContent ?? ""}: ${current?.label ?? value}`,
       },
     });
     const ico = btn.createSpan({ cls: "corvus-pick-ico" });
-    if (atual?.glyph) {
+    if (current?.glyph) {
       ico.addClass("is-glyph");
-      ico.setText(atual.glyph);
-    } else if (atual?.icon) {
-      setIcon(ico, atual.icon);
+      ico.setText(current.glyph);
+    } else if (current?.icon) {
+      setIcon(ico, current.icon);
     }
 
-    btn.createSpan({ cls: "corvus-pick-label", text: atual?.label ?? value });
+    btn.createSpan({ cls: "corvus-pick-label", text: current?.label ?? value });
     setIcon(btn.createSpan({ cls: "corvus-pick-chev" }), "chevrons-up-down");
     btn.onclick = (ev) =>
       openActions(
@@ -1126,25 +1126,25 @@ export class CorvusSettingsTab extends PluginSettingTab {
           icon: i.icon,
           glyph: i.glyph,
           checked: i.value === value,
-          extra: ouvir && {
+          extra: listen && {
             icon: "play",
             label: tr("Play {name}", { name: i.label }),
-            run: (b: HTMLButtonElement) => this.tocarAmostra(b, i.value, ouvir(i.value)),
+            run: (b: HTMLButtonElement) => this.playSample(b, i.value, listen(i.value)),
           },
           run: () => {
             if (i.value !== value) void opts.onPick(i.value);
           },
         })),
-        { escolha: true, aoFechar: ouvir && (() => this.pararAmostra()) }
+        { pick: true, onClose: listen && (() => this.stopSample()) }
       );
   }
 
   private paintPick(row: Setting, key: TextKey, items: () => PickItem[]): void {
-    const atual = this.readValue(key);
+    const current = this.readValue(key);
     this.pickButton(row, {
       items: items(),
 
-      value: typeof atual === "string" ? atual : "",
+      value: typeof current === "string" ? current : "",
       onPick: async (v) => {
         await this.writeValue(key, v);
         this.repaint(`pick:${key}`);
@@ -1152,7 +1152,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         this.refreshVisibility();
       },
 
-      ouvir: key === "ttsVoice" ? nomeProprio : undefined,
+      listen: key === "ttsVoice" ? capitalize : undefined,
     });
   }
 
@@ -1163,8 +1163,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
     const ico = row.nameEl.createSpan({ cls: "corvus-effort-ico" });
     setIcon(ico, EFFORT_ICONS[level]);
     row.nameEl.prepend(ico);
-    const editado = nivelEditado(s.effortConfigs, level);
-    row.setDesc(resumoDoNivel(s.effortConfigs, level) + (editado ? ` · ${tr("edited")}` : ""));
+    const edited = isLevelEdited(s.effortConfigs, level);
+    row.setDesc(levelSummary(s.effortConfigs, level) + (edited ? ` · ${tr("edited")}` : ""));
     row.addButton((b) =>
       b.setButtonText(tr("Edit")).onClick(() => {
         new EffortLevelModal(this.app, this.plugin, level, () =>
@@ -1176,27 +1176,27 @@ export class CorvusSettingsTab extends PluginSettingTab {
 
   private paintAssistantModel(row: Setting): void {
     const s = this.s;
-    const alvo = escolherAssistente({
+    const target = pickAssistant({
       assistantProvider: s.assistantProvider,
       assistantModel: s.assistantModel,
       favoriteModels: s.favoriteModels,
       activeModels: s.activeModels,
       freeModels: s.freeModels,
     });
-    const livres = s.freeModels?.openrouter ?? [];
+    const freeIds = s.freeModels?.openrouter ?? [];
 
     row.setDesc(
-      alvo
+      target
         ? tr("Writes skills and projects for you. Now: {model}", {
             model:
-              prettyModelName(alvo.model) +
-              (ehFree(alvo.model, livres) ? ` · ${tr("free")}` : ""),
+              prettyModelName(target.model) +
+              (isFree(target.model, freeIds) ? ` · ${tr("free")}` : ""),
           })
         : tr("Nothing free found yet — run SCAN on OpenRouter, or pick a model here.")
     );
 
-    const todos = [
-      ...new Set([...(s.activeModels?.openrouter ?? []), ...livres]),
+    const candidates = [
+      ...new Set([...(s.activeModels?.openrouter ?? []), ...freeIds]),
     ].sort();
     this.pickButton(row, {
       items: [
@@ -1207,9 +1207,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
           label: tr("Automatic — first free model"),
           icon: "wand-sparkles",
         },
-        ...todos.map((id) => ({
+        ...candidates.map((id) => ({
           value: id,
-          label: ehFree(id, livres)
+          label: isFree(id, freeIds)
             ? `${prettyModelName(id)} · ${tr("free")}`
             : prettyModelName(id),
           icon: modelLogo(id),
@@ -1322,7 +1322,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         await this.save();
         this.repaint("elevenVoice");
       },
-      ouvir: (id) => s.elevenVoices.find((v) => v.id === id)?.name ?? "ElevenLabs",
+      listen: (id) => s.elevenVoices.find((v) => v.id === id)?.name ?? "ElevenLabs",
     });
   }
 
@@ -1331,53 +1331,53 @@ export class CorvusSettingsTab extends PluginSettingTab {
       b.setButtonText(tr("Play sample")).onClick(async () => {
         b.setButtonText(tr("Playing…")).setDisabled(true);
 
-        await speak(this.plugin, fraseDaAmostra(this.nomeDaVozAtual(), this.idiomaDaAmostra()), {
-          guardar: true,
+        await speak(this.plugin, samplePhrase(this.currentVoiceName(), this.sampleLanguage()), {
+          cache: true,
         });
         b.setButtonText(tr("Play sample")).setDisabled(false);
       })
     );
   }
 
-  private tocarAmostra(botao: HTMLButtonElement, voz: string, nome: string): void {
-    if (this.amostra === botao) {
+  private playSample(button: HTMLButtonElement, voice: string, name: string): void {
+    if (this.sampleButton === button) {
       stopSpeaking();
       return;
     }
-    const rotulo = botao.getAttribute("aria-label") ?? tr("Play");
-    const desenhar = (estado: "parado" | "buscando" | "tocando") => {
-      botao.toggleClass("is-loading", estado === "buscando");
-      botao.toggleClass("is-playing", estado === "tocando");
-      setIcon(botao, estado === "parado" ? "play" : estado === "buscando" ? "loader" : "square");
-      botao.setAttribute("aria-label", estado === "parado" ? rotulo : tr("Stop"));
+    const label = button.getAttribute("aria-label") ?? tr("Play");
+    const render = (state: "idle" | "loading" | "playing") => {
+      button.toggleClass("is-loading", state === "loading");
+      button.toggleClass("is-playing", state === "playing");
+      setIcon(button, state === "idle" ? "play" : state === "loading" ? "loader" : "square");
+      button.setAttribute("aria-label", state === "idle" ? label : tr("Stop"));
     };
-    this.amostra = botao;
-    desenhar("buscando");
+    this.sampleButton = button;
+    render("loading");
 
-    void speak(this.plugin, fraseDaAmostra(nome, this.idiomaDaAmostra()), {
-      voice: voz,
-      guardar: true,
-      onPlaying: () => desenhar("tocando"),
+    void speak(this.plugin, samplePhrase(name, this.sampleLanguage()), {
+      voice,
+      cache: true,
+      onPlaying: () => render("playing"),
     }).finally(() => {
-      desenhar("parado");
-      if (this.amostra === botao) this.amostra = null;
+      render("idle");
+      if (this.sampleButton === button) this.sampleButton = null;
     });
   }
 
-  private pararAmostra(): void {
-    if (this.amostra) stopSpeaking();
+  private stopSample(): void {
+    if (this.sampleButton) stopSpeaking();
   }
 
-  private idiomaDaAmostra(): string {
-    return idiomaDaAmostra(this.s.voiceLanguage, getLanguage());
+  private sampleLanguage(): string {
+    return pickSampleLanguage(this.s.voiceLanguage, getLanguage());
   }
 
-  private nomeDaVozAtual(): string {
+  private currentVoiceName(): string {
     const s = this.s;
     if (s.ttsProvider === "eleven") {
       return s.elevenVoices.find((v) => v.id === s.elevenVoice)?.name ?? "ElevenLabs";
     }
-    return nomeProprio(s.ttsVoice);
+    return capitalize(s.ttsVoice);
   }
 
   private async fetchVoices(): Promise<void> {
@@ -1393,13 +1393,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
       }));
       if (!this.s.elevenVoice && voices[0]) this.s.elevenVoice = voices[0].id;
       await this.save();
-      const minhas = voices.filter(
+      const ownCount = voices.filter(
         (v) => v.category === "cloned" || v.category === "professional"
       ).length;
       new Notice(
         (voices.length === 1 ? tr("1 voice") : tr("{n} voices", { n: voices.length })) +
-          (minhas > 0
-            ? " · " + (minhas === 1 ? tr("1 yours") : tr("{n} yours", { n: minhas }))
+          (ownCount > 0
+            ? " · " + (ownCount === 1 ? tr("1 yours") : tr("{n} yours", { n: ownCount }))
             : "") +
           "."
       );
@@ -1423,17 +1423,17 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.pickButton(row, {
       items: specs.map((spec) => {
 
-        const gratis = spec.local
+        const freeLabel = spec.local
           ? tr("local")
           : spec.provider === "gemini"
-            ? geminiTemTierGratis(spec.model)
+            ? geminiHasFreeTier(spec.model)
               ? tr("free tier")
               : ""
-            : gratisDeVerdade(spec.model, s.freeModels?.[spec.provider], spec.free === true)
+            : isTrulyFree(spec.model, s.freeModels?.[spec.provider], spec.free === true)
               ? tr("free")
               : "";
         const extras = [
-          gratis,
+          freeLabel,
           providerConfigured(this.s, spec.provider)
             ? ""
             : spec.provider === "ollama"
@@ -1464,7 +1464,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     const s = this.s;
     const size = this.plugin.rag.index?.size ?? 0;
 
-    const pendente = pendenciaDoIndice(this.plugin.rag.index ?? null, s);
+    const pending = pendingIndexUpdate(this.plugin.rag.index ?? null, s);
     const folder = s.ragIndexPath;
     row.setDesc(
       (size === 0
@@ -1472,7 +1472,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         : size === 1
           ? tr("Index loaded: 1 chunk (folder: {folder}).", { folder })
           : tr("Index loaded: {n} chunks (folder: {folder}).", { n: size, folder })) +
-        (pendente ? ` ${pendente}` : "")
+        (pending ? ` ${pending}` : "")
     );
     row
       .addButton((b) =>
@@ -1483,7 +1483,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
       )
       .addButton((b) =>
 
-        marcarPerigoso(b.setButtonText(tr("Delete index")))
+        markDangerous(b.setButtonText(tr("Delete index")))
           .setDisabled(size === 0 && !this.plugin.rag.index)
           .onClick(async () => {
             await deleteIndex(this.app.vault.adapter, s.ragIndexPath);

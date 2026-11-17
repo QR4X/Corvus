@@ -9,23 +9,23 @@ export function noteLink(path: string): string {
   return `[[${path.replace(/\.md$/i, "")}]]`;
 }
 
-function linhaChat(c: ChatSummary): string {
-  const dia = (c.date || "").slice(0, 10);
-  const partes = [dia, c.model].filter(Boolean).join(" · ");
-  const titulo = c.title.trim() || "Untitled";
-  return partes ? `- ${titulo} — ${partes}` : `- ${titulo}`;
+function chatLine(c: ChatSummary): string {
+  const day = (c.date || "").slice(0, 10);
+  const meta = [day, c.model].filter(Boolean).join(" · ");
+  const title = c.title.trim() || "Untitled";
+  return meta ? `- ${title} — ${meta}` : `- ${title}`;
 }
 
 export function exportProjectMarkdown(
   project: Project,
   chats: ChatSummary[],
-  quando: Date
+  when: Date
 ): string {
   const fm = [
     "---",
     `title: ${JSON.stringify(project.name || "Untitled")}`,
     `created: ${JSON.stringify(project.createdAt)}`,
-    `exported: ${JSON.stringify(quando.toISOString())}`,
+    `exported: ${JSON.stringify(when.toISOString())}`,
     `notes: ${project.sources.length}`,
     `chats: ${project.chatIds.length}`,
     "source: Corvus",
@@ -33,43 +33,43 @@ export function exportProjectMarkdown(
     "---",
   ].join("\n");
 
-  const partes: string[] = [`# ${project.name || "Untitled"}`];
+  const sections: string[] = [`# ${project.name || "Untitled"}`];
 
-  const instrucoes = (project.instructions ?? "").trim();
-  if (instrucoes) partes.push(`## Custom instructions\n\n${instrucoes}`);
+  const instructions = (project.instructions ?? "").trim();
+  if (instructions) sections.push(`## Custom instructions\n\n${instructions}`);
 
   if (project.sources.length)
-    partes.push(
+    sections.push(
       `## Notes\n\n${project.sources.map((p) => `- ${noteLink(p)}`).join("\n")}`
     );
 
-  const daqui = chats
+  const projectChats = chats
     .filter((c) => project.chatIds.includes(c.id))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
-  if (daqui.length)
-    partes.push(`## Chats\n\n${daqui.map(linhaChat).join("\n")}`);
+  if (projectChats.length)
+    sections.push(`## Chats\n\n${projectChats.map(chatLine).join("\n")}`);
 
-  return `${fm}\n\n${partes.join("\n\n")}\n`;
+  return `${fm}\n\n${sections.join("\n\n")}\n`;
 }
 
 export async function exportProjectToVault(
   app: App,
   project: Project,
   chats: ChatSummary[],
-  quando: Date = new Date()
+  when: Date = new Date()
 ): Promise<string> {
   await ensureFolder(app.vault.adapter, EXPORTS_FOLDER);
-  let caminho = `${EXPORTS_FOLDER}/${exportFileName(project.name, quando)}`;
+  let path = `${EXPORTS_FOLDER}/${exportFileName(project.name, when)}`;
 
-  for (let n = 2; n <= 50 && (await app.vault.adapter.exists(caminho)); n++) {
-    caminho = `${EXPORTS_FOLDER}/${exportFileName(
+  for (let n = 2; n <= 50 && (await app.vault.adapter.exists(path)); n++) {
+    path = `${EXPORTS_FOLDER}/${exportFileName(
       `${project.name} ${n}`,
-      quando
+      when
     )}`;
   }
   await app.vault.adapter.write(
-    caminho,
-    exportProjectMarkdown(project, chats, quando)
+    path,
+    exportProjectMarkdown(project, chats, when)
   );
-  return caminho;
+  return path;
 }

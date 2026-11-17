@@ -16,7 +16,7 @@ import {
   isImagePath,
   type VectorEntry,
 } from "./types";
-import { texto } from "../core/text";
+import { asText } from "../core/text";
 
 interface IndexProgress {
 
@@ -79,7 +79,7 @@ function buildObsidianContext(
     const aliases = fm.aliases ?? fm.alias;
     if (aliases) {
       const arr = (Array.isArray(aliases) ? aliases : [aliases])
-        .map((a) => texto(a))
+        .map((a) => asText(a))
         .filter((a) => a.length > 0);
       if (arr.length) parts.push(`Aliases: ${arr.join(", ")}`);
     }
@@ -89,7 +89,7 @@ function buildObsidianContext(
   const fmTags = fm?.tags ?? fm?.tag;
   if (fmTags) {
     (Array.isArray(fmTags) ? fmTags : [fmTags]).forEach((tg) => {
-      const t = texto(tg).replace(/^#/, "");
+      const t = asText(tg).replace(/^#/, "");
       if (t) tagSet.add(t);
     });
   }
@@ -126,8 +126,8 @@ export async function indexVault(
     prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;
 
   if (spec.local) {
-    const [sonda] = await embedItems([{ kind: "text", text: "dimension probe" }], creds, model);
-    if (sonda && sonda.length > 0) effectiveDim = sonda.length;
+    const [probe] = await embedItems([{ kind: "text", text: "dimension probe" }], creds, model);
+    if (probe && probe.length > 0) effectiveDim = probe.length;
   }
   const embedDims = spec.supportsDimensions ? effectiveDim : undefined;
 

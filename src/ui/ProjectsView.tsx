@@ -4,19 +4,19 @@ import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
 import {
   makeProjectId,
-  nomeDaCopia,
+  copyName,
   projectColor,
-  projectProblema,
-  PROJECT_DRAFT_VAZIO,
+  projectProblem,
+  EMPTY_PROJECT_DRAFT,
   type Project,
   type ProjectDraft,
 } from "../projects";
 import { ChatList } from "./ChatList";
 import { useChatSummaries } from "./chatHooks";
 import {
-  formatarTokens,
-  resumoDoProjeto,
-  tokensDeEntrada,
+  formatTokens,
+  summarizeProject,
+  projectInputTokens,
 } from "./projectSummary";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
@@ -29,12 +29,12 @@ import {
   useSheetDefault,
 } from "./Sheet";
 import {
-  EXTRAS_VAZIOS,
-  PASSOS_PROJETO,
+  EMPTY_EXTRAS,
+  PROJECT_STEPS,
   ProjectForm,
-  type ExtrasProjeto,
+  type ProjectExtras,
 } from "./ProjectSheet";
-import { peDoWizard } from "./wizard";
+import { wizardFoot } from "./wizard";
 import {
   SheetField,
   SheetProgress,
@@ -45,8 +45,8 @@ import {
 import { openActions } from "./menu";
 import { rankNotes, vaultNotes } from "./notePicker";
 import { exportProjectToVault } from "../core/projectExport";
-import { AssistantPanel, ComAssistente, useRun } from "./AssistantPanel";
-import { limparRun } from "../assistant/store";
+import { AssistantPanel, WithAssistant, useRun } from "./AssistantPanel";
+import { clearRun } from "../assistant/store";
 import { useAssistant } from "./useAssistant";
 import type { MenuAction } from "./menu";
 import { tr } from "../i18n/tr";
@@ -55,12 +55,12 @@ export function ProjectsView({
   plugin,
   session,
   open,
-  abertoId,
-  onAbrir,
-  chatPendente,
-  onChatPendente,
-  escolhaPara,
-  onEscolha,
+  openId,
+  onOpenProject,
+  pendingChatId,
+  onPendingChat,
+  pickFor,
+  onPicked,
   onOpenChat,
   onClose,
 }: {
@@ -68,93 +68,93 @@ export function ProjectsView({
   session: ChatSession;
   open: boolean;
 
-  abertoId: string | null;
-  onAbrir: (id: string | null) => void;
+  openId: string | null;
+  onOpenProject: (id: string | null) => void;
 
-  chatPendente?: string | null;
-  onChatPendente?: (id: string | null) => void;
+  pendingChatId?: string | null;
+  onPendingChat?: (id: string | null) => void;
 
-  escolhaPara?: string | null;
-  onEscolha?: () => void;
+  pickFor?: string | null;
+  onPicked?: () => void;
   onOpenChat: () => void;
   onClose: () => void;
 }) {
   const [, force] = useReducer((n: number) => n + 1, 0);
-  const setAbertoId = onAbrir;
+  const setOpenId = onOpenProject;
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
 
-  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [passo, setPasso] = useState(0);
+  const [step, setStep] = useState(0);
 
-  const [procurando, setProcurando] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
 
-  const [vendoNotas, setVendoNotas] = useState(false);
-  const [escolhendo, setEscolhendo] = useState(false);
+  const [showingNotes, setShowingNotes] = useState(false);
+  const [pickingNote, setPickingNote] = useState(false);
   const [noteQuery, setNoteQuery] = useState("");
 
-  const [instrucoes, setInstrucoes] = useState<string | null>(null);
+  const [instructionsDraft, setInstructionsDraft] = useState<string | null>(null);
 
-  const [ajudandoInstrucoes, setAjudandoInstrucoes] = useState(false);
-  const { indisponivel, pedirInstrucoes, alvo, modelos, livres, escolherModelo } = useAssistant(plugin);
-  const modeloAssist = {
-    atual: alvo?.model ?? "",
-    opcoes: modelos,
-    livres,
-    onTrocar: (m: string) => void escolherModelo(m),
+  const [assistingInstructions, setAssistingInstructions] = useState(false);
+  const { unavailable, askInstructions, target, models, freeModels, chooseModel } = useAssistant(plugin);
+  const modelPicker = {
+    current: target?.model ?? "",
+    options: models,
+    freeModels,
+    onPick: (m: string) => void chooseModel(m),
   };
 
   const runInstr = useRun("instructions");
   useEffect(() => {
-    if (runInstr.fase !== "pronto" || typeof runInstr.resultado !== "string")
+    if (runInstr.phase !== "done" || typeof runInstr.result !== "string")
       return;
-    setInstrucoes(runInstr.resultado);
-    limparRun("instructions");
-    setAjudandoInstrucoes(false);
-  }, [runInstr.fase, runInstr.resultado]);
+    setInstructionsDraft(runInstr.result);
+    clearRun("instructions");
+    setAssistingInstructions(false);
+  }, [runInstr.phase, runInstr.result]);
 
   const chats = useChatSummaries(plugin);
   const projects = plugin.settings.projects ?? [];
 
-  const tokensPorProjeto = useTokensDeEntrada(plugin, projects, open);
-  const aberto = projects.find((p) => p.id === abertoId) ?? null;
+  const tokensByProject = useInputTokens(plugin, projects, open);
+  const openProject = projects.find((p) => p.id === openId) ?? null;
 
   const update = async (fn: (prev: Project[]) => Project[]) => {
     await session.updateProjects(fn);
     force();
   };
 
-  const criar = () => {
-    setEditandoId(null);
-    setPasso(0);
-    setProcurando(false);
-    setExtras(EXTRAS_VAZIOS);
-    setDraft(PROJECT_DRAFT_VAZIO);
+  const startCreate = () => {
+    setEditingId(null);
+    setStep(0);
+    setBrowsing(false);
+    setExtras(EMPTY_EXTRAS);
+    setDraft(EMPTY_PROJECT_DRAFT);
   };
 
-  const editar = (p: Project) => {
-    setEditandoId(p.id);
-    setProcurando(false);
-    setExtras(EXTRAS_VAZIOS);
+  const startEdit = (p: Project) => {
+    setEditingId(p.id);
+    setBrowsing(false);
+    setExtras(EMPTY_EXTRAS);
     setDraft({ name: p.name, icon: p.icon, color: p.color });
   };
 
-  const [extras, setExtras] = useState<ExtrasProjeto>(EXTRAS_VAZIOS);
+  const [extras, setExtras] = useState<ProjectExtras>(EMPTY_EXTRAS);
 
-  const problema = draft
-    ? projectProblema(draft, projects, editandoId ?? undefined)
+  const problem = draft
+    ? projectProblem(draft, projects, editingId ?? undefined)
     : null;
 
-  const salvar = async () => {
-    if (!draft || problema) return;
-    const nome = draft.name.trim();
-    if (editandoId) {
+  const save = async () => {
+    if (!draft || problem) return;
+    const name = draft.name.trim();
+    if (editingId) {
       await update((prev) =>
         prev.map((x) =>
-          x.id === editandoId
+          x.id === editingId
             ? {
                 ...x,
-                name: nome,
+                name,
                 icon: draft.icon,
                 color: draft.color,
 
@@ -167,28 +167,28 @@ export function ProjectsView({
     } else {
       const p: Project = {
         id: makeProjectId(),
-        name: nome,
+        name,
         icon: draft.icon,
         color: draft.color,
         sources: extras.notes,
         instructions: extras.instructions.trim() || undefined,
 
-        chatIds: chatPendente ? [chatPendente] : [],
+        chatIds: pendingChatId ? [pendingChatId] : [],
         createdAt: new Date().toISOString(),
       };
       await update((prev) => [p, ...prev]);
 
-      setAbertoId(p.id);
-      onChatPendente?.(null);
+      setOpenId(p.id);
+      onPendingChat?.(null);
     }
     setDraft(null);
-    setEditandoId(null);
-    setExtras(EXTRAS_VAZIOS);
-    setPasso(0);
-    setProcurando(false);
+    setEditingId(null);
+    setExtras(EMPTY_EXTRAS);
+    setStep(0);
+    setBrowsing(false);
   };
 
-  const apagar = async (p: Project) => {
+  const deleteProject = async (p: Project) => {
     const ok = await new ConfirmModal(plugin.app, {
       title: tr("Delete project \"{name}\"?", { name: p.name }),
       body: tr(
@@ -199,30 +199,30 @@ export function ProjectsView({
     }).openAndWait();
     if (!ok) return;
     await update((prev) => prev.filter((x) => x.id !== p.id));
-    if (abertoId === p.id) setAbertoId(null);
+    if (openId === p.id) setOpenId(null);
   };
 
-  const duplicar = async (p: Project) => {
-    const copia: Project = {
+  const duplicate = async (p: Project) => {
+    const copy: Project = {
       ...p,
       id: makeProjectId(),
-      name: nomeDaCopia(p.name, projects),
+      name: copyName(p.name, projects),
       chatIds: [],
       createdAt: new Date().toISOString(),
     };
-    await update((prev) => [copia, ...prev]);
-    new Notice(tr("Duplicated as \"{name}\"", { name: copia.name }));
+    await update((prev) => [copy, ...prev]);
+    new Notice(tr("Duplicated as \"{name}\"", { name: copy.name }));
   };
 
-  const exportar = async (p: Project) => {
+  const exportProject = async (p: Project) => {
     try {
-      const caminho = await exportProjectToVault(
+      const path = await exportProjectToVault(
         plugin.app,
         p,
         chats,
         new Date()
       );
-      new Notice(tr("Exported to {path}", { path: caminho }));
+      new Notice(tr("Exported to {path}", { path }));
     } catch (e) {
       new Notice(
         tr("Could not export: {error}", { error: (e as Error).message })
@@ -230,7 +230,7 @@ export function ProjectsView({
     }
   };
 
-  const acoesDoProjeto = (p: Project): MenuAction[] => [
+  const projectActions = (p: Project): MenuAction[] => [
     {
       label: tr("New chat here"),
       icon: "message-circle-plus",
@@ -243,34 +243,34 @@ export function ProjectsView({
       label: tr("Instructions"),
       icon: "scroll-text",
       run: () => {
-        setAbertoId(p.id);
-        setInstrucoes(p.instructions ?? "");
+        setOpenId(p.id);
+        setInstructionsDraft(p.instructions ?? "");
       },
     },
     {
       label: tr("Notes"),
       icon: "library",
       run: () => {
-        setAbertoId(p.id);
-        setVendoNotas(true);
+        setOpenId(p.id);
+        setShowingNotes(true);
       },
     },
-    { label: tr("Edit"), icon: "pencil", run: () => editar(p) },
-    { label: tr("Duplicate"), icon: "copy", run: () => void duplicar(p) },
+    { label: tr("Edit"), icon: "pencil", run: () => startEdit(p) },
+    { label: tr("Duplicate"), icon: "copy", run: () => void duplicate(p) },
     {
       label: tr("Export to vault"),
       icon: "download",
-      run: () => void exportar(p),
+      run: () => void exportProject(p),
     },
     {
       label: tr("Delete"),
       icon: "trash-2",
       danger: true,
-      run: () => void apagar(p),
+      run: () => void deleteProject(p),
     },
   ];
 
-  const anexarNota = (p: Project, path: string) =>
+  const addNote = (p: Project, path: string) =>
     update((prev) =>
       prev.map((x) =>
         x.id === p.id && !x.sources.includes(path)
@@ -279,7 +279,7 @@ export function ProjectsView({
       )
     );
 
-  const tirarNota = (p: Project, path: string) =>
+  const removeNote = (p: Project, path: string) =>
     update((prev) =>
       prev.map((x) =>
         x.id === p.id
@@ -288,129 +288,129 @@ export function ProjectsView({
       )
     );
 
-  const abrirNota = (path: string) => {
+  const openNote = (path: string) => {
     const f = plugin.app.vault.getAbstractFileByPath(path);
     if (f instanceof TFile) void plugin.app.workspace.getLeaf(true).openFile(f);
     else new Notice(tr("Not found: {path}", { path }));
   };
 
-  const notasAchadas = useMemo(() => {
-    const todas = rankNotes(vaultNotes(plugin.app), noteQuery);
+  const noteHits = useMemo(() => {
+    const ranked = rankNotes(vaultNotes(plugin.app), noteQuery);
 
-    return aberto ? todas.filter((n) => !aberto.sources.includes(n.path)) : todas;
-  }, [plugin, aberto, noteQuery]);
+    return openProject ? ranked.filter((n) => !openProject.sources.includes(n.path)) : ranked;
+  }, [plugin, openProject, noteQuery]);
 
-  const nivel = draft
+  const level = draft
     ? "form"
-    : instrucoes !== null
-      ? "instrucoes"
-      : escolhendo
-        ? "escolher"
-        : vendoNotas
-          ? "notas"
-          : aberto
-            ? "projeto"
-            : "lista";
+    : instructionsDraft !== null
+      ? "instructions"
+      : pickingNote
+        ? "pick"
+        : showingNotes
+          ? "notes"
+          : openProject
+            ? "project"
+            : "list";
 
-  const criando = nivel === "form" && editandoId === null;
+  const creating = level === "form" && editingId === null;
 
-  const TITULOS: Record<string, string> = {
+  const titles: Record<string, string> = {
 
-    form: editandoId
+    form: editingId
       ? tr("Edit project")
-      : tr("New project · {step}", { step: tr(PASSOS_PROJETO[passo].label) }),
-    instrucoes: tr("Custom instructions"),
-    escolher: tr("Add a note"),
-    notas: tr("Project notes"),
-    projeto: aberto?.name ?? tr("Project"),
-    lista: escolhaPara ? tr("Add to project") : tr("Projects"),
+      : tr("New project · {step}", { step: tr(PROJECT_STEPS[step].label) }),
+    instructions: tr("Custom instructions"),
+    pick: tr("Add a note"),
+    notes: tr("Project notes"),
+    project: openProject?.name ?? tr("Project"),
+    list: pickFor ? tr("Add to project") : tr("Projects"),
   };
 
-  const voltar: Record<string, (() => void) | undefined> = {
+  const backFor: Record<string, (() => void) | undefined> = {
 
     form: () => {
       if (
-        criando &&
-        peDoWizard({ atual: passo, total: PASSOS_PROJETO.length }).voltar ===
-          "passo"
+        creating &&
+        wizardFoot({ current: step, total: PROJECT_STEPS.length }).back ===
+          "step"
       ) {
-        setPasso(passo - 1);
+        setStep(step - 1);
         return;
       }
       setDraft(null);
-      setEditandoId(null);
-      setExtras(EXTRAS_VAZIOS);
-      setPasso(0);
-      setProcurando(false);
+      setEditingId(null);
+      setExtras(EMPTY_EXTRAS);
+      setStep(0);
+      setBrowsing(false);
     },
-    instrucoes: () => {
-      setInstrucoes(null);
-      setAjudandoInstrucoes(false);
+    instructions: () => {
+      setInstructionsDraft(null);
+      setAssistingInstructions(false);
     },
-    escolher: () => setEscolhendo(false),
-    notas: () => setVendoNotas(false),
-    projeto: () => setAbertoId(null),
-    lista: undefined,
+    pick: () => setPickingNote(false),
+    notes: () => setShowingNotes(false),
+    project: () => setOpenId(null),
+    list: undefined,
   };
 
-  const fecharTudo = () => {
+  const closeAll = () => {
     setDraft(null);
-    setEditandoId(null);
-    setExtras(EXTRAS_VAZIOS);
-    setPasso(0);
-    setProcurando(false);
-    setInstrucoes(null);
-    setEscolhendo(false);
-    setVendoNotas(false);
+    setEditingId(null);
+    setExtras(EMPTY_EXTRAS);
+    setStep(0);
+    setBrowsing(false);
+    setInstructionsDraft(null);
+    setPickingNote(false);
+    setShowingNotes(false);
     setNoteQuery("");
     onClose();
   };
 
-  const salvarInstrucoes = () => {
-    const alvo = aberto;
-    const texto = (instrucoes ?? "").trim();
-    if (alvo) {
+  const saveInstructions = () => {
+    const project = openProject;
+    const text = (instructionsDraft ?? "").trim();
+    if (project) {
       void update((prev) =>
         prev.map((x) =>
-          x.id === alvo.id ? { ...x, instructions: texto || undefined } : x
+          x.id === project.id ? { ...x, instructions: text || undefined } : x
         )
       );
     }
-    setInstrucoes(null);
+    setInstructionsDraft(null);
   };
 
-  const rodape =
-    nivel === "form" ? (
+  const footer =
+    level === "form" ? (
 
-      procurando ? undefined : criando ? (
+      browsing ? undefined : creating ? (
         <SheetWizardFoot
-          atual={passo}
-          total={PASSOS_PROJETO.length}
-          onPasso={setPasso}
-          problema={problema}
+          current={step}
+          total={PROJECT_STEPS.length}
+          onStep={setStep}
+          problem={problem}
           label={tr("Create project")}
-          onSubmit={() => void salvar()}
+          onSubmit={() => void save()}
         />
       ) : (
         <SheetSubmit
           label={tr("Save project")}
-          problema={problema}
-          onSubmit={() => void salvar()}
+          problem={problem}
+          onSubmit={() => void save()}
         />
       )
-    ) : nivel === "instrucoes" ? (
+    ) : level === "instructions" ? (
       <SheetSubmit
         label={tr("Save instructions")}
-        onSubmit={salvarInstrucoes}
+        onSubmit={saveInstructions}
       />
-    ) : nivel === "projeto" && aberto ? (
+    ) : level === "project" && openProject ? (
       <div className="corvus-sheet-foot">
         {}
         <button
           type="button"
           className="corvus-home-filter"
           onClick={(e) =>
-            openActions(e, acoesDoProjeto(aberto))
+            openActions(e, projectActions(openProject))
           }
         >
           <Icon name="settings-2" size={16} />
@@ -420,7 +420,7 @@ export function ProjectsView({
           type="button"
           className="corvus-sheet-cta"
           onClick={() => {
-            void session.newChatInProject(aberto);
+            void session.newChatInProject(openProject);
             onOpenChat();
           }}
         >
@@ -432,55 +432,55 @@ export function ProjectsView({
 
   return (
     <Sheet
-      title={TITULOS[nivel]}
-      footer={rodape}
+      title={titles[level]}
+      footer={footer}
       progress={
-        criando && !procurando ? (
-          <SheetProgress atual={passo} total={PASSOS_PROJETO.length} />
+        creating && !browsing ? (
+          <SheetProgress current={step} total={PROJECT_STEPS.length} />
         ) : undefined
       }
 
       minSize="mid"
 
       action={
-        nivel === "lista"
+        level === "list"
           ? {
               icon: "plus",
               label: tr("New project"),
               text: tr("New"),
-              onClick: criar,
+              onClick: startCreate,
             }
           : undefined
       }
       mark={
-        aberto && nivel !== "lista"
-          ? { icon: aberto.icon, color: projectColor(aberto.color) }
+        openProject && level !== "list"
+          ? { icon: openProject.icon, color: projectColor(openProject.color) }
           : undefined
       }
       open={open}
-      onClose={fecharTudo}
-      onBack={voltar[nivel]}
+      onClose={closeAll}
+      onBack={backFor[level]}
 
             focusOnOpen={false}
     >
-      {nivel === "form" && (
+      {level === "form" && (
         <ProjectForm
-          draft={draft ?? PROJECT_DRAFT_VAZIO}
-          focar={nivel === "form"}
+          draft={draft ?? EMPTY_PROJECT_DRAFT}
+          focus={level === "form"}
           onDraft={setDraft}
           plugin={plugin}
           extras={extras}
           onExtras={setExtras}
-          passo={criando ? PASSOS_PROJETO[passo].id : undefined}
-          procurando={procurando}
-          onProcurar={setProcurando}
+          step={creating ? PROJECT_STEPS[step].id : undefined}
+          browsing={browsing}
+          onBrowse={setBrowsing}
         />
       )}
 
       {}
-      {nivel !== "form" && <TamanhoDaCasa />}
+      {level !== "form" && <SheetDefaultSize />}
 
-      {nivel === "instrucoes" && (
+      {level === "instructions" && (
         <>
           <SheetField
             label={tr("Instructions")}
@@ -489,54 +489,54 @@ export function ProjectsView({
             )}
           >
             {}
-            <ComAssistente
-              aberto={ajudandoInstrucoes}
-              ocupado={runInstr.fase === "rodando"}
-              onAbrir={() => setAjudandoInstrucoes(true)}
-              painel={
+            <WithAssistant
+              open={assistingInstructions}
+              busy={runInstr.phase === "running"}
+              onOpen={() => setAssistingInstructions(true)}
+              panel={
                 <AssistantPanel
-                  para="instructions"
-                  indisponivel={indisponivel}
-                  modelo={modeloAssist}
-                  onFechar={() => setAjudandoInstrucoes(false)}
-                  onPedir={(_modo, turnos) =>
-                    pedirInstrucoes(
+                  target="instructions"
+                  unavailable={unavailable}
+                  modelPicker={modelPicker}
+                  onClose={() => setAssistingInstructions(false)}
+                  onAsk={(_mode, turns) =>
+                    askInstructions(
                       {
-                        name: aberto?.name ?? "",
-                        notes: aberto?.sources ?? [],
-                        atual: instrucoes ?? "",
+                        name: openProject?.name ?? "",
+                        notes: openProject?.sources ?? [],
+                        current: instructionsDraft ?? "",
                       },
-                      turnos
+                      turns
                     )
                   }
                 />
               }
             >
               <SheetTextarea
-                comSpark
-                value={instrucoes ?? ""}
+                withSpark
+                value={instructionsDraft ?? ""}
                 rows={9}
                 placeholder={tr(
                   "Answer in Portuguese.\nCite the note you took it from.\nShort paragraphs, no bullet lists."
                 )}
-                onChange={setInstrucoes}
+                onChange={setInstructionsDraft}
               />
-            </ComAssistente>
+            </WithAssistant>
           </SheetField>
         </>
       )}
 
-      {nivel === "escolher" && (
+      {level === "pick" && (
         <>
           <SheetSearch
             value={noteQuery}
             placeholder={tr("Search notes")}
-            found={notasAchadas.length}
-            autoFocus={nivel === "escolher"}
+            found={noteHits.length}
+            autoFocus={level === "pick"}
             onChange={setNoteQuery}
           />
           <SheetGroup>
-            {notasAchadas.map((n) => (
+            {noteHits.map((n) => (
               <SheetRow
                 key={n.path}
                 dense
@@ -544,23 +544,23 @@ export function ProjectsView({
                 title={n.basename}
                 note={n.path}
                 onClick={() => {
-                  if (aberto) void anexarNota(aberto, n.path);
+                  if (openProject) void addNote(openProject, n.path);
 
-                  setEscolhendo(false);
+                  setPickingNote(false);
                   setNoteQuery("");
                 }}
               />
             ))}
-            {notasAchadas.length === 0 && (
+            {noteHits.length === 0 && (
               <SheetNote>{tr("No note matches that.")}</SheetNote>
             )}
           </SheetGroup>
         </>
       )}
 
-      {nivel === "notas" && (
+      {level === "notes" && (
         <SheetGroup>
-          {(aberto?.sources ?? []).map((path) => (
+          {(openProject?.sources ?? []).map((path) => (
             <SheetRow
               key={path}
               dense
@@ -571,13 +571,13 @@ export function ProjectsView({
                 icon: "x",
                 label: tr("Remove {path}", { path }),
                 onClick: () => {
-                  if (aberto) void tirarNota(aberto, path);
+                  if (openProject) void removeNote(openProject, path);
                 },
               }}
-              onClick={() => abrirNota(path)}
+              onClick={() => openNote(path)}
             />
           ))}
-          {(aberto?.sources ?? []).length === 0 && (
+          {(openProject?.sources ?? []).length === 0 && (
             <SheetNote>
               {tr(
                 "No notes yet. What you add here goes in as context on every new chat in this project."
@@ -591,13 +591,13 @@ export function ProjectsView({
             title={tr("Add a note")}
             onClick={() => {
               setNoteQuery("");
-              setEscolhendo(true);
+              setPickingNote(true);
             }}
           />
         </SheetGroup>
       )}
 
-      {nivel === "projeto" && aberto && (
+      {level === "project" && openProject && (
 
         <div className="corvus-sheet-stack">
           {}
@@ -607,7 +607,7 @@ export function ProjectsView({
               <Icon name="hard-drive" size={14} />
               <span>
                 {tr("Lives in this vault · since {date}", {
-                  date: aberto.createdAt.slice(0, 10),
+                  date: openProject.createdAt.slice(0, 10),
                 })}
               </span>
             </span>
@@ -615,14 +615,14 @@ export function ProjectsView({
 
           {}
           <p className="corvus-boxnote">
-            {aberto.sources.length === 0
+            {openProject.sources.length === 0
               ? tr(
                   "Pick the notes this project is about. They go in as context every time you start a chat here."
                 )
-              : aberto.sources.length === 1
+              : openProject.sources.length === 1
                 ? tr("1 note goes in as context on every new chat here.")
                 : tr("{n} notes go in as context on every new chat here.", {
-                    n: aberto.sources.length,
+                    n: openProject.sources.length,
                   })}
           </p>
 
@@ -631,47 +631,47 @@ export function ProjectsView({
             <button
               type="button"
               className="corvus-duo-card"
-              onClick={() => setVendoNotas(true)}
+              onClick={() => setShowingNotes(true)}
             >
               <span className="corvus-duo-title">{tr("Project notes")}</span>
               <span className="corvus-duo-note">
-                {aberto.sources.length === 0
+                {openProject.sources.length === 0
                   ? tr("Nothing yet")
-                  : aberto.sources.length === 1
+                  : openProject.sources.length === 1
                     ? tr("1 note")
-                    : tr("{n} notes", { n: aberto.sources.length })}
+                    : tr("{n} notes", { n: openProject.sources.length })}
               </span>
               <span className="corvus-duo-action">
-                {aberto.sources.length === 0 ? tr("Add notes") : tr("See notes")}
+                {openProject.sources.length === 0 ? tr("Add notes") : tr("See notes")}
               </span>
             </button>
             <button
               type="button"
               className="corvus-duo-card"
-              onClick={() => setInstrucoes(aberto.instructions ?? "")}
+              onClick={() => setInstructionsDraft(openProject.instructions ?? "")}
             >
               <span className="corvus-duo-title">{tr("Custom instructions")}</span>
               <span className="corvus-duo-note">
-                {aberto.instructions?.trim()
-                  ? aberto.instructions.trim().split("\n")[0]
+                {openProject.instructions?.trim()
+                  ? openProject.instructions.trim().split("\n")[0]
                   : tr("Nothing yet")}
               </span>
               <span className="corvus-duo-action">
-                {aberto.instructions?.trim()
+                {openProject.instructions?.trim()
                   ? tr("Edit")
                   : tr("Add instructions")}
               </span>
             </button>
           </div>
 
-          {chats.filter((c) => aberto.chatIds.includes(c.id)).length > 0 ? (
+          {chats.filter((c) => openProject.chatIds.includes(c.id)).length > 0 ? (
             <>
               {}
               <span className="corvus-sheet-group-label">{tr("Chats")}</span>
               <ChatList
                 plugin={plugin}
                 session={session}
-                chats={chats.filter((c) => aberto.chatIds.includes(c.id))}
+                chats={chats.filter((c) => openProject.chatIds.includes(c.id))}
                 onOpen={onOpenChat}
               />
             </>
@@ -685,13 +685,13 @@ export function ProjectsView({
         </div>
       )}
 
-      {nivel === "lista" && (
+      {level === "list" && (
         <div className="corvus-sheet-stack">
           {projects.length > 0 ? (
             <div className="corvus-proj-cards">
               {projects.map((p) => {
-                const info = resumoDoProjeto(p, chats);
-                const jaAqui = !!escolhaPara && p.chatIds.includes(escolhaPara);
+                const info = summarizeProject(p, chats);
+                const alreadyHere = !!pickFor && p.chatIds.includes(pickFor);
                 return (
                 <div key={p.id} className="corvus-proj-card-wrap">
                   <button
@@ -699,19 +699,19 @@ export function ProjectsView({
                     className="corvus-proj-card"
                     onClick={() => {
 
-                      if (escolhaPara) {
+                      if (pickFor) {
                         void update((prev) =>
                           prev.map((x) =>
-                            x.id === p.id && !x.chatIds.includes(escolhaPara)
-                              ? { ...x, chatIds: [escolhaPara, ...x.chatIds] }
+                            x.id === p.id && !x.chatIds.includes(pickFor)
+                              ? { ...x, chatIds: [pickFor, ...x.chatIds] }
                               : x
                           )
                         );
                         new Notice(tr("Added to {name}.", { name: p.name }));
-                        onEscolha?.();
+                        onPicked?.();
                         return;
                       }
-                      setAbertoId(p.id);
+                      setOpenId(p.id);
                     }}
                   >
                     <span className="corvus-proj-card-head">
@@ -728,23 +728,23 @@ export function ProjectsView({
                           <span className="corvus-proj-card-name">{p.name}</span>
                           <span
                             className={
-                              jaAqui
+                              alreadyHere
                                 ? "corvus-proj-card-when is-here"
                                 : "corvus-proj-card-when"
                             }
                           >
-                            {jaAqui ? tr("Already here") : info.quando}
+                            {alreadyHere ? tr("Already here") : info.when}
                           </span>
                         </span>
                         {}
                         <span
                           className={
-                            info.sobre
+                            info.about
                               ? "corvus-proj-card-about"
                               : "corvus-proj-card-about is-empty"
                           }
                         >
-                          {info.sobre ?? tr("No instructions yet")}
+                          {info.about ?? tr("No instructions yet")}
                         </span>
                       </span>
                     </span>
@@ -757,12 +757,12 @@ export function ProjectsView({
                       </span>
                       <span className="corvus-proj-card-stat">
                         <Icon name="message-circle" size={14} />
-                        {info.conversas === 1
+                        {info.chatCount === 1
                           ? tr("1 chat")
-                          : tr("{n} chats", { n: info.conversas })}
+                          : tr("{n} chats", { n: info.chatCount })}
                       </span>
                       {}
-                      {tokensPorProjeto[p.id] !== undefined && (
+                      {tokensByProject[p.id] !== undefined && (
                         <span
                           className="corvus-proj-card-stat"
                           title={tr(
@@ -771,19 +771,19 @@ export function ProjectsView({
                         >
                           {}
                           <Icon name="arrow-up-from-line" size={14} />
-                          {formatarTokens(tokensPorProjeto[p.id])}
+                          {formatTokens(tokensByProject[p.id])}
                         </span>
                       )}
                     </span>
                   </button>
-                  {!escolhaPara && (
+                  {!pickFor && (
                   <button
                     type="button"
                     className="corvus-icon-btn corvus-proj-card-more"
                     aria-label={tr("Actions for {name}", { name: p.name })}
                     onClick={(e) =>
 
-                      openActions(e, acoesDoProjeto(p))
+                      openActions(e, projectActions(p))
                     }
                   >
                     <Icon name="more-horizontal" size={18} />
@@ -810,41 +810,41 @@ export function ProjectsView({
   );
 }
 
-function TamanhoDaCasa() {
+function SheetDefaultSize() {
   useSheetDefault();
   return null;
 }
 
-function useTokensDeEntrada(
+function useInputTokens(
   plugin: CorvusPlugin,
   projects: readonly Project[],
-  aberta: boolean
+  enabled: boolean
 ): Record<string, number> {
-  const [mapa, setMapa] = useState<Record<string, number>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({});
   useEffect(() => {
-    if (!aberta) return;
-    let vivo = true;
+    if (!enabled) return;
+    let alive = true;
     void (async () => {
-      const saida: Record<string, number> = {};
+      const out: Record<string, number> = {};
       for (const p of projects) {
-        const notas: { path: string; content: string }[] = [];
-        for (const caminho of p.sources) {
-          const f = plugin.app.vault.getAbstractFileByPath(caminho);
+        const notes: { path: string; content: string }[] = [];
+        for (const path of p.sources) {
+          const f = plugin.app.vault.getAbstractFileByPath(path);
           if (!(f instanceof TFile)) continue;
           try {
-            notas.push({
-              path: caminho,
+            notes.push({
+              path,
               content: await plugin.app.vault.cachedRead(f),
             });
           } catch { void 0; }
         }
-        saida[p.id] = tokensDeEntrada(p.instructions, notas);
+        out[p.id] = projectInputTokens(p.instructions, notes);
       }
-      if (vivo) setMapa(saida);
+      if (alive) setCounts(out);
     })();
     return () => {
-      vivo = false;
+      alive = false;
     };
-  }, [plugin, projects, aberta]);
-  return mapa;
+  }, [plugin, projects, enabled]);
+  return counts;
 }

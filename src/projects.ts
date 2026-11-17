@@ -43,41 +43,41 @@ export interface ProjectDraft {
   color: string;
 }
 
-export const PROJECT_DRAFT_VAZIO: ProjectDraft = {
+export const EMPTY_PROJECT_DRAFT: ProjectDraft = {
   name: "",
   icon: PROJECT_ICONS[0],
   color: PROJECT_COLORS[0],
 };
 
-export function projectProblema(
+export function projectProblem(
   d: ProjectDraft,
-  existentes: readonly Project[],
+  existing: readonly Project[],
 
-  atualId?: string
+  currentId?: string
 ): string | null {
-  const nome = d.name.trim();
-  if (!nome) return tr("Give it a name.");
-  const colide = existentes.some(
-    (p) => p.id !== atualId && p.name.trim().toLowerCase() === nome.toLowerCase()
+  const name = d.name.trim();
+  if (!name) return tr("Give it a name.");
+  const collides = existing.some(
+    (p) => p.id !== currentId && p.name.trim().toLowerCase() === name.toLowerCase()
   );
-  if (colide) return tr("There is already a project with that name.");
+  if (collides) return tr("There is already a project with that name.");
   return null;
 }
 
-export function nomeDaCopia(
+export function copyName(
   original: string,
-  existentes: readonly Project[]
+  existing: readonly Project[]
 ): string {
-  const usados = new Set(
-    existentes.map((p) => p.name.trim().toLowerCase())
+  const used = new Set(
+    existing.map((p) => p.name.trim().toLowerCase())
   );
   const base = original.trim() || tr("Project");
-  const livre = (nome: string) => !usados.has(nome.toLowerCase());
-  const copia = tr("{name} copy", { name: base });
-  if (livre(copia)) return copia;
+  const isFree = (name: string) => !used.has(name.toLowerCase());
+  const copy = tr("{name} copy", { name: base });
+  if (isFree(copy)) return copy;
   for (let n = 2; n <= 50; n++) {
-    const tentativa = tr("{name} copy {n}", { name: base, n });
-    if (livre(tentativa)) return tentativa;
+    const attempt = tr("{name} copy {n}", { name: base, n });
+    if (isFree(attempt)) return attempt;
   }
-  return copia;
+  return copy;
 }

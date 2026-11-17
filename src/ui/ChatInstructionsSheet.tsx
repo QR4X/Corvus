@@ -33,45 +33,45 @@ export function ChatInstructionsSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const [texto, setTexto] = useState("");
-  const [pronto, setPronto] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [unreadable, setUnreadable] = useState(false);
 
   useEffect(() => {
     if (!open || !chat) return;
-    let vivo = true;
-    setPronto(false);
+    let alive = true;
+    setLoaded(false);
     setUnreadable(false);
     void loadInstructions(plugin, chat).then((text) => {
-      if (!vivo) return;
+      if (!alive) return;
       if (text === null) {
         setUnreadable(true);
         return;
       }
-      setTexto(text);
-      setPronto(true);
+      setDraft(text);
+      setLoaded(true);
     });
     return () => {
-      vivo = false;
+      alive = false;
     };
   }, [open, chat?.id]);
 
-  const salvar = async () => {
-    if (!chat || !pronto) return;
-    const limpo = texto.trim();
+  const save = async () => {
+    if (!chat || !loaded) return;
+    const trimmed = draft.trim();
     try {
       await setChatInstructions(
         plugin.app,
         plugin.settings.chatsPath,
         chat.mode,
         chat.id,
-        limpo
+        trimmed
       );
 
       const st = useChatStore.getState();
-      if (st.currentChatId === chat.id) st.setSessionInstructions(limpo);
+      if (st.currentChatId === chat.id) st.setSessionInstructions(trimmed);
       new Notice(
-        limpo
+        trimmed
           ? tr("Instructions saved for this chat.")
           : tr("Instructions removed from this chat.")
       );
@@ -94,14 +94,14 @@ export function ChatInstructionsSheet({
       footer={
         <SheetSubmit
           label={tr("Save instructions")}
-          problema={
+          problem={
             unreadable
               ? tr("Couldn't read this chat's instructions. Close and try again.")
-              : pronto
+              : loaded
                 ? null
                 : tr("Loading…")
           }
-          onSubmit={() => void salvar()}
+          onSubmit={() => void save()}
         />
       }
     >
@@ -112,13 +112,13 @@ export function ChatInstructionsSheet({
         )}
       >
         <SheetTextarea
-          value={texto}
+          value={draft}
           rows={8}
           placeholder={tr(
             "e.g. Answer in short bullet points and cite the note behind every claim."
           )}
-          autoFocus={open && pronto}
-          onChange={setTexto}
+          autoFocus={open && loaded}
+          onChange={setDraft}
         />
       </SheetField>
     </Sheet>

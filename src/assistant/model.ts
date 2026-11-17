@@ -1,11 +1,11 @@
 import { tr } from "../i18n/tr";
 
-interface AssistantAlvo {
+interface AssistantTarget {
   provider: string;
   model: string;
 }
 
-interface AssistantFontes {
+interface AssistantSources {
 
   freeModels?: Record<string, string[]>;
 
@@ -17,46 +17,46 @@ interface AssistantFontes {
   activeModels?: Record<string, string[]>;
 }
 
-export function ehFree(model: string, livres?: readonly string[]): boolean {
-  if (livres?.length && livres.includes(model)) return true;
+export function isFree(model: string, freeIds?: readonly string[]): boolean {
+  if (freeIds?.length && freeIds.includes(model)) return true;
   return (model || "").toLowerCase().endsWith(":free");
 }
 
-export function escolherAssistente(s: AssistantFontes): AssistantAlvo | null {
-  const escolhido = (s.assistantModel ?? "").trim();
-  if (escolhido)
+export function pickAssistant(s: AssistantSources): AssistantTarget | null {
+  const chosen = (s.assistantModel ?? "").trim();
+  if (chosen)
     return {
       provider: (s.assistantProvider ?? "openrouter").trim() || "openrouter",
-      model: escolhido,
+      model: chosen,
     };
 
-  const livres = s.freeModels?.openrouter ?? [];
-  const eGratis = (m: string) => ehFree(m, livres);
+  const freeIds = s.freeModels?.openrouter ?? [];
+  const isListedFree = (m: string) => isFree(m, freeIds);
 
-  const favoritos = s.favoriteModels?.openrouter ?? [];
-  const favFree = favoritos.find(eGratis);
-  if (favFree) return { provider: "openrouter", model: favFree };
+  const favorites = s.favoriteModels?.openrouter ?? [];
+  const freeFavorite = favorites.find(isListedFree);
+  if (freeFavorite) return { provider: "openrouter", model: freeFavorite };
 
-  const ativos = s.activeModels?.openrouter ?? [];
-  const ativoFree = ativos.find(eGratis);
-  if (ativoFree) return { provider: "openrouter", model: ativoFree };
+  const active = s.activeModels?.openrouter ?? [];
+  const freeActive = active.find(isListedFree);
+  if (freeActive) return { provider: "openrouter", model: freeActive };
 
-  if (livres.length) return { provider: "openrouter", model: livres[0] };
+  if (freeIds.length) return { provider: "openrouter", model: freeIds[0] };
 
   return null;
 }
 
-export function motivoIndisponivel(
-  alvo: AssistantAlvo | null,
-  temChave: (provider: string) => boolean
+export function unavailableReason(
+  target: AssistantTarget | null,
+  hasKey: (provider: string) => boolean
 ): string | null {
-  if (!alvo)
+  if (!target)
     return tr(
       "Pick an assistant model in Settings — a free OpenRouter model works."
     );
-  if (!temChave(alvo.provider))
+  if (!hasKey(target.provider))
     return tr("Add your {provider} key in Settings to use the assistant.", {
-      provider: alvo.provider,
+      provider: target.provider,
     });
   return null;
 }

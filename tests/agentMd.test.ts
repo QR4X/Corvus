@@ -7,7 +7,7 @@ import {
   DEFAULT_AGENT_MD_PATH,
 } from "../src/core/agentMd";
 import {
-  blocoAgentMd,
+  agentMdSection,
   buildChatSystemPrompt,
   buildAgentSystemPrompt,
 } from "../src/agent/conversation";
@@ -206,9 +206,9 @@ describe("openOrCreateAgentMd", () => {
 
 describe("Injeção nos System Prompts", () => {
   it("blocoAgentMd formata o bloco com cabeçalho [AGENT.md]", () => {
-    expect(blocoAgentMd("Regras do projeto")).toBe("\n\n[AGENT.md]\nRegras do projeto");
-    expect(blocoAgentMd("")).toBe("");
-    expect(blocoAgentMd(undefined)).toBe("");
+    expect(agentMdSection("Regras do projeto")).toBe("\n\n[AGENT.md]\nRegras do projeto");
+    expect(agentMdSection("")).toBe("");
+    expect(agentMdSection(undefined)).toBe("");
   });
 
   it("buildChatSystemPrompt injeta [AGENT.md] logo após head/persona", () => {

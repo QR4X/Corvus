@@ -20,28 +20,28 @@ interface ChatSystemParts {
   agentMd?: string;
 }
 
-export function blocoAgentMd(conteudo?: string): string {
-  return conteudo && conteudo.trim() ? "\n\n[AGENT.md]\n" + conteudo.trim() : "";
+export function agentMdSection(content?: string): string {
+  return content && content.trim() ? "\n\n[AGENT.md]\n" + content.trim() : "";
 }
 
-export function blocoDeInstrucoes(instrucoes?: string): string {
-  return instrucoes && instrucoes.trim() ? "\n\n" + instrucoes.trim() : "";
+export function instructionsSection(instructions?: string): string {
+  return instructions && instructions.trim() ? "\n\n" + instructions.trim() : "";
 }
 
-export function blocoDeNotasAnexadas(
-  notas: readonly { path: string; content: string }[]
+export function attachedNotesSection(
+  notes: readonly { path: string; content: string }[]
 ): string {
-  if (!notas.length) return "";
+  if (!notes.length) return "";
   return (
     "\n\n[Notes attached by user]\n\n" +
-    notas.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n")
+    notes.map((n) => `### ${n.path}\n\n${n.content}`).join("\n\n---\n\n")
   );
 }
 
 export function buildChatSystemPrompt(p: ChatSystemParts): string {
   const head = (p.persona && p.persona.trim()) || p.base;
-  const agentMd = blocoAgentMd(p.agentMd);
-  const proj = blocoDeInstrucoes(p.instructions);
+  const agentMd = agentMdSection(p.agentMd);
+  const proj = instructionsSection(p.instructions);
   const style =
     p.styleInstruction && p.styleInstruction.trim()
       ? "\n\n" + p.styleInstruction.trim()
@@ -63,9 +63,9 @@ export function buildAgentSystemPrompt(
   agentMd?: string
 ): string {
   const p = persona && persona.trim();
-  const amd = blocoAgentMd(agentMd);
+  const amd = agentMdSection(agentMd);
   const proj = instructions && instructions.trim();
-  const notas =
+  const vaultPart =
     vault?.block && vault.block.length > 0
       ? (vault.suffix ?? "") + vault.block
       : "";
@@ -74,7 +74,7 @@ export function buildAgentSystemPrompt(
     agentPrompt +
     amd +
     (proj ? "\n\n" + proj : "") +
-    notas
+    vaultPart
   );
 }
 

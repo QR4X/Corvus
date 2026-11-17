@@ -1,23 +1,23 @@
-const FRACAO = 0.4;
+const HEIGHT_FRACTION = 0.4;
 
-const MINIMO = 72;
+const MIN_HEIGHT = 72;
 
 export function composerMaxHeight(
-  alturaJanela: number,
-  alturaTeclado = 0,
-  alturaViewport?: number
+  windowHeight: number,
+  keyboardHeight = 0,
+  viewportHeight?: number
 ): number {
-  const candidatos = [alturaJanela - alturaTeclado];
-  if (alturaViewport && alturaViewport > 0) candidatos.push(alturaViewport);
-  const visivel = Math.min(...candidatos.filter((n) => n > 0));
+  const candidates = [windowHeight - keyboardHeight];
+  if (viewportHeight && viewportHeight > 0) candidates.push(viewportHeight);
+  const visible = Math.min(...candidates.filter((n) => n > 0));
 
-  const base = Number.isFinite(visivel) && visivel > 0 ? visivel : alturaJanela;
+  const base = Number.isFinite(visible) && visible > 0 ? visible : windowHeight;
 
-  return Math.max(MINIMO, Math.floor(base * FRACAO));
+  return Math.max(MIN_HEIGHT, Math.floor(base * HEIGHT_FRACTION));
 }
 
 export function readKeyboardHeight(doc: Document): number {
-  const bruto = doc.documentElement.style.getPropertyValue("--keyboard-height");
-  const n = parseFloat(bruto);
+  const raw = doc.documentElement.style.getPropertyValue("--keyboard-height");
+  const n = parseFloat(raw);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }

@@ -4,7 +4,7 @@ import type { ChatSession } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { loadChat, setChatStarred } from "../core/chatPersistence";
 import { exportChatToVault } from "../core/chatExport";
-import { usePainel } from "./panel";
+import { usePanel } from "./panel";
 import { projectColor } from "../projects";
 import { useChatStore } from "../store/chat";
 import { providerIcon } from "../core/providersMeta";
@@ -16,21 +16,21 @@ import { relativeShort } from "./modules";
 import { ALERT_LABEL, chatAlert } from "./chatAlert";
 import { tr } from "../i18n/tr";
 
-function acoes(c: ChatSummary): { texto: string; ativo: boolean } | null {
+function actionStatus(c: ChatSummary): { text: string; active: boolean } | null {
   if (c.mode !== "agent") return null;
   if (c.toolCount > 0) {
     return {
-      texto:
+      text:
         c.toolCount === 1
           ? tr("1 action")
           : tr("{n} actions", { n: c.toolCount }),
-      ativo: true,
+      active: true,
     };
   }
-  return { texto: tr("No actions"), ativo: false };
+  return { text: tr("No actions"), active: false };
 }
 
-const MAX_PROJETOS = 5;
+const MAX_PROJECTS = 5;
 
 export function ChatList({
   plugin,
@@ -46,22 +46,22 @@ export function ChatList({
 }) {
   const currentChatId = useChatStore((s) => s.currentChatId);
 
-  const respondendo = useChatStore((s) => s.isLoading);
+  const isLoading = useChatStore((s) => s.isLoading);
   const turnChatId = useChatStore((s) => s.turnChatId);
-  const esperandoId = useChatStore((s) => s.waitingChatId);
-  const naoLidas = useUnreadChats(plugin);
-  const painel = usePainel();
+  const waitingId = useChatStore((s) => s.waitingChatId);
+  const unread = useUnreadChats(plugin);
+  const panel = usePanel();
 
-  const projetosRecentes = [...(plugin.settings.projects ?? [])]
+  const recentProjects = [...(plugin.settings.projects ?? [])]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, MAX_PROJETOS);
+    .slice(0, MAX_PROJECTS);
 
-  const abrir = (c: ChatSummary) => {
+  const open = (c: ChatSummary) => {
     void session.load(c);
     onOpen?.(c);
   };
 
-  const renomear = async (c: ChatSummary) => {
+  const rename = async (c: ChatSummary) => {
     const title = await new PromptModal(plugin.app, {
       title: tr("Rename chat"),
       label: tr("Title"),
@@ -71,7 +71,7 @@ export function ChatList({
     if (title && title !== c.title) await session.rename(c, title);
   };
 
-  const favoritar = async (c: ChatSummary) => {
+  const toggleStar = async (c: ChatSummary) => {
     try {
       await setChatStarred(
         plugin.app,
@@ -90,12 +90,12 @@ export function ChatList({
     }
   };
 
-  const deixarNaoLida = (c: ChatSummary) => {
+  const markUnread = (c: ChatSummary) => {
     plugin.chats.markUnread(c.id);
     new Notice(tr("Marked as unread."));
   };
 
-  const exportar = async (c: ChatSummary) => {
+  const exportChat = async (c: ChatSummary) => {
     try {
       const chat = await loadChat(
         plugin.app,
@@ -103,8 +103,8 @@ export function ChatList({
         c.mode,
         c.id
       );
-      const caminho = await exportChatToVault(plugin.app, chat);
-      new Notice(tr("Exported to {path}", { path: caminho }));
+      const path = await exportChatToVault(plugin.app, chat);
+      new Notice(tr("Exported to {path}", { path }));
     } catch (err) {
       new Notice(
         tr("Export failed: {error}", {
@@ -114,7 +114,7 @@ export function ChatList({
     }
   };
 
-  const paraProjeto = async (c: ChatSummary, projectId: string) => {
+  const addToProject = async (c: ChatSummary, projectId: string) => {
     await session.updateProjects((prev) =>
       prev.map((p) =>
         p.id === projectId && !p.chatIds.includes(c.id)
@@ -122,17 +122,17 @@ export function ChatList({
           : p
       )
     );
-    const nome = (plugin.settings.projects ?? []).find(
+    const name = (plugin.settings.projects ?? []).find(
       (p) => p.id === projectId
     )?.name;
     new Notice(
-      nome === undefined
+      name === undefined
         ? tr("Added to project.")
-        : tr("Added to {name}.", { name: nome })
+        : tr("Added to {name}.", { name })
     );
   };
 
-  const apagar = async (c: ChatSummary) => {
+  const deleteChat = async (c: ChatSummary) => {
     const ok = await new ConfirmModal(plugin.app, {
       title: tr("Delete \"{title}\"?", { title: c.title || tr("Untitled") }),
       body: tr("The chat file goes to the system trash (recoverable)."),
@@ -145,11 +145,11 @@ export function ChatList({
   return (
     <div className="corvus-history">
       {chats.map((c) => {
-        const st = acoes(c);
-        const alerta = chatAlert({
-          esperando: esperandoId === c.id,
-          rodando: respondendo && turnChatId === c.id,
-          naoLida: naoLidas.has(c.id),
+        const st = actionStatus(c);
+        const alertKind = chatAlert({
+          waiting: waitingId === c.id,
+          running: isLoading && turnChatId === c.id,
+          unread: unread.has(c.id),
         });
         return (
           <div
@@ -161,7 +161,7 @@ export function ChatList({
 
               c.mode === "agent" && c.preview ? "has-preview" : "",
               c.id === currentChatId ? "is-current" : "",
-              alerta ? `has-alert is-${alerta}` : "",
+              alertKind ? `has-alert is-${alertKind}` : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -169,7 +169,7 @@ export function ChatList({
             <button
               type="button"
               className="corvus-history-open"
-              onClick={() => abrir(c)}
+              onClick={() => open(c)}
             >
               <span className="corvus-card-top">
                 {}
@@ -183,20 +183,20 @@ export function ChatList({
                   </span>
                   <span className="corvus-history-meta">
                     {}
-                    {alerta && (
-                      <span className={`corvus-card-live is-${alerta}`}>
+                    {alertKind && (
+                      <span className={`corvus-card-live is-${alertKind}`}>
                         <span className="corvus-card-pulse" aria-hidden="true" />
-                        {tr(ALERT_LABEL[alerta])}
+                        {tr(ALERT_LABEL[alertKind])}
                       </span>
                     )}
-                    {alerta && <span className="corvus-card-dot">·</span>}
+                    {alertKind && <span className="corvus-card-dot">·</span>}
                     {st && (
                       <span
                         className={
-                          st.ativo ? "corvus-card-state is-on" : "corvus-card-state"
+                          st.active ? "corvus-card-state is-on" : "corvus-card-state"
                         }
                       >
-                        {st.texto}
+                        {st.text}
                       </span>
                     )}
                     {st && c.model && <span className="corvus-card-dot">·</span>}
@@ -225,16 +225,16 @@ export function ChatList({
                   {
                     label: c.starred ? tr("Unstar") : tr("Star"),
                     icon: c.starred ? "star-off" : "star",
-                    run: () => void favoritar(c),
+                    run: () => void toggleStar(c),
                   },
 
-                  ...(c.id !== currentChatId && !naoLidas.has(c.id)
+                  ...(c.id !== currentChatId && !unread.has(c.id)
                     ? [
                         {
                           label: tr("Mark as unread"),
 
                           icon: "eye-off",
-                          run: () => deixarNaoLida(c),
+                          run: () => markUnread(c),
                         },
                       ]
                     : []),
@@ -247,24 +247,24 @@ export function ChatList({
                       {
                         label: tr("New project…"),
                         icon: "plus",
-                        run: () => painel.novoProjetoCom(c.id),
+                        run: () => panel.newProjectWith(c.id),
                       },
-                      ...projetosRecentes.map((p) => ({
+                      ...recentProjects.map((p) => ({
                         label: p.name,
                         icon: p.icon,
                         color: projectColor(p.color),
                         checked: p.chatIds.includes(c.id),
-                        run: () => void paraProjeto(c, p.id),
+                        run: () => void addToProject(c, p.id),
                       })),
 
-                      ...((plugin.settings.projects ?? []).length > MAX_PROJETOS
+                      ...((plugin.settings.projects ?? []).length > MAX_PROJECTS
                         ? [
                             {
                               label: tr("See all {n}", {
                                 n: (plugin.settings.projects ?? []).length,
                               }),
                               icon: "list",
-                              run: () => painel.escolherProjetoPara(c.id),
+                              run: () => panel.pickProjectFor(c.id),
                             },
                           ]
                         : []),
@@ -274,23 +274,23 @@ export function ChatList({
 
                     label: tr("Instructions…"),
                     icon: "scroll-text",
-                    run: () => painel.instrucoesDe(c),
+                    run: () => panel.instructionsFor(c),
                   },
                   {
                     label: tr("Export to vault"),
                     icon: "file-down",
-                    run: () => void exportar(c),
+                    run: () => void exportChat(c),
                   },
                   {
                     label: tr("Rename"),
                     icon: "pencil",
-                    run: () => void renomear(c),
+                    run: () => void rename(c),
                   },
                   {
                     label: tr("Delete"),
                     icon: "trash-2",
                     danger: true,
-                    run: () => void apagar(c),
+                    run: () => void deleteChat(c),
                   },
                 ])
               }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { vaultAtivo, vaultDefault } from "../src/core/vaultContext";
+import { vaultEnabled, vaultDefault } from "../src/core/vaultContext";
 
 describe("vaultDefault", () => {
   it("Vault Q&A e Agent nascem ligados", () => {
@@ -22,18 +22,18 @@ describe("vaultDefault", () => {
 
 describe("vaultAtivo", () => {
   it("sem escolha, vale o padrão do modo", () => {
-    expect(vaultAtivo("chat", null)).toBe(false);
-    expect(vaultAtivo("agent", null)).toBe(true);
+    expect(vaultEnabled("chat", null)).toBe(false);
+    expect(vaultEnabled("agent", null)).toBe(true);
   });
 
   it("a escolha da pessoa vence o padrão, nos dois sentidos", () => {
-    expect(vaultAtivo("chat", true)).toBe(true);
-    expect(vaultAtivo("agent", false)).toBe(false);
+    expect(vaultEnabled("chat", true)).toBe(true);
+    expect(vaultEnabled("agent", false)).toBe(false);
   });
 
   it("desligar NÃO é o mesmo que nunca ter mexido", () => {
 
-    expect(vaultAtivo("vault-qa", null)).toBe(true);
-    expect(vaultAtivo("vault-qa", false)).toBe(false);
+    expect(vaultEnabled("vault-qa", null)).toBe(true);
+    expect(vaultEnabled("vault-qa", false)).toBe(false);
   });
 });

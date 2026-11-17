@@ -1,103 +1,103 @@
 import type { ChatUsageRow, UsageAggregate, UsageBucket } from "./aggregate";
-import type { Opcao, UsageFilter } from "./filters";
+import type { FilterOption, UsageFilter } from "./filters";
 
-import { diaCurto } from "./timeline";
+import { shortDay } from "./timeline";
 
-export type Metrica = "cost" | "tokens";
+export type Metric = "cost" | "tokens";
 
-export function metricaDa(total: UsageBucket): Metrica {
+export function metricOf(total: UsageBucket): Metric {
   return total.cost > 0 ? "cost" : "tokens";
 }
 
-function valorNa(
+function metricValue(
   b: { cost: number | null; tokensIn: number; tokensOut: number },
-  m: Metrica
+  m: Metric
 ): number {
   return m === "cost" ? (b.cost ?? 0) : b.tokensIn + b.tokensOut;
 }
 
-export type Preco = "pago" | "gratis" | "sem-preco";
+export type PriceKind = "paid" | "free" | "unpriced";
 
-export function precoDo(b: UsageBucket): Preco {
-  if (b.cost > 0) return "pago";
-  return b.hasUnknownCost ? "sem-preco" : "gratis";
+export function priceKind(b: UsageBucket): PriceKind {
+  if (b.cost > 0) return "paid";
+  return b.hasUnknownCost ? "unpriced" : "free";
 }
 
-export interface Fatia {
+export interface Slice {
   id: string;
   chats: number;
   tokens: number;
   cost: number;
-  preco: Preco;
+  price: PriceKind;
 
-  piso: boolean;
+  isFloor: boolean;
 
   pct: number;
 
-  quase: boolean;
+  nearZero: boolean;
 }
 
-export function modelosDaPagina(agg: UsageAggregate): Fatia[] {
-  return fatiasDe(agg.byModel, agg.total);
+export function pageModels(agg: UsageAggregate): Slice[] {
+  return slicesOf(agg.byModel, agg.total);
 }
 
-export function relatorioDe(
-  ops: readonly Opcao[],
+export function sliceReport(
+  ops: readonly FilterOption[],
   buckets: Record<string, UsageBucket>,
   total: UsageBucket
-): { usadas: Fatia[]; paradas: Opcao[] } {
+): { used: Slice[]; idle: FilterOption[] } {
   const ids = new Set(ops.map((o) => o.id));
-  const usadas = fatiasDe(
+  const used = slicesOf(
     Object.fromEntries(
       Object.entries(buckets).filter(([id, b]) => ids.has(id) && b.chats > 0)
     ),
     total
   );
-  const medidas = new Set(usadas.map((u) => u.id));
-  return { usadas, paradas: ops.filter((o) => !medidas.has(o.id)) };
+  const measured = new Set(used.map((u) => u.id));
+  return { used, idle: ops.filter((o) => !measured.has(o.id)) };
 }
 
-export function semADimensao(
+export function withoutDimension(
   f: UsageFilter,
   dim: "providers" | "models" | "modes"
 ): UsageFilter {
   return { ...f, [dim]: [] };
 }
 
-export function fatiasDe(
+export function slicesOf(
   buckets: Record<string, UsageBucket>,
-  totalDoRecorte: UsageBucket
-): Fatia[] {
-  const m = metricaDa(totalDoRecorte);
-  const total = valorNa(totalDoRecorte, m);
+  sliceTotal: UsageBucket
+): Slice[] {
+  const m = metricOf(sliceTotal);
+  const total = metricValue(sliceTotal, m);
   return (
     Object.entries(buckets)
       .map(([id, b]) => {
-        const peso = valorNa(b, m);
-        const exato = total > 0 ? (peso / total) * 100 : 0;
-        const quase = peso > 0 && Math.round(exato) === 0;
+        const weight = metricValue(b, m);
+        const exact = total > 0 ? (weight / total) * 100 : 0;
+        const nearZero = weight > 0 && Math.round(exact) === 0;
         return {
           id,
           chats: b.chats,
           tokens: b.tokensIn + b.tokensOut,
           cost: b.cost,
-          preco: precoDo(b),
-          piso: b.cost > 0 && b.hasUnknownCost,
-          pct: quase ? 1 : Math.round(exato),
-          quase,
-          peso,
+          price: priceKind(b),
+          isFloor: b.cost > 0 && b.hasUnknownCost,
+          pct: nearZero ? 1 : Math.round(exact),
+          nearZero,
+          weight,
         };
       })
 
       .sort(
-        (a, b) => b.peso - a.peso || b.tokens - a.tokens || a.id.localeCompare(b.id)
+        (a, b) => b.weight - a.weight || b.tokens - a.tokens || a.id.localeCompare(b.id)
       )
-      .map(({ peso: _peso, ...linha }) => linha)
+      .map(({ weight: _weight, ...row }) => row)
   );
 }
 
-export function conversasDoTopo(agg: UsageAggregate, n: number): ChatUsageRow[] {
-  if (metricaDa(agg.total) === "cost") return agg.chats.slice(0, n);
+export function topChats(agg: UsageAggregate, n: number): ChatUsageRow[] {
+  if (metricOf(agg.total) === "cost") return agg.chats.slice(0, n);
   return [...agg.chats]
     .sort(
       (a, b) =>
@@ -107,48 +107,48 @@ export function conversasDoTopo(agg: UsageAggregate, n: number): ChatUsageRow[] 
     .slice(0, n);
 }
 
-export function mediaPorConversa(total: UsageBucket): number | null {
+export function averagePerChat(total: UsageBucket): number | null {
   if (total.chats <= 0) return null;
-  return valorNa(total, metricaDa(total)) / total.chats;
+  return metricValue(total, metricOf(total)) / total.chats;
 }
 
-export function faixaDeDatas(
-  inicio: string | null,
-  fim: string | null
+export function dateRange(
+  start: string | null,
+  end: string | null
 ): string {
-  if (!inicio || !fim) return "";
-  if (inicio === fim) return diaCurto(inicio);
-  const viraAno = inicio.slice(0, 4) !== fim.slice(0, 4);
-  return `${diaCurto(inicio, viraAno)} – ${diaCurto(fim)}`;
+  if (!start || !end) return "";
+  if (start === end) return shortDay(start);
+  const crossesYear = start.slice(0, 4) !== end.slice(0, 4);
+  return `${shortDay(start, crossesYear)} – ${shortDay(end)}`;
 }
 
-export function marcados(f: UsageFilter): number {
+export function selectedCount(f: UsageFilter): number {
   return f.providers.length + f.models.length + f.modes.length;
 }
 
-export const A_VISTA = 3;
+export const VISIBLE_OPTIONS = 3;
 
-export function opcoesAVista(
-  ops: readonly Opcao[],
-  selecionados: readonly string[],
-  n: number = A_VISTA
-): Opcao[] {
-  const fora = ops.filter((o, i) => i >= n && selecionados.includes(o.id));
-  return [...fora, ...ops.slice(0, n)];
+export function visibleOptions(
+  ops: readonly FilterOption[],
+  selected: readonly string[],
+  n: number = VISIBLE_OPTIONS
+): FilterOption[] {
+  const pinned = ops.filter((o, i) => i >= n && selected.includes(o.id));
+  return [...pinned, ...ops.slice(0, n)];
 }
 
-export function buscarOpcoes(
-  ops: readonly Opcao[],
-  termo: string,
-  nome: (id: string) => string
-): Opcao[] {
-  const t = termo.trim().toLowerCase();
+export function searchOptions(
+  ops: readonly FilterOption[],
+  query: string,
+  nameOf: (id: string) => string
+): FilterOption[] {
+  const t = query.trim().toLowerCase();
   if (!t) return [...ops];
   return ops.filter(
-    (o) => nome(o.id).toLowerCase().includes(t) || o.id.toLowerCase().includes(t)
+    (o) => nameOf(o.id).toLowerCase().includes(t) || o.id.toLowerCase().includes(t)
   );
 }
 
-export function valeFiltrar(ops: readonly Opcao[], selecionados: readonly string[]): boolean {
-  return ops.length > 1 || selecionados.length > 0;
+export function worthFiltering(ops: readonly FilterOption[], selected: readonly string[]): boolean {
+  return ops.length > 1 || selected.length > 0;
 }

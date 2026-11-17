@@ -67,7 +67,7 @@ import {
 import { getModelCapabilities } from "../providers/modelCapabilities";
 import { getTranscriptionCredential } from "../providers/transcribe";
 import { ConfirmModal, PromptModal, openPluginSettings } from "./modals";
-import { desfaziveis, desfazerRodada, desfazerUma, idDesfazivel } from "./agentUndo";
+import { undoableIds, undoTurn, undoOne, undoableId } from "./agentUndo";
 import { VoiceDock } from "./VoiceBar";
 import {
   Sheet,
@@ -86,7 +86,7 @@ import { modelLogo } from "../providers/modelLogo";
 import {
   rankNotes,
   readNote,
-  notaAberta,
+  activeNote,
   vaultNotes,
   wikilinkQuery,
   type NoteLike,
@@ -98,7 +98,7 @@ import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
 
 import { FAVORITE_LIMIT } from "./SettingsTab";
-import { texto } from "../core/text";
+import { asText } from "../core/text";
 import { mark, tr } from "../i18n/tr";
 
 const PLUS_SHEET_TITLE: Record<string, string> = {
@@ -130,15 +130,15 @@ export function ChatView({
 }) {
   const messages = useChatStore((s) => s.messages);
 
-  const respondendoAlguem = useChatStore((s) => s.isLoading);
+  const anyReplying = useChatStore((s) => s.isLoading);
   const turnChatId = useChatStore((s) => s.turnChatId);
   const loadingChat = useChatStore((s) => s.loadingChat);
   const streamingId = useChatStore((s) => s.streamingMessageId);
   const currentChatId = useChatStore((s) => s.currentChatId);
 
-  const isLoading = respondendoAlguem && turnChatId === currentChatId;
+  const isLoading = anyReplying && turnChatId === currentChatId;
 
-  const outraRespondendo = respondendoAlguem && !isLoading;
+  const otherReplying = anyReplying && !isLoading;
 
   const currentChatTitle = useChatStore((s) => s.currentChatTitle);
 
@@ -200,11 +200,11 @@ export function ChatView({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLElement>(null);
 
-  const publicarRef = useRef<(() => void) | null>(null);
+  const publishRef = useRef<(() => void) | null>(null);
 
-  const focoAntesDaFolha = useRef(false);
+  const focusBeforeSheet = useRef(false);
 
-  const medindoRef = useRef(0);
+  const frameRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -232,9 +232,9 @@ export function ChatView({
     };
 
     if (!el.style.height) fit();
-    else if (!medindoRef.current) {
-      medindoRef.current = window.requestAnimationFrame(() => {
-        medindoRef.current = 0;
+    else if (!frameRef.current) {
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = 0;
         fit();
       });
     }
@@ -249,7 +249,7 @@ export function ChatView({
 
   useEffect(
     () => () => {
-      if (medindoRef.current) window.cancelAnimationFrame(medindoRef.current);
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
     },
     []
   );
@@ -265,19 +265,19 @@ export function ChatView({
         continue;
       }
       if (m.type === "ai-response") {
-        const narradas: TurnAction[] = bucket
+        const narrated: TurnAction[] = bucket
           .map((c): TurnAction | null =>
             c.type === "ai-comment" && c.activity
               ? { kind: "activity", activity: c.activity }
               : null
           )
           .filter((a): a is TurnAction => a !== null);
-        const passos: TurnAction[] = (m.agentSteps ?? []).map((step) => ({
+        const steps: TurnAction[] = (m.agentSteps ?? []).map((step) => ({
           kind: "step",
           step,
         }));
-        const todas = [...narradas, ...passos];
-        if (todas.length > 0) actionsByResponse.set(m.id, todas);
+        const all = [...narrated, ...steps];
+        if (all.length > 0) actionsByResponse.set(m.id, all);
         for (const c of bucket) hiddenIds.add(c.id);
         bucket = [];
       } else if (m.type === "user") {
@@ -305,195 +305,195 @@ export function ChatView({
         action.kind === "activity" && action.activity.phase === "pending"
     )?.activity;
 
-  const ultima = messages[messages.length - 1];
-  const jaEscrevendo =
-    ultima?.type === "ai-response" &&
-    ultima.id === streamingId &&
-    ultima.content.length > 0;
-  const pensandoAgora = (isLoading || liveTurn.length > 0) && !jaEscrevendo;
+  const last = messages[messages.length - 1];
+  const alreadyWriting =
+    last?.type === "ai-response" &&
+    last.id === streamingId &&
+    last.content.length > 0;
+  const thinkingNow = (isLoading || liveTurn.length > 0) && !alreadyWriting;
 
-  const desdeRef = useRef(0);
-  if (pensandoAgora && desdeRef.current === 0) desdeRef.current = Date.now();
-  if (!pensandoAgora && desdeRef.current !== 0) desdeRef.current = 0;
-  const pensandoDesde = desdeRef.current || Date.now();
+  const sinceRef = useRef(0);
+  if (thinkingNow && sinceRef.current === 0) sinceRef.current = Date.now();
+  if (!thinkingNow && sinceRef.current !== 0) sinceRef.current = 0;
+  const thinkingSince = sinceRef.current || Date.now();
 
-  const [seguindo, setSeguindo] = useState(true);
+  const [following, setFollowing] = useState(true);
 
-  const seguindoRef = useRef(true);
-  seguindoRef.current = seguindo;
+  const followingRef = useRef(true);
+  followingRef.current = following;
 
-  const [avisoId, setAvisoId] = useState<string | null>(null);
+  const [jumpId, setJumpId] = useState<string | null>(null);
 
-  const alturaAnteriorRef = useRef(0);
+  const prevHeightRef = useRef(0);
 
-  const gestoRef = useRef(false);
+  const gestureRef = useRef(false);
 
   const stickToBottom = () => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   };
 
-  const retomarRef = useRef<
-    | { scroll: number; desde: number }
-    | { messageId: string; desde: number }
+  const resumeRef = useRef<
+    | { scroll: number; since: number }
+    | { messageId: string; since: number }
     | null
   >(null);
 
-  const RETOMAR_MS = 1500;
+  const RESUME_MS = 1500;
 
-  const aplicarRetomada = () => {
-    const alvo = retomarRef.current;
+  const applyResume = () => {
+    const target = resumeRef.current;
     const el = scrollRef.current;
-    if (!alvo || !el) return false;
-    const desistiu = Date.now() - alvo.desde > RETOMAR_MS;
-    if ("messageId" in alvo) {
-      const msg = el.querySelector<HTMLElement>(`[data-msg="${alvo.messageId}"]`);
+    if (!target || !el) return false;
+    const gaveUp = Date.now() - target.since > RESUME_MS;
+    if ("messageId" in target) {
+      const msg = el.querySelector<HTMLElement>(`[data-msg="${target.messageId}"]`);
       if (!msg) {
-        if (!desistiu) return false;
-        retomarRef.current = null;
+        if (!gaveUp) return false;
+        resumeRef.current = null;
         return false;
       }
 
-      const destino = Math.max(0, msg.offsetTop - 12);
-      el.scrollTop = destino;
+      const dest = Math.max(0, msg.offsetTop - 12);
+      el.scrollTop = dest;
 
-      if (!desistiu && Math.abs(el.scrollTop - destino) > 2) return false;
+      if (!gaveUp && Math.abs(el.scrollTop - dest) > 2) return false;
     } else {
-      const destino = alvo.scroll;
-      el.scrollTop = destino;
-      if (!desistiu && Math.abs(el.scrollTop - destino) > 2) return false;
+      const dest = target.scroll;
+      el.scrollTop = dest;
+      if (!gaveUp && Math.abs(el.scrollTop - dest) > 2) return false;
     }
-    retomarRef.current = null;
-    alturaAnteriorRef.current = el.scrollHeight;
-    seguindoRef.current = false;
-    setSeguindo(false);
+    resumeRef.current = null;
+    prevHeightRef.current = el.scrollHeight;
+    followingRef.current = false;
+    setFollowing(false);
     return true;
   };
 
-  const reavaliar = () => {
+  const reevaluate = () => {
     const el = scrollRef.current;
     if (!el) return;
 
-    if (retomarRef.current) {
-      aplicarRetomada();
-      alturaAnteriorRef.current = el.scrollHeight;
+    if (resumeRef.current) {
+      applyResume();
+      prevHeightRef.current = el.scrollHeight;
       return;
     }
-    const { pin, following: noFim } = decideScroll({
-      gesture: gestoRef.current,
-      previousHeight: alturaAnteriorRef.current,
+    const { pin, following: atBottom } = decideScroll({
+      gesture: gestureRef.current,
+      previousHeight: prevHeightRef.current,
       currentHeight: el.scrollHeight,
       scrollTop: el.scrollTop,
       clientHeight: el.clientHeight,
     });
     if (pin) el.scrollTop = el.scrollHeight;
-    alturaAnteriorRef.current = el.scrollHeight;
-    if (noFim !== seguindoRef.current) {
-      seguindoRef.current = noFim;
-      setSeguindo(noFim);
+    prevHeightRef.current = el.scrollHeight;
+    if (atBottom !== followingRef.current) {
+      followingRef.current = atBottom;
+      setFollowing(atBottom);
     }
-    if (noFim) setAvisoId(null);
+    if (atBottom) setJumpId(null);
   };
 
-  const voltarPraBaixo = () => {
+  const scrollToBottom = () => {
 
-    retomarRef.current = null;
-    gestoRef.current = false;
-    seguindoRef.current = true;
-    setSeguindo(true);
-    setAvisoId(null);
+    resumeRef.current = null;
+    gestureRef.current = false;
+    followingRef.current = true;
+    setFollowing(true);
+    setJumpId(null);
     stickToBottom();
     const el = scrollRef.current;
-    if (el) alturaAnteriorRef.current = el.scrollHeight;
+    if (el) prevHeightRef.current = el.scrollHeight;
   };
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    alturaAnteriorRef.current = el.scrollHeight;
+    prevHeightRef.current = el.scrollHeight;
 
-    const obs = new MutationObserver(reavaliar);
+    const obs = new MutationObserver(reevaluate);
     obs.observe(el, { childList: true, subtree: true, characterData: true });
 
-    let assentar = 0;
-    const comecarGesto = () => {
-      gestoRef.current = true;
-      window.clearTimeout(assentar);
-      assentar = 0;
+    let settleTimer = 0;
+    const startGesture = () => {
+      gestureRef.current = true;
+      window.clearTimeout(settleTimer);
+      settleTimer = 0;
     };
-    const terminarGesto = () => {
-      window.clearTimeout(assentar);
-      assentar = window.setTimeout(() => {
-        assentar = 0;
-        gestoRef.current = false;
-        reavaliar();
+    const endGesture = () => {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        settleTimer = 0;
+        gestureRef.current = false;
+        reevaluate();
       }, 320);
     };
-    const aoRolar = () => {
+    const onScroll = () => {
 
       useChatStore.setState({
         viewScrollTop: el.scrollTop,
         viewChatId: useChatStore.getState().currentChatId,
       });
 
-      if (assentar) terminarGesto();
-      reavaliar();
+      if (settleTimer) endGesture();
+      reevaluate();
     };
 
-    const captura = { passive: true, capture: true } as const;
-    el.addEventListener("scroll", aoRolar, { passive: true });
-    el.addEventListener("touchstart", comecarGesto, captura);
-    el.addEventListener("touchend", terminarGesto, captura);
-    el.addEventListener("touchcancel", terminarGesto, captura);
-    el.addEventListener("wheel", comecarGesto, captura);
-    el.addEventListener("wheel", terminarGesto, captura);
+    const captureOpts = { passive: true, capture: true } as const;
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("touchstart", startGesture, captureOpts);
+    el.addEventListener("touchend", endGesture, captureOpts);
+    el.addEventListener("touchcancel", endGesture, captureOpts);
+    el.addEventListener("wheel", startGesture, captureOpts);
+    el.addEventListener("wheel", endGesture, captureOpts);
     const mouseDown = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") comecarGesto();
+      if (e.pointerType !== "touch") startGesture();
     };
     const mouseUp = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") terminarGesto();
+      if (e.pointerType !== "touch") endGesture();
     };
-    el.addEventListener("pointerdown", mouseDown, captura);
+    el.addEventListener("pointerdown", mouseDown, captureOpts);
     window.addEventListener("pointerup", mouseUp);
 
     return () => {
       obs.disconnect();
-      window.clearTimeout(assentar);
-      el.removeEventListener("scroll", aoRolar);
-      el.removeEventListener("touchstart", comecarGesto, captura);
-      el.removeEventListener("touchend", terminarGesto, captura);
-      el.removeEventListener("touchcancel", terminarGesto, captura);
-      el.removeEventListener("wheel", comecarGesto, captura);
-      el.removeEventListener("wheel", terminarGesto, captura);
-      el.removeEventListener("pointerdown", mouseDown, captura);
+      window.clearTimeout(settleTimer);
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("touchstart", startGesture, captureOpts);
+      el.removeEventListener("touchend", endGesture, captureOpts);
+      el.removeEventListener("touchcancel", endGesture, captureOpts);
+      el.removeEventListener("wheel", startGesture, captureOpts);
+      el.removeEventListener("wheel", endGesture, captureOpts);
+      el.removeEventListener("pointerdown", mouseDown, captureOpts);
       window.removeEventListener("pointerup", mouseUp);
     };
   }, []);
 
-  useEffect(reavaliar, [messages, streamingId]);
+  useEffect(reevaluate, [messages, streamingId]);
 
   useEffect(() => {
     const el = composerRef.current;
-    const raiz = el?.closest(".corvus-root") as HTMLElement | null;
-    if (!el || !raiz) return;
-    const publicar = () => {
+    const root = el?.closest(".corvus-root") as HTMLElement | null;
+    if (!el || !root) return;
+    const publish = () => {
 
-      raiz.style.setProperty(
+      root.style.setProperty(
         "--corvus-composer-h",
         `${Math.max(0, Math.round(el.getBoundingClientRect().height))}px`
       );
 
-      reavaliar();
+      reevaluate();
     };
-    publicarRef.current = publicar;
-    publicar();
-    const obs = new ResizeObserver(publicar);
+    publishRef.current = publish;
+    publish();
+    const obs = new ResizeObserver(publish);
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
   useLayoutEffect(() => {
-    publicarRef.current?.();
+    publishRef.current?.();
   });
 
   useEffect(() => {
@@ -501,150 +501,150 @@ export function ChatView({
     const { resumeScroll, resumeMessageId } = useChatStore.getState();
     if (resumeScroll !== null || resumeMessageId !== null) {
       useChatStore.getState().setResume({});
-      gestoRef.current = false;
-      setAvisoId(null);
-      seguindoRef.current = false;
-      setSeguindo(false);
-      retomarRef.current =
+      gestureRef.current = false;
+      setJumpId(null);
+      followingRef.current = false;
+      setFollowing(false);
+      resumeRef.current =
         resumeMessageId !== null
-          ? { messageId: resumeMessageId, desde: Date.now() }
-          : { scroll: resumeScroll as number, desde: Date.now() };
+          ? { messageId: resumeMessageId, since: Date.now() }
+          : { scroll: resumeScroll as number, since: Date.now() };
 
-      window.requestAnimationFrame(() => aplicarRetomada());
+      window.requestAnimationFrame(() => applyResume());
       return;
     }
 
     const { viewChatId, viewScrollTop } = useChatStore.getState();
     if (currentChatId && viewChatId === currentChatId && viewScrollTop > 0) {
-      gestoRef.current = false;
-      setAvisoId(null);
-      seguindoRef.current = false;
-      setSeguindo(false);
-      retomarRef.current = { scroll: viewScrollTop, desde: Date.now() };
-      window.requestAnimationFrame(() => aplicarRetomada());
+      gestureRef.current = false;
+      setJumpId(null);
+      followingRef.current = false;
+      setFollowing(false);
+      resumeRef.current = { scroll: viewScrollTop, since: Date.now() };
+      window.requestAnimationFrame(() => applyResume());
       return;
     }
-    retomarRef.current = null;
-    voltarPraBaixo();
+    resumeRef.current = null;
+    scrollToBottom();
   }, [currentChatId]);
 
-  const respondendoRef = useRef(false);
+  const replyingRef = useRef(false);
   useEffect(() => {
-    const respondendoAgora = isLoading || streamingId !== null;
-    const terminou = respondendoRef.current && !respondendoAgora;
-    respondendoRef.current = respondendoAgora;
-    if (!terminou) return;
-    if (seguindoRef.current) return;
-    const ultima = [...messages]
+    const replyingNow = isLoading || streamingId !== null;
+    const finished = replyingRef.current && !replyingNow;
+    replyingRef.current = replyingNow;
+    if (!finished) return;
+    if (followingRef.current) return;
+    const last = [...messages]
       .reverse()
       .find((m) => m.type === "ai-response");
-    if (!ultima) return;
-    setAvisoId(ultima.id);
+    if (!last) return;
+    setJumpId(last.id);
 
     commit();
   }, [isLoading, streamingId, messages]);
 
-  const mostrarAviso = shouldShowJump(
-    seguindo,
+  const showJump = shouldShowJump(
+    following,
     isLoading || streamingId !== null,
-    avisoId !== null
+    jumpId !== null
   );
 
   const onComposerFocus = () => {
-    if (!seguindoRef.current) return;
+    if (!followingRef.current) return;
     stickToBottom();
     window.setTimeout(stickToBottom, 350);
   };
 
-  const conferirMencao = (el: HTMLTextAreaElement) => {
-    const achou = wikilinkQuery(el.value, el.selectionStart ?? el.value.length);
-    setMention(achou);
+  const checkMention = (el: HTMLTextAreaElement) => {
+    const found = wikilinkQuery(el.value, el.selectionStart ?? el.value.length);
+    setMention(found);
   };
 
-  const escolherMencao = (n: NoteLike) => {
+  const pickMention = (n: NoteLike) => {
     const el = textareaRef.current;
     if (!el || !mention) return;
     const cursor = el.selectionStart ?? draft.length;
     const link = `[[${n.path.replace(/\.md$/, "")}]]`;
-    const antes = draft.slice(0, mention.start);
-    const novo = antes + link + draft.slice(cursor);
-    setDraft(novo);
+    const before = draft.slice(0, mention.start);
+    const updated = before + link + draft.slice(cursor);
+    setDraft(updated);
     setMention(null);
-    void anexarNota(n.path);
+    void attachNote(n.path);
 
-    const fim = antes.length + link.length;
+    const end = before.length + link.length;
     window.setTimeout(() => {
       el.focus({ preventScroll: true });
-      el.setSelectionRange(fim, fim);
+      el.setSelectionRange(end, end);
     }, 0);
   };
 
-  const aoTocarBloqueado = async (
+  const onBlockedTap = async (
     id: string,
-    motivo: string,
-    insistiu: boolean
+    reason: string,
+    insisted: boolean
   ) => {
-    const nome = PROVIDERS.find((p) => p.id === id)?.name ?? id;
-    if (!insistiu) {
-      new Notice(`${nome} — ${tr(motivo)}`);
+    const name = PROVIDERS.find((p) => p.id === id)?.name ?? id;
+    if (!insisted) {
+      new Notice(`${name} — ${tr(reason)}`);
       return;
     }
-    const ir = await new ConfirmModal(plugin.app, {
-      title: tr("{name} is not set up", { name: nome }),
-      body: `${tr(motivo)}
+    const proceed = await new ConfirmModal(plugin.app, {
+      title: tr("{name} is not set up", { name }),
+      body: `${tr(reason)}
 
 ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       confirmLabel: tr("Open settings"),
     }).openAndWait();
-    if (ir) {
+    if (proceed) {
       closeSheet();
       openPluginSettings(plugin);
     }
   };
 
-  const anexarPdf = (file: File) => {
-    const leitor = new FileReader();
-    leitor.onload = () => {
-      const dataUrl = texto(leitor.result);
+  const attachPdf = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = asText(reader.result);
       if (!dataUrl.startsWith("data:")) return;
       addAttachment({ type: "pdf", name: file.name, dataUrl });
     };
-    leitor.onerror = () => new Notice(tr("Could not read that file."));
-    leitor.readAsDataURL(file);
+    reader.onerror = () => new Notice(tr("Could not read that file."));
+    reader.readAsDataURL(file);
   };
 
-  const anexarLink = async () => {
-    const digitado = await new PromptModal(plugin.app, {
+  const attachLink = async () => {
+    const typed = await new PromptModal(plugin.app, {
       title: tr("Attach link"),
       label: tr("Address"),
       placeholder: "https://…",
       submitLabel: tr("Fetch"),
     }).openAndWait();
-    const url = normalizeUrl(digitado ?? "");
+    const url = normalizeUrl(typed ?? "");
     if (!url) {
-      if (digitado) new Notice(tr("That doesn't look like an address."));
+      if (typed) new Notice(tr("That doesn't look like an address."));
       return;
     }
-    const aviso = new Notice(tr("Fetching {url}…", { url }), 0);
+    const notice = new Notice(tr("Fetching {url}…", { url }), 0);
     try {
 
       const res = await requestUrl({ url });
-      const texto = htmlToText(res.text ?? "");
-      if (!texto) {
+      const text = htmlToText(res.text ?? "");
+      if (!text) {
         new Notice(tr("Nothing readable at that address."));
         return;
       }
-      addAttachment(linkNote(url, htmlTitle(res.text ?? ""), texto));
+      addAttachment(linkNote(url, htmlTitle(res.text ?? ""), text));
     } catch {
       new Notice(tr("Could not reach that address."));
     } finally {
-      aviso.hide();
+      notice.hide();
     }
   };
 
-  const anexarArtefato = async (a: ArtifactLike) => {
+  const attachArtifact = async (a: ArtifactLike) => {
     try {
-      if (isImageExt(a.extension) && modeloVeImagem) {
+      if (isImageExt(a.extension) && modelSeesImages) {
         const bin = await plugin.app.vault.adapter.readBinary(a.path);
         const mime = a.extension.toLowerCase() === "png" ? "image/png" : "image/jpeg";
         addAttachment({
@@ -665,44 +665,44 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  const aoColar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const dados = e.clipboardData;
-    if (!dados) return;
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboard = e.clipboardData;
+    if (!clipboard) return;
 
-    const textoColado = dados.getData("text");
+    const pastedText = clipboard.getData("text");
 
-    const imagens = Array.from(dados.files ?? []).filter((f) =>
+    const images = Array.from(clipboard.files ?? []).filter((f) =>
       f.type.startsWith("image/")
     );
-    if (imagens.length > 0) {
+    if (images.length > 0) {
       e.preventDefault();
-      if (!modeloVeImagem) {
+      if (!modelSeesImages) {
         new Notice(tr("This model can't read images."));
         return;
       }
-      for (const img of imagens) anexarImagem(img);
+      for (const img of images) attachImage(img);
       return;
     }
 
-    if (pasteIsBig(textoColado)) {
+    if (pasteIsBig(pastedText)) {
       e.preventDefault();
-      addAttachment(pastedNote(textoColado));
+      addAttachment(pastedNote(pastedText));
     }
   };
 
-  const anexarNota = async (path: string) => {
-    const nota = await readNote(plugin.app, path);
-    if (!nota) {
+  const attachNote = async (path: string) => {
+    const note = await readNote(plugin.app, path);
+    if (!note) {
       new Notice(tr("Note not found: {path}", { path }));
       return;
     }
-    addAttachment({ type: "note", path: nota.path, content: nota.content });
+    addAttachment({ type: "note", path: note.path, content: note.content });
   };
 
-  const anexarImagem = (file: File) => {
-    const leitor = new FileReader();
-    leitor.onload = () => {
-      const dataUrl = texto(leitor.result);
+  const attachImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = asText(reader.result);
       if (!dataUrl.startsWith("data:")) return;
       addAttachment({
         type: "image",
@@ -711,23 +711,23 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         name: file.name,
       });
     };
-    leitor.onerror = () => new Notice(tr("Could not read that image."));
-    leitor.readAsDataURL(file);
+    reader.onerror = () => new Notice(tr("Could not read that image."));
+    reader.readAsDataURL(file);
   };
 
-  const abrirAcoes = useCallback((acoes: TurnAction[]) => {
-    setTools(acoes);
+  const openTools = useCallback((actions: TurnAction[]) => {
+    setTools(actions);
 
-    setToolAt(acoes.length === 1 ? 0 : null);
+    setToolAt(actions.length === 1 ? 0 : null);
   }, []);
 
   const submit = async () => {
     const text = draft.trim();
     if (!text) return;
 
-    voltarPraBaixo();
+    scrollToBottom();
 
-    if (outraRespondendo) {
+    if (otherReplying) {
 
       new Notice(tr("Another chat is still answering — try again in a moment."));
       return;
@@ -740,20 +740,20 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
     commit();
 
-    const chave = draftKey;
+    const sentKey = draftKey;
 
-    writeDraft(chave, "");
-    const foi = await session.send(text);
+    writeDraft(sentKey, "");
+    const sent = await session.send(text);
 
-    if (!foi && !(useChatStore.getState().drafts[chave] ?? "").trim()) {
-      writeDraft(chave, text);
+    if (!sent && !(useChatStore.getState().drafts[sentKey] ?? "").trim()) {
+      writeDraft(sentKey, text);
     }
   };
 
   const openSheet = (which: "model" | "effort" | "plus") => {
-    const campo = textareaRef.current;
-    focoAntesDaFolha.current =
-      campo != null && campo.ownerDocument.activeElement === campo;
+    const field = textareaRef.current;
+    focusBeforeSheet.current =
+      field != null && field.ownerDocument.activeElement === field;
     textareaRef.current?.blur();
 
     if (which === "model") {
@@ -772,8 +772,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   const closeSheet = () => {
     setSheet(null);
 
-    if (focoAntesDaFolha.current) {
-      focoAntesDaFolha.current = false;
+    if (focusBeforeSheet.current) {
+      focusBeforeSheet.current = false;
       window.setTimeout(
         () => textareaRef.current?.focus({ preventScroll: true }),
         0
@@ -781,7 +781,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
   };
 
-  const notasAchadas = useMemo(() => {
+  const noteHits = useMemo(() => {
     if (sheet !== "plus" || plusView !== "notes") return [];
     return rankNotes(vaultNotes(plugin.app), noteQuery);
   }, [sheet, plusView, noteQuery, plugin.app]);
@@ -792,12 +792,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   );
 
   const caps = getModelCapabilities(cfg.provider, cfg.model);
-  const modeloVeImagem =
+  const modelSeesImages =
     caps.vision ||
     getModelCard(cfg.provider, cfg.model).category === "chat-vision";
-  const modeloLePdf = caps.pdf === true;
+  const modelReadsPdf = caps.pdf === true;
 
-  const artefatos = useMemo(() => {
+  const artifacts = useMemo(() => {
     if (sheet !== "plus" || plusView !== "artifacts") return [];
     return rankArtifacts(vaultArtifacts(plugin.app));
   }, [sheet, plusView, plugin.app]);
@@ -806,10 +806,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     plugin.settings.favoriteModels?.[pickProvider] ?? []
   ).slice(0, 5);
 
-  const ativosDoProvider = session.modelOptions(pickProvider);
-  const catalogoDoProvider = plugin.settings.discoveredModels?.[pickProvider] ?? [];
-  const todosOsModelos = mergeModelOptions(ativosDoProvider, catalogoDoProvider);
-  const rest = todosOsModelos.filter((m) => !favorites.includes(m));
+  const providerActive = session.modelOptions(pickProvider);
+  const providerCatalog = plugin.settings.discoveredModels?.[pickProvider] ?? [];
+  const allModels = mergeModelOptions(providerActive, providerCatalog);
+  const rest = allModels.filter((m) => !favorites.includes(m));
 
   const voice = useVoice({
     apiKey: () => {
@@ -820,10 +820,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     language: () => plugin.settings.voiceLanguage,
     onTranscript: setLiveText,
 
-    onFinal: (texto) => {
+    onFinal: (text) => {
       setLiveText("");
-      if (!texto) return;
-      setDraft((d) => (d.trim() ? `${d.trim()} ${texto}` : texto));
+      if (!text) return;
+      setDraft((d) => (d.trim() ? `${d.trim()} ${text}` : text));
     },
     onNotice: (m) => {
       new Notice(m);
@@ -852,21 +852,21 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     setModelTab("");
   }, [modelView]);
 
-  const catalogosTentados = useRef<Set<string>>(new Set());
+  const triedCatalogs = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (sheet !== "model") return;
     if (plugin.settings.discoveredModels?.[pickProvider]) return;
     if (!providerCredential(plugin.settings, pickProvider)) return;
-    if (catalogosTentados.current.has(pickProvider)) return;
-    catalogosTentados.current.add(pickProvider);
+    if (triedCatalogs.current.has(pickProvider)) return;
+    triedCatalogs.current.add(pickProvider);
 
     void plugin.models.scanModels(pickProvider).catch(() => {});
   }, [sheet, pickProvider, plugin]);
 
-  const alternarFavorito = async (model: string) => {
-    const atuais = plugin.settings.favoriteModels?.[pickProvider] ?? [];
-    const tem = atuais.includes(model);
-    if (!tem && atuais.length >= FAVORITE_LIMIT) {
+  const toggleFavorite = async (model: string) => {
+    const existing = plugin.settings.favoriteModels?.[pickProvider] ?? [];
+    const isFavorite = existing.includes(model);
+    if (!isFavorite && existing.length >= FAVORITE_LIMIT) {
       new Notice(
         tr("{n} favorites per provider is the limit — unstar one first.", {
           n: FAVORITE_LIMIT,
@@ -876,9 +876,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     }
     plugin.settings.favoriteModels = {
       ...(plugin.settings.favoriteModels ?? {}),
-      [pickProvider]: tem
-        ? atuais.filter((x) => x !== model)
-        : [...atuais, model],
+      [pickProvider]: isFavorite
+        ? existing.filter((x) => x !== model)
+        : [...existing, model],
     };
     await plugin.saveSettings();
   };
@@ -941,18 +941,18 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               msg={m}
               plugin={plugin}
               streaming={m.id === streamingId}
-              glow={m.id === avisoId}
+              glow={m.id === jumpId}
               actions={actionsByResponse.get(m.id)}
-              onOpenTools={abrirAcoes}
+              onOpenTools={openTools}
             />
           ))
         )}
 
         {}
-        {pensandoAgora && (
+        {thinkingNow && (
           <ThinkingLine
             count={liveTurn.length}
-            since={pensandoDesde}
+            since={thinkingSince}
             activity={pendingActivity}
             onOpen={() => {
               if (liveTurn.length === 0) return;
@@ -966,14 +966,14 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       {}
       <section className="corvus-composer" ref={composerRef}>
           {}
-          {mostrarAviso && (
+          {showJump && (
             <button
               type="button"
-              className={avisoId ? "corvus-jump is-done" : "corvus-jump"}
-              onClick={voltarPraBaixo}
+              className={jumpId ? "corvus-jump is-done" : "corvus-jump"}
+              onClick={scrollToBottom}
             >
               <Icon name="arrow-down" size={15} />
-              {avisoId ? tr("Answer ready") : tr("Jump to latest")}
+              {jumpId ? tr("Answer ready") : tr("Jump to latest")}
             </button>
           )}
           {}
@@ -987,7 +987,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    escolherMencao(n);
+                    pickMention(n);
                   }}
                 >
                   <Icon name="file-text" size={15} />
@@ -1065,10 +1065,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 onFocus={onComposerFocus}
                 onChange={(e) => {
                   setDraft(e.currentTarget.value);
-                  conferirMencao(e.currentTarget);
+                  checkMention(e.currentTarget);
                 }}
-                onSelect={(e) => conferirMencao(e.currentTarget)}
-                onPaste={aoColar}
+                onSelect={(e) => checkMention(e.currentTarget)}
+                onPaste={onPaste}
                 onBlur={() => setMention(null)}
                 onKeyDown={(e) => {
 
@@ -1081,7 +1081,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
                   if (mention && mentionHits.length > 0) {
                     e.preventDefault();
-                    escolherMencao(mentionHits[0]);
+                    pickMention(mentionHits[0]);
                     return;
                   }
                   if (e.ctrlKey || e.metaKey) {
@@ -1117,7 +1117,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   hidden
                   onChange={(e) => {
                     const f = e.currentTarget.files?.[0];
-                    if (f) anexarImagem(f);
+                    if (f) attachImage(f);
                     e.currentTarget.value = "";
                   }}
                 />
@@ -1129,7 +1129,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   hidden
                   onChange={(e) => {
                     const f = e.currentTarget.files?.[0];
-                    if (f) anexarImagem(f);
+                    if (f) attachImage(f);
                     e.currentTarget.value = "";
                   }}
                 />
@@ -1140,7 +1140,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   hidden
                   onChange={(e) => {
                     const f = e.currentTarget.files?.[0];
-                    if (f) anexarPdf(f);
+                    if (f) attachPdf(f);
                     e.currentTarget.value = "";
                   }}
                 />
@@ -1229,8 +1229,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             label={tr("Provider")}
             activeId={pickProvider}
             onPick={setPickProvider}
-            onBlocked={(id, motivo, insistiu) =>
-              void aoTocarBloqueado(id, motivo, insistiu)
+            onBlocked={(id, reason, insisted) =>
+              void onBlockedTap(id, reason, insisted)
             }
             items={PROVIDERS.map((p) => ({
               id: p.id,
@@ -1250,7 +1250,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
 
             found={
               modelQuery.trim()
-                ? filterModels(todosOsModelos, modelQuery, prettyModelName).length
+                ? filterModels(allModels, modelQuery, prettyModelName).length
                 : undefined
             }
             onChange={setModelQuery}
@@ -1275,21 +1275,21 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           </SheetGroup>
         ) : modelView === "list" ||
           (modelView === "root" && !locked && modelQuery.trim().length > 0) ? (
-          <ListaDeModelos
+          <ModelList
             provider={pickProvider}
 
-            models={ativosDoProvider}
-            catalogo={catalogoDoProvider}
-            atual={pickProvider === cfg.provider ? cfg.model : ""}
+            models={providerActive}
+            catalog={providerCatalog}
+            current={pickProvider === cfg.provider ? cfg.model : ""}
             query={modelQuery}
             onQuery={setModelQuery}
-            aba={modelTab}
-            onAba={setModelTab}
-            favoritos={favorites}
-            onFavorito={(m) => void alternarFavorito(m)}
+            tab={modelTab}
+            onTab={setModelTab}
+            favorites={favorites}
+            onToggleFavorite={(m) => void toggleFavorite(m)}
             onPick={chooseModel}
 
-            busca={modelView !== "root"}
+            searchable={modelView !== "root"}
           />
         ) : (
           <>
@@ -1311,8 +1311,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     provider={pickProvider}
                     model={m}
                     selected={m === cfg.model && pickProvider === cfg.provider}
-                    favorito
-                    onFavorito={() => void alternarFavorito(m)}
+                    favorite
+                    onToggleFavorite={() => void toggleFavorite(m)}
                     onClick={() => chooseModel(m)}
                   />
                 ))}
@@ -1338,7 +1338,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 <SheetNavRow
                   icon="list"
                   title={tr("All models")}
-                  note={`${todosOsModelos.length}`}
+                  note={`${allModels.length}`}
                   onClick={() => setModelView("list")}
                 />
               )}
@@ -1374,12 +1374,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             <SheetSearch
               value={noteQuery}
               placeholder={tr("Search notes")}
-              found={notasAchadas.length}
+              found={noteHits.length}
               autoFocus
               onChange={setNoteQuery}
             />
             <SheetGroup>
-              {notasAchadas.map((n) => (
+              {noteHits.map((n) => (
                 <SheetRow
                   key={n.path}
                   dense
@@ -1387,12 +1387,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   title={n.basename}
                   note={n.path}
                   onClick={() => {
-                    void anexarNota(n.path);
+                    void attachNote(n.path);
                     closeSheet();
                   }}
                 />
               ))}
-              {notasAchadas.length === 0 && (
+              {noteHits.length === 0 && (
                 <SheetNote>{tr("No note matches that.")}</SheetNote>
               )}
             </SheetGroup>
@@ -1420,7 +1420,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           </SheetGroup>
         ) : plusView === "artifacts" ? (
           <SheetGroup>
-            {artefatos.map((a) => (
+            {artifacts.map((a) => (
               <SheetRow
                 key={a.path}
                 dense
@@ -1428,12 +1428,12 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 title={a.basename}
                 note={a.path}
                 onClick={() => {
-                  void anexarArtefato(a);
+                  void attachArtifact(a);
                   closeSheet();
                 }}
               />
             ))}
-            {artefatos.length === 0 && (
+            {artifacts.length === 0 && (
               <SheetNote>
                 {tr(
                   "Nothing generated yet — images, audio and video made here land in {folder} and show up in this list.",
@@ -1456,8 +1456,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               <SheetTile
                 icon="camera"
                 label={tr("Camera")}
-                disabled={!modeloVeImagem}
-                hint={modeloVeImagem ? undefined : tr("unavailable")}
+                disabled={!modelSeesImages}
+                hint={modelSeesImages ? undefined : tr("unavailable")}
                 onClick={() => {
                   closeSheet();
                   cameraRef.current?.click();
@@ -1466,8 +1466,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               <SheetTile
                 icon="image"
                 label={tr("Image")}
-                disabled={!modeloVeImagem}
-                hint={modeloVeImagem ? undefined : tr("unavailable")}
+                disabled={!modelSeesImages}
+                hint={modelSeesImages ? undefined : tr("unavailable")}
                 onClick={() => {
                   closeSheet();
                   imageRef.current?.click();
@@ -1478,8 +1478,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             <SheetGroup>
               {}
               {(() => {
-                const aberta = sheet === "plus" ? notaAberta(plugin.app) : null;
-                if (!aberta || attachments.some((a) => a.type === "note" && a.path === aberta.path)) {
+                const openNote = sheet === "plus" ? activeNote(plugin.app) : null;
+                if (!openNote || attachments.some((a) => a.type === "note" && a.path === openNote.path)) {
                   return null;
                 }
                 return (
@@ -1488,9 +1488,9 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                     chevron
                     icon="file-check"
                     title={tr("This note")}
-                    note={aberta.basename}
+                    note={openNote.basename}
                     onClick={() => {
-                      void anexarNota(aberta.path);
+                      void attachNote(openNote.path);
                       closeSheet();
                     }}
                   />
@@ -1502,7 +1502,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 icon="file-type-2"
                 title="PDF"
                 note={
-                  modeloLePdf
+                  modelReadsPdf
                     ? tr("From this device")
                     : tr("This model can't read PDFs")
                 }
@@ -1519,7 +1519,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 note={tr("Fetch a page as context")}
                 onClick={() => {
                   closeSheet();
-                  void anexarLink();
+                  void attachLink();
                 }}
               />
               <SheetRow
@@ -1633,17 +1633,17 @@ function ModelRow({
   provider,
   model,
   selected,
-  favorito,
-  onFavorito,
+  favorite,
+  onToggleFavorite,
   onClick,
 }: {
   provider: string;
   model: string;
   selected: boolean;
 
-  favorito?: boolean;
+  favorite?: boolean;
 
-  onFavorito?: () => void;
+  onToggleFavorite?: () => void;
   onClick: () => void;
 }) {
   const card = getModelCard(provider, model);
@@ -1655,12 +1655,12 @@ function ModelRow({
       icon={modelLogo(model)}
       selected={selected}
       action={
-        onFavorito
+        onToggleFavorite
           ? {
-              icon: favorito ? "star" : "star-off",
-              label: favorito ? tr("Remove from favorites") : tr("Add to favorites"),
-              on: favorito,
-              onClick: onFavorito,
+              icon: favorite ? "star" : "star-off",
+              label: favorite ? tr("Remove from favorites") : tr("Add to favorites"),
+              on: favorite,
+              onClick: onToggleFavorite,
             }
           : undefined
       }
@@ -1669,91 +1669,91 @@ function ModelRow({
   );
 }
 
-function ListaDeModelos({
+function ModelList({
   provider,
   models,
-  catalogo,
-  atual,
+  catalog,
+  current,
   query,
   onQuery,
-  aba,
-  onAba,
-  favoritos,
-  onFavorito,
+  tab,
+  onTab,
+  favorites,
+  onToggleFavorite,
   onPick,
-  busca = true,
+  searchable: searchable = true,
 }: {
   provider: string;
 
   models: string[];
 
-  catalogo: string[];
-  atual: string;
+  catalog: string[];
+  current: string;
   query: string;
   onQuery: (v: string) => void;
-  aba: string;
-  onAba: (id: string) => void;
-  favoritos: string[];
-  onFavorito: (m: string) => void;
+  tab: string;
+  onTab: (id: string) => void;
+  favorites: string[];
+  onToggleFavorite: (m: string) => void;
   onPick: (m: string) => void;
 
-  busca?: boolean;
+  searchable?: boolean;
 }) {
 
-  const lista = useMemo(
-    () => mergeModelOptions(models, catalogo),
-    [models, catalogo]
+  const all = useMemo(
+    () => mergeModelOptions(models, catalog),
+    [models, catalog]
   );
-  const filtrados = useMemo(
-    () => filterModels(lista, query, prettyModelName),
-    [lista, query]
+  const filtered = useMemo(
+    () => filterModels(all, query, prettyModelName),
+    [all, query]
   );
-  const grupos = useMemo(
-    () => groupModels(provider, filtrados),
-    [provider, filtrados]
+  const groups = useMemo(
+    () => groupModels(provider, filtered),
+    [provider, filtered]
   );
 
-  const ativa = grupos.find((g) => g.label === aba) ?? grupos[0];
+  const activeGroup = groups.find((g) => g.label === tab) ?? groups[0];
 
-  const BUSCA_A_PARTIR_DE = 8;
+  const SEARCH_MIN = 8;
   return (
     <>
-      {busca && lista.length >= BUSCA_A_PARTIR_DE && (
+      {searchable && all.length >= SEARCH_MIN && (
         <SheetSearch
           value={query}
           placeholder={tr("Search models")}
-          found={filtrados.length}
+          found={filtered.length}
           onChange={onQuery}
         />
       )}
-      {grupos.length > 1 && (
+      {groups.length > 1 && (
         <SheetTabs
           label={tr("Model category")}
-          activeId={ativa?.label ?? ""}
-          items={grupos.map((g) => ({
+          activeId={activeGroup?.label ?? ""}
+          items={groups.map((g) => ({
             id: g.label,
             label: tr(g.label),
             count: g.models.length,
           }))}
-          onPick={onAba}
+          onPick={onTab}
         />
       )}
-      {ativa && (
+      {activeGroup && (
         <SheetGroup>
-          {ativa.models.map((m) => (
+          {activeGroup.models.map((m) => (
             <ModelRow
               key={m}
               provider={provider}
               model={m}
-              selected={m === atual}
-              favorito={favoritos.includes(m)}
-              onFavorito={() => onFavorito(m)}
+              selected={m === current}
+              favorite={favorites.includes(m)}
+              onToggleFavorite={() => onToggleFavorite(m)}
               onClick={() => onPick(m)}
             />
           ))}
         </SheetGroup>
       )}
-      {filtrados.length === 0 && (
+      {filtered.length === 0 && (
         <SheetGroup>
           <SheetNote>{tr("No model matches that.")}</SheetNote>
         </SheetGroup>
@@ -1827,9 +1827,9 @@ function actionIcon(a: TurnAction): string {
 function toolSummary(step: AIToolStep): string {
   const args = Object.entries(step.arguments ?? {});
   if (args.length === 0) return step.ok ? tr("done") : tr("failed");
-  const [chave, valor] = args[0];
-  const texto = typeof valor === "string" ? valor : JSON.stringify(valor);
-  return `${chave}: ${texto}`.slice(0, 80);
+  const [key, value] = args[0];
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return `${key}: ${text}`.slice(0, 80);
 }
 
 function UndoChip({
@@ -1839,8 +1839,8 @@ function UndoChip({
   plugin: CorvusPlugin;
   actions: TurnAction[];
 }) {
-  const [rodando, setRodando] = useState(false);
-  const ids = desfaziveis(
+  const [busy, setBusy] = useState(false);
+  const ids = undoableIds(
     actions.map((a) => (a.kind === "activity" ? a.activity : undefined))
   );
   if (ids.length === 0) return null;
@@ -1848,15 +1848,15 @@ function UndoChip({
     <button
       type="button"
       className="corvus-tools-chip"
-      disabled={rodando}
+      disabled={busy}
       aria-label={
         ids.length === 1
           ? tr("Undo the agent's change")
           : tr("Undo the agent's {n} changes", { n: ids.length })
       }
       onClick={() => {
-        setRodando(true);
-        void desfazerRodada(plugin.app, ids).finally(() => setRodando(false));
+        setBusy(true);
+        void undoTurn(plugin.app, ids).finally(() => setBusy(false));
       }}
     >
       <Icon name="undo-2" size={15} />
@@ -1877,10 +1877,10 @@ function ToolDetail({
   const ok = !actionFailed(action);
   const pending =
     action.kind === "activity" && action.activity.phase === "pending";
-  const [rodando, setRodando] = useState(false);
-  const desfazivel =
-    action.kind === "activity" ? idDesfazivel(action.activity) : null;
-  const desfeita = action.kind === "activity" && action.activity.undone;
+  const [busy, setBusy] = useState(false);
+  const undoable =
+    action.kind === "activity" ? undoableId(action.activity) : null;
+  const wasUndone = action.kind === "activity" && action.activity.undone;
   return (
     <div className="corvus-tool-detail">
       {action.kind !== "reasoning" && (
@@ -1892,24 +1892,24 @@ function ToolDetail({
           {pending ? tr("Running") : ok ? tr("Completed") : tr("Failed")}
         </p>
       )}
-      {desfeita && (
+      {wasUndone && (
         <p className="corvus-tool-state is-undone">
           <Icon name="undo-2" size={15} />
           {tr("Undone")}
         </p>
       )}
-      {desfazivel && (
+      {undoable && (
         <button
           type="button"
           className="corvus-tool-undo"
-          disabled={rodando}
+          disabled={busy}
           onClick={() => {
-            setRodando(true);
-            void desfazerUma(app, desfazivel)
-              .then((feito) => {
-                if (feito) onUndone(desfazivel);
+            setBusy(true);
+            void undoOne(app, undoable)
+              .then((done) => {
+                if (done) onUndone(undoable);
               })
-              .finally(() => setRodando(false));
+              .finally(() => setBusy(false));
           }}
         >
           <Icon name="undo-2" size={16} />

@@ -1,21 +1,21 @@
 import { createContext, useContext } from "react";
 import type { ChatSummary } from "../core/chatPersistence";
 
-interface PainelApi {
+interface PanelApi {
 
-  novoProjetoCom: (chatId: string) => void;
+  newProjectWith: (chatId: string) => void;
 
-  escolherProjetoPara: (chatId: string) => void;
+  pickProjectFor: (chatId: string) => void;
 
-  instrucoesDe: (chat: ChatSummary) => void;
+  instructionsFor: (chat: ChatSummary) => void;
 }
 
-export const PainelCtx = createContext<PainelApi>({
-  novoProjetoCom: () => {},
-  escolherProjetoPara: () => {},
-  instrucoesDe: () => {},
+export const PanelCtx = createContext<PanelApi>({
+  newProjectWith: () => {},
+  pickProjectFor: () => {},
+  instructionsFor: () => {},
 });
 
-export function usePainel(): PainelApi {
-  return useContext(PainelCtx);
+export function usePanel(): PanelApi {
+  return useContext(PanelCtx);
 }

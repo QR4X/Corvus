@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   PROJECT_COLORS,
-  PROJECT_DRAFT_VAZIO,
+  EMPTY_PROJECT_DRAFT,
   PROJECT_ICONS,
   projectColor,
-  projectProblema,
-  nomeDaCopia,
+  projectProblem,
+  copyName,
   type Project,
 } from "../src/projects";
 
@@ -22,24 +22,24 @@ const proj = (over: Partial<Project> = {}): Project => ({
 
 describe("projectProblema", () => {
   it("com nome, está pronto", () => {
-    expect(projectProblema({ ...PROJECT_DRAFT_VAZIO, name: "Thesis" }, [])).toBeNull();
+    expect(projectProblem({ ...EMPTY_PROJECT_DRAFT, name: "Thesis" }, [])).toBeNull();
   });
 
   it("sem nome, não dá", () => {
-    expect(projectProblema({ ...PROJECT_DRAFT_VAZIO, name: "   " }, [])).toMatch(
+    expect(projectProblem({ ...EMPTY_PROJECT_DRAFT, name: "   " }, [])).toMatch(
       /name/i
     );
   });
 
   it("nome repetido é erro de gente, e por isso é erro", () => {
 
-    const d = { ...PROJECT_DRAFT_VAZIO, name: " thesis " };
-    expect(projectProblema(d, [proj()])).toMatch(/already/i);
+    const d = { ...EMPTY_PROJECT_DRAFT, name: " thesis " };
+    expect(projectProblem(d, [proj()])).toMatch(/already/i);
   });
 
   it("editando, o projeto não colide consigo mesmo", () => {
-    const d = { ...PROJECT_DRAFT_VAZIO, name: "Thesis" };
-    expect(projectProblema(d, [proj()], "p1")).toBeNull();
+    const d = { ...EMPTY_PROJECT_DRAFT, name: "Thesis" };
+    expect(projectProblem(d, [proj()], "p1")).toBeNull();
   });
 });
 
@@ -53,25 +53,25 @@ describe("projectColor", () => {
 describe("o rascunho vazio", () => {
   it("nasce com um ícone e uma cor que existem na grade", () => {
 
-    expect(PROJECT_ICONS).toContain(PROJECT_DRAFT_VAZIO.icon);
-    expect(PROJECT_COLORS).toContain(PROJECT_DRAFT_VAZIO.color);
+    expect(PROJECT_ICONS).toContain(EMPTY_PROJECT_DRAFT.icon);
+    expect(PROJECT_COLORS).toContain(EMPTY_PROJECT_DRAFT.color);
   });
 });
 
 describe("nomeDaCopia", () => {
 
   it("a primeira cópia não leva número", () => {
-    expect(nomeDaCopia("Thesis", [proj()])).toBe("Thesis copy");
+    expect(copyName("Thesis", [proj()])).toBe("Thesis copy");
   });
 
   it("a segunda leva, e pula o que já existe", () => {
     const tem = [proj(), proj({ id: "p2", name: "Thesis copy" })];
-    expect(nomeDaCopia("Thesis", tem)).toBe("Thesis copy 2");
+    expect(copyName("Thesis", tem)).toBe("Thesis copy 2");
   });
 
   it("não colide por causa de maiúscula", () => {
     const tem = [proj({ name: "THESIS COPY" })];
-    expect(nomeDaCopia("Thesis", tem)).toBe("Thesis copy 2");
+    expect(copyName("Thesis", tem)).toBe("Thesis copy 2");
   });
 
   it("o nome que sai nunca colide com os que estão lá", () => {
@@ -81,13 +81,13 @@ describe("nomeDaCopia", () => {
       proj({ id: "c", name: "Casa copy 2" }),
       proj({ id: "d", name: "Casa copy 3" }),
     ];
-    const novo = nomeDaCopia("Casa", tem);
+    const novo = copyName("Casa", tem);
     expect(tem.some((p) => p.name.toLowerCase() === novo.toLowerCase())).toBe(
       false
     );
   });
 
   it("projeto sem nome ainda gera um", () => {
-    expect(nomeDaCopia("   ", [])).toBe("Project copy");
+    expect(copyName("   ", [])).toBe("Project copy");
   });
 });

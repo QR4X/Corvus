@@ -7,9 +7,9 @@ import {
   type UserMessage,
 } from "../store/chat";
 import { getProvider } from "../providers";
-import { modeloSalvoPara } from "./defaultModel";
+import { savedModelFor } from "./defaultModel";
 import { providerCredential, providerMeta } from "./providersMeta";
-import { nomeCompleto } from "./ollamaDefault";
+import { fullModelName } from "./ollamaDefault";
 import { EN_US } from "../i18n/en-us";
 import { tr } from "../i18n/tr";
 import {
@@ -23,13 +23,13 @@ import {
   type ChatData,
 } from "./chatPersistence";
 import { persistLocalImage } from "./imageStore";
-import { makeId, semCredencial } from "./helpers";
+import { makeId, missingCredentialError } from "./helpers";
 import { streamReply, type EngineCtx } from "./chatEngine";
 import { runAgentTurn } from "./agentTurn";
 import type { NoteAttachment } from "../providers/base";
 import type { Project } from "../projects";
 import { previewFromText } from "./chatPreview";
-import { vaultAtivo } from "./vaultContext";
+import { vaultEnabled } from "./vaultContext";
 import { keepConversationMessage } from "../agent/conversation";
 
 export type ChatMode = "chat" | "vault-qa" | "agent";
@@ -65,7 +65,7 @@ export class ChatSession {
   private pendingProjectId: string | null = null;
   private saveTimer: number | null = null;
 
-  private avisoDeGravacaoDado = false;
+  private saveFailureNoticed = false;
   private pendingSave: (() => void) | null = null;
   private skipNextSave = false;
   private readonly listeners = new Set<() => void>();
@@ -76,7 +76,7 @@ export class ChatSession {
   private mode: ChatMode;
   private effort: string;
 
-  private vaultEscolha: boolean | null = null;
+  private vaultChoice: boolean | null = null;
 
   constructor(private readonly plugin: CorvusPlugin) {
     const s = plugin.settings;
@@ -89,13 +89,13 @@ export class ChatSession {
       if (state.messages !== prev.messages) this.scheduleSave();
     });
 
-    this.unsubSettings = plugin.onSettingsChange(() => this.seguirOllama());
+    this.unsubSettings = plugin.onSettingsChange(() => this.followOllama());
 
     void plugin.chats.load();
   }
 
   async flushBackground(): Promise<void> {
-    await this.gravarFundo();
+    await this.saveBackgroundRun();
   }
 
   dispose(): void {
@@ -103,7 +103,7 @@ export class ChatSession {
     this.unsubSettings();
     this.flushSave();
 
-    void this.gravarFundo();
+    void this.saveBackgroundRun();
     this.abortRef.current?.abort();
     this.listeners.clear();
   }
@@ -131,26 +131,26 @@ export class ChatSession {
       model: st.sessionModel ?? this.model,
       mode: isChatMode(st.sessionMode) ? st.sessionMode : this.mode,
       effort: this.effort,
-      vault: vaultAtivo(
+      vault: vaultEnabled(
         isChatMode(st.sessionMode) ? st.sessionMode : this.mode,
-        this.vaultEscolha
+        this.vaultChoice
       ),
       locked,
     };
   }
 
   modelFor(provider: string): string {
-    return modeloSalvoPara(this.plugin.settings, provider);
+    return savedModelFor(this.plugin.settings, provider);
   }
 
-  private seguirOllama(): void {
+  private followOllama(): void {
     if (this.provider !== "ollama") return;
-    const ativos = this.plugin.settings.activeModels?.ollama ?? [];
-    const atual = this.model;
-    if (atual && ativos.some((m) => nomeCompleto(m) === nomeCompleto(atual))) return;
-    const salvo = this.modelFor("ollama");
-    if (salvo === atual) return;
-    this.model = salvo;
+    const active = this.plugin.settings.activeModels?.ollama ?? [];
+    const current = this.model;
+    if (current && active.some((m) => fullModelName(m) === fullModelName(current))) return;
+    const saved = this.modelFor("ollama");
+    if (saved === current) return;
+    this.model = saved;
     this.emit();
   }
 
@@ -191,7 +191,7 @@ export class ChatSession {
   }
 
   setVault(on: boolean): void {
-    this.vaultEscolha = on;
+    this.vaultChoice = on;
     this.emit();
   }
 
@@ -219,15 +219,15 @@ export class ChatSession {
     const cfg = this.config;
     const provider = getProvider(cfg.provider);
 
-    const falta =
+    const setupError =
       st.messages.length === 0
-        ? (semCredencial(cfg.provider, this.apiKeyFor(cfg.provider), this.t, provider.name) ??
+        ? (missingCredentialError(cfg.provider, this.apiKeyFor(cfg.provider), this.t, provider.name) ??
           (cfg.model.trim() ? null : this.t.ai.err.noModel(provider.name)))
         : null;
-    if (falta) {
+    if (setupError) {
       st.addMessage({
         type: "ai-response",
-        content: `${this.t.ai.errorPrefix} ${falta}`,
+        content: `${this.t.ai.errorPrefix} ${setupError}`,
         isError: true,
         errorCode: "no-key",
       });
@@ -252,9 +252,9 @@ export class ChatSession {
       }
     }
 
-    const pendentes = st.attachments;
-    let attachments = pendentes.length > 0 ? [...pendentes] : undefined;
-    if (pendentes.length > 0) st.setAttachments([]);
+    const pendingAttachments = st.attachments;
+    let attachments = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined;
+    if (pendingAttachments.length > 0) st.setAttachments([]);
 
     if (attachments) {
       attachments = await Promise.all(
@@ -297,36 +297,36 @@ export class ChatSession {
       }
     } finally {
 
-      await this.gravarFundo();
+      await this.saveBackgroundRun();
       useChatStore.getState().setTurnChatId(null);
       this.emit();
     }
 
-    const fila = useChatStore.getState().queued;
-    if (fila.length > 0) {
-      const [proxima, ...resto] = fila;
+    const queued = useChatStore.getState().queued;
+    if (queued.length > 0) {
+      const [next, ...rest] = queued;
       useChatStore.getState().setAttachments([]);
-      useChatStore.setState({ queued: resto });
+      useChatStore.setState({ queued: rest });
 
-      await this.send(proxima);
+      await this.send(next);
     }
     return true;
   }
 
-  private destacarTurno(): boolean {
+  private detachRunningTurn(): boolean {
     const st = useChatStore.getState();
     if (!st.isLoading || st.background) return false;
-    const dono = st.turnChatId ?? st.currentChatId;
-    if (!dono) return false;
+    const ownerChatId = st.turnChatId ?? st.currentChatId;
+    if (!ownerChatId) return false;
     const cfg = this.config;
     if (st.queued.length > 0) {
-      const antes = st.drafts[dono] ?? "";
-      const texto = [antes, ...st.queued].filter((t) => t.trim()).join("\n\n");
-      st.setDraft(dono, texto);
+      const draft = st.drafts[ownerChatId] ?? "";
+      const merged = [draft, ...st.queued].filter((t) => t.trim()).join("\n\n");
+      st.setDraft(ownerChatId, merged);
       st.clearQueued();
     }
     st.detachTurn({
-      chatId: dono,
+      chatId: ownerChatId,
       scrollTop: st.viewScrollTop,
       title: st.currentChatTitle,
       mode: cfg.mode,
@@ -340,19 +340,19 @@ export class ChatSession {
     return true;
   }
 
-  private async gravarFundo(): Promise<void> {
+  private async saveBackgroundRun(): Promise<void> {
     const st = useChatStore.getState();
     const run = st.background;
     if (!run) return;
     st.clearBackground();
 
-    const guardadas = run.messages.filter(
+    const kept = run.messages.filter(
       keepConversationMessage
     ) as Array<Extract<ChatMessage, { content: string }>>;
-    if (guardadas.length === 0) return;
+    if (kept.length === 0) return;
     const chat: ChatData = {
       id: run.chatId,
-      title: run.title || generateTitle(guardadas[0].content),
+      title: run.title || generateTitle(kept[0].content),
       date: new Date().toISOString(),
       mode: run.mode,
       provider: run.provider,
@@ -360,7 +360,7 @@ export class ChatSession {
       effort: run.effort,
       tokensIn: run.tokensIn,
       tokensOut: run.tokensOut,
-      messages: guardadas.map((m) => ({
+      messages: kept.map((m) => ({
         type: m.type as "user" | "ai-response",
         content: m.content,
         timestamp: m.timestamp,
@@ -376,7 +376,7 @@ export class ChatSession {
           : {}),
       })),
     };
-    const ultima = chat.messages[chat.messages.length - 1];
+    const last = chat.messages[chat.messages.length - 1];
     try {
       const path = await saveChat(
         this.plugin.app,
@@ -401,13 +401,13 @@ export class ChatSession {
         filePath: path,
         starred: false,
 
-        preview: previewFromText(ultima?.content ?? ""),
+        preview: previewFromText(last?.content ?? ""),
       });
 
       this.plugin.chats.markUnread(chat.id);
-      this.avisoDeGravacaoDado = false;
+      this.saveFailureNoticed = false;
     } catch (err) {
-      this.avisarFalhaDeGravacao(err);
+      this.reportSaveFailure(err);
     }
   }
 
@@ -417,7 +417,7 @@ export class ChatSession {
     useChatStore.getState().clearQueued();
   }
 
-  private reanexarTurno(): void {
+  private reattachRunningTurn(): void {
     const st = useChatStore.getState();
     const run = st.attachTurn();
     if (!run) return;
@@ -437,11 +437,11 @@ export class ChatSession {
 
   newChat(mode?: ChatMode): void {
 
-    if (!this.destacarTurno()) this.abortRef.current?.abort();
+    if (!this.detachRunningTurn()) this.abortRef.current?.abort();
     this.flushSave();
     this.pendingProjectId = null;
 
-    this.vaultEscolha = null;
+    this.vaultChoice = null;
     useChatStore.getState().newChat();
     if (mode) {
       this.mode = mode;
@@ -483,14 +483,14 @@ export class ChatSession {
     if (store.currentChatId === ref.id) return;
 
     if (store.background?.chatId === ref.id) {
-      this.reanexarTurno();
+      this.reattachRunningTurn();
       this.plugin.chats.clearUnread(ref.id);
       return;
     }
 
-    const naoLida = this.plugin.chats.unread().has(ref.id);
+    const wasUnread = this.plugin.chats.unread().has(ref.id);
 
-    if (!this.destacarTurno()) this.abortRef.current?.abort();
+    if (!this.detachRunningTurn()) this.abortRef.current?.abort();
     this.flushSave();
     store.setLoadingChat(true);
     try {
@@ -534,17 +534,17 @@ export class ChatSession {
       st.setSessionInstructions(chat.instructions ?? "");
       st.setCurrentChatStarred(chat.starred === true);
 
-      if (naoLida) {
-        const nova = [...restored]
+      if (wasUnread) {
+        const latestReply = [...restored]
           .reverse()
           .find((m) => m.type === "ai-response");
-        if (nova) st.setResume({ messageId: nova.id });
+        if (latestReply) st.setResume({ messageId: latestReply.id });
       }
 
       this.plugin.chats.clearUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
 
-      this.vaultEscolha = chat.vault ?? null;
+      this.vaultChoice = chat.vault ?? null;
     } catch (err) {
       console.error("[corvus] loadChat failed:", err);
       new Notice(
@@ -639,10 +639,10 @@ export class ChatSession {
     pending?.();
   }
 
-  private avisarFalhaDeGravacao(err: unknown): void {
+  private reportSaveFailure(err: unknown): void {
     console.error("[corvus] failed to save conversation:", err);
-    if (this.avisoDeGravacaoDado) return;
-    this.avisoDeGravacaoDado = true;
+    if (this.saveFailureNoticed) return;
+    this.saveFailureNoticed = true;
     new Notice(
       tr(
         "Corvus could not save this chat to your vault — what you see here is not on disk yet. Check the vault's disk space and permissions."
@@ -674,7 +674,7 @@ export class ChatSession {
       instructions: st.sessionInstructions || undefined,
       starred: st.currentChatStarred || undefined,
 
-      vault: this.vaultEscolha ?? undefined,
+      vault: this.vaultChoice ?? undefined,
       messages: userOrAi.map((m) => ({
         type: m.type,
         content: m.content,
@@ -691,7 +691,7 @@ export class ChatSession {
           : {}),
       })),
     };
-    const ultima = chat.messages[chat.messages.length - 1];
+    const last = chat.messages[chat.messages.length - 1];
     try {
       const path = await saveChat(
         this.plugin.app,
@@ -715,11 +715,11 @@ export class ChatSession {
         ),
         filePath: path,
         starred: chat.starred === true,
-        preview: previewFromText(ultima?.content ?? ""),
+        preview: previewFromText(last?.content ?? ""),
       });
-      this.avisoDeGravacaoDado = false;
+      this.saveFailureNoticed = false;
     } catch (err) {
-      this.avisarFalhaDeGravacao(err);
+      this.reportSaveFailure(err);
     }
   }
 }

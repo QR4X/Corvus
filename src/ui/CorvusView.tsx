@@ -21,9 +21,9 @@ export class CorvusView extends ItemView {
   private lastKeyboardHeight = -1;
   private settingsUnsub: (() => void) | null = null;
 
-  private folhaMarcada: HTMLElement | null = null;
+  private markedLeaf: HTMLElement | null = null;
 
-  private gaveta: Element | null = null;
+  private lastDrawer: Element | null = null;
   private hapticsOff: (() => void) | null = null;
 
   constructor(
@@ -47,8 +47,8 @@ export class CorvusView extends ItemView {
 
   async onOpen(): Promise<void> {
 
-    this.folhaMarcada = this.containerEl.parentElement;
-    this.folhaMarcada?.addClass("corvus-leaf");
+    this.markedLeaf = this.containerEl.parentElement;
+    this.markedLeaf?.addClass("corvus-leaf");
 
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -87,8 +87,8 @@ export class CorvusView extends ItemView {
 
   async onClose(): Promise<void> {
 
-    this.folhaMarcada?.removeClass("corvus-leaf");
-    this.folhaMarcada = null;
+    this.markedLeaf?.removeClass("corvus-leaf");
+    this.markedLeaf = null;
     this.hapticsOff?.();
     this.hapticsOff = null;
     this.teardownKeyboardObserver();
@@ -144,29 +144,29 @@ export class CorvusView extends ItemView {
     this.keyboardObserver = null;
     this.lastKeyboardHeight = -1;
 
-    const drawer = this.containerEl.closest(".workspace-drawer") ?? this.gaveta;
+    const drawer = this.containerEl.closest(".workspace-drawer") ?? this.lastDrawer;
     drawer?.classList.remove("corvus-keyboard-open");
     this.containerEl.doc.body.classList.remove("corvus-keyboard-open");
   }
 
   applyFullscreen(): void {
     if (!Platform.isMobile) return;
-    const atual = this.containerEl.closest(".workspace-drawer");
+    const current = this.containerEl.closest(".workspace-drawer");
 
-    if (this.gaveta && this.gaveta !== atual) this.recomputeDrawer(this.gaveta);
-    if (atual) this.gaveta = atual;
-    this.recomputeDrawer(atual);
+    if (this.lastDrawer && this.lastDrawer !== current) this.recomputeDrawer(this.lastDrawer);
+    if (current) this.lastDrawer = current;
+    this.recomputeDrawer(current);
   }
 
   private recomputeDrawer(drawer: Element | null): void {
     if (!drawer) return;
     syncSheetStrip(drawer.querySelector(".workspace-drawer-inner"));
-    const corvusNaFrente =
+    const corvusInFront =
       drawer.querySelector(
         '.workspace-drawer-active-tab-content .workspace-leaf-content[data-type="corvus"]'
       ) !== null;
     const on =
-      corvusNaFrente &&
+      corvusInFront &&
       isRightDrawer(drawer) &&
       fullscreenOn(
         !!this.plugin.settings.mobileFullscreen,
@@ -183,8 +183,8 @@ export class CorvusView extends ItemView {
   }
 
   private clearFullscreen(): void {
-    this.recomputeDrawer(this.gaveta);
-    this.gaveta = null;
+    this.recomputeDrawer(this.lastDrawer);
+    this.lastDrawer = null;
   }
 
   private hostDrawerVisible(host: Element | null): boolean {

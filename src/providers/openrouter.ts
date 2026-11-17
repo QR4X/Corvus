@@ -21,25 +21,25 @@ import {
   hasPdfAttachment,
   fetchStream,
 } from "./_shared";
-import type { RespostaNoFio } from "./_shared";
-import { ehGratisNoOpenRouter, type EntradaOpenRouter } from "./openrouterFree";
+import type { WireResponse } from "./_shared";
+import { isFreeOnOpenRouter, type OpenRouterEntry } from "./openrouterFree";
 
-interface ModeloOpenRouter {
+interface RawOpenRouterModel {
   id?: unknown;
   pricing?: Record<string, unknown>;
   architecture?: { output_modalities?: unknown };
   description?: unknown;
 }
 
-interface CatalogoOpenRouter {
+interface OpenRouterCatalog {
   data?: unknown;
 }
 
-function modelosDo(json: unknown): EntradaOpenRouter[] {
-  const data = (json as CatalogoOpenRouter | undefined)?.data;
+function modelsFrom(json: unknown): OpenRouterEntry[] {
+  const data = (json as OpenRouterCatalog | undefined)?.data;
   if (!Array.isArray(data)) return [];
-  return (data as ModeloOpenRouter[]).filter(
-    (m): m is EntradaOpenRouter => typeof m?.id === "string"
+  return (data as RawOpenRouterModel[]).filter(
+    (m): m is OpenRouterEntry => typeof m?.id === "string"
   );
 }
 import { getModelCapabilities } from "./modelCapabilities";
@@ -49,7 +49,7 @@ const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
 
 const OPENROUTER_EMBEDDING_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/embeddings/models";
 
-export function proximaPagina(json: unknown): string | null {
+export function nextPageUrl(json: unknown): string | null {
   const next = (json as { links?: { next?: unknown } } | null)?.links?.next;
   return typeof next === "string" && /^https:\/\/openrouter\.ai\//.test(next) ? next : null;
 }
@@ -107,17 +107,17 @@ class OpenRouterProvider implements Provider {
     }
     ensureOkRequest(res, { label: "OpenRouter" });
 
-    const corpo = res.json as RespostaNoFio | undefined;
-    const message = corpo?.choices?.[0]?.message;
+    const payload = res.json as WireResponse | undefined;
+    const message = payload?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Empty response.", "unknown");
 
     const parsed = parseOpenAIChatMessage(message);
-    const finishReason = corpo?.choices?.[0]?.finish_reason;
+    const finishReason = payload?.choices?.[0]?.finish_reason;
     if (finishReason === "length") {
       if (parsed.toolCalls?.length) parsed.invalidToolCalls = true;
       delete parsed.toolCalls;
     }
-    return { ...parsed, usage: usageFrom(corpo ?? {}), finishReason };
+    return { ...parsed, usage: usageFrom(payload ?? {}), finishReason };
   }
 
   async streamChat(
@@ -215,7 +215,7 @@ class OpenRouterProvider implements Provider {
       throw new ProviderError(`OpenRouter: HTTP ${res.status}`, "unknown");
     }
 
-    const all = modelosDo(res.json).map((m) => m.id);
+    const all = modelsFrom(res.json).map((m) => m.id);
     return all.filter(isRelevantOpenRouterModel).sort();
   }
 
@@ -229,7 +229,7 @@ class OpenRouterProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return null;
-      return cotaGratisDaChave(res.json);
+      return keyFreeQuota(res.json);
     } catch {
       return null;
     }
@@ -245,7 +245,7 @@ class OpenRouterProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return null;
-      return estadoDaChave(res.json);
+      return keyStatusFrom(res.json);
     } catch {
       return null;
     }
@@ -261,8 +261,8 @@ class OpenRouterProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return [];
-      return modelosDo(res.json)
-        .filter(ehGratisNoOpenRouter)
+      return modelsFrom(res.json)
+        .filter(isFreeOnOpenRouter)
         .map((m) => m.id)
         .filter(isRelevantOpenRouterModel)
         .sort();
@@ -277,18 +277,18 @@ class OpenRouterProvider implements Provider {
     try {
       const ids: string[] = [];
       let url: string | null = OPENROUTER_EMBEDDING_MODELS_ENDPOINT;
-      for (let pagina = 0; url && pagina < 5; pagina++) {
+      for (let page = 0; url && page < 5; page++) {
         const res = await requestUrl({ url, method: "GET", headers, throw: false });
         if (res.status < 200 || res.status >= 300) break;
-        ids.push(...modelosDo(res.json).map((m) => m.id));
-        url = proximaPagina(res.json);
+        ids.push(...modelsFrom(res.json).map((m) => m.id));
+        url = nextPageUrl(res.json);
       }
       if (ids.length > 0) return [...new Set(ids)].sort();
     } catch { void 0; }
     try {
       const res = await requestUrl({ url: OPENROUTER_MODELS_ENDPOINT, method: "GET", headers, throw: false });
       if (res.status < 200 || res.status >= 300) return [];
-      return modelosDo(res.json)
+      return modelsFrom(res.json)
         .map((m) => m.id)
         .filter(isEmbeddingModelId)
         .sort();
@@ -298,33 +298,33 @@ class OpenRouterProvider implements Provider {
   }
 }
 
-const numero = (v: unknown): number | undefined =>
+const finiteNumber = (v: unknown): number | undefined =>
   typeof v === "number" && Number.isFinite(v) ? v : undefined;
 
-export function estadoDaChave(json: unknown): KeyStatus | null {
+export function keyStatusFrom(json: unknown): KeyStatus | null {
   const d = (json as { data?: Record<string, unknown> } | undefined)?.data;
   if (!d || typeof d !== "object") return null;
   const out: KeyStatus = {};
-  const cota = cotaGratisDaChave(json);
-  if (cota) {
+  const quota = keyFreeQuota(json);
+  if (quota) {
     const f = d.free_model_daily_requests as { used?: unknown } | undefined;
-    const usados = numero(f?.used);
-    out.gratis = {
-      limite: cota.limit,
-      ...(usados != null ? { usados } : {}),
-      ...(cota.remaining != null ? { restantes: cota.remaining } : {}),
+    const used = finiteNumber(f?.used);
+    out.free = {
+      limit: quota.limit,
+      ...(used != null ? { used } : {}),
+      ...(quota.remaining != null ? { remaining: quota.remaining } : {}),
     };
   }
   if ("limit_remaining" in d) {
-    out.creditoRestante = d.limit_remaining === null ? null : (numero(d.limit_remaining) ?? null);
+    out.creditRemaining = d.limit_remaining === null ? null : (finiteNumber(d.limit_remaining) ?? null);
   }
-  if (typeof d.limit_reset === "string" && d.limit_reset) out.creditoVolta = d.limit_reset;
-  const hoje = numero(d.usage_daily);
-  if (hoje != null) out.gastoHoje = hoje;
+  if (typeof d.limit_reset === "string" && d.limit_reset) out.creditResetsAt = d.limit_reset;
+  const today = finiteNumber(d.usage_daily);
+  if (today != null) out.spentToday = today;
   return out;
 }
 
-export function cotaGratisDaChave(json: unknown): { limit: number; remaining?: number } | null {
+export function keyFreeQuota(json: unknown): { limit: number; remaining?: number } | null {
   const d = (json as { data?: Record<string, unknown> } | undefined)?.data;
   if (!d || typeof d !== "object") return null;
   const f = d.free_model_daily_requests as { limit?: unknown; remaining?: unknown } | undefined;

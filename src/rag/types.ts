@@ -155,11 +155,11 @@ export function isEmbeddingModelId(id: string): boolean {
   return /embed/i.test(id);
 }
 
-export function pareceEmbeddingDoOllama(nome: string): boolean {
-  return /(embed|bge|minilm|\be5\b|e5-|gte|nomic|mxbai|snowflake-arctic|granite-embedding|paraphrase|jina)/i.test(nome);
+export function looksLikeOllamaEmbedding(name: string): boolean {
+  return /(embed|bge|minilm|\be5\b|e5-|gte|nomic|mxbai|snowflake-arctic|granite-embedding|paraphrase|jina)/i.test(name);
 }
 
-function dimDoOllama(id: string): number {
+function ollamaEmbeddingDim(id: string): number {
   if (/minilm|granite-embedding:30m|arctic-embed:(xs|s)\b|arctic-embed:2[23]m/.test(id)) return 384;
   if (/qwen3-embedding:8b/.test(id)) return 4096;
   if (/qwen3-embedding:4b/.test(id)) return 2560;
@@ -180,7 +180,7 @@ export function inferEmbeddingSpec(
     return {
       provider,
       model,
-      dim: dimDoOllama(id),
+      dim: ollamaEmbeddingDim(id),
       maxInputTokens: 8192,
       pricePerMillion: 0,
       free: true,

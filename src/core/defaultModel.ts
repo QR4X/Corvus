@@ -1,12 +1,12 @@
 import type { CorvusSettings } from "../settings";
-import { pareceEmbeddingDoOllama } from "../rag/types";
+import { looksLikeOllamaEmbedding } from "../rag/types";
 import { providerMeta } from "./providersMeta";
 
-export function modeloSalvoPara(s: CorvusSettings, provider: string): string {
-  const doCampo = s[providerMeta(provider).model];
-  if (doCampo) return doCampo;
-  const ativos = s.activeModels?.[provider] ?? [];
+export function savedModelFor(s: CorvusSettings, provider: string): string {
+  const fromField = s[providerMeta(provider).model];
+  if (fromField) return fromField;
+  const active = s.activeModels?.[provider] ?? [];
 
-  if (provider === "ollama") return ativos.find((m) => !pareceEmbeddingDoOllama(m)) ?? "";
-  return ativos[0] ?? "";
+  if (provider === "ollama") return active.find((m) => !looksLikeOllamaEmbedding(m)) ?? "";
+  return active[0] ?? "";
 }

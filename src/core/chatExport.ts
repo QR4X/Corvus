@@ -4,32 +4,32 @@ import { ensureFolder } from "./vaultFs";
 import { EXPORTS_FOLDER } from "./vaultPaths";
 
 
-export function limparMarcas(texto: string): string {
-  return texto
+export function stripMarkers(text: string): string {
+  return text
     .replace(/<!--\s*corvus-steps:[\s\S]*?-->/g, "")
     .replace(/<!--\s*corvus:[^>]*-->\n?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-export function exportFileName(titulo: string, quando: Date): string {
+export function exportFileName(title: string, when: Date): string {
   const base =
-    titulo
+    title
       .replace(/[\\/:*?"<>|#^[\]]/g, "-")
       .replace(/\s+/g, " ")
       .replace(/^[.\s]+|[.\s]+$/g, "")
       .trim()
       .slice(0, 60) || "chat";
-  const dia = quando.toISOString().slice(0, 10);
-  return `${base} (${dia}).md`;
+  const day = when.toISOString().slice(0, 10);
+  return `${base} (${day}).md`;
 }
 
-export function exportChatMarkdown(chat: ChatData, quando: Date): string {
+export function exportChatMarkdown(chat: ChatData, when: Date): string {
   const fm = [
     "---",
     `title: ${JSON.stringify(chat.title || "Untitled")}`,
     `date: ${JSON.stringify(chat.date)}`,
-    `exported: ${JSON.stringify(quando.toISOString())}`,
+    `exported: ${JSON.stringify(when.toISOString())}`,
     `model: ${JSON.stringify(chat.model)}`,
     `provider: ${JSON.stringify(chat.provider)}`,
     `mode: ${JSON.stringify(chat.mode)}`,
@@ -37,30 +37,30 @@ export function exportChatMarkdown(chat: ChatData, quando: Date): string {
     "---",
   ].join("\n");
 
-  const corpo = chat.messages
+  const body = chat.messages
     .map((m) => {
-      const quem = m.type === "user" ? "You" : "Assistant";
-      return `## ${quem}\n\n${limparMarcas(m.content)}`;
+      const speaker = m.type === "user" ? "You" : "Assistant";
+      return `## ${speaker}\n\n${stripMarkers(m.content)}`;
     })
     .join("\n\n");
 
-  return `${fm}\n\n# ${chat.title || "Untitled"}\n\n${corpo}\n`;
+  return `${fm}\n\n# ${chat.title || "Untitled"}\n\n${body}\n`;
 }
 
 export async function exportChatToVault(
   app: App,
   chat: ChatData,
-  quando: Date = new Date()
+  when: Date = new Date()
 ): Promise<string> {
   await ensureFolder(app.vault.adapter, EXPORTS_FOLDER);
-  let caminho = `${EXPORTS_FOLDER}/${exportFileName(chat.title, quando)}`;
+  let path = `${EXPORTS_FOLDER}/${exportFileName(chat.title, when)}`;
 
-  for (let n = 2; n <= 50 && (await app.vault.adapter.exists(caminho)); n++) {
-    caminho = `${EXPORTS_FOLDER}/${exportFileName(
+  for (let n = 2; n <= 50 && (await app.vault.adapter.exists(path)); n++) {
+    path = `${EXPORTS_FOLDER}/${exportFileName(
       `${chat.title} ${n}`,
-      quando
+      when
     )}`;
   }
-  await app.vault.adapter.write(caminho, exportChatMarkdown(chat, quando));
-  return caminho;
+  await app.vault.adapter.write(path, exportChatMarkdown(chat, when));
+  return path;
 }

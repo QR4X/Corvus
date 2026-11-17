@@ -19,50 +19,50 @@ import { drawerInnerOf, syncSheetStrip } from "./sheetStrip";
 import { tr } from "../i18n/tr";
 
 const SheetSizeCtx = createContext<{
-  expandir: () => void;
-  ajustar: () => void;
-  restaurar: () => void;
+  expand: () => void;
+  fit: () => void;
+  reset: () => void;
 }>({
-  expandir: () => {},
-  ajustar: () => {},
-  restaurar: () => {},
+  expand: () => {},
+  fit: () => {},
+  reset: () => {},
 });
 
 export function useSheetFull(): void {
-  const { expandir } = useContext(SheetSizeCtx);
+  const { expand } = useContext(SheetSizeCtx);
   useEffect(() => {
-    expandir();
-  }, [expandir]);
+    expand();
+  }, [expand]);
 }
 
-export function useSheetFit(ativo: boolean): void {
-  const { ajustar } = useContext(SheetSizeCtx);
+export function useSheetFit(active: boolean): void {
+  const { fit } = useContext(SheetSizeCtx);
   useEffect(() => {
-    if (ativo) ajustar();
-  }, [ativo, ajustar]);
+    if (active) fit();
+  }, [active, fit]);
 }
 
 export function useSheetDefault(): void {
-  const { restaurar } = useContext(SheetSizeCtx);
+  const { reset } = useContext(SheetSizeCtx);
   useEffect(() => {
-    restaurar();
-  }, [restaurar]);
+    reset();
+  }, [reset]);
 }
 
 const SheetLevelCtx = createContext<{
-  push: (titulo: string, voltar: () => void) => void;
+  push: (title: string, back: () => void) => void;
   pop: () => void;
 }>({ push: () => {}, pop: () => {} });
 
-export function useSheetLevel(titulo: string, voltar: () => void): void {
+export function useSheetLevel(title: string, back: () => void): void {
   const { push, pop } = useContext(SheetLevelCtx);
 
-  const ref = useRef(voltar);
-  ref.current = voltar;
+  const ref = useRef(back);
+  ref.current = back;
   useEffect(() => {
-    push(titulo, () => ref.current());
+    push(title, () => ref.current());
     return () => pop();
-  }, [titulo, push, pop]);
+  }, [title, push, pop]);
 }
 
 const PULL_THRESHOLD = 72;
@@ -112,9 +112,9 @@ export function Sheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setRaiz(panelRef.current?.closest<HTMLElement>(".corvus-root") ?? null);
+    setPortalRoot(panelRef.current?.closest<HTMLElement>(".corvus-root") ?? null);
   }, []);
 
   useLayoutEffect(() => {
@@ -134,26 +134,26 @@ export function Sheet({
   const sizeRef = useRef(size);
   sizeRef.current = size;
 
-  const expandir = useCallback(() => setSize("full"), []);
-  const ajustar = useCallback(() => setSize("fit"), []);
-  const restaurar = useCallback(
+  const expand = useCallback(() => setSize("full"), []);
+  const fit = useCallback(() => setSize("fit"), []);
+  const reset = useCallback(
     () => setSize(startFull ? "full" : "peek"),
     [startFull]
   );
   const api = useMemo(
-    () => ({ expandir, ajustar, restaurar }),
-    [expandir, ajustar, restaurar]
+    () => ({ expand, fit, reset }),
+    [expand, fit, reset]
   );
 
-  const [interno, setInterno] = useState<{
-    titulo: string;
-    voltar: () => void;
+  const [nested, setNested] = useState<{
+    title: string;
+    back: () => void;
   } | null>(null);
-  const nivelApi = useMemo(
+  const levelApi = useMemo(
     () => ({
-      push: (titulo: string, voltar: () => void) =>
-        setInterno({ titulo, voltar }),
-      pop: () => setInterno(null),
+      push: (title: string, back: () => void) =>
+        setNested({ title, back }),
+      pop: () => setNested(null),
     }),
     []
   );
@@ -182,33 +182,33 @@ export function Sheet({
   useEffect(() => {
     const el = panelRef.current;
     if (!open || !el) return;
-    const aoFocar = (e: FocusEvent) => {
-      const alvo = e.target as HTMLElement | null;
-      const tag = alvo?.tagName;
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") setSize("full");
     };
-    el.addEventListener("focusin", aoFocar);
-    return () => el.removeEventListener("focusin", aoFocar);
+    el.addEventListener("focusin", onFocusIn);
+    return () => el.removeEventListener("focusin", onFocusIn);
   }, [open]);
 
   useEffect(() => {
     const el = bodyRef.current;
     if (!open || !el) return;
-    const aoRolar = () => {
+    const onScroll = () => {
       if (el.scrollTop > 8) setSize("full");
     };
-    el.addEventListener("scroll", aoRolar, { passive: true });
-    return () => el.removeEventListener("scroll", aoRolar);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, [open]);
 
   useEffect(() => {
     if (!open) setSize(startFull ? "full" : "peek");
   }, [open, startFull]);
 
-  const montado = useRef(false);
+  const mounted = useRef(false);
   useEffect(() => {
-    if (!montado.current) {
-      montado.current = true;
+    if (!mounted.current) {
+      mounted.current = true;
       return;
     }
     screen();
@@ -259,33 +259,33 @@ export function Sheet({
 
     let y0: number | null = null;
     let dy = 0;
-    let borda: "top" | "bottom" | null = null;
+    let edge: "top" | "bottom" | null = null;
 
-    const emCampoDeTexto = (alvo: EventTarget | null): boolean => {
-      const el = alvo as HTMLElement | null;
-      const campo = el?.closest?.(
+    const isInTextField = (target: EventTarget | null): boolean => {
+      const el = target as HTMLElement | null;
+      const field = el?.closest?.(
         "input, textarea, [contenteditable='true']"
       ) as HTMLElement | null;
-      if (!campo) return false;
+      if (!field) return false;
 
-      return campo.ownerDocument.activeElement === campo;
+      return field.ownerDocument.activeElement === field;
     };
 
-    const comecar = (y: number) => {
-      const noTopo = el.scrollTop <= 0;
-      const noFim = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    const begin = (y: number) => {
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
 
-      borda = noTopo ? "top" : noFim ? "bottom" : null;
+      edge = atTop ? "top" : atBottom ? "bottom" : null;
       y0 = y;
       dy = 0;
     };
 
-    const mover = (y: number): boolean => {
-      if (y0 === null || borda === null) return false;
+    const move = (y: number): boolean => {
+      if (y0 === null || edge === null) return false;
       const d = y - y0;
-      const puxando =
-        (borda === "top" && d > 0) || (borda === "bottom" && d < 0);
-      if (!puxando) {
+      const pulling =
+        (edge === "top" && d > 0) || (edge === "bottom" && d < 0);
+      if (!pulling) {
         dy = 0;
         panel.setCssStyles({ transform: "" });
         return false;
@@ -297,11 +297,11 @@ export function Sheet({
       return true;
     };
 
-    const soltar = () => {
-      const b = borda;
+    const release = () => {
+      const b = edge;
       const d = dy;
       y0 = null;
-      borda = null;
+      edge = null;
       dy = 0;
       panel.setCssStyles({ transform: "" });
       panel.classList.remove("is-dragging");
@@ -317,34 +317,34 @@ export function Sheet({
     };
 
     const onTouchStart = (e: TouchEvent) => {
-      if (emCampoDeTexto(e.target)) {
+      if (isInTextField(e.target)) {
 
         y0 = null;
-        borda = null;
+        edge = null;
         return;
       }
-      if (e.touches.length === 1) comecar(e.touches[0].clientY);
+      if (e.touches.length === 1) begin(e.touches[0].clientY);
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
-      if (mover(e.touches[0].clientY) && e.cancelable) e.preventDefault();
+      if (move(e.touches[0].clientY) && e.cancelable) e.preventDefault();
     };
 
     const onDown = (e: PointerEvent) => {
-      if (emCampoDeTexto(e.target)) return;
-      if (e.pointerType !== "touch") comecar(e.clientY);
+      if (isInTextField(e.target)) return;
+      if (e.pointerType !== "touch") begin(e.clientY);
     };
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") mover(e.clientY);
+      if (e.pointerType !== "touch") move(e.clientY);
     };
     const onUp = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") soltar();
+      if (e.pointerType !== "touch") release();
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", soltar);
-    el.addEventListener("touchcancel", soltar);
+    el.addEventListener("touchend", release);
+    el.addEventListener("touchcancel", release);
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointermove", onMove);
     el.addEventListener("pointerup", onUp);
@@ -352,8 +352,8 @@ export function Sheet({
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", soltar);
-      el.removeEventListener("touchcancel", soltar);
+      el.removeEventListener("touchend", release);
+      el.removeEventListener("touchcancel", release);
       el.removeEventListener("pointerdown", onDown);
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerup", onUp);
@@ -397,10 +397,10 @@ export function Sheet({
           <button
             type="button"
             className="corvus-icon-btn"
-            aria-label={interno || onBack ? tr("Back") : tr("Close")}
-            onClick={interno ? interno.voltar : (onBack ?? onClose)}
+            aria-label={nested || onBack ? tr("Back") : tr("Close")}
+            onClick={nested ? nested.back : (onBack ?? onClose)}
           >
-            <Icon name={interno || onBack ? "chevron-left" : "x"} />
+            <Icon name={nested || onBack ? "chevron-left" : "x"} />
           </button>
           <h3 className="corvus-sheet-title">
             {}
@@ -414,7 +414,7 @@ export function Sheet({
               </span>
             )}
             <span className="corvus-sheet-title-text">
-              {interno?.titulo ?? title}
+              {nested?.title ?? title}
             </span>
           </h3>
           {}
@@ -430,7 +430,7 @@ export function Sheet({
               {action.text && <span>{action.text}</span>}
             </button>
           )}
-          {interno || onBack ? (
+          {nested || onBack ? (
             <button
               type="button"
               className="corvus-icon-btn"
@@ -448,7 +448,7 @@ export function Sheet({
         {progress}
         <div ref={bodyRef} className="corvus-sheet-body">
           <SheetSizeCtx.Provider value={api}>
-            <SheetLevelCtx.Provider value={nivelApi}>
+            <SheetLevelCtx.Provider value={levelApi}>
               {children}
             </SheetLevelCtx.Provider>
           </SheetSizeCtx.Provider>
@@ -456,12 +456,12 @@ export function Sheet({
         {footer && <div className="corvus-sheet-actions">{footer}</div>}
       </div>
       {}
-      {open && footer && raiz
+      {open && footer && portalRoot
         ? createPortal(
             <div className="corvus-float-foot">
               <div className="corvus-float-foot-card">{footer}</div>
             </div>,
-            raiz
+            portalRoot
           )
         : null}
     </div>
@@ -599,7 +599,7 @@ export function SheetSeg({
   activeId: string;
   onPick: (id: string) => void;
 
-  onBlocked?: (id: string, motivo: string, insistiu: boolean) => void;
+  onBlocked?: (id: string, reason: string, insisted: boolean) => void;
   label: string;
 }) {
   const index = Math.max(
@@ -607,7 +607,7 @@ export function SheetSeg({
     0
   );
 
-  const [insistindo, setInsistindo] = useState<string | null>(null);
+  const [insistedId, setInsistedId] = useState<string | null>(null);
   return (
     <div
       className="corvus-sheet-seg"
@@ -635,15 +635,15 @@ export function SheetSeg({
 
           aria-disabled={!!it.blocked && it.id !== activeId}
           onClick={() => {
-            const travado = !!it.blocked && it.id !== activeId;
-            if (!travado) {
-              setInsistindo(null);
+            const locked = !!it.blocked && it.id !== activeId;
+            if (!locked) {
+              setInsistedId(null);
               onPick(it.id);
               return;
             }
             warn();
-            onBlocked?.(it.id, it.blocked ?? "", insistindo === it.id);
-            setInsistindo(it.id);
+            onBlocked?.(it.id, it.blocked ?? "", insistedId === it.id);
+            setInsistedId(it.id);
           }}
         >
           <span className="corvus-sheet-seg-mark">
@@ -721,7 +721,7 @@ export function SheetToggleRow({
         className={on ? "corvus-switch is-on" : "corvus-switch"}
         aria-hidden="true"
       >
-        <span className="corvus-switch-bola" />
+        <span className="corvus-switch-knob" />
       </span>
     </button>
   );
@@ -769,7 +769,7 @@ export function SheetRow({
   };
   onClick: () => void;
 }) {
-  const linha = (
+  const row = (
     <button
       type="button"
       className={
@@ -813,10 +813,10 @@ export function SheetRow({
       )}
     </button>
   );
-  if (!action) return linha;
+  if (!action) return row;
   return (
     <div className="corvus-sheet-row-wrap">
-      {linha}
+      {row}
       <button
         type="button"
         className={

@@ -46,16 +46,16 @@ export function ttsReady(plugin: CorvusPlugin, id: string): boolean {
 let current: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
 
-let soltar: (() => void) | null = null;
+let release: (() => void) | null = null;
 
 export function stopSpeaking(): void {
   current?.pause();
   current = null;
   if (currentUrl) URL.revokeObjectURL(currentUrl);
   currentUrl = null;
-  const solta = soltar;
-  soltar = null;
-  solta?.();
+  const pendingRelease = release;
+  release = null;
+  pendingRelease?.();
 }
 
 interface SpeakOptions {
@@ -64,11 +64,11 @@ interface SpeakOptions {
 
   onPlaying?: () => void;
 
-  guardar?: boolean;
+  cache?: boolean;
 }
 
-const guardadas = new Map<string, { data: Uint8Array; mime: string }>();
-const MAX_GUARDADAS = 16;
+const audioCache = new Map<string, { data: Uint8Array; mime: string }>();
+const MAX_CACHED = 16;
 
 async function synthesize(
   plugin: CorvusPlugin,
@@ -77,33 +77,33 @@ async function synthesize(
 ): Promise<{ data: Uint8Array; mime: string } | null> {
   const s = plugin.settings;
   const eleven = s.ttsProvider === "eleven";
-  const voz = opts.voice ?? (eleven ? s.elevenVoice : s.ttsVoice);
-  const chave = [eleven ? "eleven" : "openai", eleven ? s.elevenModel : s.ttsModel, voz, text].join("\n");
-  const pronta = opts.guardar ? guardadas.get(chave) : undefined;
-  if (pronta) return pronta;
+  const voice = opts.voice ?? (eleven ? s.elevenVoice : s.ttsVoice);
+  const cacheKey = [eleven ? "eleven" : "openai", eleven ? s.elevenModel : s.ttsModel, voice, text].join("\n");
+  const cached = opts.cache ? audioCache.get(cacheKey) : undefined;
+  if (cached) return cached;
 
   let item: { data: Uint8Array; mime: string } | null = null;
   if (eleven) {
     item = await elevenSpeak({
       apiKey: s.elevenApiKey,
-      voiceId: voz,
+      voiceId: voice,
       model: s.elevenModel,
       text,
     });
   } else {
     const provider = getProvider("openai");
     if (!provider.generateAudio) return null;
-    const [gerado] = await provider.generateAudio(
-      { model: s.ttsModel, prompt: text, voice: voz },
+    const [generated] = await provider.generateAudio(
+      { model: s.ttsModel, prompt: text, voice },
       providerCredential(plugin.settings, "openai")
     );
-    item = gerado ? { data: gerado.data, mime: gerado.mime } : null;
+    item = generated ? { data: generated.data, mime: generated.mime } : null;
   }
-  if (item && opts.guardar) {
-    guardadas.set(chave, item);
+  if (item && opts.cache) {
+    audioCache.set(cacheKey, item);
 
-    const maisVelha = guardadas.keys().next();
-    if (guardadas.size > MAX_GUARDADAS && !maisVelha.done) guardadas.delete(maisVelha.value);
+    const oldest = audioCache.keys().next();
+    if (audioCache.size > MAX_CACHED && !oldest.done) audioCache.delete(oldest.value);
   }
   return item;
 }
@@ -146,7 +146,7 @@ export async function speak(
     currentUrl = url;
     audio.src = url;
     await new Promise<void>((resolve) => {
-      soltar = resolve;
+      release = resolve;
       audio.onended = () => resolve();
       audio.onerror = () => resolve();
       audio.play().then(
@@ -178,7 +178,7 @@ export async function speak(
       if (currentUrl) URL.revokeObjectURL(currentUrl);
       current = null;
       currentUrl = null;
-      soltar = null;
+      release = null;
     }
   }
 }

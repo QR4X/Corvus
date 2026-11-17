@@ -1,59 +1,59 @@
 import { getPricing } from "./pricing";
 import { getAllEmbeddingModels } from "../rag/types";
-import { horaDe, inicioDoDia, type LivroDoDia } from "./dailyLedger";
+import { hourKey, startOfDay, type DailyLedger } from "./dailyLedger";
 
-export interface Preco {
-  entrada: number;
-  saida: number;
+export interface UnitPrice {
+  input: number;
+  output: number;
 }
 
-export function precoConhecido(provider: string, model: string): Preco | null {
-  if (provider === "ollama") return { entrada: 0, saida: 0 };
+export function knownPrice(provider: string, model: string): UnitPrice | null {
+  if (provider === "ollama") return { input: 0, output: 0 };
   const p = getPricing(provider, model);
   if (p.inputPerMillion != null && p.outputPerMillion != null) {
-    return { entrada: p.inputPerMillion, saida: p.outputPerMillion };
+    return { input: p.inputPerMillion, output: p.outputPerMillion };
   }
   const emb = getAllEmbeddingModels().find((m) => m.model === model && !m.discovered);
-  if (emb) return { entrada: emb.pricePerMillion, saida: 0 };
+  if (emb) return { input: emb.pricePerMillion, output: 0 };
   return null;
 }
 
-export function ehPago(provider: string, model: string): boolean {
-  const p = precoConhecido(provider, model);
-  return !!p && (p.entrada > 0 || p.saida > 0);
+export function isPaid(provider: string, model: string): boolean {
+  const p = knownPrice(provider, model);
+  return !!p && (p.input > 0 || p.output > 0);
 }
 
-interface Gasto {
+interface Spend {
 
   total: number;
 
-  semPreco: number;
+  unpriced: number;
 }
 
-export function gastoDesde(
-  livro: LivroDoDia,
-  inicio: Date,
-  preco: (provider: string, model: string) => Preco | null = precoConhecido
-): Gasto {
-  const desde = horaDe(inicio);
+export function spendSince(
+  ledger: DailyLedger,
+  start: Date,
+  priceOf: (provider: string, model: string) => UnitPrice | null = knownPrice
+): Spend {
+  const since = hourKey(start);
   let total = 0;
-  let semPreco = 0;
-  for (const [hora, modelos] of Object.entries(livro)) {
-    if (hora < desde) continue;
-    for (const [chave, l] of Object.entries(modelos)) {
-      const corte = chave.indexOf("\u0001");
-      const p = preco(chave.slice(0, corte), chave.slice(corte + 1));
+  let unpriced = 0;
+  for (const [hour, models] of Object.entries(ledger)) {
+    if (hour < since) continue;
+    for (const [key, l] of Object.entries(models)) {
+      const cut = key.indexOf("\u0001");
+      const p = priceOf(key.slice(0, cut), key.slice(cut + 1));
       if (!p) {
-        semPreco += l.r;
+        unpriced += l.r;
         continue;
       }
-      total += (l.i / 1_000_000) * p.entrada + (l.o / 1_000_000) * p.saida;
+      total += (l.i / 1_000_000) * p.input + (l.o / 1_000_000) * p.output;
     }
   }
-  return { total, semPreco };
+  return { total, unpriced };
 }
 
-function fusoDaMaquina(): string {
+function machineTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
@@ -61,18 +61,18 @@ function fusoDaMaquina(): string {
   }
 }
 
-export function gastoDeHoje(livro: LivroDoDia, agora: Date, fuso = fusoDaMaquina()): Gasto {
-  return gastoDesde(livro, inicioDoDia(agora, fuso));
+export function spendToday(ledger: DailyLedger, now: Date, timeZone = machineTimeZone()): Spend {
+  return spendSince(ledger, startOfDay(now, timeZone));
 }
 
-export function marcosCruzados(antes: number, depois: number, limite: number): Array<80 | 100> {
-  if (!(limite > 0)) return [];
-  const marcos: Array<80 | 100> = [];
+export function crossedMarks(before: number, after: number, limit: number): Array<80 | 100> {
+  if (!(limit > 0)) return [];
+  const marks: Array<80 | 100> = [];
   for (const m of [80, 100] as const) {
-    const linha = (limite * m) / 100;
-    if (antes < linha && depois >= linha) marcos.push(m);
+    const threshold = (limit * m) / 100;
+    if (before < threshold && after >= threshold) marks.push(m);
   }
-  return marcos;
+  return marks;
 }
 
 export function usd(n: number): string {

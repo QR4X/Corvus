@@ -2,28 +2,28 @@ import { useCallback, useMemo } from "react";
 import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import {
-  ehFree,
-  escolherAssistente,
-  motivoIndisponivel,
+  isFree,
+  pickAssistant,
+  unavailableReason,
 } from "../assistant/model";
 import {
-  lerNotas,
-  lerProjeto,
-  lerSkill,
-  lerTexto,
-  type ProjetoSugerido,
-  type SkillSugerido,
+  parseNotes,
+  parseProject,
+  parseSkill,
+  parseText,
+  type SuggestedProject,
+  type SuggestedSkill,
 } from "../assistant/parse";
 import {
-  promptDescricao,
-  promptInstrucoes,
-  promptNotas,
-  promptProjeto,
+  promptDescription,
+  promptInstructions,
+  promptNotes,
+  promptProject,
   promptSkill,
-  TETO_NOTAS,
-  type ModoAssistente,
+  MAX_VAULT_NOTES,
+  type AssistantMode,
 } from "../assistant/prompt";
-import { pedirAjuda, type TurnoAssistente } from "../assistant/run";
+import { askAssistant, type AssistantTurn } from "../assistant/run";
 import { PROJECT_COLORS, PROJECT_ICONS } from "../projects";
 import { SKILL_ICONS } from "../skills/skillFile";
 import { ICON_CATALOG } from "../iconCatalog";
@@ -31,26 +31,26 @@ import { vaultNotes } from "./notePicker";
 import { tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
 
-interface RodadaAssistente<T> {
-  pergunta?: string;
+interface AssistantRound<T> {
+  question?: string;
 
-  opcoes?: string[];
-  erro?: string;
+  options?: string[];
+  error?: string;
   draft?: T;
 }
 
-function icones(curtos: readonly string[]): string[] {
-  const todos = new Set(curtos);
-  for (const c of ICON_CATALOG) for (const i of c.icons) todos.add(i);
-  return [...todos];
+function iconChoices(preferred: readonly string[]): string[] {
+  const all = new Set(preferred);
+  for (const c of ICON_CATALOG) for (const i of c.icons) all.add(i);
+  return [...all];
 }
 
 export function useAssistant(plugin: CorvusPlugin) {
   const s = plugin.settings;
 
-  const alvo = useMemo(
+  const target = useMemo(
     () =>
-      escolherAssistente({
+      pickAssistant({
         assistantProvider: s.assistantProvider,
         assistantModel: s.assistantModel,
         favoriteModels: s.favoriteModels,
@@ -66,181 +66,181 @@ export function useAssistant(plugin: CorvusPlugin) {
     ]
   );
 
-  const indisponivel = useMemo(
+  const unavailable = useMemo(
     () =>
-      motivoIndisponivel(alvo, (id) =>
+      unavailableReason(target, (id) =>
         !!providerCredential(plugin.settings, id).trim()
       ),
-    [alvo, plugin]
+    [target, plugin]
   );
 
-  const rodar = useCallback(
-    async (sistema: string, turnos: TurnoAssistente[]) => {
-      if (!alvo) return { erro: indisponivel ?? tr("Assistant not available.") };
-      return pedirAjuda({
-        provider: getProvider(alvo.provider),
-        apiKey: providerCredential(plugin.settings, alvo.provider),
-        model: alvo.model,
-        sistema,
-        turnos,
+  const ask = useCallback(
+    async (system: string, turns: AssistantTurn[]) => {
+      if (!target) return { error: unavailable ?? tr("Assistant not available.") };
+      return askAssistant({
+        provider: getProvider(target.provider),
+        apiKey: providerCredential(plugin.settings, target.provider),
+        model: target.model,
+        system,
+        turns,
       });
     },
-    [alvo, indisponivel, plugin]
+    [target, unavailable, plugin]
   );
 
-  const pedirSkill = useCallback(
+  const askSkill = useCallback(
     async (
-      modo: ModoAssistente,
-      turnos: TurnoAssistente[]
-    ): Promise<RodadaAssistente<SkillSugerido>> => {
-      const permitidos = icones(SKILL_ICONS);
-      const r = await rodar(
-        promptSkill(modo, permitidos, PROJECT_COLORS),
-        turnos
+      mode: AssistantMode,
+      turns: AssistantTurn[]
+    ): Promise<AssistantRound<SuggestedSkill>> => {
+      const allowed = iconChoices(SKILL_ICONS);
+      const r = await ask(
+        promptSkill(mode, allowed, PROJECT_COLORS),
+        turns
       );
-      if (r.erro) return { erro: r.erro };
-      if (r.pergunta) return { pergunta: r.pergunta, opcoes: r.opcoes };
-      const draft = lerSkill(
-        r.bruto ?? null,
-        permitidos,
+      if (r.error) return { error: r.error };
+      if (r.question) return { question: r.question, options: r.options };
+      const draft = parseSkill(
+        r.raw ?? null,
+        allowed,
         SKILL_ICONS[0],
         PROJECT_COLORS
       );
       return draft
         ? { draft }
         : {
-            erro: tr("The assistant did not write a prompt. Try saying more."),
+            error: tr("The assistant did not write a prompt. Try saying more."),
           };
     },
-    [rodar]
+    [ask]
   );
 
-  const pedirProjeto = useCallback(
+  const askProject = useCallback(
     async (
-      modo: ModoAssistente,
-      turnos: TurnoAssistente[]
-    ): Promise<RodadaAssistente<ProjetoSugerido>> => {
-      const permitidos = icones(PROJECT_ICONS);
+      mode: AssistantMode,
+      turns: AssistantTurn[]
+    ): Promise<AssistantRound<SuggestedProject>> => {
+      const allowed = iconChoices(PROJECT_ICONS);
 
-      const caminhos = s.assistantSeesVault
+      const paths = s.assistantSeesVault
         ? vaultNotes(plugin.app)
             .sort((a, b) => b.mtime - a.mtime)
-            .slice(0, TETO_NOTAS)
+            .slice(0, MAX_VAULT_NOTES)
             .map((n) => n.path)
         : [];
-      const r = await rodar(
-        promptProjeto(modo, permitidos, PROJECT_COLORS, caminhos),
-        turnos
+      const r = await ask(
+        promptProject(mode, allowed, PROJECT_COLORS, paths),
+        turns
       );
-      if (r.erro) return { erro: r.erro };
-      if (r.pergunta) return { pergunta: r.pergunta, opcoes: r.opcoes };
-      const draft = lerProjeto(
-        r.bruto ?? null,
-        permitidos,
+      if (r.error) return { error: r.error };
+      if (r.question) return { question: r.question, options: r.options };
+      const draft = parseProject(
+        r.raw ?? null,
+        allowed,
         PROJECT_COLORS,
-        caminhos
+        paths
       );
       return draft
         ? { draft }
         : {
-            erro: tr("The assistant did not name the project. Try saying more."),
+            error: tr("The assistant did not name the project. Try saying more."),
           };
     },
-    [rodar, plugin, s.assistantSeesVault]
+    [ask, plugin, s.assistantSeesVault]
   );
 
-  const pedirCampo = useCallback(
+  const askField = useCallback(
     async (
-      sistema: string,
-      turnos: TurnoAssistente[],
-      teto: number
-    ): Promise<RodadaAssistente<string>> => {
+      system: string,
+      turns: AssistantTurn[],
+      maxChars: number
+    ): Promise<AssistantRound<string>> => {
 
-      const comAlgo = turnos.length
-        ? turnos
-        : [{ quem: "pessoa" as const, texto: "Write it." }];
-      const r = await rodar(sistema, comAlgo);
-      if (r.erro) return { erro: r.erro };
-      if (r.pergunta) return { pergunta: r.pergunta, opcoes: r.opcoes };
-      const texto = lerTexto(r.bruto ?? null, teto);
-      return texto
-        ? { draft: texto }
+      const seeded = turns.length
+        ? turns
+        : [{ role: "user" as const, text: "Write it." }];
+      const r = await ask(system, seeded);
+      if (r.error) return { error: r.error };
+      if (r.question) return { question: r.question, options: r.options };
+      const text = parseText(r.raw ?? null, maxChars);
+      return text
+        ? { draft: text }
         : {
-            erro: tr("The assistant came back empty. Try again, or say more."),
+            error: tr("The assistant came back empty. Try again, or say more."),
           };
     },
-    [rodar]
+    [ask]
   );
 
-  const pedirDescricao = useCallback(
-    (ctx: { name: string; body: string }, turnos: TurnoAssistente[]) =>
-      pedirCampo(promptDescricao(ctx), turnos, 140),
-    [pedirCampo]
+  const askDescription = useCallback(
+    (ctx: { name: string; body: string }, turns: AssistantTurn[]) =>
+      askField(promptDescription(ctx), turns, 140),
+    [askField]
   );
 
-  const pedirInstrucoes = useCallback(
+  const askInstructions = useCallback(
     (
-      ctx: { name: string; notes: readonly string[]; atual: string },
-      turnos: TurnoAssistente[]
-    ) => pedirCampo(promptInstrucoes(ctx), turnos, 2000),
-    [pedirCampo]
+      ctx: { name: string; notes: readonly string[]; current: string },
+      turns: AssistantTurn[]
+    ) => askField(promptInstructions(ctx), turns, 2000),
+    [askField]
   );
 
-  const pedirNotas = useCallback(
+  const askNotes = useCallback(
     async (
-      ctx: { name: string; instructions: string; escolhidas: readonly string[] },
-      turnos: TurnoAssistente[]
-    ): Promise<RodadaAssistente<string[]>> => {
+      ctx: { name: string; instructions: string; picked: readonly string[] },
+      turns: AssistantTurn[]
+    ): Promise<AssistantRound<string[]>> => {
       if (!s.assistantSeesVault)
         return {
-          erro: tr(
+          error: tr(
             "Let the assistant see your note names first (below) — it never reads what is inside them."
           ),
         };
-      const caminhos = vaultNotes(plugin.app)
+      const paths = vaultNotes(plugin.app)
         .sort((a, b) => b.mtime - a.mtime)
-        .slice(0, TETO_NOTAS)
+        .slice(0, MAX_VAULT_NOTES)
         .map((n) => n.path);
-      const comAlgo = turnos.length
-        ? turnos
-        : [{ quem: "pessoa" as const, texto: "Find them." }];
-      const r = await rodar(
-        promptNotas({ ...ctx, caminhos }),
-        comAlgo
+      const seeded = turns.length
+        ? turns
+        : [{ role: "user" as const, text: "Find them." }];
+      const r = await ask(
+        promptNotes({ ...ctx, paths }),
+        seeded
       );
-      if (r.erro) return { erro: r.erro };
-      if (r.pergunta) return { pergunta: r.pergunta, opcoes: r.opcoes };
-      const notas = lerNotas(r.bruto ?? null, caminhos, ctx.escolhidas);
-      return notas.length
-        ? { draft: notas }
+      if (r.error) return { error: r.error };
+      if (r.question) return { question: r.question, options: r.options };
+      const notes = parseNotes(r.raw ?? null, paths, ctx.picked);
+      return notes.length
+        ? { draft: notes }
         : {
-            erro: tr(
+            error: tr(
               "No note in the vault fits yet — try naming the project, or saying what it is about."
             ),
           };
     },
-    [rodar, plugin, s.assistantSeesVault]
+    [ask, plugin, s.assistantSeesVault]
   );
 
-  const deixarVerNotas = useCallback(async () => {
+  const allowVault = useCallback(async () => {
     s.assistantSeesVault = true;
     await plugin.saveSettings();
   }, [plugin, s]);
 
-  const modelos = useMemo(() => {
-    const livres = s.freeModels?.openrouter ?? [];
+  const models = useMemo(() => {
+    const freeIds = s.freeModels?.openrouter ?? [];
 
-    const todos = [
-      ...new Set([...(s.activeModels?.openrouter ?? []), ...livres]),
+    const all = [
+      ...new Set([...(s.activeModels?.openrouter ?? []), ...freeIds]),
     ];
-    return todos.sort(
+    return all.sort(
       (a, b) =>
-        Number(ehFree(b, livres)) - Number(ehFree(a, livres)) ||
+        Number(isFree(b, freeIds)) - Number(isFree(a, freeIds)) ||
         a.localeCompare(b)
     );
   }, [s.activeModels, s.freeModels]);
 
-  const escolherModelo = useCallback(
+  const chooseModel = useCallback(
     async (model: string) => {
       s.assistantModel = model;
       s.assistantProvider = model ? "openrouter" : "";
@@ -249,23 +249,23 @@ export function useAssistant(plugin: CorvusPlugin) {
     [plugin, s]
   );
 
-  const livres = useMemo(
-    () => modelos.filter((m) => ehFree(m, s.freeModels?.openrouter ?? [])),
-    [modelos, s.freeModels]
+  const freeModels = useMemo(
+    () => models.filter((m) => isFree(m, s.freeModels?.openrouter ?? [])),
+    [models, s.freeModels]
   );
 
   return {
-    alvo,
-    modelos,
-    livres,
-    escolherModelo,
-    indisponivel,
-    pedirSkill,
-    pedirProjeto,
-    pedirDescricao,
-    pedirInstrucoes,
-    pedirNotas,
-    deixarVerNotas,
-    veOVault: s.assistantSeesVault,
+    target,
+    models,
+    freeModels,
+    chooseModel,
+    unavailable,
+    askSkill,
+    askProject,
+    askDescription,
+    askInstructions,
+    askNotes,
+    allowVault,
+    seesVault: s.assistantSeesVault,
   };
 }

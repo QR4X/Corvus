@@ -1,39 +1,39 @@
 import type { PickItem } from "./tree";
 import { mark, tr } from "../../i18n/tr";
 
-export const QUANT_ITENS: PickItem[] = [
+export const QUANT_ITEMS: PickItem[] = [
   { value: "precision", label: mark("Precision — full detail"), icon: "target" },
   { value: "balanced", label: mark("Balanced — 4× smaller"), icon: "scale" },
   { value: "light", label: mark("Light — smaller vectors"), icon: "feather" },
   { value: "minimal", label: mark("Minimal — smallest"), icon: "minimize-2" },
 ];
 
-interface IndiceAtual {
+interface CurrentIndex {
   profile: string;
   streamed: boolean;
 
   model?: string;
 }
 
-export function pendenciaDoIndice(
-  atual: IndiceAtual | null,
+export function pendingIndexUpdate(
+  current: CurrentIndex | null,
   s: { ragQuantProfile?: string; ragStreamShards?: boolean; ragEmbeddingModel?: string }
 ): string | null {
-  if (!atual) return null;
-  const partes: string[] = [];
+  if (!current) return null;
+  const parts: string[] = [];
 
-  if (s.ragEmbeddingModel && atual.model && s.ragEmbeddingModel !== atual.model) {
-    partes.push(tr("the new embedding model"));
+  if (s.ragEmbeddingModel && current.model && s.ragEmbeddingModel !== current.model) {
+    parts.push(tr("the new embedding model"));
   }
-  if ((s.ragQuantProfile || "balanced") !== (atual.profile || "balanced")) {
-    partes.push(tr("the new precision"));
+  if ((s.ragQuantProfile || "balanced") !== (current.profile || "balanced")) {
+    parts.push(tr("the new precision"));
   }
-  const pedacos = s.ragStreamShards === true;
-  if (pedacos !== atual.streamed) {
-    partes.push(pedacos ? tr("search in pieces") : tr("a single index file"));
+  const sharded = s.ragStreamShards === true;
+  if (sharded !== current.streamed) {
+    parts.push(sharded ? tr("search in pieces") : tr("a single index file"));
   }
-  if (partes.length === 0) return null;
+  if (parts.length === 0) return null;
 
-  const quais = partes.reduce((a, b) => tr("{a} and {b}", { a, b }));
-  return tr("Update the index to apply {changes}.", { changes: quais });
+  const changes = parts.reduce((a, b) => tr("{a} and {b}", { a, b }));
+  return tr("Update the index to apply {changes}.", { changes });
 }

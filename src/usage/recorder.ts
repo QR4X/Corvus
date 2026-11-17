@@ -1,25 +1,25 @@
-import type { Lancamento } from "./dailyLedger";
+import type { LedgerEntry } from "./dailyLedger";
 
-type Anotador = (provider: string, model: string, delta: Partial<Lancamento>) => void;
+type UsageRecorder = (provider: string, model: string, delta: Partial<LedgerEntry>) => void;
 
-let atual: Anotador | null = null;
+let recorder: UsageRecorder | null = null;
 
-export function definirAnotadorDeUso(fn: Anotador | null): void {
-  atual = fn;
+export function setUsageRecorder(fn: UsageRecorder | null): void {
+  recorder = fn;
 }
 
-export function anotarUso(provider: string, model: string, delta: Partial<Lancamento>): void {
-  atual?.(provider, model, delta);
+export function recordUsage(provider: string, model: string, delta: Partial<LedgerEntry>): void {
+  recorder?.(provider, model, delta);
 }
 
-type GuardaDeGasto = (provider: string, model: string) => void;
+type SpendGuard = (provider: string, model: string) => void;
 
-let guarda: GuardaDeGasto | null = null;
+let spendGuard: SpendGuard | null = null;
 
-export function definirGuardaDeGasto(fn: GuardaDeGasto | null): void {
-  guarda = fn;
+export function setSpendGuard(fn: SpendGuard | null): void {
+  spendGuard = fn;
 }
 
-export function conferirGasto(provider: string, model: string): void {
-  guarda?.(provider, model);
+export function checkSpend(provider: string, model: string): void {
+  spendGuard?.(provider, model);
 }

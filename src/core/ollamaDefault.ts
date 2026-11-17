@@ -1,6 +1,6 @@
 export const OLLAMA_LOCAL = "http://localhost:11434";
 
-interface OllamaSalvo {
+interface SavedOllamaSettings {
   ollamaEndpoint?: unknown;
   ollamaDefaultReviewed?: unknown;
   defaultProvider?: unknown;
@@ -12,108 +12,108 @@ interface OllamaSalvo {
   modelProvider?: Record<string, unknown>;
 }
 
-interface OllamaFabrica {
-  modelo: string;
-  ativos: readonly string[];
+interface OllamaFactoryDefaults {
+  model: string;
+  active: readonly string[];
 }
 
-export function usaOllama(s: OllamaSalvo, fabrica: OllamaFabrica): boolean {
-  const lista = (v: unknown): v is unknown[] => Array.isArray(v) && v.length > 0;
-  const ativos = s.activeModels?.ollama;
-  const ativosMexidos =
-    lista(ativos) &&
-    (ativos.length !== fabrica.ativos.length ||
-      ativos.some((m) => !fabrica.ativos.includes(m as string)));
+export function usesOllama(s: SavedOllamaSettings, defaults: OllamaFactoryDefaults): boolean {
+  const isNonEmpty = (v: unknown): v is unknown[] => Array.isArray(v) && v.length > 0;
+  const active = s.activeModels?.ollama;
+  const activeChanged =
+    isNonEmpty(active) &&
+    (active.length !== defaults.active.length ||
+      active.some((m) => !defaults.active.includes(m as string)));
   return (
     s.defaultProvider === "ollama" ||
     s.providerStatus?.ollama?.ok === true ||
     (typeof s.ollamaModel === "string" &&
       s.ollamaModel !== "" &&
-      s.ollamaModel !== fabrica.modelo) ||
-    lista(s.favoriteModels?.ollama) ||
-    ativosMexidos ||
+      s.ollamaModel !== defaults.model) ||
+    isNonEmpty(s.favoriteModels?.ollama) ||
+    activeChanged ||
     Object.values(s.roleModels ?? {}).some((r) => r?.provider === "ollama") ||
     Object.values(s.modelProvider ?? {}).some((p) => p === "ollama")
   );
 }
 
-export const FABRICA_ATE_0923: OllamaFabrica = {
-  modelo: "llama3.2",
-  ativos: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
+export const OLLAMA_DEFAULTS_UNTIL_0923: OllamaFactoryDefaults = {
+  model: "llama3.2",
+  active: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"],
 };
 
-export function nomeCompleto(m: string): string {
-  const ultimo = m.slice(m.lastIndexOf("/") + 1);
-  return ultimo.includes(":") ? m : `${m}:latest`;
+export function fullModelName(m: string): string {
+  const lastSegment = m.slice(m.lastIndexOf("/") + 1);
+  return lastSegment.includes(":") ? m : `${m}:latest`;
 }
 
-export interface ListasDoOllama {
-  ativos: readonly string[];
-  favoritos: readonly string[];
+export interface OllamaLists {
+  active: readonly string[];
+  favorites: readonly string[];
 
-  modelo: string;
+  model: string;
 
-  vistos: readonly string[] | null;
+  seen: readonly string[] | null;
 }
 
-export function listaDeFabrica(ativos: readonly string[]): boolean {
-  if (ativos.length === 0) return true;
-  const fabrica = FABRICA_ATE_0923.ativos;
-  return ativos.length === fabrica.length && ativos.every((m) => fabrica.includes(m));
+export function isFactoryList(active: readonly string[]): boolean {
+  if (active.length === 0) return true;
+  const defaults = OLLAMA_DEFAULTS_UNTIL_0923.active;
+  return active.length === defaults.length && active.every((m) => defaults.includes(m));
 }
 
-export function alinharAoInstalado(
-  l: ListasDoOllama,
-  instalados: readonly string[],
-  ehEmbedding: (m: string) => boolean
-): ListasDoOllama & { vistos: readonly string[] } {
-  const tem = new Set(instalados.map(nomeCompleto));
-  const existe = (m: string) => tem.has(nomeCompleto(m));
+export function alignToInstalled(
+  l: OllamaLists,
+  installed: readonly string[],
+  isEmbedding: (m: string) => boolean
+): OllamaLists & { seen: readonly string[] } {
+  const installedNames = new Set(installed.map(fullModelName));
+  const isInstalled = (m: string) => installedNames.has(fullModelName(m));
 
-  const doOllama = (m: string) => instalados.find((i) => nomeCompleto(i) === nomeCompleto(m));
+  const installedName = (m: string) => installed.find((i) => fullModelName(i) === fullModelName(m));
 
-  const deFabrica = l.vistos === null && l.favoritos.length === 0 && listaDeFabrica(l.ativos);
-  const partida: ListasDoOllama = deFabrica
-    ? { ativos: [], favoritos: [], modelo: (l.modelo && doOllama(l.modelo)) || "", vistos: null }
+  const factoryState = l.seen === null && l.favorites.length === 0 && isFactoryList(l.active);
+  const start: OllamaLists = factoryState
+    ? { active: [], favorites: [], model: (l.model && installedName(l.model)) || "", seen: null }
     : l;
 
-  const ativos: string[] = [];
-  const jaAtivos = new Set<string>();
-  const ativar = (m: string) => {
-    const k = nomeCompleto(m);
-    if (jaAtivos.has(k)) return;
-    jaAtivos.add(k);
-    ativos.push(m);
+  const active: string[] = [];
+  const activeKeys = new Set<string>();
+  const activate = (m: string) => {
+    const k = fullModelName(m);
+    if (activeKeys.has(k)) return;
+    activeKeys.add(k);
+    active.push(m);
   };
-  for (const m of partida.ativos) if (existe(m)) ativar(m);
+  for (const m of start.active) if (isInstalled(m)) activate(m);
 
-  const vistos =
-    partida.vistos !== null
-      ? new Set(partida.vistos.map(nomeCompleto))
-      : ativos.length > 0
-        ? tem
+  const seen =
+    start.seen !== null
+      ? new Set(start.seen.map(fullModelName))
+      : active.length > 0
+        ? installedNames
         : new Set<string>();
-  for (const m of instalados) {
-    if (!vistos.has(nomeCompleto(m)) && !ehEmbedding(m)) ativar(m);
+  for (const m of installed) {
+    if (!seen.has(fullModelName(m)) && !isEmbedding(m)) activate(m);
   }
 
-  if (!ativos.some((m) => !ehEmbedding(m))) {
-    for (const m of instalados) if (!ehEmbedding(m)) ativar(m);
+  if (!active.some((m) => !isEmbedding(m))) {
+    for (const m of installed) if (!isEmbedding(m)) activate(m);
   }
 
-  const favoritos = partida.favoritos.filter(existe);
-  const modelo =
-    partida.modelo && existe(partida.modelo)
-      ? partida.modelo
-      : (ativos.find((m) => !ehEmbedding(m)) ?? "");
-  return { ativos, favoritos, modelo, vistos: [...instalados] };
+  const favorites = start.favorites.filter(isInstalled);
+  const model =
+    start.model && isInstalled(start.model)
+      ? start.model
+      : (active.find((m) => !isEmbedding(m)) ?? "");
+  return { active, favorites, model, seen: [...installed] };
 }
 
-export function revisarOllamaPadrao(
-  s: OllamaSalvo,
-  fabrica: OllamaFabrica
+export function reviewOllamaDefault(
+  s: SavedOllamaSettings,
+  defaults: OllamaFactoryDefaults
 ): string | null {
   if (s.ollamaDefaultReviewed === true) return null;
   if (s.ollamaEndpoint !== OLLAMA_LOCAL) return null;
-  return usaOllama(s, fabrica) ? null : "";
+  return usesOllama(s, defaults) ? null : "";
 }

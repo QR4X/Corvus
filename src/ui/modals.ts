@@ -9,7 +9,7 @@ import {
 import type CorvusPlugin from "../main";
 import { tr } from "../i18n/tr";
 
-export function marcarPerigoso(b: ButtonComponent): ButtonComponent {
+export function markDangerous(b: ButtonComponent): ButtonComponent {
   if (requireApiVersion("1.13.0")) b.buttonEl.addClass("mod-destructive", "mod-cta");
   else b.buttonEl.addClass("mod-warning");
   return b;
@@ -41,14 +41,14 @@ export class PromptModal extends Modal {
     this.containerEl.addClass("corvus-modal-container", "corvus-prompt-container");
     this.titleEl.setText(this.opts.title);
 
-    const campo = this.contentEl.createDiv({ cls: "corvus-prompt-field" });
+    const field = this.contentEl.createDiv({ cls: "corvus-prompt-field" });
     if (this.opts.label) {
-      campo.createEl("label", {
+      field.createEl("label", {
         cls: "corvus-prompt-label",
         text: this.opts.label,
       });
     }
-    const input = campo.createEl("input", { cls: "corvus-prompt-input" });
+    const input = field.createEl("input", { cls: "corvus-prompt-input" });
     input.type = "text";
     input.value = this.value;
     if (this.opts.placeholder) input.placeholder = this.opts.placeholder;
@@ -67,14 +67,14 @@ export class PromptModal extends Modal {
       input.setSelectionRange(input.value.length, input.value.length);
     }, 0);
 
-    const acoes = this.contentEl.createDiv({ cls: "corvus-prompt-actions" });
-    const cancelar = acoes.createEl("button", {
+    const actions = this.contentEl.createDiv({ cls: "corvus-prompt-actions" });
+    const cancel = actions.createEl("button", {
       cls: "corvus-prompt-btn",
       text: tr("Cancel"),
     });
-    cancelar.type = "button";
-    cancelar.onclick = () => this.close();
-    const ok = acoes.createEl("button", {
+    cancel.type = "button";
+    cancel.onclick = () => this.close();
+    const ok = actions.createEl("button", {
       cls: "corvus-prompt-btn is-cta",
       text: this.opts.submitLabel ?? tr("OK"),
     });
@@ -137,7 +137,7 @@ export class ConfirmModal extends Modal {
         b.setButtonText(this.opts.confirmLabel ?? tr("Confirm")).onClick(() =>
           this.finish(true)
         );
-        if (this.opts.danger) marcarPerigoso(b);
+        if (this.opts.danger) markDangerous(b);
         else b.setCta();
       });
   }

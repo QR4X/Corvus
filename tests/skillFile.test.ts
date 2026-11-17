@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
-  SKILL_DRAFT_VAZIO,
+  EMPTY_SKILL_DRAFT,
   skillFileName,
   skillMarkdown,
-  skillProblema,
+  skillProblem,
   type SkillDraft,
 } from "../src/skills/skillFile";
 
 const draft = (over: Partial<SkillDraft> = {}): SkillDraft => ({
-  ...SKILL_DRAFT_VAZIO,
+  ...EMPTY_SKILL_DRAFT,
   name: "Weekly review",
   body: "Go through this week's notes.",
   ...over,
@@ -66,25 +66,25 @@ describe("skillMarkdown", () => {
 
 describe("skillProblema", () => {
   it("pronto é null", () => {
-    expect(skillProblema(draft(), [])).toBeNull();
+    expect(skillProblem(draft(), [])).toBeNull();
   });
 
   it("cobra o nome e cobra o prompt", () => {
-    expect(skillProblema(draft({ name: "  " }), [])).toMatch(/name/i);
+    expect(skillProblem(draft({ name: "  " }), [])).toMatch(/name/i);
 
-    expect(skillProblema(draft({ body: "" }), [])).toMatch(/prompt/i);
+    expect(skillProblem(draft({ body: "" }), [])).toMatch(/prompt/i);
   });
 
   it("não pisa num skill que já existe", () => {
     const existentes = ["corvus-ai/skills/Weekly review.md"];
-    expect(skillProblema(draft(), existentes)).toMatch(/already/i);
+    expect(skillProblem(draft(), existentes)).toMatch(/already/i);
 
-    expect(skillProblema(draft(), existentes, existentes[0])).toBeNull();
+    expect(skillProblem(draft(), existentes, existentes[0])).toBeNull();
   });
 
   it("colisão ignora maiúsculas — o disco também ignora", () => {
     expect(
-      skillProblema(draft({ name: "WEEKLY REVIEW" }), [
+      skillProblem(draft({ name: "WEEKLY REVIEW" }), [
         "corvus-ai/skills/Weekly review.md",
       ])
     ).toMatch(/already/i);

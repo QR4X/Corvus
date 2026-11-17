@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { useSheetFull, useSheetLevel } from "./Sheet";
 import { ICON_CATALOG, iconCatalogSize, iconCategoryOf } from "../iconCatalog";
-import { peDoWizard } from "./wizard";
+import { wizardFoot } from "./wizard";
 import { tr } from "../i18n/tr";
 
 export function SheetField({
@@ -24,12 +24,12 @@ export function SheetField({
   );
 }
 
-function useFocarCampo<T extends HTMLElement>(ligado?: boolean) {
+function useAutoFocus<T extends HTMLElement>(enabled?: boolean) {
   const ref = useRef<T>(null);
   useLayoutEffect(() => {
-    if (!ligado) return;
+    if (!enabled) return;
     ref.current?.focus({ preventScroll: true });
-  }, [ligado]);
+  }, [enabled]);
   return ref;
 }
 
@@ -37,23 +37,23 @@ export function SheetInput({
   value,
   placeholder,
   autoFocus,
-  comSpark,
+  withSpark,
   onChange,
 }: {
   value: string;
   placeholder?: string;
   autoFocus?: boolean;
 
-  comSpark?: boolean;
+  withSpark?: boolean;
   onChange: (v: string) => void;
 }) {
-  const ref = useFocarCampo<HTMLInputElement>(autoFocus);
+  const ref = useAutoFocus<HTMLInputElement>(autoFocus);
   return (
     <input
       ref={ref}
 
       className={
-        comSpark ? "corvus-field-input corvus-has-spark" : "corvus-field-input"
+        withSpark ? "corvus-field-input corvus-has-spark" : "corvus-field-input"
       }
       type="text"
       value={value}
@@ -67,7 +67,7 @@ export function SheetTextarea({
   value,
   placeholder,
   rows = 6,
-  comSpark,
+  withSpark,
   autoFocus,
   onChange,
 }: {
@@ -75,16 +75,16 @@ export function SheetTextarea({
   placeholder?: string;
   rows?: number;
 
-  comSpark?: boolean;
+  withSpark?: boolean;
 
   autoFocus?: boolean;
   onChange: (v: string) => void;
 }) {
-  const ref = useFocarCampo<HTMLTextAreaElement>(autoFocus);
+  const ref = useAutoFocus<HTMLTextAreaElement>(autoFocus);
   return (
     <textarea
       ref={ref}
-      className={comSpark ? "corvus-textarea corvus-has-spark" : "corvus-textarea"}
+      className={withSpark ? "corvus-textarea corvus-has-spark" : "corvus-textarea"}
       value={value}
       placeholder={placeholder}
       rows={rows}
@@ -183,11 +183,11 @@ export function SheetIconGrid({
   tint?: string;
 }) {
 
-  const curtos = icons.includes(value) ? [...icons] : [value, ...icons];
+  const shortlist = icons.includes(value) ? [...icons] : [value, ...icons];
 
   return (
     <div className="corvus-icongrid" role="group" aria-label={tr("Icon")}>
-      {curtos.map((ic) => (
+      {shortlist.map((ic) => (
         <IconTile
           key={ic}
           icon={ic}
@@ -206,8 +206,8 @@ export function SheetIconGrid({
         onClick={onBrowse}
       >
         <Icon name="plus" size={18} />
-        <span className="corvus-more-rotulo">{tr("More")}</span>
-        <span className="corvus-more-conta">{iconCatalogSize()}</span>
+        <span className="corvus-more-label">{tr("More")}</span>
+        <span className="corvus-more-count">{iconCatalogSize()}</span>
       </button>
     </div>
   );
@@ -232,10 +232,10 @@ export function SheetIconCatalog({
 
   useSheetLevel(tr("Icon"), onBack);
 
-  const [aba, setAba] = useState(
+  const [category, setCategory] = useState(
     () => iconCategoryOf(value) ?? ICON_CATALOG[0].id
   );
-  const atual = ICON_CATALOG.find((c) => c.id === aba) ?? ICON_CATALOG[0];
+  const current = ICON_CATALOG.find((c) => c.id === category) ?? ICON_CATALOG[0];
 
   return (
     <div className="corvus-iconcat">
@@ -243,8 +243,8 @@ export function SheetIconCatalog({
       {children}
       <SheetChoices
         label={tr("Icon category")}
-        value={atual.id}
-        onPick={setAba}
+        value={current.id}
+        onPick={setCategory}
         items={ICON_CATALOG.map((c) => ({
           id: c.id,
 
@@ -253,8 +253,8 @@ export function SheetIconCatalog({
           count: c.icons.length,
         }))}
       />
-      <div className="corvus-icongrid" role="group" aria-label={tr(atual.label)}>
-        {atual.icons.map((ic) => (
+      <div className="corvus-icongrid" role="group" aria-label={tr(current.label)}>
+        {current.icons.map((ic) => (
           <IconTile
             key={ic}
             icon={ic}
@@ -304,27 +304,27 @@ export function SheetSwatches({
 export function SheetSubmit({
   label,
   icon = "check",
-  problema,
+  problem,
   onSubmit,
 }: {
   label: string;
   icon?: string;
 
-  problema?: string | null;
+  problem?: string | null;
   onSubmit: () => void;
 }) {
   return (
     <div className="corvus-form-foot">
-      {problema && (
+      {problem && (
         <p className="corvus-form-problem" role="status">
           <Icon name="info" size={15} />
-          <span>{problema}</span>
+          <span>{problem}</span>
         </p>
       )}
       <button
         type="button"
         className="corvus-form-submit"
-        aria-disabled={!!problema}
+        aria-disabled={!!problem}
         onClick={onSubmit}
       >
         <Icon name={icon} size={18} />
@@ -335,63 +335,63 @@ export function SheetSubmit({
 }
 
 export function SheetProgress({
-  atual,
+  current,
   total,
 }: {
 
-  atual: number;
+  current: number;
 
   total: number;
 }) {
 
-  const passos = Math.max(total, 1);
-  const feito = Math.min(Math.max(atual + 1, 1), passos);
+  const steps = Math.max(total, 1);
+  const done = Math.min(Math.max(current + 1, 1), steps);
   return (
     <div
       className="corvus-wiz-bar"
       role="progressbar"
       aria-valuemin={1}
-      aria-valuemax={passos}
-      aria-valuenow={feito}
-      aria-label={tr("Step {n} of {total}", { n: feito, total: passos })}
+      aria-valuemax={steps}
+      aria-valuenow={done}
+      aria-label={tr("Step {n} of {total}", { n: done, total: steps })}
     >
       <span
         className="corvus-wiz-fill"
-        style={{ width: `${(feito / passos) * 100}%` }}
+        style={{ width: `${(done / steps) * 100}%` }}
       />
     </div>
   );
 }
 
 export function SheetWizardFoot({
-  atual,
+  current,
   total,
-  onPasso,
-  problema,
+  onStep,
+  problem,
   label,
   onSubmit,
 }: {
-  atual: number;
+  current: number;
 
   total: number;
-  onPasso: (i: number) => void;
+  onStep: (i: number) => void;
 
-  problema?: string | null;
+  problem?: string | null;
 
   label: string;
   onSubmit: () => void;
 }) {
 
-  const pe = peDoWizard({ atual, total, problema });
+  const foot = wizardFoot({ current, total, problem });
   return (
     <div className="corvus-form-foot">
-      {pe.status === "problema" ? (
+      {foot.status === "problem" ? (
 
         <p className="corvus-form-problem" role="status">
           <Icon name="info" size={15} />
-          <span>{problema}</span>
+          <span>{problem}</span>
         </p>
-      ) : pe.status === "atalho" ? (
+      ) : foot.status === "shortcut" ? (
 
         <button type="button" className="corvus-wiz-now" onClick={onSubmit}>
           <Icon name="check" size={15} />
@@ -402,12 +402,12 @@ export function SheetWizardFoot({
       <button
         type="button"
         className="corvus-form-submit"
-        aria-disabled={pe.primario === "submit" ? !pe.pronto : undefined}
+        aria-disabled={foot.primary === "submit" ? !foot.ready : undefined}
         onClick={() =>
-          pe.primario === "submit" ? onSubmit() : onPasso(atual + 1)
+          foot.primary === "submit" ? onSubmit() : onStep(current + 1)
         }
       >
-        {pe.primario === "submit" ? (
+        {foot.primary === "submit" ? (
           <>
             <Icon name="check" size={18} />
             <span>{label}</span>

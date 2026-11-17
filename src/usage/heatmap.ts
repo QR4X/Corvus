@@ -1,107 +1,107 @@
 import type { ChatSummary } from "../core/chatPersistence";
 import { uiLocale } from "../i18n/tr";
 
-export interface Celula {
+export interface HeatCell {
 
-  dia: string | null;
+  day: string | null;
   tokens: number;
 
-  nivel: number;
+  level: number;
 
-  futuro?: boolean;
+  future?: boolean;
 }
 
 interface Heatmap {
 
-  celulas: Celula[];
+  cells: HeatCell[];
 
-  linhas: number;
+  rows: number;
 
-  pico: number;
+  peak: number;
 
   total: number;
 
-  rotulo: string;
+  label: string;
 }
 
-export function diaLocal(t: number): string {
+export function localDay(t: number): string {
   const d = new Date(t);
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mes}-${dia}`;
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 }
 
-export function nivelDoDia(tokens: number, pico: number): number {
-  if (tokens <= 0 || pico <= 0) return 0;
-  const f = tokens / pico;
+export function dayLevel(tokens: number, peak: number): number {
+  if (tokens <= 0 || peak <= 0) return 0;
+  const f = tokens / peak;
   if (f > 0.75) return 4;
   if (f > 0.5) return 3;
   if (f > 0.25) return 2;
   return 1;
 }
 
-function porDia(chats: readonly ChatSummary[]): Map<string, number> {
-  const mapa = new Map<string, number>();
+function tokensByDay(chats: readonly ChatSummary[]): Map<string, number> {
+  const totals = new Map<string, number>();
   for (const c of chats) {
     const t = Date.parse(c.date);
     if (!Number.isFinite(t)) continue;
-    const dia = diaLocal(t);
+    const day = localDay(t);
     const tin = Number.isFinite(c.tokensIn) ? c.tokensIn : 0;
     const tout = Number.isFinite(c.tokensOut) ? c.tokensOut : 0;
-    mapa.set(dia, (mapa.get(dia) ?? 0) + tin + tout);
+    totals.set(day, (totals.get(day) ?? 0) + tin + tout);
   }
-  return mapa;
+  return totals;
 }
 
-export function heatmapDoMes(
+export function monthHeatmap(
   chats: readonly ChatSummary[],
-  agora: number = Date.now()
+  now: number = Date.now()
 ): Heatmap {
-  const somas = porDia(chats);
-  const hoje = new Date(agora);
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
+  const sums = tokensByDay(chats);
+  const today = new Date(now);
+  const year = today.getFullYear();
+  const month = today.getMonth();
 
-  const primeiro = new Date(ano, mes, 1);
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const vazioInicial = (primeiro.getDay() + 6) % 7;
-  const linhas = Math.ceil((vazioInicial + diasNoMes) / 7);
+  const leadingBlanks = (first.getDay() + 6) % 7;
+  const rows = Math.ceil((leadingBlanks + daysInMonth) / 7);
 
-  const celulas: Celula[] = [];
-  let pico = 0;
+  const cells: HeatCell[] = [];
+  let peak = 0;
   let total = 0;
-  for (let i = 0; i < linhas * 7; i++) {
-    const diaDoMes = i - vazioInicial + 1;
-    if (diaDoMes < 1 || diaDoMes > diasNoMes) {
-      celulas.push({ dia: null, tokens: 0, nivel: 0 });
+  for (let i = 0; i < rows * 7; i++) {
+    const dayOfMonth = i - leadingBlanks + 1;
+    if (dayOfMonth < 1 || dayOfMonth > daysInMonth) {
+      cells.push({ day: null, tokens: 0, level: 0 });
       continue;
     }
-    const d = new Date(ano, mes, diaDoMes);
+    const d = new Date(year, month, dayOfMonth);
 
-    if (d.getTime() > agora) {
-      celulas.push({ dia: null, tokens: 0, nivel: 0, futuro: true });
+    if (d.getTime() > now) {
+      cells.push({ day: null, tokens: 0, level: 0, future: true });
       continue;
     }
-    const chave = diaLocal(d.getTime());
-    const tokens = somas.get(chave) ?? 0;
-    if (tokens > pico) pico = tokens;
+    const key = localDay(d.getTime());
+    const tokens = sums.get(key) ?? 0;
+    if (tokens > peak) peak = tokens;
     total += tokens;
-    celulas.push({ dia: chave, tokens, nivel: 0 });
+    cells.push({ day: key, tokens, level: 0 });
   }
 
-  for (const c of celulas) c.nivel = nivelDoDia(c.tokens, pico);
+  for (const c of cells) c.level = dayLevel(c.tokens, peak);
 
   return {
-    celulas,
-    linhas,
-    pico,
+    cells,
+    rows,
+    peak,
     total,
-    rotulo: primeiro.toLocaleDateString(uiLocale(), { month: "long" }),
+    label: first.toLocaleDateString(uiLocale(), { month: "long" }),
   };
 }
 
-export function inicioDoMes(agora: number = Date.now()): string {
-  const d = new Date(agora);
-  return diaLocal(new Date(d.getFullYear(), d.getMonth(), 1).getTime());
+export function monthStart(now: number = Date.now()): string {
+  const d = new Date(now);
+  return localDay(new Date(d.getFullYear(), d.getMonth(), 1).getTime());
 }

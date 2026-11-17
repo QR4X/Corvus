@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import {
-  ehRecusaDeRaciocinioComFerramentas,
-  semRaciocinioComFerramentas,
+  isReasoningWithToolsRejection,
+  noReasoningWithTools,
 } from "../src/providers/paramPolicy";
 import { buildChatBody } from "../src/providers/_shared";
 import { OpenAIProvider } from "../src/providers/openai";
@@ -29,20 +29,20 @@ afterEach(() => __setRequestUrl(null));
 describe("quem recusa ferramentas com raciocínio", () => {
   it("GPT-5.4 em diante (e variantes); antes disso e o-series, não", () => {
     for (const m of ["gpt-5.4", "gpt-5.4-mini", "gpt-5.5", "gpt-5.6-luna", "gpt-5.10", "gpt-6"]) {
-      expect(semRaciocinioComFerramentas("openai", m), m).toBe(true);
+      expect(noReasoningWithTools("openai", m), m).toBe(true);
     }
     for (const m of ["gpt-5", "gpt-5.1", "gpt-5.2-pro", "gpt-5.3", "gpt-4o", "gpt-4.1", "o3", "o4-mini", "chatgpt-4o-latest"]) {
-      expect(semRaciocinioComFerramentas("openai", m), m).toBe(false);
+      expect(noReasoningWithTools("openai", m), m).toBe(false);
     }
   });
 
   it("só no provider da OpenAI (o OpenRouter tem o seu próprio caminho)", () => {
-    expect(semRaciocinioComFerramentas("openrouter", "openai/gpt-5.4")).toBe(false);
+    expect(noReasoningWithTools("openrouter", "openai/gpt-5.4")).toBe(false);
   });
 
   it("reconhece a mensagem da OpenAI, e não outro 400", () => {
-    expect(ehRecusaDeRaciocinioComFerramentas(RECUSA("gpt-5.4"))).toBe(true);
-    expect(ehRecusaDeRaciocinioComFerramentas("Unsupported parameter: 'temperature'")).toBe(false);
+    expect(isReasoningWithToolsRejection(RECUSA("gpt-5.4"))).toBe(true);
+    expect(isReasoningWithToolsRejection("Unsupported parameter: 'temperature'")).toBe(false);
   });
 });
 
@@ -81,7 +81,7 @@ describe("modelo novo que recusa: aprende e tenta de novo", () => {
     const r = await new OpenAIProvider().chat(pedido("o5"), "sk-teste");
     expect(r.content).toBe("Pronto.");
     expect(corpos.map((b) => b.reasoning_effort)).toEqual(["medium", "none"]);
-    expect(semRaciocinioComFerramentas("openai", "o5")).toBe(true);
+    expect(noReasoningWithTools("openai", "o5")).toBe(true);
   });
 
   it("outro 400 não é tentado de novo", async () => {

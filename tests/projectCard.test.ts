@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatarTokens,
-  resumoDoProjeto,
-  tokensDeEntrada,
+  formatTokens,
+  summarizeProject,
+  projectInputTokens,
 } from "../src/ui/projectSummary";
 import {
-  blocoDeInstrucoes,
-  blocoDeNotasAnexadas,
+  instructionsSection,
+  attachedNotesSection,
 } from "../src/agent/conversation";
 import { estimateTokens } from "../src/core/tokens";
 import type { Project } from "../src/projects";
@@ -27,7 +27,7 @@ const projeto = (p: Partial<Project> = {}): Project => ({
 
 describe("está vivo?", () => {
   it("com conversas: quando foi a ÚLTIMA", () => {
-    const r = resumoDoProjeto(
+    const r = summarizeProject(
       projeto({ chatIds: ["a", "b"] }),
       [
         { id: "a", title: "Antiga", date: dias(9) },
@@ -35,40 +35,40 @@ describe("está vivo?", () => {
       ],
       AGORA
     );
-    expect(r.quando).toBe("2d ago");
+    expect(r.when).toBe("2d ago");
   });
 
   it("sem conversa nenhuma: quando ele nasceu", () => {
-    expect(resumoDoProjeto(projeto(), [], AGORA).quando).toBe("5d ago");
+    expect(summarizeProject(projeto(), [], AGORA).when).toBe("5d ago");
   });
 
   it("agora mesmo não vira '0m ago'", () => {
-    const r = resumoDoProjeto(
+    const r = summarizeProject(
       projeto({ chatIds: ["a"] }),
       [{ id: "a", title: "x", date: new Date(AGORA - 5_000).toISOString() }],
       AGORA
     );
-    expect(r.quando).toBe("just now");
+    expect(r.when).toBe("just now");
   });
 
   it("mais de um mês: a data, sem 'ago' pendurado depois dela", () => {
-    const r = resumoDoProjeto(projeto({ createdAt: dias(60) }), [], AGORA);
-    expect(r.quando).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const r = summarizeProject(projeto({ createdAt: dias(60) }), [], AGORA);
+    expect(r.when).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 
 describe("do que se trata?", () => {
   it("a primeira linha das instruções — a frase que a pessoa escreveu", () => {
-    const r = resumoDoProjeto(
+    const r = summarizeProject(
       projeto({ instructions: "\n  Responda em português.\nCite a nota." }),
       [],
       AGORA
     );
-    expect(r.sobre).toBe("Responda em português.");
+    expect(r.about).toBe("Responda em português.");
   });
 
   it("sem instruções: o título da conversa mais recente", () => {
-    const r = resumoDoProjeto(
+    const r = summarizeProject(
       projeto({ chatIds: ["a", "b"] }),
       [
         { id: "a", title: "Antiga", date: dias(9) },
@@ -76,18 +76,18 @@ describe("do que se trata?", () => {
       ],
       AGORA
     );
-    expect(r.sobre).toBe("Latest: Kuhn e paradigmas");
+    expect(r.about).toBe("Latest: Kuhn e paradigmas");
   });
 
   it("sem os dois: nada — o cartão mostra a dica, não inventa assunto", () => {
-    expect(resumoDoProjeto(projeto(), [], AGORA).sobre).toBeNull();
+    expect(summarizeProject(projeto(), [], AGORA).about).toBeNull();
   });
 });
 
 describe("quanto já tem?", () => {
   it("conta só as conversas que EXISTEM", () => {
 
-    const r = resumoDoProjeto(
+    const r = summarizeProject(
       projeto({ chatIds: ["a", "apagada", "b"] }),
       [
         { id: "a", title: "A", date: dias(1) },
@@ -96,7 +96,7 @@ describe("quanto já tem?", () => {
       ],
       AGORA
     );
-    expect(r.conversas).toBe(2);
+    expect(r.chatCount).toBe(2);
   });
 });
 
@@ -108,40 +108,40 @@ describe("quanto custa abrir uma conversa aqui? (tokens de entrada)", () => {
     const notas = [nota("Tese/Kuhn.md", "Paradigma.".repeat(35))];
     const instr = "Responda em português.";
     const texto =
-      blocoDeInstrucoes(instr) + blocoDeNotasAnexadas(notas);
-    expect(tokensDeEntrada(instr, notas)).toBe(estimateTokens(texto));
+      instructionsSection(instr) + attachedNotesSection(notas);
+    expect(projectInputTokens(instr, notas)).toBe(estimateTokens(texto));
   });
 
   it("projeto sem notas e sem instruções não custa nada", () => {
-    expect(tokensDeEntrada(undefined, [])).toBe(0);
-    expect(tokensDeEntrada("   ", [])).toBe(0);
+    expect(projectInputTokens(undefined, [])).toBe(0);
+    expect(projectInputTokens("   ", [])).toBe(0);
   });
 
   it("nota maior, projeto mais caro — o conteúdo inteiro vai", () => {
-    const pequena = tokensDeEntrada("", [nota("a.md", "x".repeat(350))]);
-    const grande = tokensDeEntrada("", [nota("a.md", "x".repeat(3500))]);
+    const pequena = projectInputTokens("", [nota("a.md", "x".repeat(350))]);
+    const grande = projectInputTokens("", [nota("a.md", "x".repeat(3500))]);
     expect(grande).toBeGreaterThan(pequena * 5);
   });
 
   it("o bloco de notas é o MESMO de antes da extração", () => {
 
     expect(
-      blocoDeNotasAnexadas([nota("A.md", "um"), nota("B.md", "dois")])
+      attachedNotesSection([nota("A.md", "um"), nota("B.md", "dois")])
     ).toBe(
       "\n\n[Notes attached by user]\n\n### A.md\n\num\n\n---\n\n### B.md\n\ndois"
     );
-    expect(blocoDeNotasAnexadas([])).toBe("");
-    expect(blocoDeInstrucoes("  Seja breve.  ")).toBe("\n\nSeja breve.");
+    expect(attachedNotesSection([])).toBe("");
+    expect(instructionsSection("  Seja breve.  ")).toBe("\n\nSeja breve.");
   });
 });
 
 describe("formatarTokens — curto, e com ~ porque é estimativa", () => {
-  it("zero sem til", () => expect(formatarTokens(0)).toBe("0 tokens"));
-  it("centenas", () => expect(formatarTokens(340)).toBe("~340 tokens"));
+  it("zero sem til", () => expect(formatTokens(0)).toBe("0 tokens"));
+  it("centenas", () => expect(formatTokens(340)).toBe("~340 tokens"));
   it("milhares com uma casa", () => {
-    expect(formatarTokens(1234)).toBe("~1.2k tokens");
-    expect(formatarTokens(2000)).toBe("~2k tokens");
+    expect(formatTokens(1234)).toBe("~1.2k tokens");
+    expect(formatTokens(2000)).toBe("~2k tokens");
   });
   it("dezenas de milhares, redondo", () =>
-    expect(formatarTokens(12_400)).toBe("~12k tokens"));
+    expect(formatTokens(12_400)).toBe("~12k tokens"));
 });

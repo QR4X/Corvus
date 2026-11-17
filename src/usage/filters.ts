@@ -8,54 +8,54 @@ export interface UsageFilter {
   days: number;
 }
 
-export const FILTRO_VAZIO: UsageFilter = {
+export const EMPTY_FILTER: UsageFilter = {
   providers: [],
   models: [],
   modes: [],
   days: 0,
 };
 
-export interface Opcao {
+export interface FilterOption {
   id: string;
   count: number;
 }
 
-export function opcoes(
+export function filterOptions(
   chats: readonly ChatSummary[],
-  dimensao: "provider" | "model" | "mode"
-): Opcao[] {
-  const contagem = new Map<string, number>();
+  dimension: "provider" | "model" | "mode"
+): FilterOption[] {
+  const counts = new Map<string, number>();
   for (const c of chats) {
-    const v = (c[dimensao] ?? "").trim();
+    const v = (c[dimension] ?? "").trim();
     if (!v) continue;
-    contagem.set(v, (contagem.get(v) ?? 0) + 1);
+    counts.set(v, (counts.get(v) ?? 0) + 1);
   }
-  return [...contagem.entries()]
+  return [...counts.entries()]
     .map(([id, count]) => ({ id, count }))
 
     .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
 }
 
-export function alternar(lista: string[], valor: string): string[] {
-  return lista.includes(valor)
-    ? lista.filter((v) => v !== valor)
-    : [...lista, valor];
+export function toggleValue(list: string[], value: string): string[] {
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value];
 }
 
-export function aplicar(
+export function applyFilter(
   chats: readonly ChatSummary[],
   f: UsageFilter,
-  agora: number = Date.now()
+  now: number = Date.now()
 ): ChatSummary[] {
-  const corte = f.days > 0 ? agora - f.days * 86_400_000 : 0;
+  const cutoff = f.days > 0 ? now - f.days * 86_400_000 : 0;
   return chats.filter((c) => {
     if (f.providers.length > 0 && !f.providers.includes(c.provider)) return false;
     if (f.models.length > 0 && !f.models.includes(c.model)) return false;
     if (f.modes.length > 0 && !f.modes.includes(c.mode)) return false;
-    if (corte > 0) {
+    if (cutoff > 0) {
       const t = Date.parse(c.date);
 
-      if (!Number.isFinite(t) || t < corte) return false;
+      if (!Number.isFinite(t) || t < cutoff) return false;
     }
     return true;
   });

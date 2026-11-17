@@ -42,7 +42,7 @@ export function decideToolGate(
 
     approveAllWeb?: boolean;
 
-    apagarVaiPraLixeira?: boolean;
+    deleteGoesToTrash?: boolean;
   }
 ): ToolGate {
 
@@ -51,7 +51,7 @@ export function decideToolGate(
   }
 
   if (tool.irreversible) {
-    return level === "yolo" && opts.apagarVaiPraLixeira === true ? "auto" : "confirm";
+    return level === "yolo" && opts.deleteGoesToTrash === true ? "auto" : "confirm";
   }
   if (opts.approveAll) return "auto";
   return evaluatePermission(tool, level).autoApprove ? "auto" : "confirm";

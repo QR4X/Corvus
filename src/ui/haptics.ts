@@ -38,21 +38,21 @@ export function warn(): void {
   buzz([20, 45, 20]);
 }
 
-const FOLGA = 8;
+const TAP_SLOP = 8;
 
-const LIMITE_MS = 700;
+const TAP_MAX_MS = 700;
 
-export function ehToque(dx: number, dy: number, ms: number): boolean {
-  return Math.abs(dx) <= FOLGA && Math.abs(dy) <= FOLGA && ms <= LIMITE_MS;
+export function isTap(dx: number, dy: number, ms: number): boolean {
+  return Math.abs(dx) <= TAP_SLOP && Math.abs(dy) <= TAP_SLOP && ms <= TAP_MAX_MS;
 }
 
 export function hapticsOn(root: HTMLElement): () => void {
-  let alvo: Element | null = null;
+  let target: Element | null = null;
   let x = 0;
   let y = 0;
-  let em = 0;
+  let downAt = 0;
 
-  const acionavel = (e: Event): Element | null => {
+  const tappable = (e: Event): Element | null => {
     const el = e.target as HTMLElement | null;
     if (!el?.closest) return null;
     return el.closest(
@@ -62,25 +62,25 @@ export function hapticsOn(root: HTMLElement): () => void {
 
   const onDown = (e: Event) => {
     const p = e as PointerEvent;
-    alvo = acionavel(e);
+    target = tappable(e);
     x = p.clientX;
     y = p.clientY;
-    em = Date.now();
+    downAt = Date.now();
   };
 
   const onUp = (e: Event) => {
     const p = e as PointerEvent;
-    const era = alvo;
-    alvo = null;
-    if (!era) return;
+    const pressed = target;
+    target = null;
+    if (!pressed) return;
 
-    if (era !== acionavel(e)) return;
-    if (!ehToque(p.clientX - x, p.clientY - y, Date.now() - em)) return;
+    if (pressed !== tappable(e)) return;
+    if (!isTap(p.clientX - x, p.clientY - y, Date.now() - downAt)) return;
     tap();
   };
 
   const onCancel = () => {
-    alvo = null;
+    target = null;
   };
 
   root.addEventListener("pointerdown", onDown, { capture: true });

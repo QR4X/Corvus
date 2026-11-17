@@ -7,7 +7,7 @@ import {
   ROLE_ORDER,
   type RoleId,
 } from "../providers/modelRoles";
-import { compararFabricantes, fabricante, type Fabricante } from "../providers/vendors";
+import { compareVendors, modelVendor, type Vendor } from "../providers/vendors";
 import { tr } from "../i18n/tr";
 
 interface CatalogFamily {
@@ -69,51 +69,51 @@ export function buildModelCatalog(
   return out;
 }
 
-interface SecaoDoFabricante {
+interface VendorSection {
   roleId: RoleId;
   roleLabel: string;
   roleIcon: string;
   family: CatalogFamily;
 }
 
-interface GrupoDoFabricante {
-  fabricante: Fabricante;
+interface VendorGroup {
+  vendor: Vendor;
   total: number;
-  secoes: SecaoDoFabricante[];
+  sections: VendorSection[];
 }
 
-export function porFabricante(groups: CatalogRole[]): GrupoDoFabricante[] {
-  const mapa = new Map<string, GrupoDoFabricante>();
+export function byVendor(groups: CatalogRole[]): VendorGroup[] {
+  const byKey = new Map<string, VendorGroup>();
   for (const g of groups) {
     for (const fam of g.families) {
       for (const m of fam.models) {
-        const f = fabricante(m);
-        const grupo = mapa.get(f.chave) ?? { fabricante: f, total: 0, secoes: [] };
-        let sec = grupo.secoes.find((s) => s.roleId === g.id && s.family.id === fam.id);
+        const f = modelVendor(m);
+        const group = byKey.get(f.key) ?? { vendor: f, total: 0, sections: [] };
+        let sec = group.sections.find((s) => s.roleId === g.id && s.family.id === fam.id);
         if (!sec) {
           sec = { roleId: g.id, roleLabel: g.label, roleIcon: g.icon, family: { ...fam, models: [] } };
-          grupo.secoes.push(sec);
+          group.sections.push(sec);
         }
         sec.family.models.push(m);
-        grupo.total++;
-        mapa.set(f.chave, grupo);
+        group.total++;
+        byKey.set(f.key, group);
       }
     }
   }
-  return Array.from(mapa.values()).sort((a, b) => compararFabricantes(a.fabricante, b.fabricante));
+  return Array.from(byKey.values()).sort((a, b) => compareVendors(a.vendor, b.vendor));
 }
 
-export function soltosPorFabricante(
+export function looseByVendor(
   models: string[]
-): Array<{ fabricante: Fabricante; models: string[] }> {
-  const mapa = new Map<string, { fabricante: Fabricante; models: string[] }>();
+): Array<{ vendor: Vendor; models: string[] }> {
+  const byKey = new Map<string, { vendor: Vendor; models: string[] }>();
   for (const m of models) {
-    const f = fabricante(m);
-    const grupo = mapa.get(f.chave) ?? { fabricante: f, models: [] };
-    grupo.models.push(m);
-    mapa.set(f.chave, grupo);
+    const f = modelVendor(m);
+    const group = byKey.get(f.key) ?? { vendor: f, models: [] };
+    group.models.push(m);
+    byKey.set(f.key, group);
   }
-  const lista = Array.from(mapa.values());
-  for (const g of lista) g.models.sort();
-  return lista.sort((a, b) => compararFabricantes(a.fabricante, b.fabricante));
+  const list = Array.from(byKey.values());
+  for (const g of list) g.models.sort();
+  return list.sort((a, b) => compareVendors(a.vendor, b.vendor));
 }

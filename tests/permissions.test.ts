@@ -16,7 +16,7 @@ const gate = (
   level: PermissionLevel,
   approveAll: boolean,
   apagarVaiPraLixeira = false
-) => decideToolGate(t, level, { approveAll, apagarVaiPraLixeira });
+) => decideToolGate(t, level, { approveAll, deleteGoesToTrash: apagarVaiPraLixeira });
 
 describe("decideToolGate", () => {
   it("não-destrutivo (read/list) → sempre auto", () => {

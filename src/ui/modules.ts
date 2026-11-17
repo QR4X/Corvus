@@ -86,23 +86,23 @@ export function modulePlaceholder(id: string | undefined | null): string {
   return tr(isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder);
 }
 
-interface Busca {
+interface ChatSearch {
   hits: ChatSummary[];
 
   regex: boolean;
 
-  invalida: boolean;
+  invalid: boolean;
 }
 
 export function searchChats(
   chats: readonly ChatSummary[],
   query: string
-): Busca {
+): ChatSearch {
   const q = query.trim();
-  if (!q) return { hits: [...chats], regex: false, invalida: false };
+  if (!q) return { hits: [...chats], regex: false, invalid: false };
 
-  const semTitulo = tr("Untitled");
-  const alvo = (c: ChatSummary) => `${c.title || semTitulo} ${c.model}`;
+  const untitled = tr("Untitled");
+  const haystack = (c: ChatSummary) => `${c.title || untitled} ${c.model}`;
   let re: RegExp | null = null;
   try {
     re = new RegExp(q, "i");
@@ -111,13 +111,13 @@ export function searchChats(
   }
   if (re) {
     const exp = re;
-    return { hits: chats.filter((c) => exp.test(alvo(c))), regex: true, invalida: false };
+    return { hits: chats.filter((c) => exp.test(haystack(c))), regex: true, invalid: false };
   }
   const literal = q.toLowerCase();
   return {
-    hits: chats.filter((c) => alvo(c).toLowerCase().includes(literal)),
+    hits: chats.filter((c) => haystack(c).toLowerCase().includes(literal)),
     regex: false,
-    invalida: true,
+    invalid: true,
   };
 }
 
@@ -125,10 +125,10 @@ export function moduleFabLabel(id: string | undefined | null): string {
   return tr(isChatMode(id) ? MODULES[id].fabLabel : MODULES.chat.fabLabel);
 }
 
-export function relativeShort(iso: string, agora: number = Date.now()): string {
+export function relativeShort(iso: string, now: number = Date.now()): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
-  const s = Math.max(0, Math.round((agora - t) / 1000));
+  const s = Math.max(0, Math.round((now - t) / 1000));
   if (s < 60) return tr("now");
   const min = Math.floor(s / 60);
   if (min < 60) return `${min}m`;
@@ -162,20 +162,20 @@ export function moduleStats(
   chats: readonly ChatSummary[],
   mode: string
 ): ModuleStats {
-  const minhas = chatsOfModule(chats, mode);
-  if (minhas.length === 0) return { count: 0 };
+  const own = chatsOfModule(chats, mode);
+  if (own.length === 0) return { count: 0 };
 
-  let last = minhas[0].date;
-  for (const c of minhas) if (c.date > last) last = c.date;
-  return { count: minhas.length, last };
+  let last = own[0].date;
+  for (const c of own) if (c.date > last) last = c.date;
+  return { count: own.length, last };
 }
 
-export function relativeDay(iso: string, agora: number = Date.now()): string {
+export function relativeDay(iso: string, now: number = Date.now()): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const dia = (x: Date) =>
+  const dayIndex = (x: Date) =>
     Date.UTC(x.getFullYear(), x.getMonth(), x.getDate()) / 86400000;
-  const diff = dia(new Date(agora)) - dia(d);
+  const diff = dayIndex(new Date(now)) - dayIndex(d);
   if (diff <= 0) return tr("Today");
   if (diff === 1) return tr("Yesterday");
   if (diff < 7) return tr("{n} days ago", { n: diff });
@@ -201,26 +201,26 @@ export function moduleSegments(chats: readonly ChatSummary[]): ModuleSegment[] {
 
 export function defaultSegment(
   chats: readonly ChatSummary[],
-  padrao: string | undefined | null
+  fallback: string | undefined | null
 ): ChatMode {
-  let melhor: ChatSummary | null = null;
+  let latest: ChatSummary | null = null;
   for (const c of chats) {
     if (!isChatMode(c.mode)) continue;
 
-    if (!melhor || c.date > melhor.date) melhor = c;
+    if (!latest || c.date > latest.date) latest = c;
   }
-  if (melhor && isChatMode(melhor.mode)) return melhor.mode;
-  return isChatMode(padrao) ? padrao : "chat";
+  if (latest && isChatMode(latest.mode)) return latest.mode;
+  return isChatMode(fallback) ? fallback : "chat";
 }
 
-export function startupMode(valor: string | undefined | null): ChatMode | null {
-  return isChatMode(valor) ? valor : null;
+export function startupMode(value: string | undefined | null): ChatMode | null {
+  return isChatMode(value) ? value : null;
 }
 
 export const STARTUP_DASHBOARD = "dashboard";
 
-export function startupOpensPanel(valor: string | undefined | null): boolean {
-  return valor === STARTUP_DASHBOARD || isChatMode(valor);
+export function startupOpensPanel(value: string | undefined | null): boolean {
+  return value === STARTUP_DASHBOARD || isChatMode(value);
 }
 
 export function filterSegment(
@@ -230,10 +230,10 @@ export function filterSegment(
   return seg === SEGMENT_ALL ? [...chats] : chatsOfModule(chats, seg);
 }
 
-export function moduleHint(stats: ModuleStats, agora?: number): string {
+export function moduleHint(stats: ModuleStats, now?: number): string {
   if (stats.count === 0) return tr("No chats yet");
-  const quantos =
+  const countLabel =
     stats.count === 1 ? tr("1 chat") : tr("{n} chats", { n: stats.count });
-  const quando = stats.last ? relativeDay(stats.last, agora) : "";
-  return quando ? `${quantos} · ${quando}` : quantos;
+  const when = stats.last ? relativeDay(stats.last, now) : "";
+  return when ? `${countLabel} · ${when}` : countLabel;
 }

@@ -19,43 +19,43 @@ import {
 } from "./modules";
 import { mark, tr } from "../i18n/tr";
 
-const PERIODOS: Array<{
+const PERIODS: Array<{
   id: string;
   label: string;
 
-  vazio: string;
-  dias: number;
+  empty: string;
+  days: number;
 }> = [
   {
     id: "all",
     label: mark("All"),
-    vazio: mark("Nothing in all."),
-    dias: 0,
+    empty: mark("Nothing in all."),
+    days: 0,
   },
   {
     id: "today",
     label: mark("Today"),
-    vazio: mark("Nothing in today."),
-    dias: 1,
+    empty: mark("Nothing in today."),
+    days: 1,
   },
   {
     id: "week",
     label: mark("This week"),
-    vazio: mark("Nothing in this week."),
-    dias: 7,
+    empty: mark("Nothing in this week."),
+    days: 7,
   },
   {
     id: "month",
     label: mark("This month"),
-    vazio: mark("Nothing in this month."),
-    dias: 30,
+    empty: mark("Nothing in this month."),
+    days: 30,
   },
 ];
 
 export function ModuleHome({
   plugin,
   session,
-  modulo,
+  moduleId,
   onBack,
   onOpenChat,
   onNewChat,
@@ -63,7 +63,7 @@ export function ModuleHome({
 }: {
   plugin: CorvusPlugin;
   session: ChatSession;
-  modulo: string;
+  moduleId: string;
 
   onBack: () => void;
   onOpenChat: (chat: ChatSummary) => void;
@@ -71,27 +71,27 @@ export function ModuleHome({
   onOpenSkills: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [buscando, setBuscando] = useState(false);
-  const [periodo, setPeriodo] = useState(PERIODOS[0]);
-  const todas = useChatSummaries(plugin);
-  const minhas = useMemo(() => chatsOfModule(todas, modulo), [todas, modulo]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [period, setPeriod] = useState(PERIODS[0]);
+  const allChats = useChatSummaries(plugin);
+  const moduleChats = useMemo(() => chatsOfModule(allChats, moduleId), [allChats, moduleId]);
 
-  const ehAgent = modulo === "agent";
+  const isAgent = moduleId === "agent";
 
-  const noPeriodo = useMemo(() => {
-    if (!ehAgent || periodo.dias === 0) return minhas;
-    const corte = Date.now() - periodo.dias * 86400000;
-    return minhas.filter((c) => new Date(c.date).getTime() >= corte);
-  }, [ehAgent, minhas, periodo]);
+  const inPeriod = useMemo(() => {
+    if (!isAgent || period.days === 0) return moduleChats;
+    const cutoff = Date.now() - period.days * 86400000;
+    return moduleChats.filter((c) => new Date(c.date).getTime() >= cutoff);
+  }, [isAgent, moduleChats, period]);
 
-  const busca = useMemo(
-    () => searchChats(noPeriodo, query),
-    [noPeriodo, query]
+  const search = useMemo(
+    () => searchChats(inPeriod, query),
+    [inPeriod, query]
   );
-  const visiveis = busca.hits;
-  const procurando = query.trim().length > 0;
+  const visible = search.hits;
+  const searching = query.trim().length > 0;
 
-  const podeCriar = isChatMode(modulo);
+  const canCreate = isChatMode(moduleId);
 
   return (
     <div className="corvus-chat">
@@ -106,13 +106,13 @@ export function ModuleHome({
           <Icon name="arrow-left" />
         </button>
         <span className="corvus-brand corvus-topbar-brand">
-          {moduleLabel(modulo)}
+          {moduleLabel(moduleId)}
         </span>
       </header>
 
       <div className="corvus-messages corvus-home">
 
-        {ehAgent && (
+        {isAgent && (
           <section className="corvus-home-block">
             <span className="corvus-section-label">{tr("Skills")}</span>
             {}
@@ -131,13 +131,13 @@ export function ModuleHome({
         <SearchField
           value={query}
           placeholder={tr("Search")}
-          label={tr("Search {module}", { module: moduleLabel(modulo) })}
-          found={visiveis.length}
+          label={tr("Search {module}", { module: moduleLabel(moduleId) })}
+          found={visible.length}
           onChange={setQuery}
-          onOpen={() => setBuscando(true)}
+          onOpen={() => setSearchOpen(true)}
         />
 
-        {ehAgent && (
+        {isAgent && (
           <div className="corvus-home-headrow">
             <span className="corvus-section-label">{tr("Sessions")}</span>
             <button
@@ -147,70 +147,70 @@ export function ModuleHome({
               onClick={(e) =>
                 openActions(
                   e,
-                  PERIODOS.map((p) => ({
+                  PERIODS.map((p) => ({
                     label: tr(p.label),
-                    checked: p.id === periodo.id,
-                    run: () => setPeriodo(p),
+                    checked: p.id === period.id,
+                    run: () => setPeriod(p),
                   }))
                 )
               }
             >
-              <span>{tr(periodo.label)}</span>
+              <span>{tr(period.label)}</span>
               <Icon name="chevron-down" size={16} />
             </button>
           </div>
         )}
 
-        {visiveis.length > 0 && (
+        {visible.length > 0 && (
           <ChatList
             plugin={plugin}
             session={session}
-            chats={visiveis}
+            chats={visible}
             onOpen={onOpenChat}
           />
         )}
 
-        {visiveis.length === 0 && (
+        {visible.length === 0 && (
           <div className="corvus-home-empty">
-            <Icon name={moduleIcon(modulo)} size={42} />
+            <Icon name={moduleIcon(moduleId)} size={42} />
             <p>
-              {minhas.length === 0
-                ? moduleEmptyLine(modulo)
-                : procurando
+              {moduleChats.length === 0
+                ? moduleEmptyLine(moduleId)
+                : searching
                   ? tr("Nothing matches that search.")
-                  : tr(periodo.vazio)}
+                  : tr(period.empty)}
             </p>
           </div>
         )}
 
         {}
-        {podeCriar && (
+        {canCreate && (
           <button type="button" className="corvus-fab" onClick={onNewChat}>
             <Icon name="plus" size={20} />
-            <span>{moduleFabLabel(modulo)}</span>
+            <span>{moduleFabLabel(moduleId)}</span>
           </button>
         )}
       </div>
 
       {}
       <SearchSheet
-        open={buscando}
-        title={tr("Search {module}", { module: moduleLabel(modulo) })}
+        open={searchOpen}
+        title={tr("Search {module}", { module: moduleLabel(moduleId) })}
         placeholder={tr("Search")}
         value={query}
-        found={visiveis.length}
-        invalid={busca.invalida}
+        found={visible.length}
+        invalid={search.invalid}
         onChange={setQuery}
-        onClose={() => setBuscando(false)}
+        onClose={() => setSearchOpen(false)}
       >
-        {visiveis.length > 0 ? (
+        {visible.length > 0 ? (
           <ChatList
             plugin={plugin}
             session={session}
-            chats={visiveis}
+            chats={visible}
             onOpen={(c) => {
 
-              setBuscando(false);
+              setSearchOpen(false);
               onOpenChat(c);
             }}
           />
@@ -221,7 +221,7 @@ export function ModuleHome({
               {query.trim()
                 ? tr("Nothing matches that search.")
                 : tr("Type to search {module}.", {
-                    module: moduleLabel(modulo),
+                    module: moduleLabel(moduleId),
                   })}
             </p>
           </div>

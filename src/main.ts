@@ -1,16 +1,16 @@
 import { Plugin, WorkspaceLeaf, Platform, Notice, type TAbstractFile } from "obsidian";
 import { CorvusView, VIEW_TYPE_CORVUS } from "./ui/CorvusView";
-import { FONTE_DO_HOVER } from "./ui/responseLinks";
+import { HOVER_SOURCE } from "./ui/responseLinks";
 import { registerBrandLogos } from "./ui/brandLogos";
 import { CorvusSettingsTab } from "./ui/SettingsTab";
 import { startupOpensPanel } from "./ui/modules";
 import { loadSkills, seedExampleSkills, isSkillFilePath, type Skill } from "./skills/skills";
-import { esquecerDesfazeres } from "./agent/undo";
-import { registrarComandosDoEditor } from "./editor/commands";
-import { esquecerPedidos } from "./editor/bridge";
+import { clearUndos } from "./agent/undo";
+import { registerEditorCommands } from "./editor/commands";
+import { clearRequests } from "./editor/bridge";
 import { tr } from "./i18n/tr";
 import { openOrCreateAgentMd } from "./core/agentMd";
-import { acompanharEscrita } from "./core/wakeLock";
+import { watchWakeLock } from "./core/wakeLock";
 import { pluginFile } from "./core/pluginFiles";
 import { ChatLibrary } from "./core/chatLibrary";
 import { ModelScanner } from "./core/modelScanner";
@@ -65,7 +65,7 @@ export default class CorvusPlugin extends Plugin {
     if (!this.store.isReadOnly) await migrateLegacyFolders(this.app.vault.adapter, this.settings, save);
 
     this.registerView(VIEW_TYPE_CORVUS, (leaf) => new CorvusView(leaf, this));
-    this.registerHoverLinkSource(FONTE_DO_HOVER, { display: "Corvus", defaultMod: true });
+    this.registerHoverLinkSource(HOVER_SOURCE, { display: "Corvus", defaultMod: true });
     this.addRibbonIcon("bot", "Corvus", () => void this.activateView());
     registerBrandLogos();
 
@@ -79,13 +79,13 @@ export default class CorvusPlugin extends Plugin {
       name: tr("Open agent instructions (AGENT.md)"),
       callback: () => void openOrCreateAgentMd(this.app, this.settings.agentInstructionsPath),
     });
-    registrarComandosDoEditor(this);
+    registerEditorCommands(this);
     this.addSettingTab(new CorvusSettingsTab(this.app, this));
 
     this.watchVault();
     this.watchMobileNavbar();
 
-    const wakeLock = acompanharEscrita(() => this.settings.keepAwakeWhileWriting);
+    const wakeLock = watchWakeLock(() => this.settings.keepAwakeWhileWriting);
     this.register(() => wakeLock.dispose());
     this.register(this.onSettingsChange(() => wakeLock.recheck()));
 
@@ -101,8 +101,8 @@ export default class CorvusPlugin extends Plugin {
   }
 
   onunload() {
-    esquecerDesfazeres();
-    esquecerPedidos();
+    clearUndos();
+    clearRequests();
     if (this.skillsReloadTimer !== null) window.clearTimeout(this.skillsReloadTimer);
     this.skillsReloadTimer = null;
   }

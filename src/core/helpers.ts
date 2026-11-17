@@ -1,7 +1,7 @@
 import { ProviderError } from "../providers/base";
 import type { Translations } from "../i18n/en-us";
 import type { AIErrorCode } from "../store/chat";
-import { texto } from "./text";
+import { asText } from "./text";
 import { tr } from "../i18n/tr";
 
 export function makeId(): string {
@@ -21,15 +21,15 @@ export function agentActivitySpec(
   doneText: string;
   failedText: string;
 } {
-  const path = texto(args.path) || texto(args.from) || texto(args.folder);
+  const path = asText(args.path) || asText(args.from) || asText(args.folder);
 
   const shorten = (p: string) => (p.length > 48 ? "…" + p.slice(-46) : p);
   const shortPath = shorten(path);
 
-  const alvo = texto(args.to);
-  const shortTo = alvo ? shorten(alvo) : "?";
-  const query = texto(args.query).slice(0, 40);
-  const noCaminho = { path: shortPath };
+  const target = asText(args.to);
+  const shortTo = target ? shorten(target) : "?";
+  const query = asText(args.query).slice(0, 40);
+  const pathArgs = { path: shortPath };
 
   switch (toolName) {
     case "vault_search":
@@ -45,9 +45,9 @@ export function agentActivitySpec(
         ? {
             iconPending: "folder-search",
             iconDone: "folder-check",
-            pendingText: tr("Listing {path}", noCaminho),
-            doneText: tr("Listed {path}", noCaminho),
-            failedText: tr("Failed on {path}", noCaminho),
+            pendingText: tr("Listing {path}", pathArgs),
+            doneText: tr("Listed {path}", pathArgs),
+            failedText: tr("Failed on {path}", pathArgs),
           }
         : {
             iconPending: "folder-search",
@@ -60,51 +60,51 @@ export function agentActivitySpec(
       return {
         iconPending: "eye",
         iconDone: "file-check-2",
-        pendingText: tr("Reading {path}", noCaminho),
-        doneText: tr("Read {path}", noCaminho),
-        failedText: tr("Failed on {path}", noCaminho),
+        pendingText: tr("Reading {path}", pathArgs),
+        doneText: tr("Read {path}", pathArgs),
+        failedText: tr("Failed on {path}", pathArgs),
       };
     case "vault_create":
       return {
         iconPending: "file-plus-2",
         iconDone: "file-check-2",
-        pendingText: tr("Creating {path}", noCaminho),
-        doneText: tr("Created {path}", noCaminho),
-        failedText: tr("Failed on {path}", noCaminho),
+        pendingText: tr("Creating {path}", pathArgs),
+        doneText: tr("Created {path}", pathArgs),
+        failedText: tr("Failed on {path}", pathArgs),
       };
     case "vault_edit":
       return {
         iconPending: "file-pen-line",
         iconDone: "file-check-2",
-        pendingText: tr("Editing {path}", noCaminho),
-        doneText: tr("Edited {path}", noCaminho),
-        failedText: tr("Failed on {path}", noCaminho),
+        pendingText: tr("Editing {path}", pathArgs),
+        doneText: tr("Edited {path}", pathArgs),
+        failedText: tr("Failed on {path}", pathArgs),
       };
     case "vault_move": {
-      const rota = { from: shortPath, to: shortTo };
+      const route = { from: shortPath, to: shortTo };
       return {
         iconPending: "move",
         iconDone: "check-circle-2",
-        pendingText: tr("Moving {from} → {to}", rota),
-        doneText: tr("Moved {from} → {to}", rota),
-        failedText: tr("Failed on {from} → {to}", rota),
+        pendingText: tr("Moving {from} → {to}", route),
+        doneText: tr("Moved {from} → {to}", route),
+        failedText: tr("Failed on {from} → {to}", route),
       };
     }
     case "vault_delete":
       return {
         iconPending: "trash-2",
         iconDone: "circle-check-big",
-        pendingText: tr("Deleting {path}", noCaminho),
-        doneText: tr("Deleted {path}", noCaminho),
-        failedText: tr("Failed on {path}", noCaminho),
+        pendingText: tr("Deleting {path}", pathArgs),
+        doneText: tr("Deleted {path}", pathArgs),
+        failedText: tr("Failed on {path}", pathArgs),
       };
     case "vault_create_folder":
       return {
         iconPending: "folder-plus",
         iconDone: "folder-check",
-        pendingText: tr("Creating folder {path}", noCaminho),
-        doneText: tr("Created folder {path}", noCaminho),
-        failedText: tr("Failed on folder {path}", noCaminho),
+        pendingText: tr("Creating folder {path}", pathArgs),
+        doneText: tr("Created folder {path}", pathArgs),
+        failedText: tr("Failed on folder {path}", pathArgs),
       };
     case "web_search":
       return {
@@ -115,7 +115,7 @@ export function agentActivitySpec(
         failedText: tr("Failed on web search \"{query}\"", { query }),
       };
     case "web_fetch": {
-      let host = texto(args.url);
+      let host = asText(args.url);
       try {
         host = new URL(host).hostname;
       } catch { void 0; }
@@ -199,13 +199,13 @@ function providerNeedsKey(providerId: string): boolean {
   return providerId !== "ollama";
 }
 
-export function semCredencial(
+export function missingCredentialError(
   providerId: string,
-  credencial: string,
+  credential: string,
   t: Translations,
   providerName: string
 ): string | null {
-  if (credencial.trim()) return null;
+  if (credential.trim()) return null;
   return providerNeedsKey(providerId)
     ? t.ai.err.noKey(providerName)
     : t.ai.err.noEndpoint(providerName);

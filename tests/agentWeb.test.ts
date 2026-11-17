@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { __setRequestUrl } from "obsidian";
-import { ehEnderecoLocal, formatarBusca, toolWebFetch, toolWebSearch, urlPermitida } from "../src/agent/web";
+import { isLocalAddress, formatSearchResults, toolWebFetch, toolWebSearch, allowedUrl } from "../src/agent/web";
 import { decideToolGate } from "../src/agent/permissions";
 import { getToolDefinition } from "../src/agent/toolSchemas";
 import { agentActivitySpec } from "../src/core/helpers";
@@ -14,22 +14,22 @@ afterEach(() => __setRequestUrl(null));
 describe("endereço local é recusado", () => {
   it("loopback, rede de casa, link-local, CGNAT, .local e IPv6 local", () => {
     for (const h of ["localhost", "app.localhost", "127.0.0.1", "10.0.0.5", "172.16.1.1", "172.31.255.1", "192.168.0.10", "169.254.1.1", "100.64.0.1", "0.0.0.0", "nas.local", "[::1]", "fe80::1", "fd12::3"]) {
-      expect(ehEnderecoLocal(h), h).toBe(true);
+      expect(isLocalAddress(h), h).toBe(true);
     }
   });
 
   it("endereço público passa — inclusive nome que começa com fc/fd", () => {
     for (const h of ["example.com", "8.8.8.8", "172.32.0.1", "fdroid.org", "fcbarcelona.com", "100.128.0.1"]) {
-      expect(ehEnderecoLocal(h), h).toBe(false);
+      expect(isLocalAddress(h), h).toBe(false);
     }
   });
 
   it("urlPermitida: só http(s) público", () => {
-    expect(urlPermitida("https://example.com/a?b=1").hostname).toBe("example.com");
-    expect(() => urlPermitida("ftp://example.com")).toThrow(/http and https/);
-    expect(() => urlPermitida("http://localhost:11434/api/tags")).toThrow(/local address/);
-    expect(() => urlPermitida("http://192.168.1.1/admin")).toThrow(/local address/);
-    expect(() => urlPermitida("não é url")).toThrow(/valid URL/);
+    expect(allowedUrl("https://example.com/a?b=1").hostname).toBe("example.com");
+    expect(() => allowedUrl("ftp://example.com")).toThrow(/http and https/);
+    expect(() => allowedUrl("http://localhost:11434/api/tags")).toThrow(/local address/);
+    expect(() => allowedUrl("http://192.168.1.1/admin")).toThrow(/local address/);
+    expect(() => allowedUrl("não é url")).toThrow(/valid URL/);
   });
 });
 
@@ -105,7 +105,7 @@ describe("web_search (Tavily)", () => {
   });
 
   it("sem resultados", () => {
-    expect(formatarBusca("nada", { results: [] })).toBe('No web results for "nada".');
+    expect(formatSearchResults("nada", { results: [] })).toBe('No web results for "nada".');
   });
 });
 

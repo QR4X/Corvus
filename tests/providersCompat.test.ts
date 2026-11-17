@@ -1,18 +1,18 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import {
-  claudeVersao,
-  esforcoDoProvider,
+  claudeVersion,
+  providerEffort,
   maxOutputTokens,
   paramPolicy,
-  pensaAntes,
-  pisoPensando,
+  thinksFirst,
+  thinkingFloor,
   resolveMaxTokens,
   resolveTemperature,
 } from "../src/providers/paramPolicy";
 import { buildChatBody } from "../src/providers/_shared";
 import { anthropicProvider } from "../src/providers/anthropic";
-import { contextoDoOllama, ollamaProvider, tokensDoPedido } from "../src/providers/ollama";
+import { ollamaContextSize, ollamaProvider, estimateRequestTokens } from "../src/providers/ollama";
 import type { ProviderRequest } from "../src/providers/base";
 
 const pedido = (model: string, extra: Partial<ProviderRequest> = {}): ProviderRequest => ({
@@ -25,23 +25,23 @@ const pedido = (model: string, extra: Partial<ProviderRequest> = {}): ProviderRe
 
 describe("claudeVersao — lê família e versão de qualquer id", () => {
   it("nome primeiro, com data, com ponto (OpenRouter) e sem número", () => {
-    expect(claudeVersao("claude-opus-4-8")).toEqual({ familia: "opus", maior: 4, menor: 8 });
-    expect(claudeVersao("claude-haiku-4-5-20251001")).toEqual({ familia: "haiku", maior: 4, menor: 5 });
-    expect(claudeVersao("claude-sonnet-4-20250514")).toEqual({ familia: "sonnet", maior: 4, menor: 0 });
-    expect(claudeVersao("anthropic/claude-opus-4.8")).toEqual({ familia: "opus", maior: 4, menor: 8 });
-    expect(claudeVersao("claude-fable-5-1")).toEqual({ familia: "fable", maior: 5, menor: 1 });
-    expect(claudeVersao("claude-mythos-preview")?.familia).toBe("mythos");
+    expect(claudeVersion("claude-opus-4-8")).toEqual({ family: "opus", major: 4, minor: 8 });
+    expect(claudeVersion("claude-haiku-4-5-20251001")).toEqual({ family: "haiku", major: 4, minor: 5 });
+    expect(claudeVersion("claude-sonnet-4-20250514")).toEqual({ family: "sonnet", major: 4, minor: 0 });
+    expect(claudeVersion("anthropic/claude-opus-4.8")).toEqual({ family: "opus", major: 4, minor: 8 });
+    expect(claudeVersion("claude-fable-5-1")).toEqual({ family: "fable", major: 5, minor: 1 });
+    expect(claudeVersion("claude-mythos-preview")?.family).toBe("mythos");
   });
 
   it("número primeiro (geração 3)", () => {
-    expect(claudeVersao("claude-3-5-sonnet-latest")).toEqual({ familia: "sonnet", maior: 3, menor: 5 });
-    expect(claudeVersao("anthropic/claude-3.7-sonnet")).toEqual({ familia: "sonnet", maior: 3, menor: 7 });
-    expect(claudeVersao("claude-3-haiku-20240307")).toEqual({ familia: "haiku", maior: 3, menor: 0 });
+    expect(claudeVersion("claude-3-5-sonnet-latest")).toEqual({ family: "sonnet", major: 3, minor: 5 });
+    expect(claudeVersion("anthropic/claude-3.7-sonnet")).toEqual({ family: "sonnet", major: 3, minor: 7 });
+    expect(claudeVersion("claude-3-haiku-20240307")).toEqual({ family: "haiku", major: 3, minor: 0 });
   });
 
   it("não é Claude → null", () => {
-    expect(claudeVersao("gpt-5")).toBeNull();
-    expect(claudeVersao("gemini-2.5-pro")).toBeNull();
+    expect(claudeVersion("gpt-5")).toBeNull();
+    expect(claudeVersion("gemini-2.5-pro")).toBeNull();
   });
 });
 
@@ -119,7 +119,7 @@ describe("modelos que pensam antes de responder", () => {
       ["nim", "deepseek-ai/deepseek-r1"],
       ["ollama", "gpt-oss:20b"],
     ]) {
-      expect(pensaAntes(m), `${p} ${m}`).toBe(true);
+      expect(thinksFirst(m), `${p} ${m}`).toBe(true);
     }
   });
 
@@ -133,7 +133,7 @@ describe("modelos que pensam antes de responder", () => {
       ["gemini", "gemini-2.0-flash"],
       ["ollama", "llama3.2"],
     ]) {
-      expect(pensaAntes(m), `${p} ${m}`).toBe(false);
+      expect(thinksFirst(m), `${p} ${m}`).toBe(false);
     }
   });
 
@@ -143,7 +143,7 @@ describe("modelos que pensam antes de responder", () => {
     expect(resolveMaxTokens("gemini", "gemini-2.5-pro", 6000, "high")).toBe(32000);
     expect(resolveMaxTokens("anthropic", "claude-fable-5-1", 16000, "xhigh")).toBe(64000);
 
-    expect(resolveMaxTokens("anthropic", "claude-opus-5-5", 1200)).toBe(pisoPensando());
+    expect(resolveMaxTokens("anthropic", "claude-opus-5-5", 1200)).toBe(thinkingFloor());
 
     expect(resolveMaxTokens("nim", "deepseek-ai/deepseek-r1", 512, "low")).toBe(8192);
   });
@@ -156,45 +156,45 @@ describe("modelos que pensam antes de responder", () => {
 
 describe("o nível vira o 'quanto pensar' de cada provider", () => {
   it("Claude: output_config.effort, nos níveis que o modelo tem", () => {
-    const de = (m: string, e: Parameters<typeof esforcoDoProvider>[2]) =>
-      esforcoDoProvider("anthropic", m, e);
-    expect(de("claude-opus-5-5", "low")).toEqual({ campo: "output_config", valor: { effort: "low" } });
-    expect(de("claude-opus-5-5", "xhigh")?.valor).toEqual({ effort: "xhigh" });
-    expect(de("claude-opus-5-5", "max")?.valor).toEqual({ effort: "max" });
+    const de = (m: string, e: Parameters<typeof providerEffort>[2]) =>
+      providerEffort("anthropic", m, e);
+    expect(de("claude-opus-5-5", "low")).toEqual({ field: "output_config", value: { effort: "low" } });
+    expect(de("claude-opus-5-5", "xhigh")?.value).toEqual({ effort: "xhigh" });
+    expect(de("claude-opus-5-5", "max")?.value).toEqual({ effort: "max" });
 
-    expect(de("claude-sonnet-4-6", "xhigh")?.valor).toEqual({ effort: "high" });
-    expect(de("claude-sonnet-4-6", "max")?.valor).toEqual({ effort: "max" });
+    expect(de("claude-sonnet-4-6", "xhigh")?.value).toEqual({ effort: "high" });
+    expect(de("claude-sonnet-4-6", "max")?.value).toEqual({ effort: "max" });
 
-    expect(de("claude-opus-4-5-20251101", "max")?.valor).toEqual({ effort: "high" });
+    expect(de("claude-opus-4-5-20251101", "max")?.value).toEqual({ effort: "high" });
 
-    expect(de("claude-mythos-preview", "xhigh")?.valor).toEqual({ effort: "high" });
+    expect(de("claude-mythos-preview", "xhigh")?.value).toEqual({ effort: "high" });
 
     expect(de("claude-haiku-4-5-20251001", "low")).toBeNull();
     expect(de("claude-sonnet-4-5-20250929", "low")).toBeNull();
   });
 
   it("OpenAI: reasoning_effort low/medium/high nos de raciocínio — fora os -pro", () => {
-    expect(esforcoDoProvider("openai", "gpt-5", "med")).toEqual({ campo: "reasoning_effort", valor: "medium" });
-    expect(esforcoDoProvider("openai", "o3", "max")).toEqual({ campo: "reasoning_effort", valor: "high" });
-    expect(esforcoDoProvider("openai", "gpt-5-pro", "low")).toBeNull();
-    expect(esforcoDoProvider("openai", "o1-mini", "low")).toBeNull();
-    expect(esforcoDoProvider("openai", "gpt-4o", "low")).toBeNull();
+    expect(providerEffort("openai", "gpt-5", "med")).toEqual({ field: "reasoning_effort", value: "medium" });
+    expect(providerEffort("openai", "o3", "max")).toEqual({ field: "reasoning_effort", value: "high" });
+    expect(providerEffort("openai", "gpt-5-pro", "low")).toBeNull();
+    expect(providerEffort("openai", "o1-mini", "low")).toBeNull();
+    expect(providerEffort("openai", "gpt-4o", "low")).toBeNull();
   });
 
   it("Gemini: reasoning_effort nos que pensam; OpenRouter: reasoning.effort só nos da OpenAI", () => {
-    expect(esforcoDoProvider("gemini", "gemini-2.5-pro", "low")).toEqual({ campo: "reasoning_effort", valor: "low" });
-    expect(esforcoDoProvider("gemini", "gemini-2.0-flash", "low")).toBeNull();
-    expect(esforcoDoProvider("openrouter", "openai/gpt-5", "high")).toEqual({
-      campo: "reasoning",
-      valor: { effort: "high" },
+    expect(providerEffort("gemini", "gemini-2.5-pro", "low")).toEqual({ field: "reasoning_effort", value: "low" });
+    expect(providerEffort("gemini", "gemini-2.0-flash", "low")).toBeNull();
+    expect(providerEffort("openrouter", "openai/gpt-5", "high")).toEqual({
+      field: "reasoning",
+      value: { effort: "high" },
     });
-    expect(esforcoDoProvider("openrouter", "anthropic/claude-opus-5.5", "high")).toBeNull();
+    expect(providerEffort("openrouter", "anthropic/claude-opus-5.5", "high")).toBeNull();
   });
 
   it("NIM, Ollama e pedido sem nível: nada", () => {
-    expect(esforcoDoProvider("nim", "deepseek-ai/deepseek-r1", "low")).toBeNull();
-    expect(esforcoDoProvider("ollama", "gpt-oss:20b", "low")).toBeNull();
-    expect(esforcoDoProvider("openai", "gpt-5", undefined)).toBeNull();
+    expect(providerEffort("nim", "deepseek-ai/deepseek-r1", "low")).toBeNull();
+    expect(providerEffort("ollama", "gpt-oss:20b", "low")).toBeNull();
+    expect(providerEffort("openai", "gpt-5", undefined)).toBeNull();
   });
 });
 
@@ -272,11 +272,11 @@ describe("Ollama — a janela (num_ctx) cabe o que vai", () => {
   afterEach(() => __setRequestUrl(null));
 
   it("o menor degrau que cabe prompt + resposta, sem passar do modelo", () => {
-    expect(contextoDoOllama(2000, 2000, 131072)).toBe(8192);
-    expect(contextoDoOllama(9000, 2000, 131072)).toBe(16384);
-    expect(contextoDoOllama(30000, 16000, 131072)).toBe(65536); 
-    expect(contextoDoOllama(9000, 2000, 4096)).toBe(4096); 
-    expect(contextoDoOllama(90000, 2000)).toBe(32768); 
+    expect(ollamaContextSize(2000, 2000, 131072)).toBe(8192);
+    expect(ollamaContextSize(9000, 2000, 131072)).toBe(16384);
+    expect(ollamaContextSize(30000, 16000, 131072)).toBe(65536); 
+    expect(ollamaContextSize(9000, 2000, 4096)).toBe(4096); 
+    expect(ollamaContextSize(90000, 2000)).toBe(32768); 
   });
 
   it("estima o pedido: texto, ferramentas e imagens", () => {
@@ -285,7 +285,7 @@ describe("Ollama — a janela (num_ctx) cabe o que vai", () => {
       messages: [{ role: "user", content: "a".repeat(3000), attachments: [{ type: "image", dataUrl: "data:," }] }],
       tools: [],
     };
-    expect(tokensDoPedido(req)).toBe(1000 + 1000);
+    expect(estimateRequestTokens(req)).toBe(1000 + 1000);
   });
 
   it("o /api/chat leva num_ctx e o piso de quem pensa", async () => {

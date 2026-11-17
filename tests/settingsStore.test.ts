@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { __avisos } from "obsidian";
 import { SettingsStore } from "../src/settingsStore";
-import { FABRICA_ATE_0923, OLLAMA_LOCAL } from "../src/core/ollamaDefault";
+import { OLLAMA_DEFAULTS_UNTIL_0923, OLLAMA_LOCAL } from "../src/core/ollamaDefault";
 import type { CorvusSettings } from "../src/settings";
 
 function setup(opts: { saved?: unknown; file?: string; secrets?: boolean; failSave?: boolean } = {}) {
@@ -69,7 +69,7 @@ describe("SettingsStore.load", () => {
 
   it("reverts the legacy factory Ollama endpoint when it was never used", async () => {
     const { store } = setup({
-      saved: { ollamaEndpoint: OLLAMA_LOCAL, ollamaModel: FABRICA_ATE_0923.modelo, activeModels: { ollama: FABRICA_ATE_0923.ativos } },
+      saved: { ollamaEndpoint: OLLAMA_LOCAL, ollamaModel: OLLAMA_DEFAULTS_UNTIL_0923.model, activeModels: { ollama: OLLAMA_DEFAULTS_UNTIL_0923.active } },
     });
     const s = await store.load();
     expect(s.ollamaEndpoint).toBe("");

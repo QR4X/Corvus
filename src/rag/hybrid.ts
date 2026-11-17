@@ -57,13 +57,13 @@ export async function hybridSearch(opts: HybridOptions): Promise<HybridHit[]> {
     try {
       const vec = await embedQuery(query, creds, index.model, index.dim);
 
-      const sem = index.streamed
+      const semanticHits = index.streamed
         ? await index.searchStreamed(vec, topK * 3, 0.3)
         : index.search(vec, topK * 3, 0.3);
 
       const seen = new Set<string>();
       let rank = 0;
-      for (const r of sem) {
+      for (const r of semanticHits) {
         if (seen.has(r.entry.path)) continue;
         seen.add(r.entry.path);
         bump(r.entry.path, rank++, r.entry.text.slice(0, excerptChars), "semantic");

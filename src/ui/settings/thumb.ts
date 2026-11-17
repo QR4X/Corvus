@@ -20,11 +20,11 @@ export function putThumb(row: HTMLElement): void {
   const active = row.querySelector<HTMLElement>(".corvus-seg-item.is-active");
 
   if (!active || active.offsetWidth === 0) return;
-  const primeira = thumbOf(row).x === "";
-  if (primeira) row.addClass("is-placing");
+  const first = thumbOf(row).x === "";
+  if (first) row.addClass("is-placing");
   row.style.setProperty("--corvus-seg-x", `${active.offsetLeft}px`);
   row.style.setProperty("--corvus-seg-w", `${active.offsetWidth}px`);
-  if (primeira) {
+  if (first) {
 
     void row.offsetWidth;
     row.removeClass("is-placing");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { __setRequestUrl } from "obsidian";
-import { openrouterProvider, proximaPagina } from "../src/providers/openrouter";
+import { openrouterProvider, nextPageUrl } from "../src/providers/openrouter";
 
 afterEach(() => __setRequestUrl(null));
 
@@ -43,9 +43,9 @@ describe("embeddings do OpenRouter", () => {
   });
 
   it("a próxima página só vale se for do próprio OpenRouter", () => {
-    expect(proximaPagina({ links: { next: "https://openrouter.ai/api/v1/embeddings/models?offset=20" } })).toMatch(/offset=20/);
-    expect(proximaPagina({ links: { next: "https://evil.example/x" } })).toBeNull();
-    expect(proximaPagina({ links: {} })).toBeNull();
-    expect(proximaPagina(null)).toBeNull();
+    expect(nextPageUrl({ links: { next: "https://openrouter.ai/api/v1/embeddings/models?offset=20" } })).toMatch(/offset=20/);
+    expect(nextPageUrl({ links: { next: "https://evil.example/x" } })).toBeNull();
+    expect(nextPageUrl({ links: {} })).toBeNull();
+    expect(nextPageUrl(null)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
-export function somarDescobertos(
-  antes: readonly string[] | undefined,
-  novos: readonly string[]
+export function mergeDiscovered(
+  previous: readonly string[] | undefined,
+  added: readonly string[]
 ): string[] {
-  return [...new Set([...(antes ?? []), ...novos])];
+  return [...new Set([...(previous ?? []), ...added])];
 }
