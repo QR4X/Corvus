@@ -24,10 +24,10 @@ export const Keymap = {
   },
 };
 
-export function parseYaml(texto?: string): unknown {
+export function parseYaml(text?: string): unknown {
   const out: Record<string, string> = {};
-  for (const linha of (texto ?? "").split(/\r?\n/)) {
-    const m = linha.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+  for (const line of (text ?? "").split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
     if (!m) continue;
     let v = m[2].trim();
     if (v.startsWith('"') && v.endsWith('"') && v.length > 1) {
@@ -46,12 +46,12 @@ export class Notice {
 }
 
 const FAKE_WORDS =
-  ("perfeito chat só que assim a transcrição ela tem que aparecer desse mesmo " +
-    "jeito que eu vou falando aqui olha que eu vou tirar o print pra você e " +
-    "entendeu como é que funciona").split(" ");
+  ("perfect chat except the transcription has to show up exactly the same " +
+    "way I am speaking right here look I am going to take a screenshot for you " +
+    "and you will see how it works").split(" ");
 
 let fakeSeg = -1;
-let fakeUltimoTamanho = Infinity;
+let fakeLastSize = Infinity;
 
 export async function requestUrl(opts: {
   url?: string;
@@ -64,7 +64,7 @@ export async function requestUrl(opts: {
       status: 200,
       text: [
         "<html><head><title>Spaced repetition — Wikipedia</title></head>",
-        "<body><script>ignora()</script><h1>Spaced repetition</h1>",
+        "<body><script>ignore()</script><h1>Spaced repetition</h1>",
         "<p>Spaced repetition is an evidence-based learning technique.</p>",
         "<p>It is usually performed with flashcards &amp; software.</p>",
         "</body></html>",
@@ -77,34 +77,34 @@ export async function requestUrl(opts: {
       typeof opts.body === "string"
         ? opts.body.length
         : (opts.body?.byteLength ?? 0);
-    if (bytes <= fakeUltimoTamanho) fakeSeg += 1;
-    fakeUltimoTamanho = bytes;
+    if (bytes <= fakeLastSize) fakeSeg += 1;
+    fakeLastSize = bytes;
     const seg = fakeSeg;
 
     const log = ((window as unknown as Record<string, unknown>).__transcribeLog ??=
       []) as { bytes: number; at: number; seg: number }[];
     log.push({ bytes, at: Date.now(), seg });
 
-    const derrubar = (new URLSearchParams(location.search).get("falhar") ?? "")
+    const failOn = (new URLSearchParams(location.search).get("fail") ?? "")
       .split(",")
       .filter(Boolean)
       .map(Number);
-    if (derrubar.includes(log.length)) {
+    if (failOn.includes(log.length)) {
       await new Promise((r) => setTimeout(r, 200));
       return { status: 500, json: { error: { message: "preview: simulated failure" } } };
     }
 
     const base = Number(new URLSearchParams(location.search).get("lag") ?? 700);
-    const segundosDeAudio = bytes / 4000;
+    const audioSeconds = bytes / 4000;
     await new Promise((r) =>
-      setTimeout(r, base + bytes / 190 + segundosDeAudio * 120)
+      setTimeout(r, base + bytes / 190 + audioSeconds * 120)
     );
 
-    const palavras = Math.max(1, Math.min(6, Math.round(bytes / 6000)));
-    const inicio = (seg * 6) % FAKE_WORDS.length;
+    const wordCount = Math.max(1, Math.min(6, Math.round(bytes / 6000)));
+    const start = (seg * 6) % FAKE_WORDS.length;
     return {
       status: 200,
-      json: { text: FAKE_WORDS.slice(inicio, inicio + palavras).join(" ") },
+      json: { text: FAKE_WORDS.slice(start, start + wordCount).join(" ") },
     };
   }
 
@@ -174,14 +174,14 @@ export class Modal {
     bg.className = "modal-bg";
     this.modalEl = document.createElement("div");
     this.modalEl.className = "modal";
-    const fechar = document.createElement("div");
-    fechar.className = "modal-close-button";
-    fechar.addEventListener("click", () => this.close());
+    const closeButton = document.createElement("div");
+    closeButton.className = "modal-close-button";
+    closeButton.addEventListener("click", () => this.close());
     this.titleEl = document.createElement("div");
     this.titleEl.className = "modal-title";
     this.contentEl = document.createElement("div");
     this.contentEl.className = "modal-content";
-    this.modalEl.append(fechar, this.titleEl, this.contentEl);
+    this.modalEl.append(closeButton, this.titleEl, this.contentEl);
     this.containerEl.append(bg, this.modalEl);
   }
 
@@ -220,25 +220,25 @@ export function getLanguage(): string {
 
 export class ToggleComponent {
   toggleEl: HTMLElement;
-  private valor = false;
+  private value = false;
   private handler: ((v: boolean) => void) | null = null;
   constructor(container: HTMLElement) {
     this.toggleEl = document.createElement("div");
     this.toggleEl.className = "checkbox-container";
     container.appendChild(this.toggleEl);
     this.toggleEl.addEventListener("click", () => {
-      this.setValue(!this.valor);
+      this.setValue(!this.value);
     });
   }
   getValue() {
-    return this.valor;
+    return this.value;
   }
   setValue(v: boolean) {
-    const mudou = v !== this.valor;
-    this.valor = v;
+    const changed = v !== this.value;
+    this.value = v;
     this.toggleEl.classList.toggle("is-enabled", v);
 
-    if (mudou) this.handler?.(v);
+    if (changed) this.handler?.(v);
     return this;
   }
   setDisabled(v: boolean) {
@@ -479,91 +479,91 @@ export const MarkdownRenderer = {
 
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     const out: string[] = [];
-    let lista: string[] = [];
-    const fechaLista = () => {
-      if (lista.length) out.push("<ul>" + lista.join("") + "</ul>");
-      lista = [];
+    let listItems: string[] = [];
+    const flushList = () => {
+      if (listItems.length) out.push("<ul>" + listItems.join("") + "</ul>");
+      listItems = [];
     };
-    let tabela: string[] = [];
-    const celulas = (l: string) =>
+    let tableRows: string[] = [];
+    const cells = (l: string) =>
       l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-    const fechaTabela = () => {
-      if (tabela.length === 0) return;
-      const linhas = tabela.filter((l) => !/^\s*\|[\s:|-]+\|\s*$/.test(l));
-      const [cab, ...corpo] = linhas;
-      const th = celulas(cab ?? "").map((c) => "<th>" + inline(c) + "</th>");
-      const tr = corpo.map(
+    const flushTable = () => {
+      if (tableRows.length === 0) return;
+      const lines = tableRows.filter((l) => !/^\s*\|[\s:|-]+\|\s*$/.test(l));
+      const [head, ...rows] = lines;
+      const th = cells(head ?? "").map((c) => "<th>" + inline(c) + "</th>");
+      const tr = rows.map(
         (l) =>
           "<tr>" +
-          celulas(l).map((c) => "<td>" + inline(c) + "</td>").join("") +
+          cells(l).map((c) => "<td>" + inline(c) + "</td>").join("") +
           "</tr>"
       );
       out.push(
         "<table><thead><tr>" + th.join("") + "</tr></thead><tbody>" +
           tr.join("") + "</tbody></table>"
       );
-      tabela = [];
+      tableRows = [];
     };
 
-    let cerca: { mark: string; lang: string; linhas: string[] } | null = null;
+    let fence: { mark: string; lang: string; lines: string[] } | null = null;
 
-    const bloco = (lang: string, linhas: string[]) =>
+    const codeBlock = (lang: string, lines: string[]) =>
       '<pre><button class="copy-code-button"><i data-lucide="copy"></i></button><code class="language-' +
       lang +
       '">' +
-      esc(linhas.join(String.fromCharCode(10))) +
+      esc(lines.join(String.fromCharCode(10))) +
       "</code></pre>";
-    for (const linha of text.split(String.fromCharCode(10))) {
-      const abre = linha.match(/^ {0,3}(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)\s*$/);
-      if (cerca) {
-        if (abre && abre[1][0] === cerca.mark[0] && abre[1].length >= cerca.mark.length) {
-          out.push(bloco(cerca.lang, cerca.linhas));
-          cerca = null;
+    for (const line of text.split(String.fromCharCode(10))) {
+      const fenceOpen = line.match(/^ {0,3}(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)\s*$/);
+      if (fence) {
+        if (fenceOpen && fenceOpen[1][0] === fence.mark[0] && fenceOpen[1].length >= fence.mark.length) {
+          out.push(codeBlock(fence.lang, fence.lines));
+          fence = null;
         } else {
-          cerca.linhas.push(linha);
+          fence.lines.push(line);
         }
         continue;
       }
-      if (abre) {
-        fechaLista();
-        cerca = { mark: abre[1], lang: abre[2] || "none", linhas: [] };
+      if (fenceOpen) {
+        flushList();
+        fence = { mark: fenceOpen[1], lang: fenceOpen[2] || "none", lines: [] };
         continue;
       }
-      const h = linha.match(/^(#{1,4})\s+(.*)$/);
-      const li = linha.match(/^[-*]\s+(.*)$/);
+      const h = line.match(/^(#{1,4})\s+(.*)$/);
+      const li = line.match(/^[-*]\s+(.*)$/);
 
-      if (/^\s*\|.*\|\s*$/.test(linha)) {
-        fechaLista();
-        tabela.push(linha);
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        flushList();
+        tableRows.push(line);
         continue;
       }
-      if (tabela.length > 0) fechaTabela();
+      if (tableRows.length > 0) flushTable();
 
-      if (/^>\s?/.test(linha)) {
-        fechaLista();
-        out.push("<blockquote><p>" + inline(linha.replace(/^>\s?/, "")) + "</p></blockquote>");
+      if (/^>\s?/.test(line)) {
+        flushList();
+        out.push("<blockquote><p>" + inline(line.replace(/^>\s?/, "")) + "</p></blockquote>");
         continue;
       }
-      if (/^(-{3,}|\*{3,}|_{3,})$/.test(linha.trim())) {
-        fechaLista();
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+        flushList();
         out.push("<hr>");
         continue;
       }
       if (h) {
-        fechaLista();
+        flushList();
         out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
       } else if (li) {
-        lista.push(`<li>${inline(li[1])}</li>`);
-      } else if (linha.trim() === "") {
-        fechaLista();
+        listItems.push(`<li>${inline(li[1])}</li>`);
+      } else if (line.trim() === "") {
+        flushList();
       } else {
-        fechaLista();
-        out.push(`<p>${inline(linha)}</p>`);
+        flushList();
+        out.push(`<p>${inline(line)}</p>`);
       }
     }
-    fechaLista();
-    fechaTabela();
-    if (cerca) out.push(bloco(cerca.lang, cerca.linhas));
+    flushList();
+    flushTable();
+    if (fence) out.push(codeBlock(fence.lang, fence.lines));
     el.innerHTML = out.join("");
   },
 };
