@@ -36,10 +36,11 @@ export class SettingsStore {
       void this.backup(JSON.stringify(saved, null, 2));
     }
 
+    const legacy = { ...saved };
     migrateLegacyFields(saved);
     const s: CorvusSettings = Object.assign({}, DEFAULT_SETTINGS, saved);
 
-    const ollama = reviewOllamaDefault(saved, OLLAMA_DEFAULTS_UNTIL_0923);
+    const ollama = reviewOllamaDefault({ ...legacy, ...saved }, OLLAMA_DEFAULTS_UNTIL_0923);
     if (ollama !== null) s.ollamaEndpoint = ollama;
     s.ollamaDefaultReviewed = true;
 

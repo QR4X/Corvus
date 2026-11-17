@@ -76,6 +76,20 @@ describe("SettingsStore.load", () => {
     expect(s.ollamaDefaultReviewed).toBe(true);
   });
 
+  it("keeps the Ollama endpoint when only legacy role fields show it was used", async () => {
+    const { store } = setup({
+      saved: {
+        ollamaEndpoint: OLLAMA_LOCAL,
+        ollamaModel: OLLAMA_DEFAULTS_UNTIL_0923.model,
+        activeModels: { ollama: OLLAMA_DEFAULTS_UNTIL_0923.active },
+        roleModels: { chat: { provider: "ollama", model: "llama3" } },
+      },
+    });
+    const s = await store.load();
+    expect(s.ollamaEndpoint).toBe(OLLAMA_LOCAL);
+    expect(s).not.toHaveProperty("roleModels");
+  });
+
   it("drops fields nothing reads anymore", async () => {
     const { store } = setup({ saved: { language: "en-us", uiFontSize: "20" } });
     const s = (await store.load()) as unknown as Record<string, unknown>;
