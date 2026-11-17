@@ -8,6 +8,20 @@ import { Sheet } from "./Sheet";
 import { SheetField, SheetSubmit, SheetTextarea } from "./SheetForm";
 import { tr } from "../i18n/tr";
 
+export async function loadInstructions(
+  plugin: CorvusPlugin,
+  chat: ChatSummary
+): Promise<string | null> {
+  const st = useChatStore.getState();
+  if (st.currentChatId === chat.id) return st.sessionInstructions ?? "";
+  try {
+    const d = await loadChat(plugin.app, plugin.settings.chatsPath, chat.mode, chat.id);
+    return d.instructions ?? "";
+  } catch {
+    return null;
+  }
+}
+
 export function ChatInstructionsSheet({
   plugin,
   chat,
@@ -21,28 +35,22 @@ export function ChatInstructionsSheet({
 }) {
   const [texto, setTexto] = useState("");
   const [pronto, setPronto] = useState(false);
+  const [unreadable, setUnreadable] = useState(false);
 
   useEffect(() => {
     if (!open || !chat) return;
     let vivo = true;
     setPronto(false);
-    const st = useChatStore.getState();
-    if (st.currentChatId === chat.id) {
-      setTexto(st.sessionInstructions ?? "");
+    setUnreadable(false);
+    void loadInstructions(plugin, chat).then((text) => {
+      if (!vivo) return;
+      if (text === null) {
+        setUnreadable(true);
+        return;
+      }
+      setTexto(text);
       setPronto(true);
-      return;
-    }
-    void loadChat(plugin.app, plugin.settings.chatsPath, chat.mode, chat.id)
-      .then((d) => {
-        if (!vivo) return;
-        setTexto(d.instructions ?? "");
-        setPronto(true);
-      })
-      .catch(() => {
-        if (!vivo) return;
-        setTexto("");
-        setPronto(true);
-      });
+    });
     return () => {
       vivo = false;
     };
@@ -86,7 +94,13 @@ export function ChatInstructionsSheet({
       footer={
         <SheetSubmit
           label={tr("Save instructions")}
-          problema={pronto ? null : tr("Loading…")}
+          problema={
+            unreadable
+              ? tr("Couldn't read this chat's instructions. Close and try again.")
+              : pronto
+                ? null
+                : tr("Loading…")
+          }
           onSubmit={() => void salvar()}
         />
       }

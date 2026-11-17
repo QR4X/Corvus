@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { setChatInstructions, loadChat } from "../src/core/chatPersistence";
 import type { App } from "obsidian";
+import type { ChatSummary } from "../src/core/chatPersistence";
+import type CorvusPlugin from "../src/main";
+import { loadInstructions } from "../src/ui/ChatInstructionsSheet";
 
 const ler = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf8");
 
@@ -58,5 +61,25 @@ describe("instruções por conversa", () => {
   it("o ⋯ da conversa abre a folha, que mora no App", () => {
     expect(ler("src/ui/ChatList.tsx")).toMatch(/label: tr\("Instructions…"\)[\s\S]{0,160}painel\.instrucoesDe\(c\)/);
     expect(ler("src/ui/App.tsx")).toContain("<ChatInstructionsSheet");
+  });
+});
+
+describe("loadInstructions", () => {
+  const summary = { id: "c1", mode: "chat" } as ChatSummary;
+  const plugin = (read: (p: string) => Promise<string>) =>
+    ({ app: { vault: { adapter: { read } } }, settings: { chatsPath: ".corvus/chats" } }) as unknown as CorvusPlugin;
+
+  it("returns the stored instructions", async () => {
+    const { app } = vault(CHAT);
+    await setChatInstructions(app, ".corvus/chats", "chat", "c1", "Cite the note.");
+    const read = (p: string) => app.vault.adapter.read(p);
+    expect(await loadInstructions(plugin(read), summary)).toBe("Cite the note.");
+  });
+
+  it("reports an unreadable chat as null instead of empty, so saving can't wipe it", async () => {
+    const failing = plugin(async () => {
+      throw new Error("EIO");
+    });
+    expect(await loadInstructions(failing, summary)).toBeNull();
   });
 });
