@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { QUANT_ITENS, pendenciaDoIndice } from "../src/ui/settings/searchIndex";
 import { QUANT_PROFILES } from "../src/rag/quant";
-import { applyControl, DEFAULT_INDEX_PATH, isControlKey } from "../src/ui/settings/values";
+import { applyControl, isControlKey } from "../src/ui/settings/values";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { CorvusSettings } from "../src/main";
+import { DEFAULT_SETTINGS, type CorvusSettings } from "../src/settings";
 
 describe("o índice do Q&A: precisão e pedaços", () => {
   it("os quatro perfis do motor, nenhum a mais", () => {
@@ -57,7 +57,7 @@ describe("a pasta do índice", () => {
     applyControl(a, "ragIndexPath", " /meu/indice/ ");
     expect(a.ragIndexPath).toBe("meu/indice");
     applyControl(a, "ragIndexPath", "   ");
-    expect(a.ragIndexPath).toBe(DEFAULT_INDEX_PATH);
-    expect(DEFAULT_INDEX_PATH).toBe(".corvus/index");
+    expect(a.ragIndexPath).toBe(DEFAULT_SETTINGS.ragIndexPath);
+    expect(DEFAULT_SETTINGS.ragIndexPath).toBe(".corvus/index");
   });
 });

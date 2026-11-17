@@ -1,5 +1,4 @@
-import type { CorvusSettings } from "../../main";
-import { CORVUS_HIDDEN, CHATS_FOLDER } from "../../core/vaultPaths";
+import { DEFAULT_SETTINGS, type CorvusSettings } from "../../settings";
 
 const BOOL_KEYS = [
   "assistantSeesVault",
@@ -47,38 +46,9 @@ export function isControlKey(key: string): key is ControlKey {
   return BOOLS.has(key) || TEXTS.has(key);
 }
 
-export const DEFAULT_CHATS_PATH = CHATS_FOLDER;
-
-export const DEFAULT_SKILLS_PATH = "corvus-ai/skills";
-
-export const DEFAULT_INDEX_PATH = `${CORVUS_HIDDEN}/index`;
-
 export function readControl(s: CorvusSettings, key: ControlKey): boolean | string {
-  switch (key) {
-
-    case "assistantSeesVault":
-      return !!s.assistantSeesVault;
-    case "openaiDataSharing":
-      return s.openaiDataSharing === true;
-    case "mobileFullscreen":
-      return s.mobileFullscreen === true;
-    case "hapticsEnabled":
-      return s.hapticsEnabled !== false;
-
-    case "agentWeb":
-      return s.agentWeb !== false;
-    case "keepAwakeWhileWriting":
-      return s.keepAwakeWhileWriting !== false;
-    case "travarNoLimite":
-      return s.travarNoLimite === true;
-    case "language":
-      return s.language || "en-us";
-
-    case "openaiTier":
-      return String(s.openaiTier ?? 1);
-    default:
-      return s[key];
-  }
+  const v = s[key] ?? DEFAULT_SETTINGS[key];
+  return typeof v === "number" ? String(v) : v;
 }
 
 export function applyControl(
@@ -102,17 +72,17 @@ export function applyControl(
       return;
 
     case "chatsPath":
-      s.chatsPath = v.trim() || DEFAULT_CHATS_PATH;
+      s.chatsPath = v.trim() || DEFAULT_SETTINGS.chatsPath;
       return;
     case "skillsPath":
-      s.skillsPath = v.trim() || DEFAULT_SKILLS_PATH;
+      s.skillsPath = v.trim() || DEFAULT_SETTINGS.skillsPath;
       return;
     case "agentInstructionsPath":
       s.agentInstructionsPath = v.trim();
       return;
 
     case "ragIndexPath":
-      s.ragIndexPath = v.trim().replace(/^\/+|\/+$/g, "") || DEFAULT_INDEX_PATH;
+      s.ragIndexPath = v.trim().replace(/^\/+|\/+$/g, "") || DEFAULT_SETTINGS.ragIndexPath;
       return;
     default:
       s[key as Exclude<TextKey, "openaiTier">] = v;

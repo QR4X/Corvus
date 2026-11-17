@@ -1,4 +1,4 @@
-import type { CorvusSettings } from "../main";
+import type { CorvusSettings } from "../settings";
 import { pareceEmbeddingDoOllama } from "../rag/types";
 
 export function modeloSalvoPara(s: CorvusSettings, provider: string): string {

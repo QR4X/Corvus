@@ -10,21 +10,15 @@ import {
 import { semCredencial } from "../src/core/helpers";
 import { getTranslations } from "../src/i18n";
 import { ollamaProvider } from "../src/providers/ollama";
+import { DEFAULT_SETTINGS } from "../src/settings";
 
 const MODELO = { modelo: "llama3.2", ativos: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"] };
 
 describe("de fábrica", () => {
-  it("o endereço do Ollama nasce vazio", () => {
-    const main = readFileSync(resolve(__dirname, "../src/main.ts"), "utf8");
-    const padrao = main.slice(main.indexOf("const DEFAULT_SETTINGS"));
-    expect(padrao).toMatch(/\bollamaEndpoint:\s*"",/);
-  });
-
-  it("modelo e lista do Ollama nascem vazios (saem do que ele tem instalado)", () => {
-    const main = readFileSync(resolve(__dirname, "../src/main.ts"), "utf8");
-    const padrao = main.slice(main.indexOf("const DEFAULT_SETTINGS"));
-    expect(padrao).toMatch(/\bollamaModel:\s*"",/);
-    expect(padrao).toMatch(/\bollama:\s*\[\],/);
+  it("Ollama starts with no endpoint, model or model list", () => {
+    expect(DEFAULT_SETTINGS.ollamaEndpoint).toBe("");
+    expect(DEFAULT_SETTINGS.ollamaModel).toBe("");
+    expect(DEFAULT_SETTINGS.activeModels.ollama).toEqual([]);
   });
 
   it("a revisão do endereço compara com a fábrica ANTIGA, a que está gravada", () => {

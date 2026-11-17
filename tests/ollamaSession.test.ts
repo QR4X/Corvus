@@ -4,7 +4,7 @@ import { useChatStore } from "../src/store/chat";
 import { alinharAoInstalado } from "../src/core/ollamaDefault";
 import { modeloSalvoPara } from "../src/core/defaultModel";
 import { pareceEmbeddingDoOllama } from "../src/rag/types";
-import type { CorvusSettings } from "../src/main";
+import type { CorvusSettings } from "../src/settings";
 
 function montar(extra: Record<string, unknown> = {}) {
   const ouvintes = new Set<() => void>();
