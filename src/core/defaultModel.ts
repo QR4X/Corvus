@@ -1,23 +1,9 @@
 import type { CorvusSettings } from "../settings";
 import { pareceEmbeddingDoOllama } from "../rag/types";
+import { providerMeta } from "./providersMeta";
 
 export function modeloSalvoPara(s: CorvusSettings, provider: string): string {
-  const doCampo = (() => {
-    switch (provider) {
-      case "anthropic":
-        return s.anthropicModel;
-      case "gemini":
-        return s.geminiModel;
-      case "openrouter":
-        return s.openrouterModel;
-      case "nim":
-        return s.nimModel;
-      case "ollama":
-        return s.ollamaModel;
-      default:
-        return s.defaultModel;
-    }
-  })();
+  const doCampo = s[providerMeta(provider).model];
   if (doCampo) return doCampo;
   const ativos = s.activeModels?.[provider] ?? [];
 

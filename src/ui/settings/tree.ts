@@ -77,29 +77,6 @@ export function tabsFor(isMobile: boolean): TabDef[] {
   return TABS.filter((t) => !t.mobileOnly || isMobile);
 }
 
-export type KeyField =
-  | "openaiApiKey"
-  | "anthropicApiKey"
-  | "geminiApiKey"
-  | "openrouterApiKey"
-  | "nimApiKey";
-export type ModelField =
-  | "defaultModel"
-  | "anthropicModel"
-  | "geminiModel"
-  | "openrouterModel"
-  | "nimModel"
-  | "ollamaModel";
-
-export const PROVIDER_FIELDS: Record<string, { key?: KeyField; model: ModelField }> = {
-  openai: { key: "openaiApiKey", model: "defaultModel" },
-  anthropic: { key: "anthropicApiKey", model: "anthropicModel" },
-  gemini: { key: "geminiApiKey", model: "geminiModel" },
-  openrouter: { key: "openrouterApiKey", model: "openrouterModel" },
-  nim: { key: "nimApiKey", model: "nimModel" },
-  ollama: { model: "ollamaModel" },
-};
-
 export const SPEECH_LANGS: [string, string][] = [
 
   ["", mark("Auto (detect)")],
@@ -302,12 +279,10 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
   ]);
 
   for (const p of PROVIDERS) {
-    const f = PROVIDER_FIELDS[p.id];
-    if (!f) continue;
     const at: Place = { tab: "providers", provider: p.id };
 
     group(at, { heading: p.name }, [
-      f.key
+      p.credential !== "ollamaEndpoint"
         ? custom(
             tr("{provider} API key", { provider: p.name }),
             tr("API key"),

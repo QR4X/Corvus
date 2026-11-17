@@ -25,7 +25,7 @@ export function StarterScreen({
 }) {
   const cfg = session.config;
   const mode = MODULES[cfg.mode];
-  const hasKey = providerConfigured(plugin, cfg.provider);
+  const hasKey = providerConfigured(plugin.settings, cfg.provider);
   const providerName =
     PROVIDERS.find((p) => p.id === cfg.provider)?.name ?? cfg.provider;
 

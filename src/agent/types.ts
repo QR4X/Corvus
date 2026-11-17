@@ -1,3 +1,4 @@
+import type { Credentials } from "../core/providersMeta";
 import type { App } from "obsidian";
 import type { VectorIndex } from "../rag/vectorIndex";
 
@@ -21,13 +22,7 @@ export interface ToolContext {
 
   appDataPaths?: readonly string[];
 
-  embed: {
-    openaiApiKey: string;
-    openrouterApiKey: string;
-    geminiApiKey?: string;
-    nimApiKey?: string;
-    ollamaEndpoint?: string;
-  };
+  embed: Credentials;
 
   web?: { tavilyApiKey: string };
 }

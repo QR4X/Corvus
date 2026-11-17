@@ -25,6 +25,7 @@ import {
 import type { ChatSession } from "../core/session";
 import {
   PROVIDERS,
+  providerCredential,
   providerBlockedReason,
   providerHealth,
 } from "../core/providersMeta";
@@ -856,7 +857,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   useEffect(() => {
     if (sheet !== "model") return;
     if (plugin.settings.discoveredModels?.[pickProvider]) return;
-    if (!plugin.providerCredential(pickProvider)) return;
+    if (!providerCredential(plugin.settings, pickProvider)) return;
     if (catalogosTentados.current.has(pickProvider)) return;
     catalogosTentados.current.add(pickProvider);
 
@@ -1237,8 +1238,8 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               id: p.id,
               icon: p.icon,
               label: p.name,
-              health: providerHealth(plugin, p.id),
-              blocked: providerBlockedReason(plugin, p.id),
+              health: providerHealth(plugin.settings, p.id),
+              blocked: providerBlockedReason(plugin.settings, p.id),
             }))}
           />
         )}

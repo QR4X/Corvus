@@ -1,3 +1,4 @@
+import { providerCredential, type Credentials } from "../core/providersMeta";
 import { requestUrl } from "obsidian";
 import { ProviderError } from "../providers/base";
 import { getEmbeddingSpec } from "./types";
@@ -39,15 +40,6 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
 export type EmbedInput =
   | { kind: "text"; text: string }
   | { kind: "image"; dataUrl: string; alt?: string };
-
-export interface EmbedCredentials {
-  openaiApiKey: string;
-  openrouterApiKey: string;
-  geminiApiKey?: string;
-  nimApiKey?: string;
-
-  ollamaEndpoint?: string;
-}
 
 export function arrayBufferToDataUrl(
   buffer: ArrayBuffer,
@@ -370,7 +362,7 @@ export async function embedOllama(
 
 export async function embedItems(
   items: EmbedInput[],
-  creds: EmbedCredentials,
+  creds: Credentials,
   model: string,
   dimensions?: number
 ): Promise<number[][]> {
@@ -384,9 +376,9 @@ export async function embedItems(
     );
   }
 
+  const key = providerCredential(creds, spec.provider);
   if (spec.provider === "openrouter") {
-
-    return embedBatchOpenRouter(items, creds.openrouterApiKey, model);
+    return embedBatchOpenRouter(items, key, model);
   }
 
   if (hasImage) {
@@ -398,12 +390,12 @@ export async function embedItems(
 
   const texts = items.map((i) => (i.kind === "text" ? i.text : ""));
   if (spec.provider === "ollama") {
-    return embedOllama(texts, creds.ollamaEndpoint ?? "", model);
+    return embedOllama(texts, key, model);
   }
   if (spec.provider === "gemini") {
     return embedOpenAICompat(
       texts,
-      creds.geminiApiKey ?? "",
+      key,
       model,
       GEMINI_EMBEDDINGS_ENDPOINT,
       "Gemini",
@@ -415,7 +407,7 @@ export async function embedItems(
 
     return embedOpenAICompat(
       texts,
-      creds.nimApiKey ?? "",
+      key,
       model,
       NIM_EMBEDDINGS_ENDPOINT,
       "NIM",
@@ -424,12 +416,12 @@ export async function embedItems(
     );
   }
 
-  return embedBatch(texts, creds.openaiApiKey, model, dimensions);
+  return embedBatch(texts, key, model, dimensions);
 }
 
 export async function embedQuery(
   text: string,
-  creds: EmbedCredentials,
+  creds: Credentials,
   model: string,
   dimensions?: number
 ): Promise<number[]> {

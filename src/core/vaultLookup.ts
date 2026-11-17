@@ -44,13 +44,7 @@ export async function buscarContextoDoVault({
     const hits = await hybridSearch({
       app: plugin.app,
       index: plugin.vectorIndex,
-      creds: {
-        openaiApiKey: plugin.settings.openaiApiKey,
-        openrouterApiKey: plugin.settings.openrouterApiKey,
-        geminiApiKey: plugin.settings.geminiApiKey,
-        nimApiKey: plugin.settings.nimApiKey,
-        ollamaEndpoint: plugin.settings.ollamaEndpoint,
-      },
+      creds: plugin.settings,
       query,
       topK,
       excerptChars,

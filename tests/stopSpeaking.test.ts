@@ -37,8 +37,8 @@ const plugin = {
     elevenApiKey: "",
     elevenVoice: "",
     elevenModel: "",
+    openaiApiKey: "sk-teste",
   },
-  providerCredential: () => "sk-teste",
 } as unknown as Parameters<typeof speak>[0];
 
 const assentou = (p: Promise<unknown>) =>

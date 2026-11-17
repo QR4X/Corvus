@@ -465,13 +465,7 @@ export async function runAgentTurn(
                 app: plugin.app,
                 vectorIndex: plugin.vectorIndex,
                 appDataPaths: [plugin.settings.chatsPath, plugin.settings.ragIndexPath],
-                embed: {
-                  openaiApiKey: plugin.settings.openaiApiKey,
-                  openrouterApiKey: plugin.settings.openrouterApiKey,
-                  geminiApiKey: plugin.settings.geminiApiKey,
-                  nimApiKey: plugin.settings.nimApiKey,
-                  ollamaEndpoint: plugin.settings.ollamaEndpoint,
-                },
+                embed: plugin.settings,
                 web: { tavilyApiKey: tavily },
               },
               call.arguments

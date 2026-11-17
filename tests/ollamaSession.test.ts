@@ -26,7 +26,6 @@ function montar(extra: Record<string, unknown> = {}) {
     },
     loadChatSummaries: async () => [],
     saveSettings: async () => ouvintes.forEach((cb) => cb()),
-    providerCredential: () => "http://localhost:11434",
   };
   const sessao = new ChatSession(plugin as never);
 

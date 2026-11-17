@@ -31,6 +31,7 @@ import { SKILL_ICONS } from "../skills/skillFile";
 import { ICON_CATALOG } from "../iconCatalog";
 import { vaultNotes } from "./notePicker";
 import { tr } from "../i18n/tr";
+import { providerCredential } from "../core/providersMeta";
 
 export interface RodadaAssistente<T> {
   pergunta?: string;
@@ -72,7 +73,7 @@ export function useAssistant(plugin: CorvusPlugin) {
   const indisponivel = useMemo(
     () =>
       motivoIndisponivel(alvo, (id) =>
-        !!plugin.providerCredential(id).trim()
+        !!providerCredential(plugin.settings, id).trim()
       ),
     [alvo, plugin]
   );
@@ -82,7 +83,7 @@ export function useAssistant(plugin: CorvusPlugin) {
       if (!alvo) return { erro: indisponivel ?? tr("Assistant not available.") };
       return pedirAjuda({
         provider: getProvider(alvo.provider),
-        apiKey: plugin.providerCredential(alvo.provider),
+        apiKey: providerCredential(plugin.settings, alvo.provider),
         model: alvo.model,
         sistema,
         turnos,

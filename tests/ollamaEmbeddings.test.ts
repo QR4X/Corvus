@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import { embedItems, embedOllama } from "../src/rag/embeddings";
 import { inferEmbeddingSpec, pareceEmbeddingDoOllama, registerDiscoveredEmbeddings } from "../src/rag/types";
-import { EMBEDDING_PROVIDERS } from "../src/rag/discovered";
+import { EMBEDDING_PROVIDERS } from "../src/core/providersMeta";
 import { ollamaProvider } from "../src/providers/ollama";
 
 afterEach(() => {

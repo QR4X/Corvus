@@ -212,10 +212,10 @@ Mock note content, enough to serve as context.`,
   settings: {
 
     unreadChats: ["9"],
-    openaiApiKey: "sk-test",
-    anthropicApiKey: "sk-ant",
+    openaiApiKey: params.get("nokey") ? "" : "sk-test",
+    anthropicApiKey: params.get("nokey") ? "" : "sk-ant",
 
-    openrouterApiKey: "sk-or-test",
+    openrouterApiKey: params.get("nokey") ? "" : "sk-or-test",
     activeModels: {
 
       openai: [
@@ -255,7 +255,7 @@ Mock note content, enough to serve as context.`,
             anthropic: ["claude-opus-5"],
           },
 
-    geminiApiKey: "gm-test",
+    geminiApiKey: params.get("nokey") ? "" : "gm-test",
     providerStatus: {
       openai: { ok: true, at: Date.now(), detail: "24 models available." },
       gemini: { ok: false, at: Date.now(), detail: "401 invalid key" },
@@ -325,17 +325,6 @@ Mock note content, enough to serve as context.`,
     settingsListeners.add(cb);
     return () => settingsListeners.delete(cb);
   },
-
-  providerCredential: (id: string) =>
-    params.get("nokey")
-      ? ""
-      : ({
-          openai: "sk-test",
-          anthropic: "sk-ant",
-          gemini: "gm-test",
-
-          openrouter: "sk-or-test",
-        })[id] ?? "",
 
   scanModels: async (id: string) =>
     id === "openai"
