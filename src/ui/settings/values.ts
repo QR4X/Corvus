@@ -7,7 +7,7 @@ const BOOL_KEYS = [
   "openaiDataSharing",
   "agentDiffApproval",
   "agentWeb",
-  "travarNoLimite",
+  "blockAtLimit",
   "ragAutoReindex",
   "mobileFullscreen",
   "hapticsEnabled",

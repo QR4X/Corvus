@@ -105,7 +105,7 @@ export class ModelScanner {
     const untouched =
       listaDeFabrica(s.activeModels.ollama ?? []) &&
       (s.favoriteModels?.ollama ?? []).length === 0 &&
-      s.ollamaVistos === undefined;
+      s.ollamaSeenModels === undefined;
     if (opts.onlyFactoryList && !untouched) return null;
     const p = getProvider("ollama");
     if (!p.listModels) return null;
@@ -128,14 +128,14 @@ export class ModelScanner {
       ativos: s.activeModels.ollama ?? [],
       favoritos: s.favoriteModels?.ollama ?? [],
       modelo: s.ollamaModel ?? "",
-      vistos: s.ollamaVistos ?? null,
+      vistos: s.ollamaSeenModels ?? null,
     };
     const after = alinharAoInstalado(before, installed, pareceEmbeddingDoOllama);
     if (JSON.stringify(before) === JSON.stringify(after)) return false;
     s.activeModels = { ...s.activeModels, ollama: [...after.ativos] };
     s.favoriteModels = { ...(s.favoriteModels ?? {}), ollama: [...after.favoritos] };
     s.ollamaModel = after.modelo;
-    s.ollamaVistos = [...after.vistos];
+    s.ollamaSeenModels = [...after.vistos];
     return true;
   }
 

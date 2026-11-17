@@ -472,7 +472,7 @@ describe("o gasto do dia e o limite", () => {
     };
     const p = precoConhecido("openai", "gpt-5-nano")!;
     const total = p.entrada + p.saida;
-    const com = remainingToday({ ...base, limiteGasto: 2, travarNoLimite: true })[0];
+    const com = remainingToday({ ...base, limiteGasto: 2, blockAtLimit: true })[0];
     expect(com.provider).toBe("spend");
     expect(com.medidores[0]).toMatchObject({ unidade: "usd", limite: 2, limiteEditavel: CHAVE_LIMITE_GASTO });
     expect(com.medidores[0].restante).toBeCloseTo(2 - total, 6);

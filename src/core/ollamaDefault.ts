@@ -2,7 +2,7 @@ export const OLLAMA_LOCAL = "http://localhost:11434";
 
 interface OllamaSalvo {
   ollamaEndpoint?: unknown;
-  ollamaPadraoRevisto?: unknown;
+  ollamaDefaultReviewed?: unknown;
   defaultProvider?: unknown;
   ollamaModel?: unknown;
   providerStatus?: Record<string, { ok?: unknown } | undefined>;
@@ -113,7 +113,7 @@ export function revisarOllamaPadrao(
   s: OllamaSalvo,
   fabrica: OllamaFabrica
 ): string | null {
-  if (s.ollamaPadraoRevisto === true) return null;
+  if (s.ollamaDefaultReviewed === true) return null;
   if (s.ollamaEndpoint !== OLLAMA_LOCAL) return null;
   return usaOllama(s, fabrica) ? null : "";
 }

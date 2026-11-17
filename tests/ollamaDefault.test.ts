@@ -59,7 +59,7 @@ describe("a revisão única de quem já tinha instalado", () => {
 
   it("roda uma vez só: depois de revisto, um localhost digitado fica", () => {
     expect(
-      revisarOllamaPadrao({ ollamaEndpoint: OLLAMA_LOCAL, ollamaPadraoRevisto: true }, MODELO)
+      revisarOllamaPadrao({ ollamaEndpoint: OLLAMA_LOCAL, ollamaDefaultReviewed: true }, MODELO)
     ).toBeNull();
   });
 });

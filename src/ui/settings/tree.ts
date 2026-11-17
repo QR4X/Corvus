@@ -483,7 +483,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr(
         "When today's spending reaches the limit, paid models pause until midnight. Free and local models keep working, and so do models without a public price."
       ),
-      "travarNoLimite",
+      "blockAtLimit",
       { aliases: ["budget", "limit", "pause", "block"] }
     ),
   ]);

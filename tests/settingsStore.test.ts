@@ -73,7 +73,7 @@ describe("SettingsStore.load", () => {
     });
     const s = await store.load();
     expect(s.ollamaEndpoint).toBe("");
-    expect(s.ollamaPadraoRevisto).toBe(true);
+    expect(s.ollamaDefaultReviewed).toBe(true);
   });
 
   it("drops fields nothing reads anymore", async () => {
@@ -81,6 +81,30 @@ describe("SettingsStore.load", () => {
     const s = (await store.load()) as unknown as Record<string, unknown>;
     expect(s).not.toHaveProperty("language");
     expect(s).not.toHaveProperty("uiFontSize");
+  });
+
+  it("carries values saved under legacy field names over to the current names", async () => {
+    const { store } = setup({
+      saved: {
+        usoDoDia: { "2024-01-01": {} },
+        limiteGastoDiario: 3,
+        travarNoLimite: true,
+        ollamaVistos: ["llama3"],
+      },
+    });
+    const s = (await store.load()) as unknown as Record<string, unknown>;
+    expect(s.dailyUsage).toEqual({ "2024-01-01": {} });
+    expect(s.dailySpendLimit).toBe(3);
+    expect(s.blockAtLimit).toBe(true);
+    expect(s.ollamaSeenModels).toEqual(["llama3"]);
+    expect(s).not.toHaveProperty("usoDoDia");
+    expect(s).not.toHaveProperty("travarNoLimite");
+  });
+
+  it("a value under the current name wins over a legacy one", async () => {
+    const { store } = setup({ saved: { limiteGastoDiario: 3, dailySpendLimit: 5 } });
+    const s = await store.load();
+    expect(s.dailySpendLimit).toBe(5);
   });
 });
 

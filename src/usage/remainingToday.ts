@@ -80,7 +80,7 @@ export interface EntradaDoDia {
 
   limiteGasto?: number;
 
-  travarNoLimite?: boolean;
+  blockAtLimit?: boolean;
 }
 
 const sobra = (limite: number | undefined, usado: number): number | undefined =>
@@ -137,7 +137,7 @@ export function remainingToday(e: EntradaDoDia): Cartao[] {
             : tr("{n} requests on models without a public price aren't included.", { n: gasto.semPreco })
           : "",
         limiteGasto > 0
-          ? e.travarNoLimite
+          ? e.blockAtLimit
             ? tr("At the limit, paid models pause until midnight.")
             : tr("At the limit you get a heads-up; turn on “Stop paid models at the limit” in settings to pause them.")
           : tr("Set a limit to get a heads-up at 80% and 100%."),

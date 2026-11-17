@@ -32,8 +32,8 @@ export class UsageMeter {
   record(provider: string, model: string, delta: Partial<Lancamento>): void {
     const s = this.settings();
     const now = new Date();
-    const ledger = (s.usoDoDia ??= {});
-    const limit = s.limiteGastoDiario ?? 0;
+    const ledger = (s.dailyUsage ??= {});
+    const limit = s.dailySpendLimit ?? 0;
     const counts = limit > 0 && ((delta.i ?? 0) > 0 || (delta.o ?? 0) > 0);
     const before = counts ? gastoDeHoje(ledger, now).total : 0;
     lancar(ledger, now, provider, model, delta);
@@ -51,9 +51,9 @@ export class UsageMeter {
 
   guard(provider: string, model: string): void {
     const s = this.settings();
-    const limit = s.limiteGastoDiario ?? 0;
-    if (!(limit > 0) || !s.travarNoLimite || !ehPago(provider, model)) return;
-    const { total } = gastoDeHoje(s.usoDoDia ?? {}, new Date());
+    const limit = s.dailySpendLimit ?? 0;
+    if (!(limit > 0) || !s.blockAtLimit || !ehPago(provider, model)) return;
+    const { total } = gastoDeHoje(s.dailyUsage ?? {}, new Date());
     if (total < limit) return;
     throw new ProviderError(
       tr(
@@ -71,7 +71,7 @@ export class UsageMeter {
       return;
     }
     new Notice(
-      this.settings().travarNoLimite
+      this.settings().blockAtLimit
         ? tr(
             "Today's {limit} spending limit is reached ({spent}). Paid models pause until midnight; free and local ones still work.",
             values

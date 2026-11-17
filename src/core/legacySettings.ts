@@ -1,4 +1,4 @@
-export const CAMPOS_MORTOS = [
+export const DEAD_FIELDS = [
   "roleModels",
   "modelProvider",
   "uiFontFamily",
@@ -6,7 +6,22 @@ export const CAMPOS_MORTOS = [
   "language",
 ] as const;
 
-export function limparCamposMortos(s: object): void {
+export const RENAMED_FIELDS = {
+  ollamaPadraoRevisto: "ollamaDefaultReviewed",
+  ollamaVistos: "ollamaSeenModels",
+  usoDoDia: "dailyUsage",
+  limitesDiarios: "dailyLimits",
+  limiteGastoDiario: "dailySpendLimit",
+  travarNoLimite: "blockAtLimit",
+} as const;
+
+export function migrateLegacyFields(s: object): void {
   const r = s as Record<string, unknown>;
-  for (const k of CAMPOS_MORTOS) delete r[k];
+  for (const [from, to] of Object.entries(RENAMED_FIELDS)) {
+    if (from in r) {
+      if (!(to in r)) r[to] = r[from];
+      delete r[from];
+    }
+  }
+  for (const k of DEAD_FIELDS) delete r[k];
 }
