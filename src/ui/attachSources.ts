@@ -1,11 +1,8 @@
 import { TFile, TFolder, type App } from "obsidian";
-import type { ImageAttachment, MessageAttachment, NoteAttachment } from "../providers/base";
-import { ensureFolder } from "../core/chatPersistence";
+import type { MessageAttachment, NoteAttachment } from "../providers/base";
+import { isImageExt } from "../core/imageStore";
+import { GENERATION_FOLDER } from "../core/vaultPaths";
 import { tr } from "../i18n/tr";
-
-export const GENERATION_DIR = "corvus-ai/generation";
-
-export const IMAGE_GENERATION_DIR = `${GENERATION_DIR}/images`;
 
 export interface ArtifactLike {
   path: string;
@@ -29,10 +26,6 @@ const MIDIA = new Set([
   "mov",
 ]);
 
-export function isImageExt(ext: string): boolean {
-  return ["png", "jpg", "jpeg", "webp", "gif"].includes(ext.toLowerCase());
-}
-
 export function rankArtifacts(
   arquivos: readonly ArtifactLike[],
   limite = 40
@@ -40,7 +33,7 @@ export function rankArtifacts(
   return arquivos
     .filter(
       (f) =>
-        f.path.startsWith(`${GENERATION_DIR}/`) &&
+        f.path.startsWith(`${GENERATION_FOLDER}/`) &&
         MIDIA.has(f.extension.toLowerCase())
     )
     .slice()
@@ -49,7 +42,7 @@ export function rankArtifacts(
 }
 
 export function vaultArtifacts(app: App): ArtifactLike[] {
-  const pasta = app.vault.getAbstractFileByPath(GENERATION_DIR);
+  const pasta = app.vault.getAbstractFileByPath(GENERATION_FOLDER);
   if (!(pasta instanceof TFolder)) return [];
   const saida: ArtifactLike[] = [];
 
@@ -68,34 +61,6 @@ export function vaultArtifacts(app: App): ArtifactLike[] {
   };
   desce(pasta);
   return saida;
-}
-
-export function htmlToText(html: string, max = 20000): string {
-  const limpo = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<\/(p|div|li|h[1-6]|tr|section|article)>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t]+/g, " ")
-
-    .replace(/[ \t]*\n[ \t]*/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return limpo.length > max ? `${limpo.slice(0, max)}\n\n[…]` : limpo;
-}
-
-export function htmlTitle(html: string): string | null {
-  const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const t = m ? m[1].replace(/\s+/g, " ").trim() : "";
-  return t || null;
 }
 
 export function normalizeUrl(entrada: string): string | null {
@@ -169,38 +134,3 @@ export function attachmentLabel(a: MessageAttachment): string {
   return a.path.split("/").pop() ?? tr("Audio");
 }
 
-function base64ToArrayBuffer(b64: string): ArrayBuffer {
-  const bin = atob(b64);
-  const buf = new ArrayBuffer(bin.length);
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return buf;
-}
-
-function imageExt(mime: string, name: string | undefined): string {
-  if (mime === "image/png") return "png";
-  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
-  if (mime === "image/webp") return "webp";
-  if (mime === "image/gif") return "gif";
-  const nome = name?.split(".").pop() ?? "";
-  return isImageExt(nome) ? nome.toLowerCase() : "png";
-}
-
-export async function persistLocalImage(
-  app: App,
-  att: ImageAttachment
-): Promise<ImageAttachment> {
-  if (att.path || /^https?:/i.test(att.dataUrl)) return att;
-  const m = /^data:([^;,]+);base64,(.+)$/s.exec(att.dataUrl);
-  if (!m) return att;
-  const path = `${IMAGE_GENERATION_DIR}/${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}.${imageExt(m[1], att.name)}`;
-  try {
-    await ensureFolder(app.vault.adapter, IMAGE_GENERATION_DIR);
-    await app.vault.adapter.writeBinary(path, base64ToArrayBuffer(m[2]));
-    return { ...att, path, mimeType: m[1] };
-  } catch {
-    return att;
-  }
-}

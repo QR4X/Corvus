@@ -1,18 +1,17 @@
 import { describe, it, expect } from "vitest";
 import {
   rankArtifacts,
-  htmlToText,
-  htmlTitle,
   normalizeUrl,
   linkNote,
-  isImageExt,
   attachmentLabel,
   attachmentThumb,
   noteKind,
   artifactIcon,
-  GENERATION_DIR,
   type ArtifactLike,
 } from "../src/ui/attachSources";
+import { htmlTitle, htmlToText } from "../src/core/html";
+import { isImageExt } from "../src/core/imageStore";
+import { GENERATION_FOLDER } from "../src/core/vaultPaths";
 
 const f = (path: string, mtime: number): ArtifactLike => {
   const nome = path.split("/").pop() ?? "";
@@ -26,10 +25,10 @@ const f = (path: string, mtime: number): ArtifactLike => {
 };
 
 const vault: ArtifactLike[] = [
-  f(`${GENERATION_DIR}/images/1700-gato.png`, 10),
-  f(`${GENERATION_DIR}/images/1700-gato.md`, 11), 
-  f(`${GENERATION_DIR}/audio/1800-fala.mp3`, 50),
-  f(`${GENERATION_DIR}/video/1900-clipe.mp4`, 30),
+  f(`${GENERATION_FOLDER}/images/1700-gato.png`, 10),
+  f(`${GENERATION_FOLDER}/images/1700-gato.md`, 11), 
+  f(`${GENERATION_FOLDER}/audio/1800-fala.mp3`, 50),
+  f(`${GENERATION_FOLDER}/video/1900-clipe.mp4`, 30),
   f("PROJECTS/FRAMEWORKS.md", 99),
   f("assets/foto-que-eu-tirei.png", 98),
 ];

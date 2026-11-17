@@ -1,5 +1,5 @@
 import type { App } from "obsidian";
-import { ensureFolder } from "../core/chatPersistence";
+import { ensureFolder } from "../core/vaultFs";
 import { formatUsd } from "./pricing";
 import {
   type UsageAggregate,
@@ -7,8 +7,8 @@ import {
   sortBucketEntries,
 } from "./aggregate";
 import { formatCompact } from "./format";
+import { REPORTS_FOLDER } from "../core/vaultPaths";
 
-const REPORTS_FOLDER = "corvus-ai/reports";
 
 function tsFileName(): string {
 

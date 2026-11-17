@@ -1,8 +1,9 @@
 import type { App } from "obsidian";
 import type { ChatSummary } from "./chatPersistence";
-import { ensureFolder } from "./chatPersistence";
+import { ensureFolder } from "./vaultFs";
 import type { Project } from "../projects";
-import { EXPORTS_FOLDER, exportFileName } from "./chatExport";
+import { exportFileName } from "./chatExport";
+import { EXPORTS_FOLDER } from "./vaultPaths";
 
 export function noteLink(path: string): string {
   return `[[${path.replace(/\.md$/i, "")}]]`;

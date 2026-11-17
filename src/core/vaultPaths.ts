@@ -4,6 +4,14 @@ export const CHATS_FOLDER = "corvus/chats";
 
 export const SKILLS_FOLDER = "corvus-ai/skills";
 
+export const GENERATION_FOLDER = "corvus-ai/generation";
+
+export const IMAGE_GENERATION_FOLDER = `${GENERATION_FOLDER}/images`;
+
+export const EXPORTS_FOLDER = "corvus-ai/exports";
+
+export const REPORTS_FOLDER = "corvus-ai/reports";
+
 export const INDEX_FOLDER = `${CORVUS_HIDDEN}/index`;
 
 export interface HiddenMove {

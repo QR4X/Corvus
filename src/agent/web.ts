@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { htmlTitle, htmlToText } from "../ui/attachSources";
+import { htmlTitle, htmlToText } from "../core/html";
 import type { ToolContext } from "./types";
 
 const MAX_PAGINA = 20_000;

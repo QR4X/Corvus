@@ -1,8 +1,8 @@
 import type { App } from "obsidian";
 import type { ChatData } from "./chatPersistence";
-import { ensureFolder } from "./chatPersistence";
+import { ensureFolder } from "./vaultFs";
+import { EXPORTS_FOLDER } from "./vaultPaths";
 
-export const EXPORTS_FOLDER = "corvus-ai/exports";
 
 export function limparMarcas(texto: string): string {
   return texto

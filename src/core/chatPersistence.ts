@@ -1,9 +1,10 @@
-import type { App, DataAdapter } from "obsidian";
+import type { App } from "obsidian";
 import type { AIToolStep } from "../agent/types";
 import type { MessageAttachment } from "../providers/base";
 import { previewFromMarkdown } from "./chatPreview";
 import { texto } from "./text";
 import { tr } from "../i18n/tr";
+import { ensureFolder } from "./vaultFs";
 
 export interface MessageAttachmentStored {
   type: "image" | "note" | "pdf" | "audio";
@@ -145,19 +146,6 @@ export interface ChatSummary {
 }
 
 const TAG_LIST = ["corvus-chat"];
-
-export async function ensureFolder(adapter: DataAdapter, path: string): Promise<void> {
-  const normalized = path.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  for (let i = 0; i < parts.length; i++) {
-    const partial = parts.slice(0, i + 1).join("/");
-    if (!(await adapter.exists(partial))) {
-      try {
-        await adapter.mkdir(partial);
-      } catch { void 0; }
-    }
-  }
-}
 
 function modeFolder(chatsPath: string, mode: string): string {
   return `${chatsPath}/${mode}`;
