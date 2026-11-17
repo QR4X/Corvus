@@ -177,7 +177,7 @@ export interface Provider {
 
   freeQuota?(apiKey: string): Promise<{ limit: number; remaining?: number } | null>;
 
-  keyStatus?(apiKey: string): Promise<import("./openrouter").EstadoDaChave | null>;
+  keyStatus?(apiKey: string): Promise<KeyStatus | null>;
 }
 
 export class ProviderError extends Error {
@@ -197,4 +197,15 @@ export class ProviderError extends Error {
     super(message);
     this.name = "ProviderError";
   }
+}
+
+export interface KeyStatus {
+
+  gratis?: { limite: number; usados?: number; restantes?: number };
+
+  creditoRestante?: number | null;
+
+  creditoVolta?: string;
+
+  gastoHoje?: number;
 }

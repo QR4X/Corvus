@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Notice } from "obsidian";
 import type CorvusPlugin from "../main";
 import type { ChatSession } from "../core/session";
@@ -8,46 +7,14 @@ import { exportChatToVault } from "../core/chatExport";
 import { usePainel } from "./panel";
 import { projectColor } from "../projects";
 import { useChatStore } from "../store/chat";
-import { PROVIDERS } from "../core/providersMeta";
+import { providerIcon } from "../core/providersMeta";
+import { useUnreadChats } from "./chatHooks";
 import { Icon } from "./Icon";
 import { openActions } from "./menu";
 import { PromptModal, ConfirmModal } from "./modals";
 import { relativeShort } from "./modules";
 import { ALERT_LABEL, chatAlert } from "./chatAlert";
 import { tr } from "../i18n/tr";
-
-export function providerIcon(id: string): string {
-  return PROVIDERS.find((p) => p.id === id)?.icon ?? "message-square";
-}
-
-export function useChatSummaries(plugin: CorvusPlugin): ChatSummary[] {
-  const [chats, setChats] = useState<ChatSummary[]>(plugin.chats.list ?? []);
-  useEffect(() => {
-    let vivo = true;
-    void plugin.chats.load().then((all) => {
-      if (vivo) setChats(all);
-    });
-    const unsub = plugin.chats.onChange(() =>
-      setChats(plugin.chats.list ?? []),
-    );
-    return () => {
-      vivo = false;
-      unsub();
-    };
-  }, [plugin]);
-  return chats;
-}
-
-export function useUnreadChats(plugin: CorvusPlugin): Set<string> {
-  const [naoLidas, setNaoLidas] = useState<Set<string>>(() =>
-    plugin.chats.unread(),
-  );
-  useEffect(() => {
-    setNaoLidas(plugin.chats.unread());
-    return plugin.chats.onUnreadChange(() => setNaoLidas(plugin.chats.unread()));
-  }, [plugin]);
-  return naoLidas;
-}
 
 function acoes(c: ChatSummary): { texto: string; ativo: boolean } | null {
   if (c.mode !== "agent") return null;

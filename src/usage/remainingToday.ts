@@ -1,4 +1,4 @@
-import type { EstadoDaChave } from "../providers/openrouter";
+import type { KeyStatus } from "../providers/base";
 import { tr } from "../i18n/tr";
 import { geminiTemTierGratis } from "./freeTag";
 import { openaiFreeAllowance, openaiFreeTierForModel } from "./freeTokens";
@@ -74,7 +74,7 @@ export interface EntradaDoDia {
 
   cotaOpenRouter?: { limit: number; remaining?: number };
 
-  chaveOpenRouter?: EstadoDaChave | null;
+  chaveOpenRouter?: KeyStatus | null;
 
   fusoLocal?: string;
 

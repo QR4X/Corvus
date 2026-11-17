@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import type { App } from "obsidian";
 import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
-import type { EstadoDaChave } from "../providers/openrouter";
+import type { KeyStatus } from "../providers/base";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { formatCompact } from "../usage/format";
 import {
@@ -15,7 +15,7 @@ import {
   type Medidor,
 } from "../usage/remainingToday";
 import { usd } from "../usage/dailySpend";
-import { providerIcon } from "./ChatList";
+import { providerIcon } from "../core/providersMeta";
 import { Icon } from "./Icon";
 import { uiLocale, tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
@@ -99,7 +99,7 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   };
 
   const chaveOR = providerCredential(plugin.settings, "openrouter").trim();
-  const [viva, setViva] = useState<EstadoDaChave | null | undefined>(undefined);
+  const [viva, setViva] = useState<KeyStatus | null | undefined>(undefined);
   const [lendo, setLendo] = useState(false);
   const perguntar = useCallback(async () => {
     if (!chaveOR) return;
