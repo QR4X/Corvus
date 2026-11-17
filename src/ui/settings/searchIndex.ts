@@ -8,7 +8,7 @@ export const QUANT_ITENS: PickItem[] = [
   { value: "minimal", label: mark("Minimal — smallest"), icon: "minimize-2" },
 ];
 
-export interface IndiceAtual {
+interface IndiceAtual {
   profile: string;
   streamed: boolean;
 

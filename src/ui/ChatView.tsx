@@ -99,7 +99,7 @@ import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
 
 import { FAVORITE_LIMIT } from "./SettingsTab";
 import { texto } from "../core/text";
-import { uiLocale, mark, tr } from "../i18n/tr";
+import { mark, tr } from "../i18n/tr";
 
 const PLUS_SHEET_TITLE: Record<string, string> = {
   root: mark("Add context"),
@@ -379,10 +379,10 @@ export function ChatView({
       alturaAnteriorRef.current = el.scrollHeight;
       return;
     }
-    const { pin, seguindo: noFim } = decideScroll({
-      gesto: gestoRef.current,
-      alturaAnterior: alturaAnteriorRef.current,
-      alturaAtual: el.scrollHeight,
+    const { pin, following: noFim } = decideScroll({
+      gesture: gestoRef.current,
+      previousHeight: alturaAnteriorRef.current,
+      currentHeight: el.scrollHeight,
       scrollTop: el.scrollTop,
       clientHeight: el.clientHeight,
     });
@@ -944,7 +944,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               glow={m.id === avisoId}
               actions={actionsByResponse.get(m.id)}
               onOpenTools={abrirAcoes}
-              idioma={uiLocale()}
             />
           ))
         )}
@@ -1766,21 +1765,16 @@ function ListaDeModelos({
 function Pill({
   label,
   logo,
-  active,
   onClick,
 }: {
   label: string;
   logo?: string;
-
-  active?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={active ? "corvus-pill is-on" : "corvus-pill"}
-
-      aria-pressed={active === undefined ? undefined : active}
+      className="corvus-pill"
       onClick={onClick}
     >
       {logo && <Icon name={logo} size={16} className="corvus-pill-logo" />}
@@ -1795,7 +1789,7 @@ function activityText(a: ActivityMeta): string {
   return a.failedText ?? tr("Failed");
 }
 
-export type TurnAction =
+type TurnAction =
   | { kind: "step"; step: AIToolStep }
   | { kind: "activity"; activity: ActivityMeta }
 
@@ -2010,8 +2004,6 @@ const MessageRow = memo(function MessageRow({
 
   actions?: TurnAction[];
   onOpenTools?: (actions: TurnAction[]) => void;
-
-  idioma?: string;
 }) {
   switch (msg.type) {
     case "user":

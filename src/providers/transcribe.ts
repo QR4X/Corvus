@@ -1,14 +1,14 @@
 import { requestUrl } from "obsidian";
 import { ProviderError } from "./base";
 
-export const OPENAI_TRANSCRIBE_ENDPOINT =
+const OPENAI_TRANSCRIBE_ENDPOINT =
   "https://api.openai.com/v1/audio/transcriptions";
-export const OPENROUTER_TRANSCRIBE_ENDPOINT =
+const OPENROUTER_TRANSCRIBE_ENDPOINT =
   "https://openrouter.ai/api/v1/audio/transcriptions";
 
 export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
 
-export type MultipartField =
+type MultipartField =
   | { name: string; value: string }
   | {
       name: string;
@@ -73,7 +73,7 @@ export function audioMimeFor(path: string): string {
   }
 }
 
-export interface TranscribeOptions {
+interface TranscribeOptions {
   apiKey: string;
 
   provider?: "openai" | "openrouter";
@@ -88,13 +88,13 @@ export interface TranscribeOptions {
   language?: string;
 }
 
-export interface TranscribeCredentialSettings {
+interface TranscribeCredentialSettings {
   openaiApiKey?: string;
   openrouterApiKey?: string;
   defaultProvider?: string;
 }
 
-export interface TranscribeCredential {
+interface TranscribeCredential {
   apiKey: string;
   provider: "openai" | "openrouter";
 }

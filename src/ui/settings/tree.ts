@@ -17,7 +17,6 @@ import {
 import { CHAT_MODES } from "../../core/session";
 import { MODULES, STARTUP_DASHBOARD } from "../modules";
 import { QUANT_ITENS } from "./searchIndex";
-import { LOCALES } from "../../i18n";
 import { mark, tr } from "../../i18n/tr";
 import { PERMISSION_ICONS, PERMISSION_LABELS } from "../../agent/permissions";
 import type { PermissionLevel } from "../../agent/types";
@@ -35,7 +34,7 @@ export type TabId =
   | "agent"
   | "mobile";
 
-export interface TabDef {
+interface TabDef {
   id: TabId;
   label: string;
 
@@ -158,7 +157,7 @@ export interface SettingsUi {
   hint(text: string): RowRender;
 }
 
-export interface SettingsTree {
+interface SettingsTree {
   items: SettingDefinitionItem[];
 
   places: WeakMap<object, Place>;
@@ -445,23 +444,6 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           icon: EFFORT_ICONS[l],
         })),
       { aliases: ["effort", "reasoning"] }
-    ),
-    escolha(
-      chat,
-      tr("Language"),
-      null,
-      tr(
-        "Interface, chat errors — and the language the model answers in. The creation assistant follows it too. \"Same as Obsidian\" follows the language Obsidian is set to. A few things, like command names, only switch after you reload Obsidian."
-      ),
-      "language",
-      () =>
-        LOCALES.map((l) =>
-
-          l.id === "auto"
-            ? { value: l.id, label: tr(l.label), icon: "languages" }
-            : { value: l.id, label: l.label, glyph: l.id.slice(0, 2).toUpperCase() }
-        ),
-      { aliases: ["language", "locale", "english"] }
     ),
   ]);
 

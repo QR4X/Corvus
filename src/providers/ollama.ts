@@ -227,7 +227,7 @@ export function contextoDoOllama(prompt: number, resposta: number, maxModelo?: n
   return Math.min(degrau, teto);
 }
 
-export class OllamaProvider implements Provider {
+class OllamaProvider implements Provider {
   id = "ollama";
   name = "Ollama";
 

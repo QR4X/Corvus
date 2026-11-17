@@ -282,15 +282,3 @@ export function supportsPdf(
   }
 }
 
-export type CapabilityBadgeId =
-  | "vision"
-  | "tools"
-  | "stream"
-  | "free"
-  | "img-gen"
-  | "audio-gen"
-  | "video-gen";
-
-export function isGenerationModel(caps: ModelCapabilities): boolean {
-  return Boolean(caps.imageGen || caps.audioGen || caps.videoGen);
-}

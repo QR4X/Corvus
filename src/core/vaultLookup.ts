@@ -1,5 +1,5 @@
 import type CorvusPlugin from "../main";
-import type { getTranslations } from "../i18n";
+import type { Translations } from "../i18n/en-us";
 import { hybridSearch } from "../rag/hybrid";
 import { effortToVaultLookup } from "./effort";
 
@@ -15,7 +15,7 @@ export async function buscarContextoDoVault({
   updateActivity,
 }: {
   plugin: CorvusPlugin;
-  t: ReturnType<typeof getTranslations>;
+  t: Translations;
   effort: string;
   query: string;
   addMessage: AddMessage;

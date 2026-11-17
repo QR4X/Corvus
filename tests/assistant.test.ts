@@ -4,7 +4,7 @@ import {
   escolherAssistente,
   motivoIndisponivel,
 } from "../src/assistant/model";
-import { ehPrecoZero } from "../src/providers/openrouter";
+import { ehPrecoZero } from "../src/providers/openrouterFree";
 import {
   lerObjeto,
   lerProjeto,
@@ -14,7 +14,6 @@ import {
   recortarJson,
 } from "../src/assistant/parse";
 import {
-  appLanguage,
   promptDescricao,
   promptInstrucoes,
   promptProjeto,
@@ -231,24 +230,24 @@ describe("lerPergunta", () => {
 
 describe("os prompts", () => {
   it("o de skill leva os ícones permitidos", () => {
-    const p = promptSkill("direto", ICONES, CORES, "English");
+    const p = promptSkill("direto", ICONES, CORES);
     expect(p).toContain("graduation-cap");
     expect(p).toContain("Do not ask questions");
   });
 
   it("o guiado permite perguntar, com teto", () => {
-    expect(promptSkill("guiado", ICONES, CORES, "English")).toMatch(/up to 3/i);
+    expect(promptSkill("guiado", ICONES, CORES)).toMatch(/up to 3/i);
   });
 
   it("sem notas, ele MANDA devolver lista vazia", () => {
 
-    const p = promptProjeto("direto", ICONES, CORES, [], "English");
+    const p = promptProjeto("direto", ICONES, CORES, []);
     expect(p).toContain('"notes": []');
     expect(p).not.toContain("Notes in this vault");
   });
 
   it("com notas, elas vão exatas", () => {
-    const p = promptProjeto("direto", ICONES, CORES, ["A/b.md"], "English");
+    const p = promptProjeto("direto", ICONES, CORES, ["A/b.md"]);
     expect(p).toContain("- A/b.md");
   });
 });
@@ -256,7 +255,7 @@ describe("os prompts", () => {
 describe("um campo só", () => {
   it("a descrição leva o prompt como matéria-prima", () => {
 
-    const p = promptDescricao({ name: "Weekly review", body: "Go through…", idioma: "English" });
+    const p = promptDescricao({ name: "Weekly review", body: "Go through…" });
     expect(p).toContain("Weekly review");
     expect(p).toContain("Go through…");
     expect(p).toContain('{"text": "..."}');
@@ -267,7 +266,6 @@ describe("um campo só", () => {
       name: "Tese",
       notes: ["Refs/Kuhn.md"],
       atual: "",
-      idioma: "Brazilian Portuguese",
     });
     expect(p).toContain("Project: Tese");
     expect(p).toContain("- Refs/Kuhn.md");
@@ -281,14 +279,13 @@ describe("um campo só", () => {
       name: "Tese",
       notes: [],
       atual: "Sempre citar a fonte.",
-      idioma: "Brazilian Portuguese",
     });
     expect(p).toContain("Sempre citar a fonte.");
     expect(p).toMatch(/improve on it/i);
   });
 
   it("campo vazio não manda uma seção vazia", () => {
-    const p = promptInstrucoes({ name: "Tese", notes: [], atual: "   ", idioma: "English" });
+    const p = promptInstrucoes({ name: "Tese", notes: [], atual: "   " });
     expect(p).not.toMatch(/improve on it/i);
     expect(p).not.toContain("Notes already attached");
   });
@@ -302,22 +299,15 @@ describe("um campo só", () => {
 });
 
 describe("the language", () => {
-  it("resolves locale to English", () => {
-    expect(appLanguage("en-us")).toBe("English");
-    expect(appLanguage("auto")).toBe("English");
-    expect(appLanguage("nb-no")).toBe("English");
-  });
-
   it("all prompts instruct writing in the app language", () => {
     const todos = [
-      promptSkill("direto", ICONES, CORES, "English"),
-      promptProjeto("direto", ICONES, CORES, [], "English"),
-      promptDescricao({ name: "x", body: "y", idioma: "English" }),
+      promptSkill("direto", ICONES, CORES),
+      promptProjeto("direto", ICONES, CORES, []),
+      promptDescricao({ name: "x", body: "y" }),
       promptInstrucoes({
         name: "x",
         notes: [],
         atual: "",
-        idioma: "English",
       }),
     ];
     for (const p of todos) {
@@ -375,7 +365,7 @@ describe("ehPrecoZero", () => {
 describe("o interrogatório pede TRÊS", () => {
   it("o prompt manda exatamente três, e proíbe uma quarta", () => {
 
-    const p = promptSkill("guiado", ICONES, CORES, "English");
+    const p = promptSkill("guiado", ICONES, CORES);
     expect(p).toMatch(/EXACTLY 3 options/);
     expect(p).toMatch(/never offer one yourself/i);
   });

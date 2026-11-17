@@ -6,7 +6,7 @@ import { texto } from "./text";
 import { tr } from "../i18n/tr";
 import { ensureFolder } from "./vaultFs";
 
-export interface MessageAttachmentStored {
+interface MessageAttachmentStored {
   type: "image" | "note" | "pdf" | "audio";
 
   path?: string;
@@ -476,7 +476,7 @@ export function summaryFromFrontmatter(
   };
 }
 
-export async function listChats(
+async function listChats(
   app: App,
   chatsPath: string,
   mode: string,

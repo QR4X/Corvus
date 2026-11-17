@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveEffortConfig,
-  effortToMaxTokens,
   effortToMaxTokensSmart,
   effortToVaultLookup,
   isEffortLevel,
@@ -45,19 +44,6 @@ describe("resolveEffortConfig", () => {
     expect(cfg.temperature).toBe(0);
     expect(cfg.toolRetryOnError).toBe(0);
     expect(cfg.parallelToolCalls).toBe(false);
-  });
-});
-
-describe("effortToMaxTokens (legacy)", () => {
-  it("usa o cap fixo do nível", () => {
-    expect(effortToMaxTokens("low")).toBe(512);
-    expect(effortToMaxTokens("high")).toBe(6000);
-  });
-  it("max (uncapped=0) vira 16000", () => {
-    expect(effortToMaxTokens("max")).toBe(16000);
-  });
-  it("nível inválido cai em 2048", () => {
-    expect(effortToMaxTokens("bogus")).toBe(2048);
   });
 });
 

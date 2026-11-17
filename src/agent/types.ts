@@ -62,22 +62,6 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
-export interface ToolResult {
-  toolCallId: string;
-
-  content: string;
-
-  isError?: boolean;
-}
-
-export interface ToolExecution {
-  toolCall: ToolCall;
-  status: "pending" | "approved" | "denied" | "running" | "done" | "error";
-  result?: ToolResult;
-
-  label: string;
-}
-
 export interface PermissionDecision {
 
   autoApprove: boolean;

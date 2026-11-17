@@ -214,9 +214,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
 
         if (value === true) tap();
         break;
-      case "language":
-        this.retraduzir();
-        break;
       case "openaiDataSharing":
       case "openaiTier":
 
@@ -237,11 +234,6 @@ export class CorvusSettingsTab extends PluginSettingTab {
         }, 800);
         break;
     }
-  }
-
-  private retraduzir(): void {
-    if (requireApiVersion("1.13.0")) this.update();
-    else this.desenharLegado();
   }
 
   private refreshVisibility(): void {

@@ -61,11 +61,3 @@ export function aplicar(
   });
 }
 
-export function temFiltro(f: UsageFilter): boolean {
-  return (
-    f.providers.length > 0 ||
-    f.models.length > 0 ||
-    f.modes.length > 0 ||
-    f.days > 0
-  );
-}

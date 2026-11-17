@@ -9,15 +9,16 @@ describe("faxina dos campos que nada lia", () => {
       modelProvider: {},
       uiFontFamily: "Arial",
       uiFontSize: "20",
-      language: "en-us",
+      chatsPath: "corvus/chats",
     };
     limparCamposMortos(s);
-    expect(s).toEqual({ language: "en-us" });
+    expect(s).toEqual({ chatsPath: "corvus/chats" });
     expect([...CAMPOS_MORTOS]).toEqual([
       "roleModels",
       "modelProvider",
       "uiFontFamily",
       "uiFontSize",
+      "language",
     ]);
   });
 

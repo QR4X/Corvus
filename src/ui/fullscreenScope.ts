@@ -4,7 +4,7 @@ export function isRightDrawer(drawer: Element | null): boolean {
   return true;
 }
 
-export interface DrawerRect {
+interface DrawerRect {
   width: number;
   height: number;
   left: number;

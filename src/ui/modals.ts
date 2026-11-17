@@ -15,7 +15,7 @@ export function marcarPerigoso(b: ButtonComponent): ButtonComponent {
   return b;
 }
 
-export interface PromptOptions {
+interface PromptOptions {
   title: string;
   label?: string;
   initial?: string;
@@ -111,7 +111,7 @@ export class PromptModal extends Modal {
   }
 }
 
-export interface ConfirmOptions {
+interface ConfirmOptions {
   title: string;
   body?: string;
   confirmLabel?: string;

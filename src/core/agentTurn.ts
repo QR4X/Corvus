@@ -64,7 +64,6 @@ export async function runAgentTurn(
     tickStreamTokens,
     endStreamTimer,
   } = useChatStore.getState();
-  void userText; 
 
   const falta = semCredencial(
     activeProviderId,

@@ -1,7 +1,7 @@
 import type { ProviderMessage, MessageAttachment } from "../providers/base";
 import type { AIToolStep } from "./types";
 
-export interface ChatSystemParts {
+interface ChatSystemParts {
 
   persona?: string;
 
@@ -78,7 +78,7 @@ export function buildAgentSystemPrompt(
   );
 }
 
-export interface StoreMessageLike {
+interface StoreMessageLike {
   type: string;
   content?: string;
   isError?: boolean;

@@ -75,7 +75,7 @@ export function isGeminiBillingError(
   return false;
 }
 
-export class GeminiProvider implements Provider {
+class GeminiProvider implements Provider {
   id = "gemini";
   name = "Gemini";
 

@@ -9,7 +9,7 @@ export const ELEVEN_MODELS: { id: string; label: string }[] = [
   { id: "eleven_flash_v2_5", label: "Flash v2.5 — fastest" },
 ];
 
-export interface ElevenVoice {
+interface ElevenVoice {
   id: string;
   name: string;
 

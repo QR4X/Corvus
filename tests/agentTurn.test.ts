@@ -4,7 +4,7 @@ import { streamReply } from "../src/core/chatEngine";
 import { useChatStore } from "../src/store/chat";
 import { TOOL_REGISTRY } from "../src/agent/tools";
 import { ConfirmationModal } from "../src/agent/ConfirmationModal";
-import { getTranslations } from "../src/i18n";
+import { EN_US } from "../src/i18n/en-us";
 import { storeMessagesToProvider } from "../src/agent/conversation";
 import { type Provider, type ProviderResponse } from "../src/providers/base";
 import { openrouterProvider } from "../src/providers/openrouter";
@@ -12,7 +12,7 @@ import { fakeStreamResponse, sse } from "./helpers/streamMock";
 import { __setRequestUrl } from "./obsidian-stub";
 
 const initial = useChatStore.getState();
-const t = getTranslations("en");
+const t = EN_US;
 
 function context(provider: Provider, effort = "low"): AgentCtx {
 

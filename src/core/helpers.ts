@@ -1,5 +1,5 @@
 import { ProviderError } from "../providers/base";
-import { getTranslations } from "../i18n";
+import type { Translations } from "../i18n/en-us";
 import type { AIErrorCode } from "../store/chat";
 import { texto } from "./text";
 import { tr } from "../i18n/tr";
@@ -167,7 +167,7 @@ export function summarizeToolResult(toolName: string, result: string): string {
 
 export function describeProviderError(
   err: unknown,
-  t: ReturnType<typeof getTranslations>,
+  t: Translations,
   providerName: string
 ): { message: string; code: AIErrorCode } {
   if (err instanceof ProviderError) {
@@ -195,14 +195,14 @@ export function describeProviderError(
   return { message: t.ai.unknownError, code: "unknown" };
 }
 
-export function providerNeedsKey(providerId: string): boolean {
+function providerNeedsKey(providerId: string): boolean {
   return providerId !== "ollama";
 }
 
 export function semCredencial(
   providerId: string,
   credencial: string,
-  t: ReturnType<typeof getTranslations>,
+  t: Translations,
   providerName: string
 ): string | null {
   if (credencial.trim()) return null;

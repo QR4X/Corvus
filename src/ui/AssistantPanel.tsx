@@ -22,14 +22,14 @@ import type { ModoAssistente } from "../assistant/prompt";
 import type { TurnoAssistente } from "../assistant/run";
 import { mark, tr } from "../i18n/tr";
 
-export type AlvoAssistente =
+type AlvoAssistente =
   | "skill"
   | "project"
   | "description"
   | "instructions"
   | "notes";
 
-export interface AssistantPanelProps {
+interface AssistantPanelProps {
 
   para: AlvoAssistente;
 
@@ -330,7 +330,7 @@ export function AssistantPanel({
   );
 }
 
-export function AssistantSpark({
+function AssistantSpark({
   onClick,
   titulo = tr("Write it for me"),
   ocupado,

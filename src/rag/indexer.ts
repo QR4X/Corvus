@@ -18,7 +18,7 @@ import {
 } from "./types";
 import { texto } from "../core/text";
 
-export interface IndexProgress {
+interface IndexProgress {
 
   phase: "scanning" | "embedding" | "done";
   filesScanned: number;

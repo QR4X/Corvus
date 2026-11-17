@@ -14,7 +14,6 @@ function fakeSettings(over: Partial<CorvusSettings> = {}): CorvusSettings {
     openaiTier: 1,
     chatsPath: "corvus/chats",
     skillsPath: "corvus-ai/skills",
-    language: "en-us",
     voiceEnabled: true,
     ...over,
   } as CorvusSettings;

@@ -76,9 +76,11 @@ describe("SettingsStore.load", () => {
     expect(s.ollamaPadraoRevisto).toBe(true);
   });
 
-  it("an unknown language falls back to auto", async () => {
-    const { store } = setup({ saved: { language: "xx-yy" } });
-    expect((await store.load()).language).toBe("auto");
+  it("drops fields nothing reads anymore", async () => {
+    const { store } = setup({ saved: { language: "en-us", uiFontSize: "20" } });
+    const s = (await store.load()) as unknown as Record<string, unknown>;
+    expect(s).not.toHaveProperty("language");
+    expect(s).not.toHaveProperty("uiFontSize");
   });
 });
 

@@ -10,7 +10,7 @@ import {
   buildChatSystemPrompt,
   storeMessagesToProvider,
 } from "../agent/conversation";
-import type { getTranslations } from "../i18n";
+import type { Translations } from "../i18n/en-us";
 import type {
   MessageAttachment,
   NoteAttachment,
@@ -20,13 +20,13 @@ import type CorvusPlugin from "../main";
 import { buscarContextoDoVault } from "./vaultLookup";
 import { loadAgentMd } from "./agentMd";
 
-export interface AbortRef {
+interface AbortRef {
   current: AbortController | null;
 }
 
 export interface EngineCtx {
   plugin: CorvusPlugin;
-  t: ReturnType<typeof getTranslations>;
+  t: Translations;
   abortRef: AbortRef;
   activeProviderId: string;
   activeProvider: ReturnType<typeof getProvider>;

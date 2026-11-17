@@ -1,11 +1,11 @@
 import { tr } from "../i18n/tr";
 
-export interface AssistantAlvo {
+interface AssistantAlvo {
   provider: string;
   model: string;
 }
 
-export interface AssistantFontes {
+interface AssistantFontes {
 
   freeModels?: Record<string, string[]>;
 

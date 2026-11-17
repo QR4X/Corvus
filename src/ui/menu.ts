@@ -19,7 +19,7 @@ export interface MenuAction {
   run?: () => void;
 }
 
-export interface MenuEvent {
+interface MenuEvent {
   clientX?: number;
   clientY?: number;
   currentTarget?: EventTarget | null;
@@ -78,7 +78,7 @@ export function posicaoDoBalao(params: {
   };
 }
 
-export interface MenuOptions {
+interface MenuOptions {
 
   escolha?: boolean;
 

@@ -6,7 +6,7 @@ import {
   usaOllama,
 } from "../src/core/ollamaDefault";
 import { semCredencial } from "../src/core/helpers";
-import { getTranslations } from "../src/i18n";
+import { EN_US } from "../src/i18n/en-us";
 import { ollamaProvider } from "../src/providers/ollama";
 import { DEFAULT_SETTINGS } from "../src/settings";
 
@@ -65,7 +65,7 @@ describe("a revisão única de quem já tinha instalado", () => {
 });
 
 describe("sem credencial, a bolha diz o que falta", () => {
-  const t = getTranslations("en-us");
+  const t = EN_US;
 
   it("Ollama sem endereço pede o ENDEREÇO, não uma key", () => {
     const msg = semCredencial("ollama", "", t, "Ollama");

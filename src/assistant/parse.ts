@@ -1,13 +1,6 @@
 import { CHAT_MODES } from "../core/session";
 import { tr } from "../i18n/tr";
 
-export interface RespostaAssistente<T> {
-
-  ask?: string;
-
-  draft?: T;
-}
-
 export function recortarJson(bruto: string): string | null {
   const texto = (bruto || "").trim();
   if (!texto) return null;

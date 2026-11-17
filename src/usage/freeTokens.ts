@@ -1,6 +1,6 @@
 export const FREE_TOKENS_AS_OF = "2026-06";
 
-export interface OpenAIFreeAllowance {
+interface OpenAIFreeAllowance {
 
   eligible: boolean;
 

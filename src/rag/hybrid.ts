@@ -4,7 +4,7 @@ import { embedQuery } from "./embeddings";
 import type { Credentials } from "../core/providersMeta";
 import { searchVault } from "../core/vaultSearch";
 
-export interface HybridHit {
+interface HybridHit {
   path: string;
 
   text: string;
@@ -18,7 +18,7 @@ const RRF_K = 60;
 
 const GRAPH_BOOST = 1 / (RRF_K * 4);
 
-export interface HybridOptions {
+interface HybridOptions {
   app: App;
   index: VectorIndex | null;
   creds: Credentials;

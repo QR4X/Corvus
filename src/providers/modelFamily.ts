@@ -1,6 +1,6 @@
 import { mark } from "../i18n/tr";
 
-export interface ModelFamily {
+interface ModelFamily {
   id: string;
   label: string;
 

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export interface SegmentOption {
+interface SegmentOption {
   id: string;
   label: string;
 

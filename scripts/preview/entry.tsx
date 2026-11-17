@@ -708,8 +708,8 @@ if (scenario === "confirm") {
 
   void (async () => {
     const { ConfirmationModal } = await import("./src/agent/ConfirmationModal");
-    const { getTranslations } = await import("./src/i18n");
-    const strings = getTranslations("en-us").agent;
+    const { EN_US } = await import("./src/i18n/en-us");
+    const strings = EN_US.agent;
 
     const tipo = params.get("file") ?? "md";
     const caso =

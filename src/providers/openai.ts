@@ -25,7 +25,6 @@ import {
   fetchStream,
 } from "./_shared";
 
-export { toOpenAIMessages, finalizeOpenAIResponse } from "./_shared";
 import type { ErroNoFio, RespostaNoFio } from "./_shared";
 
 interface ItemDeImagem {

@@ -1,11 +1,6 @@
 import type { ModelCategory } from "./modelDescriptions";
 import { mark } from "../i18n/tr";
 
-export interface RoleModelEntry {
-  model: string;
-  provider: string;
-}
-
 export type RoleId =
   | "chat" 
   | "reasoning"

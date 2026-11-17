@@ -115,7 +115,7 @@ export function toOpenAIMessages(messages: ProviderMessage[]): unknown[] {
   });
 }
 
-export function toOpenAITools(tools?: ProviderToolDefinition[]) {
+function toOpenAITools(tools?: ProviderToolDefinition[]) {
   if (!tools || tools.length === 0) return undefined;
   return tools.map((t) => ({
     type: "function",
@@ -127,7 +127,7 @@ export function toOpenAITools(tools?: ProviderToolDefinition[]) {
   }));
 }
 
-export interface BodyOpts {
+interface BodyOpts {
 
   provider: string;
   stream?: boolean;
@@ -167,7 +167,7 @@ export function buildChatBody(
   return body;
 }
 
-export interface ErrorMapOpts {
+interface ErrorMapOpts {
 
   label: string;
 
@@ -272,31 +272,31 @@ export function ensureOkRequest(
   if (err) throw err;
 }
 
-export interface ToolCallNoFio {
+interface ToolCallNoFio {
   index?: number;
   type?: string;
   id?: string;
   function?: { name?: string; arguments?: string };
 }
 
-export interface DeltaNoFio {
+interface DeltaNoFio {
   content?: unknown;
   reasoning?: unknown;
   reasoning_content?: unknown;
   tool_calls?: ToolCallNoFio[];
 }
 
-export interface UsoNoFio {
+interface UsoNoFio {
   prompt_tokens?: number;
   completion_tokens?: number;
 }
 
-export interface ChunkNoFio {
+interface ChunkNoFio {
   choices?: Array<{ delta?: DeltaNoFio; finish_reason?: string }>;
   usage?: UsoNoFio;
 }
 
-export interface MensagemNoFio {
+interface MensagemNoFio {
   content?: unknown;
   tool_calls?: ToolCallNoFio[];
   reasoning_content?: unknown;
@@ -379,7 +379,7 @@ export function usageFrom(json: {
 
 type ToolAccum = Record<number, { id: string; name: string; argsBuf: string }>;
 
-export function finalizeOpenAIResponse(
+function finalizeOpenAIResponse(
   content: string,
   toolCallAccum: ToolAccum,
   usage?: { input: number; output: number },

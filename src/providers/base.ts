@@ -33,14 +33,14 @@ export interface NoteAttachment {
   content: string;
 }
 
-export interface PdfAttachment {
+interface PdfAttachment {
   type: "pdf";
   path?: string;
   dataUrl?: string;
   name: string;
 }
 
-export interface AudioAttachment {
+interface AudioAttachment {
   type: "audio";
 
   path: string;

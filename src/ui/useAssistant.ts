@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { resolveLocale } from "../i18n";
 import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import {
@@ -16,7 +15,6 @@ import {
   type SkillSugerido,
 } from "../assistant/parse";
 import {
-  appLanguage,
   promptDescricao,
   promptInstrucoes,
   promptNotas,
@@ -33,7 +31,7 @@ import { vaultNotes } from "./notePicker";
 import { tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
 
-export interface RodadaAssistente<T> {
+interface RodadaAssistente<T> {
   pergunta?: string;
 
   opcoes?: string[];
@@ -49,8 +47,6 @@ function icones(curtos: readonly string[]): string[] {
 
 export function useAssistant(plugin: CorvusPlugin) {
   const s = plugin.settings;
-
-  const idioma = appLanguage(resolveLocale(s.language));
 
   const alvo = useMemo(
     () =>
@@ -99,7 +95,7 @@ export function useAssistant(plugin: CorvusPlugin) {
     ): Promise<RodadaAssistente<SkillSugerido>> => {
       const permitidos = icones(SKILL_ICONS);
       const r = await rodar(
-        promptSkill(modo, permitidos, PROJECT_COLORS, idioma),
+        promptSkill(modo, permitidos, PROJECT_COLORS),
         turnos
       );
       if (r.erro) return { erro: r.erro };
@@ -116,7 +112,7 @@ export function useAssistant(plugin: CorvusPlugin) {
             erro: tr("The assistant did not write a prompt. Try saying more."),
           };
     },
-    [rodar, idioma]
+    [rodar]
   );
 
   const pedirProjeto = useCallback(
@@ -133,7 +129,7 @@ export function useAssistant(plugin: CorvusPlugin) {
             .map((n) => n.path)
         : [];
       const r = await rodar(
-        promptProjeto(modo, permitidos, PROJECT_COLORS, caminhos, idioma),
+        promptProjeto(modo, permitidos, PROJECT_COLORS, caminhos),
         turnos
       );
       if (r.erro) return { erro: r.erro };
@@ -150,7 +146,7 @@ export function useAssistant(plugin: CorvusPlugin) {
             erro: tr("The assistant did not name the project. Try saying more."),
           };
     },
-    [rodar, plugin, s.assistantSeesVault, idioma]
+    [rodar, plugin, s.assistantSeesVault]
   );
 
   const pedirCampo = useCallback(
@@ -178,16 +174,16 @@ export function useAssistant(plugin: CorvusPlugin) {
 
   const pedirDescricao = useCallback(
     (ctx: { name: string; body: string }, turnos: TurnoAssistente[]) =>
-      pedirCampo(promptDescricao({ ...ctx, idioma }), turnos, 140),
-    [pedirCampo, idioma]
+      pedirCampo(promptDescricao(ctx), turnos, 140),
+    [pedirCampo]
   );
 
   const pedirInstrucoes = useCallback(
     (
       ctx: { name: string; notes: readonly string[]; atual: string },
       turnos: TurnoAssistente[]
-    ) => pedirCampo(promptInstrucoes({ ...ctx, idioma }), turnos, 2000),
-    [pedirCampo, idioma]
+    ) => pedirCampo(promptInstrucoes(ctx), turnos, 2000),
+    [pedirCampo]
   );
 
   const pedirNotas = useCallback(
@@ -209,7 +205,7 @@ export function useAssistant(plugin: CorvusPlugin) {
         ? turnos
         : [{ quem: "pessoa" as const, texto: "Find them." }];
       const r = await rodar(
-        promptNotas({ ...ctx, caminhos, idioma }),
+        promptNotas({ ...ctx, caminhos }),
         comAlgo
       );
       if (r.erro) return { erro: r.erro };
@@ -223,7 +219,7 @@ export function useAssistant(plugin: CorvusPlugin) {
             ),
           };
     },
-    [rodar, plugin, s.assistantSeesVault, idioma]
+    [rodar, plugin, s.assistantSeesVault]
   );
 
   const deixarVerNotas = useCallback(async () => {

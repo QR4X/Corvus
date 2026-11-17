@@ -21,7 +21,6 @@ function tsFileName(): string {
   return `${stamp}-${rand}`;
 }
 
-const formatNumber = formatCompact;
 
 function periodLabel(agg: UsageAggregate, periodDays: number): string {
   if (periodDays > 0) return `last ${periodDays} days`;
@@ -37,7 +36,7 @@ function bucketCostCell(b: UsageBucket): string {
   return b.hasUnknownCost ? `${costStr}*` : costStr;
 }
 
-export function generateUsageMarkdown(
+function generateUsageMarkdown(
   agg: UsageAggregate,
   periodDays: number,
   chatsPath: string
@@ -67,7 +66,7 @@ export function generateUsageMarkdown(
   lines.push(`## Summary`);
   lines.push("");
   lines.push(`- **Estimated total spend:** ${formatUsd(agg.total.cost)}${agg.total.hasUnknownCost ? " (some model has no public price — see `*` below)" : ""}`);
-  lines.push(`- **Tokens used:** ${formatNumber(agg.total.tokensIn)} in / ${formatNumber(agg.total.tokensOut)} out`);
+  lines.push(`- **Tokens used:** ${formatCompact(agg.total.tokensIn)} in / ${formatCompact(agg.total.tokensOut)} out`);
   lines.push(`- **Chats:** ${agg.total.chats}`);
   if (agg.periodStart && agg.periodEnd) {
     lines.push(`- **Window:** ${agg.periodStart} → ${agg.periodEnd}`);
@@ -81,7 +80,7 @@ export function generateUsageMarkdown(
     lines.push(`| Provider | Chats | Tokens in | Tokens out | Cost |`);
     lines.push(`| -------- | --------- | --------- | ---------- | ----- |`);
     for (const [name, b] of providerRows) {
-      lines.push(`| ${name} | ${b.chats} | ${formatNumber(b.tokensIn)} | ${formatNumber(b.tokensOut)} | ${bucketCostCell(b)} |`);
+      lines.push(`| ${name} | ${b.chats} | ${formatCompact(b.tokensIn)} | ${formatCompact(b.tokensOut)} | ${bucketCostCell(b)} |`);
     }
     lines.push("");
   }
@@ -93,7 +92,7 @@ export function generateUsageMarkdown(
     lines.push(`| Model | Chats | Tokens in | Tokens out | Cost |`);
     lines.push(`| ------ | --------- | --------- | ---------- | ----- |`);
     for (const [name, b] of modelRows) {
-      lines.push(`| \`${name}\` | ${b.chats} | ${formatNumber(b.tokensIn)} | ${formatNumber(b.tokensOut)} | ${bucketCostCell(b)} |`);
+      lines.push(`| \`${name}\` | ${b.chats} | ${formatCompact(b.tokensIn)} | ${formatCompact(b.tokensOut)} | ${bucketCostCell(b)} |`);
     }
     lines.push("");
   }
@@ -105,7 +104,7 @@ export function generateUsageMarkdown(
     lines.push(`| Mode | Chats | Tokens in | Tokens out | Cost |`);
     lines.push(`| ---- | --------- | --------- | ---------- | ----- |`);
     for (const [name, b] of modeRows) {
-      lines.push(`| ${name} | ${b.chats} | ${formatNumber(b.tokensIn)} | ${formatNumber(b.tokensOut)} | ${bucketCostCell(b)} |`);
+      lines.push(`| ${name} | ${b.chats} | ${formatCompact(b.tokensIn)} | ${formatCompact(b.tokensOut)} | ${bucketCostCell(b)} |`);
     }
     lines.push("");
   }
@@ -119,7 +118,7 @@ export function generateUsageMarkdown(
     for (const c of top) {
       const titleTruncated = c.title.length > 50 ? c.title.slice(0, 47) + "..." : c.title;
       const cost = c.cost == null ? "—" : formatUsd(c.cost);
-      lines.push(`| ${titleTruncated} | ${c.mode} | \`${c.model}\` | ${formatNumber(c.tokensIn)} / ${formatNumber(c.tokensOut)} | ${cost} |`);
+      lines.push(`| ${titleTruncated} | ${c.mode} | \`${c.model}\` | ${formatCompact(c.tokensIn)} / ${formatCompact(c.tokensOut)} | ${cost} |`);
     }
     lines.push("");
   }
@@ -133,7 +132,7 @@ export function generateUsageMarkdown(
   return lines.join("\n");
 }
 
-export interface ExportResult {
+interface ExportResult {
   path: string;
   format: "md" | "html" | "pdf";
 }

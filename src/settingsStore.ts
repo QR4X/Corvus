@@ -1,11 +1,10 @@
 import { Notice, type App } from "obsidian";
 import { limparCamposMortos } from "./core/legacySettings";
 import { FABRICA_ATE_0923, revisarOllamaPadrao } from "./core/ollamaDefault";
-import { LOCALES, resolveLocale } from "./i18n";
-import { setUiLocale, tr } from "./i18n/tr";
+import { tr } from "./i18n/tr";
 import { DEFAULT_SETTINGS, SECRET_FIELDS, type CorvusSettings } from "./settings";
 
-export interface SettingsHost {
+interface SettingsHost {
   app: App;
   dataFile(name: string): string;
   loadData(): Promise<unknown>;
@@ -38,8 +37,6 @@ export class SettingsStore {
     }
 
     const s: CorvusSettings = Object.assign({}, DEFAULT_SETTINGS, saved);
-    if (!LOCALES.some((l) => l.id === s.language)) s.language = "auto";
-    setUiLocale(resolveLocale(s.language));
 
     const ollama = revisarOllamaPadrao(saved, FABRICA_ATE_0923);
     if (ollama !== null) s.ollamaEndpoint = ollama;
@@ -83,7 +80,6 @@ export class SettingsStore {
       }
       return;
     }
-    setUiLocale(resolveLocale(this.settings.language));
     this.notify();
   }
 
@@ -112,7 +108,6 @@ export class SettingsStore {
       console.error(
         "[corvus] data.json exists but could not be read — settings will NOT be saved until restart."
       );
-      setUiLocale(resolveLocale(DEFAULT_SETTINGS.language));
       new Notice(
         tr(
           "Corvus: couldn't read your settings file. Nothing will be overwritten — restart Obsidian, and check data.backup.json next to it if needed."

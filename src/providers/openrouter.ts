@@ -22,9 +22,7 @@ import {
   fetchStream,
 } from "./_shared";
 import type { RespostaNoFio } from "./_shared";
-import { ehGratisNoOpenRouter, ehPrecoZero, type EntradaOpenRouter } from "./openrouterFree";
-
-export { ehGratisNoOpenRouter, ehPrecoZero };
+import { ehGratisNoOpenRouter, type EntradaOpenRouter } from "./openrouterFree";
 
 interface ModeloOpenRouter {
   id?: unknown;
@@ -78,7 +76,7 @@ export function applyPdfPlugin(
   return body;
 }
 
-export class OpenRouterProvider implements Provider {
+class OpenRouterProvider implements Provider {
   id = "openrouter";
   name = "OpenRouter";
 

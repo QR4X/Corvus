@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import type { ChatSummary } from "../core/chatPersistence";
 
-export interface PainelApi {
+interface PainelApi {
 
   novoProjetoCom: (chatId: string) => void;
 

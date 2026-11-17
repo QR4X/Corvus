@@ -3,7 +3,7 @@ import type { EffortConfig, EffortLevel } from "./core/effort";
 import type { Project } from "./projects";
 import { CHATS_FOLDER, INDEX_FOLDER, SKILLS_FOLDER } from "./core/vaultPaths";
 
-export interface ProviderStatus {
+interface ProviderStatus {
   ok: boolean;
 
   at: number;
@@ -97,8 +97,6 @@ export interface CorvusSettings {
   defaultEffort: string;
 
   effortConfigs: Partial<Record<EffortLevel, Partial<EffortConfig>>>;
-
-  language: string;
 
   chatsPath: string;
   skillsPath: string;
@@ -216,8 +214,6 @@ export const DEFAULT_SETTINGS: CorvusSettings = {
   startupChatMode: "",
   defaultEffort: "med",
   effortConfigs: {},
-
-  language: "auto",
 
   chatsPath: CHATS_FOLDER,
   skillsPath: SKILLS_FOLDER,

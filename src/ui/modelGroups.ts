@@ -1,7 +1,7 @@
 import { getModelCard } from "../providers/modelDescriptions";
 import { mark } from "../i18n/tr";
 
-export interface ModelGroup {
+interface ModelGroup {
 
   label: string;
   models: string[];

@@ -50,7 +50,7 @@ export interface SearchResult {
 
 export type EmbeddingProvider = "openai" | "openrouter" | "gemini" | "nim" | "ollama";
 
-export interface EmbeddingModelSpec {
+interface EmbeddingModelSpec {
   provider: EmbeddingProvider;
 
   model: string;
@@ -72,7 +72,7 @@ export interface EmbeddingModelSpec {
   local?: boolean;
 }
 
-export const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
+const EMBEDDING_MODELS: EmbeddingModelSpec[] = [
   {
     provider: "openai",
     model: "text-embedding-3-small",
@@ -221,7 +221,7 @@ export function getEmbeddingSpec(model: string): EmbeddingModelSpec {
   );
 }
 
-export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
 
 export function isImagePath(path: string): boolean {
   const ext = path.toLowerCase().split(".").pop() ?? "";

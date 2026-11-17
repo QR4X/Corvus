@@ -13,7 +13,7 @@ import { uiLocale, mark, tr } from "../../i18n/tr";
 
 type Overrides = Partial<Record<EffortLevel, Partial<EffortConfig>>>;
 
-export interface CampoDeEsforco {
+interface CampoDeEsforco {
   key: keyof EffortConfig;
 
   name: string;
@@ -152,12 +152,6 @@ export const CAMPOS_DE_ESFORCO: CampoDeEsforco[] = [
   },
 ];
 
-export function limitar(valor: number, campo: CampoDeEsforco): number {
-  const min = campo.min ?? -Infinity;
-  const max = campo.max ?? Infinity;
-  return Math.max(min, Math.min(max, valor));
-}
-
 function posicao(campo: CampoDeEsforco, v: number): number {
   return v === 0 && campo.paradas?.[campo.paradas.length - 1] === 0 ? Infinity : v;
 }
@@ -207,7 +201,7 @@ export function resumoDoNivel(overrides: Overrides | undefined, level: EffortLev
   return `${effortNumbers(cfg)} · ${temp} · ${notas}`;
 }
 
-export interface Gravador {
+interface Gravador {
   settings: { effortConfigs: Overrides };
   saveSettings(): Promise<void>;
 }

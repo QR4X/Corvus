@@ -143,7 +143,7 @@ async function copiar(texto: string): Promise<void> {
   }
 }
 
-export const IDIOMAS = [
+const IDIOMAS = [
   mark("English"),
   mark("Portuguese (Brazil)"),
   mark("Spanish"),

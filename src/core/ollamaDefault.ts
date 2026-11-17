@@ -1,6 +1,6 @@
 export const OLLAMA_LOCAL = "http://localhost:11434";
 
-export interface OllamaSalvo {
+interface OllamaSalvo {
   ollamaEndpoint?: unknown;
   ollamaPadraoRevisto?: unknown;
   defaultProvider?: unknown;
@@ -12,7 +12,7 @@ export interface OllamaSalvo {
   modelProvider?: Record<string, unknown>;
 }
 
-export interface OllamaFabrica {
+interface OllamaFabrica {
   modelo: string;
   ativos: readonly string[];
 }

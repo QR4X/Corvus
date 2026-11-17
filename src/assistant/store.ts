@@ -1,7 +1,7 @@
 import type { TurnoAssistente } from "./run";
 import { tr } from "../i18n/tr";
 
-export type FaseRun =
+type FaseRun =
   | "parada"
   | "rodando"
   | "perguntando"

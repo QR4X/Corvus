@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { AIToolStep } from "../agent/types";
 import type { MessageAttachment } from "../providers/base";
 
-export type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
+type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
 
 export type AIErrorCode =
   | "no-key"
@@ -73,14 +73,14 @@ export interface ActivityMeta {
   undone?: boolean;
 }
 
-export interface AICommentMessage extends BaseMessage {
+interface AICommentMessage extends BaseMessage {
   type: "ai-comment";
   content: string;
 
   activity?: ActivityMeta;
 }
 
-export interface AIOptionsMessage extends BaseMessage {
+interface AIOptionsMessage extends BaseMessage {
   type: "ai-options";
   prompt: string;
   options: string[];
@@ -97,7 +97,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
   : never;
 
-export type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
+type NewMessageInput = DistributiveOmit<ChatMessage, "id" | "timestamp">;
 
 export interface BackgroundRun {
   chatId: string;

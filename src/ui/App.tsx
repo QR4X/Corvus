@@ -305,7 +305,6 @@ export function App({
 
       <Drawer
         plugin={plugin}
-        session={session}
         open={menuOpen}
         view={painel ?? view}
         modulo={modulo}

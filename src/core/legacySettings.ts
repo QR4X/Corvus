@@ -3,6 +3,7 @@ export const CAMPOS_MORTOS = [
   "modelProvider",
   "uiFontFamily",
   "uiFontSize",
+  "language",
 ] as const;
 
 export function limparCamposMortos(s: object): void {

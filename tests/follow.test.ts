@@ -1,162 +1,89 @@
 import { describe, it, expect } from "vitest";
-import {
-  FOLLOW_SLACK,
-  distanceFromBottom,
-  shouldFollow,
-  shouldShowJump,
-  wasAtBottom,
-  decideScroll,
-} from "../src/ui/follow";
+import { FOLLOW_SLACK, decideScroll, shouldShowJump } from "../src/ui/follow";
 
-const el = (scrollTop: number, scrollHeight = 2000, clientHeight = 600) => ({
-  scrollTop,
-  scrollHeight,
-  clientHeight,
-});
+const VIEW = 600;
 
-describe("distanceFromBottom", () => {
-  it("colado no fim é zero", () => {
-    expect(distanceFromBottom(el(1400))).toBe(0);
-  });
-
-  it("mede o que falta", () => {
-    expect(distanceFromBottom(el(1000))).toBe(400);
-  });
-
-  it("overscroll (scrollTop além do fim) não vira negativo", () => {
-    expect(distanceFromBottom(el(1600))).toBe(0);
-  });
-});
-
-describe("shouldFollow", () => {
-  it("no fim: segue", () => {
-    expect(shouldFollow(el(1400))).toBe(true);
-  });
-
-  it("dentro da folga ainda segue — o dedo nunca para no pixel exato", () => {
-    expect(shouldFollow(el(1400 - FOLLOW_SLACK + 1))).toBe(true);
-  });
-
-  it("um pixel além da folga: solta", () => {
-    expect(shouldFollow(el(1400 - FOLLOW_SLACK - 1))).toBe(false);
-  });
-
-  it("subiu pra reler: solta", () => {
-    expect(shouldFollow(el(200))).toBe(false);
-  });
-
-  it("conversa que cabe na tela está sempre no fim", () => {
-    expect(shouldFollow(el(0, 500, 600))).toBe(true);
-  });
-
-  it("depois da NOSSA rolagem continua seguindo (é isso que evita o falso solto)", () => {
-    const depois = el(2000 - 600); 
-    expect(shouldFollow(depois)).toBe(true);
-  });
-});
+const settle = (previousHeight: number, scrollTop: number, currentHeight = previousHeight) =>
+  decideScroll({ gesture: false, previousHeight, currentHeight, scrollTop, clientHeight: VIEW });
 
 describe("shouldShowJump", () => {
-  it("seguindo não mostra nada, nem respondendo", () => {
+  it("shows nothing while following, even when streaming", () => {
     expect(shouldShowJump(true, true, false)).toBe(false);
     expect(shouldShowJump(true, false, true)).toBe(false);
   });
 
-  it("longe e respondendo: mostra o caminho de volta", () => {
+  it("offers the way back while away and streaming", () => {
     expect(shouldShowJump(false, true, false)).toBe(true);
   });
 
-  it("longe e terminou: mostra que ficou pronta", () => {
+  it("signals a finished reply while away", () => {
     expect(shouldShowJump(false, false, true)).toBe(true);
   });
 
-  it("longe, parado e sem novidade: não incomoda", () => {
+  it("stays quiet while away with nothing new", () => {
     expect(shouldShowJump(false, false, false)).toBe(false);
   });
 });
 
-describe("wasAtBottom", () => {
-  const ALTURA = 2000;
-  const VISIVEL = 600;
-  const NO_FIM = ALTURA - VISIVEL; 
-
-  it("estava colado: segue", () => {
-    expect(wasAtBottom(ALTURA, NO_FIM, VISIVEL)).toBe(true);
+describe("decideScroll without a gesture", () => {
+  it("keeps following when new text arrives while at the bottom", () => {
+    expect(settle(2000, 1400, 2400)).toEqual({ pin: true, following: true });
   });
 
-  it("estava colado e chegaram 400px de texto: CONTINUA seguindo", () => {
-
-    expect(wasAtBottom(ALTURA, NO_FIM, VISIVEL)).toBe(true);
-
-    expect(shouldFollow({ scrollTop: NO_FIM, scrollHeight: 2400, clientHeight: VISIVEL })).toBe(false);
+  it("does not follow after the user scrolled up to reread", () => {
+    expect(settle(2000, 300, 2400)).toEqual({ pin: false, following: false });
   });
 
-  it("tinha subido pra reler: não segue, mesmo com texto novo chegando", () => {
-    expect(wasAtBottom(ALTURA, 300, VISIVEL)).toBe(false);
+  it("counts anything within the slack as the bottom", () => {
+    expect(settle(2000, 1400 - FOLLOW_SLACK).following).toBe(true);
+    expect(settle(2000, 1400 - FOLLOW_SLACK - 1).following).toBe(false);
   });
 
-  it("dentro da folga conta como fim", () => {
-    expect(wasAtBottom(ALTURA, NO_FIM - FOLLOW_SLACK, VISIVEL)).toBe(true);
-    expect(wasAtBottom(ALTURA, NO_FIM - FOLLOW_SLACK - 1, VISIVEL)).toBe(false);
+  it("treats overscroll past the end as the bottom", () => {
+    expect(settle(2000, 1600).following).toBe(true);
   });
 
-  it("primeira medida (altura anterior 0) não trava a tela", () => {
-
-    expect(wasAtBottom(0, 0, VISIVEL)).toBe(true);
+  it("does not lock the view on the first measurement", () => {
+    expect(settle(0, 0, 2000).following).toBe(false);
+    expect(settle(0, 1400, 2000).following).toBe(true);
   });
 
-  it("conversa menor que a tela conta como fim", () => {
-    expect(wasAtBottom(400, 0, 600)).toBe(true);
+  it("treats a conversation shorter than the view as the bottom", () => {
+    expect(settle(400, 0).following).toBe(true);
+  });
+
+  it("resumes following when the finger lifts near the bottom", () => {
+    expect(settle(2400, 1760)).toEqual({ pin: true, following: true });
+  });
+
+  it("stays put when the finger lifts far away", () => {
+    expect(settle(2400, 900)).toEqual({ pin: false, following: false });
   });
 });
 
-describe("decideScroll — o dedo manda", () => {
-  const CH = 600;
+describe("decideScroll during a gesture", () => {
+  const drag = (scrollTop: number) =>
+    decideScroll({ gesture: true, previousHeight: 2000, currentHeight: 2400, scrollTop, clientHeight: VIEW });
 
-  it("sem gesto, estava no fim: desce e segue", () => {
-    expect(
-      decideScroll({ gesto: false, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1400, clientHeight: CH })
-    ).toEqual({ pin: true, seguindo: true });
+  it("never pins while the finger is working, even at the bottom", () => {
+    expect(drag(1800)).toEqual({ pin: false, following: true });
   });
 
-  it("COM gesto, mesmo no fim: NÃO desce (o dedo está trabalhando)", () => {
-    expect(
-      decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1800, clientHeight: CH })
-    ).toEqual({ pin: false, seguindo: true });
+  it("lets go as soon as a short drag passes the slack", () => {
+    expect(drag(1760)).toEqual({ pin: false, following: true });
+    expect(drag(1700)).toEqual({ pin: false, following: false });
   });
 
-  it("arrasto curto durante o gesto solta assim que passa a folga", () => {
-
-    const perto = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1760, clientHeight: CH });
-    const longe = decideScroll({ gesto: true, alturaAnterior: 2000, alturaAtual: 2400, scrollTop: 1700, clientHeight: CH });
-    expect(perto.seguindo).toBe(true);
-    expect(longe.seguindo).toBe(false);
-
-    expect(perto.pin).toBe(false);
-    expect(longe.pin).toBe(false);
-  });
-
-  it("oito passos de 35px acumulam em vez de voltar pro fim", () => {
-    let scrollTop = 1400; 
-    let alturaAnterior = 2000;
-    let alturaAtual = 2000;
+  it("accumulates small steps instead of snapping back to the bottom", () => {
+    let scrollTop = 1400;
+    let previousHeight = 2000;
+    let currentHeight = 2000;
     for (let i = 0; i < 8; i++) {
       scrollTop -= 35;
-      alturaAtual += 60; 
-      const { pin } = decideScroll({ gesto: true, alturaAnterior, alturaAtual, scrollTop, clientHeight: CH });
-
+      currentHeight += 60;
+      const { pin } = decideScroll({ gesture: true, previousHeight, currentHeight, scrollTop, clientHeight: VIEW });
       expect(pin).toBe(false);
-      alturaAnterior = alturaAtual;
+      previousHeight = currentHeight;
     }
-    expect(scrollTop).toBe(1400 - 280);
-  });
-
-  it("soltando o dedo perto do fim, volta a seguir", () => {
-    const r = decideScroll({ gesto: false, alturaAnterior: 2400, alturaAtual: 2400, scrollTop: 1760, clientHeight: CH });
-    expect(r).toEqual({ pin: true, seguindo: true });
-  });
-
-  it("soltando o dedo longe, fica onde está", () => {
-    const r = decideScroll({ gesto: false, alturaAnterior: 2400, alturaAtual: 2400, scrollTop: 900, clientHeight: CH });
-    expect(r).toEqual({ pin: false, seguindo: false });
   });
 });

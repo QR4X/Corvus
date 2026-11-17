@@ -10,7 +10,7 @@ import { getProvider } from "../providers";
 import { modeloSalvoPara } from "./defaultModel";
 import { providerCredential, providerMeta } from "./providersMeta";
 import { nomeCompleto } from "./ollamaDefault";
-import { getTranslations } from "../i18n";
+import { EN_US } from "../i18n/en-us";
 import { tr } from "../i18n/tr";
 import {
   saveChat,
@@ -38,7 +38,7 @@ export function isChatMode(v: string | undefined | null): v is ChatMode {
   return !!v && (CHAT_MODES as string[]).includes(v);
 }
 
-export interface SessionConfig {
+interface SessionConfig {
   provider: string;
   model: string;
   mode: ChatMode;
@@ -49,7 +49,7 @@ export interface SessionConfig {
   locked: boolean;
 }
 
-export interface ChatRef {
+interface ChatRef {
   id: string;
   mode: string;
 }
@@ -57,7 +57,7 @@ export interface ChatRef {
 export class ChatSession {
 
   private get t() {
-    return getTranslations(this.plugin.settings.language);
+    return EN_US;
   }
   private readonly abortRef = { current: null as AbortController | null };
   private readonly approveAllRef = { current: false };
