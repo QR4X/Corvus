@@ -28,7 +28,7 @@ function context(provider: Provider, effort = "low"): AgentCtx {
     plugin: plugin as unknown as AgentCtx["plugin"],
     t, abortRef: { current: null }, agentApproveAllRef: { current: false },
     activeProviderId: provider.id, activeProvider: provider,
-    activeModel: "deepseek/deepseek-v4-flash-0731", activeMode: "agent",
+    activeModel: "deepseek/deepseek-v4-flash-0731",
     useVault: false, apiKeyFor: () => "key", effort,
     resolveStyleInstruction: () => "",
   };
@@ -179,5 +179,18 @@ describe("Chat uses the same response diagnostics", () => {
     await streamReply(context(provider([{ content: "Partial answer", streamCompleted: false }])), "Question");
     expect(useChatStore.getState().messages).toContainEqual(expect.objectContaining({ content: "Partial answer", truncated: true }));
     expect(useChatStore.getState().messages.at(-1)).toMatchObject({ isError: true, content: expect.stringContaining(t.ai.streamIncomplete) });
+  });
+});
+
+describe("missing credential", () => {
+  it.each([
+    ["agent", (ctx: AgentCtx) => runAgentTurn(ctx, "Hi")],
+    ["chat", (ctx: AgentCtx) => streamReply(ctx, "Hi")],
+  ] as const)("the %s turn explains it and never calls the provider", async (_mode, run) => {
+    const p = provider([]);
+    await run({ ...context(p), apiKeyFor: () => "" });
+    expect(p.streamChat).not.toHaveBeenCalled();
+    expect(useChatStore.getState().messages.at(-1)).toMatchObject({ isError: true, errorCode: "no-key" });
+    expect(useChatStore.getState().isLoading).toBe(false);
   });
 });

@@ -1,6 +1,5 @@
 import { useChatStore } from "../store/chat";
 import {
-  semCredencial,
   describeProviderError,
   agentActivitySpec,
   summarizeToolResult,
@@ -25,7 +24,7 @@ import type { MessageAttachment, ProviderMessage } from "../providers/base";
 import { responseIssue } from "../providers/base";
 import type { AIToolStep, PermissionLevel } from "../agent/types";
 import { loadAgentMd } from "./agentMd";
-import type { EngineCtx } from "./chatEngine";
+import { reportMissingCredential, type EngineCtx } from "./chatEngine";
 import { buscarContextoDoVault } from "./vaultLookup";
 
 export interface AgentCtx extends EngineCtx {
@@ -65,21 +64,7 @@ export async function runAgentTurn(
     endStreamTimer,
   } = useChatStore.getState();
 
-  const falta = semCredencial(
-    activeProviderId,
-    apiKeyFor(activeProviderId),
-    t,
-    activeProvider.name
-  );
-  if (falta) {
-    addMessage({
-      type: "ai-response",
-      content: `${t.ai.errorPrefix} ${falta}`,
-      isError: true,
-      errorCode: "no-key",
-    });
-    return;
-  }
+  if (reportMissingCredential(ctx)) return;
 
   if (!activeProvider.supportsTools) {
     addMessage({

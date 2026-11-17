@@ -32,13 +32,24 @@ export interface EngineCtx {
   activeProvider: ReturnType<typeof getProvider>;
   activeModel: string;
 
-  activeMode: string;
-
   useVault: boolean;
   apiKeyFor: (providerId: string) => string;
   effort: string;
 
   resolveStyleInstruction: () => string;
+}
+
+export function reportMissingCredential(ctx: EngineCtx): boolean {
+  const { t, activeProviderId, activeProvider, apiKeyFor } = ctx;
+  const missing = semCredencial(activeProviderId, apiKeyFor(activeProviderId), t, activeProvider.name);
+  if (!missing) return false;
+  useChatStore.getState().addMessage({
+    type: "ai-response",
+    content: `${t.ai.errorPrefix} ${missing}`,
+    isError: true,
+    errorCode: "no-key",
+  });
+  return true;
 }
 
 export async function streamReply(
@@ -70,21 +81,7 @@ export async function streamReply(
     endStreamTimer,
   } = useChatStore.getState();
 
-  const falta = semCredencial(
-    activeProviderId,
-    apiKeyFor(activeProviderId),
-    t,
-    activeProvider.name
-  );
-  if (falta) {
-    addMessage({
-      type: "ai-response",
-      content: `${t.ai.errorPrefix} ${falta}`,
-      isError: true,
-      errorCode: "no-key",
-    });
-    return;
-  }
+  if (reportMissingCredential(ctx)) return;
 
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
