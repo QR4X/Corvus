@@ -280,7 +280,6 @@ export class ChatSession {
       activeProviderId: cfg.provider,
       activeProvider: provider,
       activeModel: cfg.model,
-      activeMode: cfg.mode,
       apiKeyFor: (p) => this.apiKeyFor(p),
       effort: this.effort,
       useVault: cfg.vault,
