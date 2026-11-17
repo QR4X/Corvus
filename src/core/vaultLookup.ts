@@ -43,7 +43,7 @@ export async function buscarContextoDoVault({
 
     const hits = await hybridSearch({
       app: plugin.app,
-      index: plugin.vectorIndex,
+      index: plugin.rag.index,
       creds: plugin.settings,
       query,
       topK,
@@ -67,7 +67,7 @@ export async function buscarContextoDoVault({
       .join("\n\n---\n\n");
 
     const semanticUsed = hits.some((h) => h.via.includes("semantic"));
-    const hasIndex = !!plugin.vectorIndex && plugin.vectorIndex.size > 0;
+    const hasIndex = !!plugin.rag.index && plugin.rag.index.size > 0;
     updateActivity(searchActivityId, {
       phase: "done",
       doneText: semanticUsed

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ler = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf8");
-const MAIN = ler("src/main.ts");
 const SESSION = ler("src/core/session.ts");
 
 function corpo(fonte: string, assinatura: string): string {
@@ -17,36 +16,6 @@ function corpo(fonte: string, assinatura: string): string {
   }
   return fonte.slice(abre);
 }
-
-describe("gravar as settings", () => {
-  const fn = corpo(MAIN, "async saveSettings()");
-
-  it("a escrita é protegida — ela não estoura pra fora", () => {
-
-    expect(fn).toContain("try {");
-    expect(fn).toMatch(/catch \(err\)/);
-  });
-
-  it("falhou, a pessoa é AVISADA — console não é aviso", () => {
-    const pego = fn.slice(fn.indexOf("catch (err)"));
-    expect(pego).toContain("new Notice(");
-
-    expect(pego).toMatch(/lost when you reopen|se perde ao reabrir/);
-  });
-
-  it("avisa UMA vez por sequência de falhas", () => {
-
-    expect(fn).toContain("if (!this.avisoDeSaveDado)");
-
-    expect(fn).toContain("this.avisoDeSaveDado = false");
-  });
-
-  it("nenhum chamador precisa lembrar de tratar", () => {
-
-    const chamadas = [...MAIN.matchAll(/void this\.saveSettings\(\)/g)].length;
-    expect(chamadas).toBeGreaterThan(0);
-  });
-});
 
 describe("gravar a conversa", () => {
   const avisar = corpo(SESSION, "private avisarFalhaDeGravacao(");

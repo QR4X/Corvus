@@ -861,7 +861,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
     if (catalogosTentados.current.has(pickProvider)) return;
     catalogosTentados.current.add(pickProvider);
 
-    void plugin.scanModels(pickProvider).catch(() => {});
+    void plugin.models.scanModels(pickProvider).catch(() => {});
   }, [sheet, pickProvider, plugin]);
 
   const alternarFavorito = async (model: string) => {

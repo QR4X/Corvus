@@ -161,53 +161,60 @@ Mock note content, enough to serve as context.`,
   },
 
   skills: [],
-  chatSummaries: chats,
+  chats: {
+    list: chats,
+    load: async () => chats,
+    upsert: () => {},
+    remove: () => {},
+    markUnread(id: string) {
+      if (!id || plugin.settings.unreadChats.includes(id)) return;
+      plugin.settings.unreadChats = [...plugin.settings.unreadChats, id];
+      unreadListeners.forEach((cb) => cb());
+    },
+    clearUnread(id: string) {
+      if (!id || !plugin.settings.unreadChats.includes(id)) return;
+      plugin.settings.unreadChats = plugin.settings.unreadChats.filter(
+        (x: string) => x !== id
+      );
+      unreadListeners.forEach((cb) => cb());
+    },
+    unread() {
+      return new Set(plugin.settings.unreadChats);
+    },
+    onUnreadChange: (cb: () => void) => {
+      unreadListeners.add(cb);
+      return () => unreadListeners.delete(cb);
+    },
+    onChange: (cb: () => void) => {
+      chatsListeners.add(cb);
+      return () => chatsListeners.delete(cb);
+    },
+  },
 
-  markChatUnread(id: string) {
-    if (!id || plugin.settings.unreadChats.includes(id)) return;
-    plugin.settings.unreadChats = [...plugin.settings.unreadChats, id];
-    plugin.notifyUnread();
-  },
-  clearChatUnread(id: string) {
-    if (!id || !plugin.settings.unreadChats.includes(id)) return;
-    plugin.settings.unreadChats = plugin.settings.unreadChats.filter(
-      (x: string) => x !== id
-    );
-    plugin.notifyUnread();
-  },
-  unreadSet() {
-    return new Set(plugin.settings.unreadChats);
-  },
-  onUnreadChange: (cb: () => void) => {
-    unreadListeners.add(cb);
-    return () => unreadListeners.delete(cb);
-  },
-  notifyUnread() {
-    unreadListeners.forEach((cb) => cb());
-  },
-
-  vectorIndex:
-    new URLSearchParams(location.search).get("indice") === "0"
-      ? null
-      : { size: 18430, fileCount: 1274 },
-  indexing: null,
-
-  async runVaultIndex() {
-    if (plugin.indexing) {
-      plugin.indexing.abort();
-      plugin.indexing = null;
+  rag: {
+    index:
+      new URLSearchParams(location.search).get("indice") === "0"
+        ? null
+        : { size: 18430, fileCount: 1274 },
+    indexing: null as AbortController | null,
+    load: async () => {},
+    async run() {
+      if (plugin.rag.indexing) {
+        plugin.rag.indexing.abort();
+        plugin.rag.indexing = null;
+        settingsListeners.forEach((cb) => cb());
+        return;
+      }
+      plugin.rag.indexing = new AbortController();
       settingsListeners.forEach((cb) => cb());
-      return;
-    }
-    plugin.indexing = new AbortController();
-    settingsListeners.forEach((cb) => cb());
-    await new Promise((r) => setTimeout(r, 1200));
-    plugin.vectorIndex = {
-      size: (plugin.vectorIndex?.size ?? 0) + 37,
-      fileCount: (plugin.vectorIndex?.fileCount ?? 0) + 3,
-    };
-    plugin.indexing = null;
-    settingsListeners.forEach((cb) => cb());
+      await new Promise((r) => setTimeout(r, 1200));
+      plugin.rag.index = {
+        size: (plugin.rag.index?.size ?? 0) + 37,
+        fileCount: (plugin.rag.index?.fileCount ?? 0) + 3,
+      };
+      plugin.rag.indexing = null;
+      settingsListeners.forEach((cb) => cb());
+    },
   },
   settings: {
 
@@ -312,21 +319,13 @@ Mock note content, enough to serve as context.`,
   saveSettings: async () => {
     settingsListeners.forEach((cb) => cb());
   },
-  loadChatSummaries: async () => chats,
-
-  onChatsChange: (cb: () => void) => {
-    chatsListeners.add(cb);
-    return () => chatsListeners.delete(cb);
-  },
-  notifyChats() {
-    chatsListeners.forEach((cb) => cb());
-  },
   onSettingsChange: (cb: () => void) => {
     settingsListeners.add(cb);
     return () => settingsListeners.delete(cb);
   },
 
-  scanModels: async (id: string) =>
+  models: {
+    scanModels: async (id: string) =>
     id === "openai"
       ? [
           "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5", "gpt-5-mini",
@@ -340,6 +339,9 @@ Mock note content, enough to serve as context.`,
           "qwen/qwen-2.5-7b:free",
           "deepseek/deepseek-r1",
         ],
+    scanEmbeddings: async () => [],
+    syncOllama: async () => null,
+  },
   reloadSkills: async () => {
     plugin.skills = await loadSkills(
       plugin.app as never,
@@ -506,7 +508,7 @@ const session = {
     useChatStore.getState().setLoading(false);
 
     const bgFinal = useChatStore.getState().background;
-    if (bgFinal) plugin.markChatUnread(bgFinal.chatId);
+    if (bgFinal) plugin.chats.markUnread(bgFinal.chatId);
     useChatStore.getState().clearBackground();
     useChatStore.getState().setTurnChatId(null);
     emit();
@@ -547,7 +549,7 @@ const session = {
 
     const eraNaoLida = plugin.settings.unreadChats.includes(c.id);
 
-    plugin.clearChatUnread(c.id);
+    plugin.chats.clearUnread(c.id);
     const bg = useChatStore.getState().background;
     if (bg?.chatId === c.id) {
 

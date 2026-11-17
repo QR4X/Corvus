@@ -91,7 +91,7 @@ export class ChatSession {
 
     this.unsubSettings = plugin.onSettingsChange(() => this.seguirOllama());
 
-    void plugin.loadChatSummaries();
+    void plugin.chats.load();
   }
 
   async flushBackground(): Promise<void> {
@@ -384,7 +384,7 @@ export class ChatSession {
         this.plugin.settings.chatsPath,
         chat
       );
-      this.plugin.upsertChatSummary({
+      this.plugin.chats.upsert({
         id: chat.id,
         title: chat.title,
         date: chat.date,
@@ -405,7 +405,7 @@ export class ChatSession {
         preview: previewFromText(ultima?.content ?? ""),
       });
 
-      this.plugin.markChatUnread(chat.id);
+      this.plugin.chats.markUnread(chat.id);
       this.avisoDeGravacaoDado = false;
     } catch (err) {
       this.avisarFalhaDeGravacao(err);
@@ -485,11 +485,11 @@ export class ChatSession {
 
     if (store.background?.chatId === ref.id) {
       this.reanexarTurno();
-      this.plugin.clearChatUnread(ref.id);
+      this.plugin.chats.clearUnread(ref.id);
       return;
     }
 
-    const naoLida = this.plugin.unreadSet().has(ref.id);
+    const naoLida = this.plugin.chats.unread().has(ref.id);
 
     if (!this.destacarTurno()) this.abortRef.current?.abort();
     this.flushSave();
@@ -542,7 +542,7 @@ export class ChatSession {
         if (nova) st.setResume({ messageId: nova.id });
       }
 
-      this.plugin.clearChatUnread(chat.id);
+      this.plugin.chats.clearUnread(chat.id);
       if (chat.effort) this.effort = chat.effort;
 
       this.vaultEscolha = chat.vault ?? null;
@@ -565,7 +565,7 @@ export class ChatSession {
         ref.mode,
         ref.id
       );
-      this.plugin.removeChatSummary(ref.id);
+      this.plugin.chats.remove(ref.id);
 
       await this.updateProjects((prev) =>
         prev.map((p) =>
@@ -598,8 +598,8 @@ export class ChatSession {
       if (useChatStore.getState().currentChatId === ref.id) {
         useChatStore.getState().setCurrentChatTitle(clean);
       }
-      const cur = this.plugin.chatSummaries?.find((c) => c.id === ref.id);
-      if (cur) this.plugin.upsertChatSummary({ ...cur, title: clean });
+      const cur = this.plugin.chats.list?.find((c) => c.id === ref.id);
+      if (cur) this.plugin.chats.upsert({ ...cur, title: clean });
       new Notice(this.t.conversations.renameSuccess(clean));
     } catch (err) {
       const msg = err instanceof Error ? err.message : this.t.ai.unknownError;
@@ -699,7 +699,7 @@ export class ChatSession {
         this.plugin.settings.chatsPath,
         chat
       );
-      this.plugin.upsertChatSummary({
+      this.plugin.chats.upsert({
         id: chat.id,
         title: chat.title,
         date: chat.date,

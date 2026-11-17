@@ -40,12 +40,14 @@ function setup() {
       openaiApiKey: "test-key",
     },
     onSettingsChange: () => () => {},
-    loadChatSummaries: async () => [],
+    chats: {
+      load: async () => [],
+      upsert: vi.fn(),
+      markUnread: vi.fn(),
+      clearUnread: vi.fn(),
+      unread: () => new Set<string>(),
+    },
     saveSettings: async () => {},
-    upsertChatSummary: vi.fn(),
-    markChatUnread: vi.fn(),
-    clearChatUnread: vi.fn(),
-    unreadSet: () => new Set<string>(),
   };
   session = new ChatSession(plugin as unknown as CorvusPlugin);
   return { plugin };

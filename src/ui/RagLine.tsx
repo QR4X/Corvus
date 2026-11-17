@@ -13,11 +13,11 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
     [plugin]
   );
 
-  const idx = plugin.vectorIndex;
+  const idx = plugin.rag.index;
   const trechos = idx?.size ?? 0;
   const notas = idx?.fileCount ?? 0;
   const pronto = trechos > 0;
-  const rodando = plugin.indexing !== null;
+  const rodando = plugin.rag.indexing !== null;
 
   return (
     <div className={pronto ? "corvus-rag-line is-on" : "corvus-rag-line"}>
@@ -53,7 +53,7 @@ export function RagLine({ plugin }: { plugin: CorvusPlugin }) {
         className={rodando ? "corvus-rag-refresh is-running" : "corvus-rag-refresh"}
         aria-label={rodando ? tr("Cancel indexing") : tr("Update index")}
         title={rodando ? tr("Cancel indexing") : tr("Update index with new notes")}
-        onClick={() => void plugin.runVaultIndex()}
+        onClick={() => void plugin.rag.run()}
       >
         <Icon name={rodando ? "square" : "refresh-cw"} size={14} />
       </button>

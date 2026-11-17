@@ -69,7 +69,7 @@ describe("Obsidian Appearance is the only source of plugin typography", () => {
   it("removes plugin-specific controls and inline overrides", () => {
     for (const key of ["uiFontFamily", "uiFontSize"]) {
       expect(isControlKey(key)).toBe(false);
-      for (const file of ["src/main.ts", "src/ui/settings/tree.ts"]) {
+      for (const file of ["src/settings.ts", "src/ui/settings/tree.ts"]) {
         expect(read(file)).not.toContain(key);
       }
     }

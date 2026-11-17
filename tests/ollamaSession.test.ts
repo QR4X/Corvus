@@ -24,7 +24,7 @@ function montar(extra: Record<string, unknown> = {}) {
       ouvintes.add(cb);
       return () => ouvintes.delete(cb);
     },
-    loadChatSummaries: async () => [],
+    chats: { load: async () => [] },
     saveSettings: async () => ouvintes.forEach((cb) => cb()),
   };
   const sessao = new ChatSession(plugin as never);

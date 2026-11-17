@@ -6,7 +6,7 @@ import { somarDescobertos } from "../src/rag/discovered";
 describe("embeddings descobertos", () => {
   it("o Fetch de modelos traz os de embedding junto", () => {
     const tab = readFileSync(resolve(__dirname, "../src/ui/SettingsTab.ts"), "utf8");
-    expect(tab).toMatch(/this\.plugin\.scanEmbeddings\(providerId\)/);
+    expect(tab).toMatch(/this\.plugin\.models\.scanEmbeddings\(providerId\)/);
   });
 
   it("somar descobertos não repete e mantém os antigos na frente", () => {

@@ -205,7 +205,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     if (!(await writeControl(this.plugin, key, value))) return;
     switch (key) {
       case "chatsPath":
-        void this.plugin.loadChatSummaries(true);
+        void this.plugin.chats.load(true);
         break;
       case "skillsPath":
         await this.plugin.reloadSkills();
@@ -233,7 +233,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
         this.repaint("index");
         window.clearTimeout(this.timerDoIndice);
         this.timerDoIndice = window.setTimeout(() => {
-          void this.plugin.loadVectorIndex().then(() => this.repaint("index"));
+          void this.plugin.rag.load().then(() => this.repaint("index"));
         }, 800);
         break;
     }
@@ -539,13 +539,13 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.timerDoOllama = window.setTimeout(() => {
       this.timerDoOllama = null;
       void (async () => {
-        const instalados = await this.plugin.conferirOllama({ soDeFabrica: false });
+        const instalados = await this.plugin.models.syncOllama({ onlyFactoryList: false });
         if (instalados === null) return;
         this.catalog.ollama = instalados;
         this.repaint("catalog:ollama");
         this.repaint("model:ollama");
 
-        await this.plugin.scanEmbeddings("ollama");
+        await this.plugin.models.scanEmbeddings("ollama");
         this.repaint("embedding");
       })();
     }, 900);
@@ -574,7 +574,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     this.repaint(`conn:${providerId}`);
     try {
       const desde = this.s.ollamaEndpoint;
-      const models = await this.plugin.scanModels(providerId);
+      const models = await this.plugin.models.scanModels(providerId);
 
       const doEnderecoAtual = providerId !== "ollama" || this.s.ollamaEndpoint === desde;
       if (doEnderecoAtual && (models.length > 0 || providerId === "ollama")) {
@@ -644,8 +644,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
 
       const desde = this.s.ollamaEndpoint;
       const [models, embeds] = await Promise.all([
-        this.plugin.scanModels(providerId),
-        this.plugin.scanEmbeddings(providerId),
+        this.plugin.models.scanModels(providerId),
+        this.plugin.models.scanEmbeddings(providerId),
       ]);
 
       if (providerId === "ollama" && this.s.ollamaEndpoint !== desde) return;
@@ -1470,9 +1470,9 @@ export class CorvusSettingsTab extends PluginSettingTab {
 
   private paintIndex(row: Setting): void {
     const s = this.s;
-    const size = this.plugin.vectorIndex?.size ?? 0;
+    const size = this.plugin.rag.index?.size ?? 0;
 
-    const pendente = pendenciaDoIndice(this.plugin.vectorIndex ?? null, s);
+    const pendente = pendenciaDoIndice(this.plugin.rag.index ?? null, s);
     const folder = s.ragIndexPath;
     row.setDesc(
       (size === 0
@@ -1485,17 +1485,17 @@ export class CorvusSettingsTab extends PluginSettingTab {
     row
       .addButton((b) =>
         b
-          .setButtonText(this.plugin.indexing ? tr("Cancel indexing") : tr("Index vault"))
+          .setButtonText(this.plugin.rag.indexing ? tr("Cancel indexing") : tr("Index vault"))
           .setCta()
           .onClick(() => void this.runIndex())
       )
       .addButton((b) =>
 
         marcarPerigoso(b.setButtonText(tr("Delete index")))
-          .setDisabled(size === 0 && !this.plugin.vectorIndex)
+          .setDisabled(size === 0 && !this.plugin.rag.index)
           .onClick(async () => {
             await deleteIndex(this.app.vault.adapter, s.ragIndexPath);
-            this.plugin.vectorIndex = null;
+            this.plugin.rag.index = null;
             new Notice(tr("Index deleted."));
             this.repaint("index");
           })
@@ -1503,7 +1503,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   private async runIndex(): Promise<void> {
-    const run = this.plugin.runVaultIndex();
+    const run = this.plugin.rag.run();
 
     this.repaint("index");
     await run;
