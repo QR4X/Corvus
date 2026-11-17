@@ -4,8 +4,8 @@ import {
   modelosMaisUsados,
   sequenciaDeDias,
   trabalhoDoPeriodo,
-} from "../src/ui/homeModules";
-import type { Celula } from "../src/ui/heatmap";
+} from "../src/usage/activity";
+import type { Celula } from "../src/usage/heatmap";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
 const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({

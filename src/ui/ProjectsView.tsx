@@ -11,7 +11,8 @@ import {
   type Project,
   type ProjectDraft,
 } from "../projects";
-import { ChatList, useChatSummaries } from "./ChatList";
+import { ChatList } from "./ChatList";
+import { useChatSummaries } from "./chatHooks";
 import {
   formatarTokens,
   resumoDoProjeto,

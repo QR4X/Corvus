@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import {
+  KeyStatus,
   Provider,
   ProviderError,
   ProviderRequest,
@@ -236,7 +237,7 @@ export class OpenRouterProvider implements Provider {
     }
   }
 
-  async keyStatus(apiKey: string): Promise<EstadoDaChave | null> {
+  async keyStatus(apiKey: string): Promise<KeyStatus | null> {
     if (!apiKey || !apiKey.trim()) return null;
     try {
       const res = await requestUrl({
@@ -299,24 +300,13 @@ export class OpenRouterProvider implements Provider {
   }
 }
 
-export interface EstadoDaChave {
-
-  gratis?: { limite: number; usados?: number; restantes?: number };
-
-  creditoRestante?: number | null;
-
-  creditoVolta?: string;
-
-  gastoHoje?: number;
-}
-
 const numero = (v: unknown): number | undefined =>
   typeof v === "number" && Number.isFinite(v) ? v : undefined;
 
-export function estadoDaChave(json: unknown): EstadoDaChave | null {
+export function estadoDaChave(json: unknown): KeyStatus | null {
   const d = (json as { data?: Record<string, unknown> } | undefined)?.data;
   if (!d || typeof d !== "object") return null;
-  const out: EstadoDaChave = {};
+  const out: KeyStatus = {};
   const cota = cotaGratisDaChave(json);
   if (cota) {
     const f = d.free_model_daily_requests as { used?: unknown } | undefined;

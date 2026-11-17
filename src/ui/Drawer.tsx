@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type CorvusPlugin from "../main";
 import { isChatMode, type ChatSession } from "../core/session";
 import { useChatStore } from "../store/chat";
-import { useChatSummaries, useUnreadChats } from "./ChatList";
+import { useChatSummaries, useUnreadChats } from "./chatHooks";
 import { Icon } from "./Icon";
 import { openPluginSettings } from "./modals";
 import { moduleHint, moduleStats, modulesInUse } from "./modules";

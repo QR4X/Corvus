@@ -5,17 +5,17 @@ import { formatUsdRounded } from "../usage/pricing";
 import { formatCompact } from "../usage/format";
 import { aggregateFromSummaries } from "../usage/aggregate";
 import { Icon } from "./Icon";
-import { providerIcon } from "./ChatList";
+import { providerIcon } from "../core/providersMeta";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { RagLine } from "./RagLine";
-import { heatmapDoMes, inicioDoMes, type Celula } from "./heatmap";
+import { heatmapDoMes, inicioDoMes, type Celula } from "../usage/heatmap";
 import {
   diasAtivos,
   modelosMaisUsados,
   sequenciaDeDias,
   trabalhoDoPeriodo,
   type ModeloUsado,
-} from "./homeModules";
+} from "../usage/activity";
 import { tr } from "../i18n/tr";
 
 const MODELOS = 3;

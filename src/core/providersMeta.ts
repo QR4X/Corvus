@@ -75,3 +75,7 @@ export function providerBlockedReason(s: CorvusSettings, id: string): string | n
       return null;
   }
 }
+
+export function providerIcon(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.icon ?? "message-square";
+}

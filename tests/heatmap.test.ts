@@ -4,7 +4,7 @@ import {
   heatmapDoMes,
   inicioDoMes,
   nivelDoDia,
-} from "../src/ui/heatmap";
+} from "../src/usage/heatmap";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
 const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
