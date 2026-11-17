@@ -6,7 +6,7 @@ import type {
   SettingGroup,
   SettingGroupItem,
 } from "obsidian";
-import type { CorvusSettings } from "../../main";
+import type { CorvusSettings } from "../../settings";
 import { PROVIDERS } from "../../core/providersMeta";
 import {
   EFFORT_ICONS,

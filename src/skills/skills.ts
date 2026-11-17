@@ -1,5 +1,6 @@
 import { TFile, TFolder, type App, parseYaml, normalizePath } from "obsidian";
 import { texto } from "../core/text";
+import { SKILLS_FOLDER } from "../core/vaultPaths";
 
 export interface Skill {
   id: string;
@@ -53,7 +54,7 @@ function parseSkillFile(
 }
 
 export function skillsFolderPrefix(folderPath: string): string {
-  const folder = normalizePath(folderPath || "corvus-ai/skills");
+  const folder = normalizePath(folderPath || SKILLS_FOLDER);
   return folder.endsWith("/") ? folder : folder + "/";
 }
 
@@ -149,7 +150,7 @@ export async function seedExampleSkills(
   app: App,
   folderPath: string
 ): Promise<number> {
-  const folder = normalizePath(folderPath || "corvus-ai/skills");
+  const folder = normalizePath(folderPath || SKILLS_FOLDER);
   if (!(await app.vault.adapter.exists(folder))) {
     await app.vault.adapter.mkdir(folder);
   }

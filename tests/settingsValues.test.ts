@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   applyControl,
-  DEFAULT_CHATS_PATH,
-  DEFAULT_SKILLS_PATH,
   isControlKey,
   readControl,
   writeControl,
 } from "../src/ui/settings/values";
-import type { CorvusSettings } from "../src/main";
+import { DEFAULT_SETTINGS, type CorvusSettings } from "../src/settings";
 
 function fakeSettings(over: Partial<CorvusSettings> = {}): CorvusSettings {
   return {
@@ -81,9 +79,9 @@ describe("conversões", () => {
   it("pasta vazia volta pro padrão em vez de gravar na raiz", () => {
     const s = fakeSettings();
     applyControl(s, "chatsPath", "   ");
-    expect(s.chatsPath).toBe(DEFAULT_CHATS_PATH);
+    expect(s.chatsPath).toBe(DEFAULT_SETTINGS.chatsPath);
     applyControl(s, "skillsPath", "");
-    expect(s.skillsPath).toBe(DEFAULT_SKILLS_PATH);
+    expect(s.skillsPath).toBe(DEFAULT_SETTINGS.skillsPath);
     applyControl(s, "chatsPath", "  Minhas/conversas ");
     expect(s.chatsPath).toBe("Minhas/conversas");
   });
@@ -97,7 +95,8 @@ describe("conversões", () => {
   });
 
   it("campos ausentes num data.json antigo leem como o padrão", () => {
-    const s = fakeSettings({ language: "" });
+    const s = fakeSettings();
+    delete (s as Partial<CorvusSettings>).language;
     delete (s as Partial<CorvusSettings>).hapticsEnabled;
     delete (s as Partial<CorvusSettings>).mobileFullscreen;
     delete (s as Partial<CorvusSettings>).keepAwakeWhileWriting;
@@ -106,6 +105,6 @@ describe("conversões", () => {
     expect(readControl(s, "mobileFullscreen")).toBe(false);
     expect(readControl(s, "keepAwakeWhileWriting")).toBe(true);
     expect(readControl(s, "openaiDataSharing")).toBe(false);
-    expect(readControl(s, "language")).toBe("en-us");
+    expect(readControl(s, "language")).toBe(DEFAULT_SETTINGS.language);
   });
 });

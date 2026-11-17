@@ -9,7 +9,7 @@ import {
 } from "../src/ui/settings/tree";
 import { isControlKey } from "../src/ui/settings/values";
 import { PROVIDERS } from "../src/core/providersMeta";
-import type { CorvusSettings } from "../src/main";
+import type { CorvusSettings } from "../src/settings";
 
 type Row = {
   name?: unknown;

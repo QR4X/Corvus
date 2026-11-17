@@ -10,6 +10,7 @@ import {
   type SkillDraft,
 } from "../skills/skillFile";
 import { ensureFolder } from "../core/chatPersistence";
+import { SKILLS_FOLDER } from "../core/vaultPaths";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";
 import { Sheet, SheetSearch, useSheetFull } from "./Sheet";
@@ -57,7 +58,7 @@ export function SkillsView({
   }, [plugin, open]);
 
   const skills = plugin.skills;
-  const folder = plugin.settings.skillsPath || "corvus-ai/skills";
+  const folder = plugin.settings.skillsPath || SKILLS_FOLDER;
 
   const visiveis = useMemo(() => {
     const q = query.trim().toLowerCase();

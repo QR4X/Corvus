@@ -2,6 +2,10 @@ export const CORVUS_HIDDEN = ".corvus";
 
 export const CHATS_FOLDER = "corvus/chats";
 
+export const SKILLS_FOLDER = "corvus-ai/skills";
+
+export const INDEX_FOLDER = `${CORVUS_HIDDEN}/index`;
+
 export interface HiddenMove {
 
   legado: string;
@@ -14,7 +18,7 @@ export interface HiddenMove {
 export const HIDDEN_MOVES: HiddenMove[] = [
   { legado: "corvus-ai/chats", novo: CHATS_FOLDER, campo: "chatsPath" },
   { legado: `${CORVUS_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
-  { legado: "corvus-ai/index", novo: `${CORVUS_HIDDEN}/index`, campo: "ragIndexPath" },
+  { legado: "corvus-ai/index", novo: INDEX_FOLDER, campo: "ragIndexPath" },
 ];
 
 export function isHiddenPath(path: string): boolean {
