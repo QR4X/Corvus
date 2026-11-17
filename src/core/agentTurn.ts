@@ -463,7 +463,7 @@ export async function runAgentTurn(
             const result = await executor(
               {
                 app: plugin.app,
-                vectorIndex: plugin.vectorIndex,
+                vectorIndex: plugin.rag.index,
                 appDataPaths: [plugin.settings.chatsPath, plugin.settings.ragIndexPath],
                 embed: plugin.settings,
                 web: { tavilyApiKey: tavily },

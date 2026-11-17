@@ -36,9 +36,13 @@ function setup() {
       defaultMode: "agent", defaultEffort: "low", language: "en", chatsPath: ".corvus/chats",
     },
     onSettingsChange: () => () => {},
-    loadChatSummaries: async () => [],
-    upsertChatSummary: vi.fn(), markChatUnread: vi.fn(), clearChatUnread: vi.fn(),
-    unreadSet: () => new Set<string>(),
+    chats: {
+      load: async () => [],
+      upsert: vi.fn(),
+      markUnread: vi.fn(),
+      clearUnread: vi.fn(),
+      unread: () => new Set<string>(),
+    },
   };
   session = new ChatSession(plugin as unknown as CorvusPlugin);
   return { saved, save, session };

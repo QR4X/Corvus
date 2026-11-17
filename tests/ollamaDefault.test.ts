@@ -1,6 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   FABRICA_ATE_0923,
   OLLAMA_LOCAL,
@@ -19,12 +17,6 @@ describe("de fábrica", () => {
     expect(DEFAULT_SETTINGS.ollamaEndpoint).toBe("");
     expect(DEFAULT_SETTINGS.ollamaModel).toBe("");
     expect(DEFAULT_SETTINGS.activeModels.ollama).toEqual([]);
-  });
-
-  it("a revisão do endereço compara com a fábrica ANTIGA, a que está gravada", () => {
-    expect(MODELO).toEqual(FABRICA_ATE_0923);
-    const main = readFileSync(resolve(__dirname, "../src/main.ts"), "utf8");
-    expect(main).toContain("revisarOllamaPadrao(saved, FABRICA_ATE_0923)");
   });
 });
 

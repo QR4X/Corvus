@@ -21,14 +21,14 @@ export function providerIcon(id: string): string {
 }
 
 export function useChatSummaries(plugin: CorvusPlugin): ChatSummary[] {
-  const [chats, setChats] = useState<ChatSummary[]>(plugin.chatSummaries ?? []);
+  const [chats, setChats] = useState<ChatSummary[]>(plugin.chats.list ?? []);
   useEffect(() => {
     let vivo = true;
-    void plugin.loadChatSummaries().then((all) => {
+    void plugin.chats.load().then((all) => {
       if (vivo) setChats(all);
     });
-    const unsub = plugin.onChatsChange(() =>
-      setChats(plugin.chatSummaries ?? []),
+    const unsub = plugin.chats.onChange(() =>
+      setChats(plugin.chats.list ?? []),
     );
     return () => {
       vivo = false;
@@ -40,11 +40,11 @@ export function useChatSummaries(plugin: CorvusPlugin): ChatSummary[] {
 
 export function useUnreadChats(plugin: CorvusPlugin): Set<string> {
   const [naoLidas, setNaoLidas] = useState<Set<string>>(() =>
-    plugin.unreadSet(),
+    plugin.chats.unread(),
   );
   useEffect(() => {
-    setNaoLidas(plugin.unreadSet());
-    return plugin.onUnreadChange(() => setNaoLidas(plugin.unreadSet()));
+    setNaoLidas(plugin.chats.unread());
+    return plugin.chats.onUnreadChange(() => setNaoLidas(plugin.chats.unread()));
   }, [plugin]);
   return naoLidas;
 }
@@ -113,7 +113,7 @@ export function ChatList({
         c.id,
         !c.starred
       );
-      await plugin.loadChatSummaries(true);
+      await plugin.chats.load(true);
     } catch (err) {
       new Notice(
         tr("Could not star: {error}", {
@@ -124,7 +124,7 @@ export function ChatList({
   };
 
   const deixarNaoLida = (c: ChatSummary) => {
-    plugin.markChatUnread(c.id);
+    plugin.chats.markUnread(c.id);
     new Notice(tr("Marked as unread."));
   };
 

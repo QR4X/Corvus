@@ -22,7 +22,7 @@ function context(provider: Provider, effort = "low"): AgentCtx {
       agentPermissionLevel: "ask", agentWeb: true, tavilyApiKey: "test",
       effortConfigs: { low: { agentMaxTurns: 5 }, med: { agentMaxTurns: 12 } },
     },
-    vectorIndex: null,
+    rag: { index: null },
   };
   return {
     plugin: plugin as unknown as AgentCtx["plugin"],
