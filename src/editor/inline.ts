@@ -4,6 +4,7 @@ import { getProvider } from "../providers";
 import type { ProviderMessage } from "../providers/base";
 import { modeloSalvoPara } from "../core/defaultModel";
 import { mark, tr } from "../i18n/tr";
+import { providerCredential } from "../core/providersMeta";
 
 export type AcaoNoTexto = "rewrite" | "fix" | "translate" | "continue";
 
@@ -65,7 +66,7 @@ export async function acaoNoTexto(
   const s = plugin.settings;
   const providerId = s.defaultProvider || "openai";
   const model = modeloSalvoPara(s, providerId);
-  const chave = plugin.providerCredential(providerId).trim();
+  const chave = providerCredential(plugin.settings, providerId).trim();
   if (!model) {
     new Notice(tr("Pick a default model in the plugin settings first."));
     return;

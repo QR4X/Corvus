@@ -34,7 +34,8 @@ import {
   type Skill,
 } from "./skills/skills";
 import { limparCamposMortos } from "./core/legacySettings";
-import { EMBEDDING_PROVIDERS, somarDescobertos } from "./rag/discovered";
+import { somarDescobertos } from "./rag/discovered";
+import { EMBEDDING_PROVIDERS, providerCredential } from "./core/providersMeta";
 import { chatIndexSignature } from "./core/chatIndex";
 import {
   FABRICA_ATE_0923,
@@ -278,29 +279,11 @@ export default class CorvusPlugin extends Plugin {
     this.scheduleChatIndexWrite();
   }
 
-  providerCredential(id: string): string {
-    const s = this.settings;
-    switch (id) {
-      case "anthropic":
-        return s.anthropicApiKey ?? "";
-      case "gemini":
-        return s.geminiApiKey ?? "";
-      case "openrouter":
-        return s.openrouterApiKey ?? "";
-      case "nim":
-        return s.nimApiKey ?? "";
-      case "ollama":
-        return s.ollamaEndpoint ?? "";
-      default:
-        return s.openaiApiKey ?? "";
-    }
-  }
-
   async scanModels(providerId: string): Promise<string[]> {
     const p = getProvider(providerId);
     if (!p.listModels) return [];
     const desde = this.settings.ollamaEndpoint;
-    const lista = await p.listModels(this.providerCredential(providerId));
+    const lista = await p.listModels(providerCredential(this.settings, providerId));
 
     if (
       providerId === "ollama" &&
@@ -347,7 +330,7 @@ export default class CorvusPlugin extends Plugin {
     let gravados = 0;
     for (const providerId of Object.keys(s.activeModels ?? {})) {
 
-      if (!this.providerCredential(providerId)) continue;
+      if (!providerCredential(this.settings, providerId)) continue;
       const modelos = [
         ...(s.activeModels?.[providerId] ?? []),
         ...(s.favoriteModels?.[providerId] ?? []),
@@ -392,7 +375,7 @@ export default class CorvusPlugin extends Plugin {
     const desde = s.ollamaEndpoint;
     let instalados: string[];
     try {
-      instalados = await p.listModels(this.providerCredential("ollama"));
+      instalados = await p.listModels(providerCredential(this.settings, "ollama"));
     } catch {
       return null; 
     }
@@ -413,7 +396,7 @@ export default class CorvusPlugin extends Plugin {
     const desde = this.settings.ollamaEndpoint;
     let ids: string[] = [];
     try {
-      ids = await p.listEmbeddingModels(this.providerCredential(providerId));
+      ids = await p.listEmbeddingModels(providerCredential(this.settings, providerId));
     } catch {
       return [];
     }
@@ -446,10 +429,10 @@ export default class CorvusPlugin extends Plugin {
     if (!p.listFreeModels) return;
     try {
       const livres = await p.listFreeModels(
-        this.providerCredential(providerId)
+        providerCredential(this.settings, providerId)
       );
       const cota = p.freeQuota
-        ? await p.freeQuota(this.providerCredential(providerId))
+        ? await p.freeQuota(providerCredential(this.settings, providerId))
         : null;
       if (cota) (this.settings.freeQuota ??= {})[providerId] = { ...cota, at: Date.now() };
       if (livres.length) {
@@ -474,11 +457,7 @@ export default class CorvusPlugin extends Plugin {
     try {
       this.vectorIndex = await indexVault(this.vectorIndex, {
         app: this.app,
-        openaiApiKey: s.openaiApiKey,
-        openrouterApiKey: s.openrouterApiKey,
-        geminiApiKey: s.geminiApiKey,
-        nimApiKey: s.nimApiKey,
-        ollamaEndpoint: s.ollamaEndpoint,
+        creds: s,
         model: s.ragEmbeddingModel,
         profile: s.ragQuantProfile,
         indexPath: s.ragIndexPath,
@@ -902,11 +881,7 @@ export default class CorvusPlugin extends Plugin {
     try {
       this.vectorIndex = await indexVault(this.vectorIndex, {
         app: this.app,
-        openaiApiKey: this.settings.openaiApiKey,
-        openrouterApiKey: this.settings.openrouterApiKey,
-        geminiApiKey: this.settings.geminiApiKey,
-        nimApiKey: this.settings.nimApiKey,
-        ollamaEndpoint: this.settings.ollamaEndpoint,
+        creds: this.settings,
         model: this.settings.ragEmbeddingModel,
         profile: this.settings.ragQuantProfile,
         indexPath: this.settings.ragIndexPath,

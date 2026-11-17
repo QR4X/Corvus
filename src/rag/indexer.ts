@@ -1,3 +1,4 @@
+import type { Credentials } from "../core/providersMeta";
 import type { App, CachedMetadata, TFile } from "obsidian";
 import {
   arrayBufferToDataUrl,
@@ -39,12 +40,7 @@ export interface IndexProgress {
 export interface IndexerOptions {
   app: App;
 
-  openaiApiKey: string;
-  openrouterApiKey: string;
-  geminiApiKey?: string;
-  nimApiKey?: string;
-
-  ollamaEndpoint?: string;
+  creds: Credentials;
   model: string;
 
   profile: string;
@@ -115,11 +111,7 @@ export async function indexVault(
 ): Promise<VectorIndex> {
   const {
     app,
-    openaiApiKey,
-    openrouterApiKey,
-    geminiApiKey,
-    nimApiKey,
-    ollamaEndpoint,
+    creds,
     model,
     profile,
     indexPath,
@@ -129,7 +121,6 @@ export async function indexVault(
   } = opts;
   const spec = getEmbeddingSpec(model);
   const prof = getQuantProfile(profile);
-  const creds = { openaiApiKey, openrouterApiKey, geminiApiKey, nimApiKey, ollamaEndpoint };
 
   let effectiveDim =
     prof.targetDim > 0 && spec.supportsDimensions ? prof.targetDim : spec.dim;

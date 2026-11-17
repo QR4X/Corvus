@@ -268,13 +268,7 @@ export async function toolVaultSearch(
   const hits = await hybridSearch({
     app: ctx.app,
     index: ctx.vectorIndex,
-    creds: {
-      openaiApiKey: ctx.embed.openaiApiKey,
-      openrouterApiKey: ctx.embed.openrouterApiKey,
-      geminiApiKey: ctx.embed.geminiApiKey,
-      nimApiKey: ctx.embed.nimApiKey,
-      ollamaEndpoint: ctx.embed.ollamaEndpoint,
-    },
+    creds: ctx.embed,
     query,
     topK,
   });

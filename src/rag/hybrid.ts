@@ -1,6 +1,7 @@
 import type { App, TFile } from "obsidian";
 import type { VectorIndex } from "./vectorIndex";
-import { embedQuery, type EmbedCredentials } from "./embeddings";
+import { embedQuery } from "./embeddings";
+import type { Credentials } from "../core/providersMeta";
 import { searchVault } from "../core/vaultSearch";
 
 export interface HybridHit {
@@ -20,7 +21,7 @@ const GRAPH_BOOST = 1 / (RRF_K * 4);
 export interface HybridOptions {
   app: App;
   index: VectorIndex | null;
-  creds: EmbedCredentials;
+  creds: Credentials;
   query: string;
   topK: number;
 

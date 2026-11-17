@@ -3,6 +3,7 @@ import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import { elevenSpeak } from "../providers/elevenlabs";
 import { mark, tr } from "../i18n/tr";
+import { providerCredential } from "../core/providersMeta";
 
 export const SPEAK_MAX_CHARS = 4000;
 
@@ -39,7 +40,7 @@ export const TTS_PROVIDERS: { id: string; label: string; needs: string }[] = [
 export function ttsReady(plugin: CorvusPlugin, id: string): boolean {
   return id === "eleven"
     ? !!plugin.settings.elevenApiKey?.trim()
-    : !!plugin.providerCredential("openai");
+    : !!providerCredential(plugin.settings, "openai");
 }
 
 let current: HTMLAudioElement | null = null;
@@ -94,7 +95,7 @@ async function synthesize(
     if (!provider.generateAudio) return null;
     const [gerado] = await provider.generateAudio(
       { model: s.ttsModel, prompt: text, voice: voz },
-      plugin.providerCredential("openai")
+      providerCredential(plugin.settings, "openai")
     );
     item = gerado ? { data: gerado.data, mime: gerado.mime } : null;
   }

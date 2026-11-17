@@ -8,6 +8,7 @@ import {
 } from "../store/chat";
 import { getProvider } from "../providers";
 import { modeloSalvoPara } from "./defaultModel";
+import { providerCredential, providerMeta } from "./providersMeta";
 import { nomeCompleto } from "./ollamaDefault";
 import { getTranslations } from "../i18n";
 import { tr } from "../i18n/tr";
@@ -161,7 +162,7 @@ export class ChatSession {
   }
 
   apiKeyFor(provider: string): string {
-    return this.plugin.providerCredential(provider);
+    return providerCredential(this.plugin.settings, provider);
   }
 
   setProvider(provider: string): void {
@@ -176,26 +177,7 @@ export class ChatSession {
   setModel(model: string): void {
     if (this.config.locked || !model) return;
     this.model = model;
-    const s = this.plugin.settings;
-    switch (this.provider) {
-      case "anthropic":
-        s.anthropicModel = model;
-        break;
-      case "gemini":
-        s.geminiModel = model;
-        break;
-      case "openrouter":
-        s.openrouterModel = model;
-        break;
-      case "nim":
-        s.nimModel = model;
-        break;
-      case "ollama":
-        s.ollamaModel = model;
-        break;
-      default:
-        s.defaultModel = model;
-    }
+    this.plugin.settings[providerMeta(this.provider).model] = model;
     void this.plugin.saveSettings();
     this.emit();
   }

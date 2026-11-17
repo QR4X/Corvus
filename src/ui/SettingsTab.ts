@@ -12,8 +12,10 @@ import type { SettingDefinitionItem } from "obsidian";
 import type CorvusPlugin from "../main";
 import {
   PROVIDERS,
+  isProviderId,
   providerConfigured,
   providerHealth,
+  providerMeta,
   type ProviderHealth,
 } from "../core/providersMeta";
 import { escolherAssistente, ehFree } from "../assistant/model";
@@ -33,7 +35,6 @@ import { marcarPerigoso } from "./modals";
 import {
   buildSettingsTree,
   nomeProprio,
-  PROVIDER_FIELDS,
   tabsFor,
   type PickItem,
   type Place,
@@ -252,7 +253,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     return {
       isMobile: Platform.isMobile,
       settings: () => this.plugin.settings,
-      hasCredential: (id) => !!this.plugin.providerCredential(id),
+      hasCredential: (id) => providerConfigured(this.s, id),
       freeOfferCount: () => this.freeOfferCount(),
       nav: (row) => this.renderNav(row),
       rail: (row) => this.renderRail(row),
@@ -315,7 +316,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     el.addClass("corvus-settings-root");
     const tabs = tabsFor(Platform.isMobile);
     if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
-    if (!PROVIDER_FIELDS[this.provider]) this.provider = PROVIDERS[0].id;
+    if (!isProviderId(this.provider)) this.provider = PROVIDERS[0].id;
     el.dataset.corvusTab = this.tab;
     el.dataset.corvusProv = this.provider;
   }
@@ -427,7 +428,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   private setProvider(id: string): void {
-    if (!PROVIDER_FIELDS[id]) return;
+    if (!isProviderId(id)) return;
     const old = this.provider;
     this.provider = id;
     this.containerEl.dataset.corvusProv = id;
@@ -458,11 +459,11 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   private healthOf(id: string): ProviderHealth {
-    if (!providerConfigured(this.plugin, id)) return "off";
+    if (!providerConfigured(this.s, id)) return "off";
     const live = this.conn[id];
     if (live?.state === "ok") return "ok";
     if (live?.state === "fail") return "fail";
-    return providerHealth(this.plugin, id);
+    return providerHealth(this.s, id);
   }
 
   private syncReady(): void {
@@ -472,7 +473,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     )) {
       const id = btn.dataset.provider;
       if (!id) continue;
-      btn.toggleClass("is-ready", providerConfigured(this.plugin, id));
+      btn.toggleClass("is-ready", providerConfigured(this.s, id));
       const health = this.healthOf(id);
       const dot = btn.querySelector<HTMLElement>(".corvus-seg-dot");
       if (dot) {
@@ -492,8 +493,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
   private save = () => this.plugin.saveSettings();
 
   private paintCredential(row: Setting, providerId: string): void {
-    const f = PROVIDER_FIELDS[providerId];
-    if (!f) return;
+    if (!isProviderId(providerId)) return;
+    const credential = providerMeta(providerId).credential;
     const s = this.s;
 
     const changed = () => {
@@ -501,8 +502,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
       this.repaint(`conn:${providerId}`);
       this.refreshVisibility();
     };
-    if (f.key) {
-      const key = f.key;
+    if (credential !== "ollamaEndpoint") {
+      const key = credential;
       row.addText((t) => {
         t.inputEl.type = "password";
         t.setPlaceholder(tr("key…"))
@@ -556,7 +557,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
     row.addButton((b) => {
       b.setButtonText(st.state === "testing" ? tr("Testing…") : tr("Test"))
         .setDisabled(
-          st.state === "testing" || !providerConfigured(this.plugin, providerId)
+          st.state === "testing" || !providerConfigured(this.s, providerId)
         )
         .onClick(() => void this.testConnection(providerId));
     });
@@ -610,9 +611,8 @@ export class CorvusSettingsTab extends PluginSettingTab {
   }
 
   private paintNewChatModel(row: Setting, providerId: string): void {
-    const f = PROVIDER_FIELDS[providerId];
-    if (!f) return;
-    const field = f.model;
+    if (!isProviderId(providerId)) return;
+    const field = providerMeta(providerId).model;
     row.addText((t) =>
       t.setValue(this.s[field]).onChange(async (v) => {
         const m = v.trim();
@@ -1442,7 +1442,7 @@ export class CorvusSettingsTab extends PluginSettingTab {
               : "";
         const extras = [
           gratis,
-          providerConfigured(this.plugin, spec.provider)
+          providerConfigured(this.s, spec.provider)
             ? ""
             : spec.provider === "ollama"
               ? tr("needs Ollama")

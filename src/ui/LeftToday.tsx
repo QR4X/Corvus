@@ -18,6 +18,7 @@ import { usd } from "../usage/dailySpend";
 import { providerIcon } from "./ChatList";
 import { Icon } from "./Icon";
 import { uiLocale, tr } from "../i18n/tr";
+import { providerCredential } from "../core/providersMeta";
 
 const CHAVE_ABERTOS = "corvus-left-today-open";
 
@@ -97,7 +98,7 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
     gravarAbertos(plugin.app, novo);
   };
 
-  const chaveOR = plugin.providerCredential("openrouter").trim();
+  const chaveOR = providerCredential(plugin.settings, "openrouter").trim();
   const [viva, setViva] = useState<EstadoDaChave | null | undefined>(undefined);
   const [lendo, setLendo] = useState(false);
   const perguntar = useCallback(async () => {
@@ -129,7 +130,7 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   const cartoes = remainingToday({
     livro: s.usoDoDia ?? {},
     agora,
-    comChave: (id) => !!plugin.providerCredential(id).trim(),
+    comChave: (id) => !!providerCredential(plugin.settings, id).trim(),
     openai: { dataSharing: s.openaiDataSharing === true, tier: s.openaiTier ?? 1 },
     limites: s.limitesDiarios ?? {},
     cotaOpenRouter: s.freeQuota?.openrouter,
