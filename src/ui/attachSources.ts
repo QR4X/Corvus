@@ -79,7 +79,7 @@ export function linkNote(url: string, title: string | null, text: string): NoteA
   return {
     type: "note",
     path: title ? `${title} — ${url}` : url,
-    content: `Fonte: ${url}\n\n${text}`,
+    content: `Source: ${url}\n\n${text}`,
   };
 }
 
