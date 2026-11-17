@@ -1,5 +1,5 @@
 export function htmlToText(html: string, max = 20000): string {
-  const limpo = html
+  const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ")
@@ -17,7 +17,7 @@ export function htmlToText(html: string, max = 20000): string {
     .replace(/[ \t]*\n[ \t]*/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return limpo.length > max ? `${limpo.slice(0, max)}\n\n[…]` : limpo;
+  return cleaned.length > max ? `${cleaned.slice(0, max)}\n\n[…]` : cleaned;
 }
 
 export function htmlTitle(html: string): string | null {

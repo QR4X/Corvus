@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
-  FABRICA_ATE_0923,
+  OLLAMA_DEFAULTS_UNTIL_0923,
   OLLAMA_LOCAL,
-  revisarOllamaPadrao,
-  usaOllama,
+  reviewOllamaDefault,
+  usesOllama,
 } from "../src/core/ollamaDefault";
-import { semCredencial } from "../src/core/helpers";
+import { missingCredentialError } from "../src/core/helpers";
 import { EN_US } from "../src/i18n/en-us";
 import { ollamaProvider } from "../src/providers/ollama";
 import { DEFAULT_SETTINGS } from "../src/settings";
 
-const MODELO = { modelo: "llama3.2", ativos: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"] };
+const MODELO = { model: "llama3.2", active: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"] };
 
 describe("de fábrica", () => {
   it("Ollama starts with no endpoint, model or model list", () => {
@@ -22,9 +22,9 @@ describe("de fábrica", () => {
 
 describe("a revisão única de quem já tinha instalado", () => {
   it("o localhost herdado, sem uso nenhum, volta pro vazio", () => {
-    expect(revisarOllamaPadrao({ ollamaEndpoint: OLLAMA_LOCAL }, MODELO)).toBe("");
+    expect(reviewOllamaDefault({ ollamaEndpoint: OLLAMA_LOCAL }, MODELO)).toBe("");
     expect(
-      revisarOllamaPadrao(
+      reviewOllamaDefault(
         { ollamaEndpoint: OLLAMA_LOCAL, ollamaModel: "llama3.2", defaultProvider: "openai", activeModels: { ollama: ["llama3.2", "qwen2.5", "deepseek-r1", "mistral"] } },
         MODELO
       )
@@ -43,23 +43,23 @@ describe("a revisão única de quem já tinha instalado", () => {
       { modelProvider: { "llama3.1": "ollama" } },
     ];
     for (const u of usos) {
-      expect(revisarOllamaPadrao({ ollamaEndpoint: OLLAMA_LOCAL, ...u }, MODELO), JSON.stringify(u)).toBeNull();
+      expect(reviewOllamaDefault({ ollamaEndpoint: OLLAMA_LOCAL, ...u }, MODELO), JSON.stringify(u)).toBeNull();
     }
   });
 
   it("um teste de conexão que FALHOU não é uso", () => {
-    expect(usaOllama({ providerStatus: { ollama: { ok: false } } }, MODELO)).toBe(false);
+    expect(usesOllama({ providerStatus: { ollama: { ok: false } } }, MODELO)).toBe(false);
   });
 
   it("endereço que não é o de fábrica é escolha da pessoa — não mexe", () => {
-    expect(revisarOllamaPadrao({ ollamaEndpoint: "http://192.168.0.10:11434" }, MODELO)).toBeNull();
-    expect(revisarOllamaPadrao({ ollamaEndpoint: "" }, MODELO)).toBeNull();
-    expect(revisarOllamaPadrao({}, MODELO)).toBeNull();
+    expect(reviewOllamaDefault({ ollamaEndpoint: "http://192.168.0.10:11434" }, MODELO)).toBeNull();
+    expect(reviewOllamaDefault({ ollamaEndpoint: "" }, MODELO)).toBeNull();
+    expect(reviewOllamaDefault({}, MODELO)).toBeNull();
   });
 
   it("roda uma vez só: depois de revisto, um localhost digitado fica", () => {
     expect(
-      revisarOllamaPadrao({ ollamaEndpoint: OLLAMA_LOCAL, ollamaDefaultReviewed: true }, MODELO)
+      reviewOllamaDefault({ ollamaEndpoint: OLLAMA_LOCAL, ollamaDefaultReviewed: true }, MODELO)
     ).toBeNull();
   });
 });
@@ -68,19 +68,19 @@ describe("sem credencial, a bolha diz o que falta", () => {
   const t = EN_US;
 
   it("Ollama sem endereço pede o ENDEREÇO, não uma key", () => {
-    const msg = semCredencial("ollama", "", t, "Ollama");
+    const msg = missingCredentialError("ollama", "", t, "Ollama");
     expect(msg).toContain("server address");
     expect(msg).toContain("localhost:11434");
     expect(msg).not.toContain("API key");
   });
 
   it("os outros continuam pedindo a key", () => {
-    expect(semCredencial("openrouter", "  ", t, "OpenRouter")).toContain("API key");
+    expect(missingCredentialError("openrouter", "  ", t, "OpenRouter")).toContain("API key");
   });
 
   it("with credential present, returns null", () => {
-    expect(semCredencial("ollama", OLLAMA_LOCAL, t, "Ollama")).toBeNull();
-    expect(semCredencial("openai", "sk-x", t, "OpenAI")).toBeNull();
+    expect(missingCredentialError("ollama", OLLAMA_LOCAL, t, "Ollama")).toBeNull();
+    expect(missingCredentialError("openai", "sk-x", t, "OpenAI")).toBeNull();
   });
 });
 

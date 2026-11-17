@@ -9,24 +9,24 @@ describe("chatAlert", () => {
   });
 
   it("cada estado sozinho", () => {
-    expect(chatAlert({ ...nada, rodando: true })).toBe("running");
-    expect(chatAlert({ ...nada, naoLida: true })).toBe("unread");
-    expect(chatAlert({ ...nada, esperando: true })).toBe("waiting");
+    expect(chatAlert({ ...nada, running: true })).toBe("running");
+    expect(chatAlert({ ...nada, unread: true })).toBe("unread");
+    expect(chatAlert({ ...nada, waiting: true })).toBe("waiting");
   });
 
   it("quem está esperando VOCÊ fala mais alto", () => {
 
-    expect(chatAlert({ esperando: true, rodando: true, naoLida: true })).toBe(
+    expect(chatAlert({ waiting: true, running: true, unread: true })).toBe(
       "waiting"
     );
-    expect(chatAlert({ esperando: true, rodando: true, naoLida: false })).toBe(
+    expect(chatAlert({ waiting: true, running: true, unread: false })).toBe(
       "waiting"
     );
   });
 
   it("respondendo ganha de não lida", () => {
 
-    expect(chatAlert({ esperando: false, rodando: true, naoLida: true })).toBe(
+    expect(chatAlert({ waiting: false, running: true, unread: true })).toBe(
       "running"
     );
   });
@@ -48,37 +48,37 @@ describe("alertCount", () => {
 
   it("conta as não lidas daquele módulo, e só daquele", () => {
     const n = alertCount(chats, "agent", {
-      esperando: null,
-      naoLidas: new Set(["a", "d", "c"]),
+      waitingId: null,
+      unread: new Set(["a", "d", "c"]),
     });
     expect(n).toBe(2);
     expect(
-      alertCount(chats, "chat", { esperando: null, naoLidas: new Set(["c"]) })
+      alertCount(chats, "chat", { waitingId: null, unread: new Set(["c"]) })
     ).toBe(1);
   });
 
   it("a que espera aprovação também conta", () => {
     expect(
-      alertCount(chats, "agent", { esperando: "b", naoLidas: new Set() })
+      alertCount(chats, "agent", { waitingId: "b", unread: new Set() })
     ).toBe(1);
   });
 
   it("não conta duas vezes a mesma conversa", () => {
     expect(
-      alertCount(chats, "agent", { esperando: "a", naoLidas: new Set(["a"]) })
+      alertCount(chats, "agent", { waitingId: "a", unread: new Set(["a"]) })
     ).toBe(1);
   });
 
   it("quem está só RESPONDENDO não entra na conta", () => {
 
     expect(
-      alertCount(chats, "agent", { esperando: null, naoLidas: new Set() })
+      alertCount(chats, "agent", { waitingId: null, unread: new Set() })
     ).toBe(0);
   });
 
   it("módulo sem nada devolve zero, não undefined", () => {
     expect(
-      alertCount([], "agent", { esperando: null, naoLidas: new Set(["a"]) })
+      alertCount([], "agent", { waitingId: null, unread: new Set(["a"]) })
     ).toBe(0);
   });
 });

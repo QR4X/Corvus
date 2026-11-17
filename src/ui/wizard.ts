@@ -1,32 +1,32 @@
-interface PeDoWizard {
+interface WizardFoot {
 
-  ultimo: boolean;
+  isLast: boolean;
 
-  voltar: "passo" | "sair";
+  back: "step" | "exit";
 
-  primario: "next" | "submit";
+  primary: "next" | "submit";
 
-  pronto: boolean;
+  ready: boolean;
 
-  status: "problema" | "atalho" | null;
+  status: "problem" | "shortcut" | null;
 }
 
-export function peDoWizard(p: {
+export function wizardFoot(p: {
 
-  atual: number;
+  current: number;
 
   total: number;
 
-  problema?: string | null;
-}): PeDoWizard {
+  problem?: string | null;
+}): WizardFoot {
 
-  const ultimo = p.atual >= p.total - 1;
-  const falta = !!p.problema;
+  const isLast = p.current >= p.total - 1;
+  const missing = !!p.problem;
   return {
-    ultimo,
-    voltar: p.atual > 0 ? "passo" : "sair",
-    primario: ultimo ? "submit" : "next",
-    pronto: !falta,
-    status: ultimo ? (falta ? "problema" : null) : falta ? null : "atalho",
+    isLast,
+    back: p.current > 0 ? "step" : "exit",
+    primary: isLast ? "submit" : "next",
+    ready: !missing,
+    status: isLast ? (missing ? "problem" : null) : missing ? null : "shortcut",
   };
 }

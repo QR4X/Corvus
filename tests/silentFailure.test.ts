@@ -18,7 +18,7 @@ function corpo(fonte: string, assinatura: string): string {
 }
 
 describe("gravar a conversa", () => {
-  const avisar = corpo(SESSION, "private avisarFalhaDeGravacao(");
+  const avisar = corpo(SESSION, "private reportSaveFailure(");
 
   it("falhou, a pessoa é avisada — a conversa está na tela, não no disco", () => {
     expect(avisar).toContain("new Notice(");
@@ -26,13 +26,13 @@ describe("gravar a conversa", () => {
   });
 
   it("uma vez por sequência, e rearma quando volta a gravar", () => {
-    expect(avisar).toContain("if (this.avisoDeGravacaoDado) return;");
-    expect(SESSION).toContain("this.avisoDeGravacaoDado = false;");
+    expect(avisar).toContain("if (this.saveFailureNoticed) return;");
+    expect(SESSION).toContain("this.saveFailureNoticed = false;");
   });
 
   it("os DOIS caminhos de gravação avisam, não só um", () => {
 
-    const usos = [...SESSION.matchAll(/this\.avisarFalhaDeGravacao\(err\)/g)];
+    const usos = [...SESSION.matchAll(/this\.reportSaveFailure\(err\)/g)];
     expect(usos.length).toBe(2);
 
     expect(SESSION).not.toContain('console.error("[corvus] saveChat falhou:');

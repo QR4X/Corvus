@@ -5,7 +5,7 @@ import {
   hydrateModelInfoCache,
   enrichModelsFromCatalog,
 } from "../src/providers/modelInfoStore";
-import { enriquecerCapacidadesOllama } from "../src/providers/ollama";
+import { enrichOllamaCapabilities } from "../src/providers/ollama";
 
 const CATALOGO = {
   data: [
@@ -110,7 +110,7 @@ describe("Ollama: o servidor declara as capacidades dele", () => {
       headers: {},
     }));
     expect(
-      await enriquecerCapacidadesOllama("http://localhost:11434", ["gemma3:4b"])
+      await enrichOllamaCapabilities("http://localhost:11434", ["gemma3:4b"])
     ).toBe(1);
     expect(getModelCapabilities("ollama", "gemma3:4b")).toMatchObject({
       vision: true,
@@ -126,7 +126,7 @@ describe("Ollama: o servidor declara as capacidades dele", () => {
       headers: {},
     }));
     expect(
-      await enriquecerCapacidadesOllama("http://localhost:11434", ["llava"])
+      await enrichOllamaCapabilities("http://localhost:11434", ["llava"])
     ).toBe(0);
     expect(getModelCapabilities("ollama", "llava").vision).toBe(true);
   });
@@ -136,7 +136,7 @@ describe("Ollama: o servidor declara as capacidades dele", () => {
       throw new Error("offline");
     });
     expect(
-      await enriquecerCapacidadesOllama("http://localhost:11434", ["gemma4:2b"])
+      await enrichOllamaCapabilities("http://localhost:11434", ["gemma4:2b"])
     ).toBe(0);
     expect(getModelCapabilities("ollama", "gemma4:2b").vision).toBe(false);
   });

@@ -78,14 +78,14 @@ describe("o menu.ts decide onde o balão mora pelo BOTÃO", () => {
 
   it("procura a raiz a partir da âncora, não no documento inteiro", () => {
 
-    expect(MENU).toMatch(/ancoraEl\.closest<HTMLElement>\("\.corvus-root"\)/);
+    expect(MENU).toMatch(/anchorEl\.closest<HTMLElement>\("\.corvus-root"\)/);
   });
 
   it("o ▶ não fecha o balão nem escolhe a linha, e quem abriu sabe quando ele fecha", () => {
 
     expect(MENU).toMatch(/cls: "corvus-pop-extra"[\s\S]{0,400}e\.stopPropagation\(\);\s*run\(x\);/);
 
-    expect(MENU).toMatch(/camada\.remove\(\);\s*opts\.aoFechar\?\.\(\);/);
+    expect(MENU).toMatch(/layer\.remove\(\);\s*opts\.onClose\?\.\(\);/);
   });
 
   it("fora da raiz, mora no modal (some junto com ele) ou no body", () => {

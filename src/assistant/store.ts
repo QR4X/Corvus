@@ -1,115 +1,115 @@
-import type { TurnoAssistente } from "./run";
+import type { AssistantTurn } from "./run";
 import { tr } from "../i18n/tr";
 
-type FaseRun =
-  | "parada"
-  | "rodando"
-  | "perguntando"
-  | "pronto"
-  | "erro";
+type RunPhase =
+  | "idle"
+  | "running"
+  | "asking"
+  | "done"
+  | "error";
 
 export interface Run {
-  fase: FaseRun;
+  phase: RunPhase;
 
-  turnos: TurnoAssistente[];
+  turns: AssistantTurn[];
 
-  pergunta: string;
-  opcoes: string[];
+  question: string;
+  options: string[];
 
-  resultado: unknown;
-  erro: string;
+  result: unknown;
+  error: string;
 
-  inicio: number;
+  startedAt: number;
 }
 
-const PARADA: Run = {
-  fase: "parada",
-  turnos: [],
-  pergunta: "",
-  opcoes: [],
-  resultado: null,
-  erro: "",
-  inicio: 0,
+const IDLE_RUN: Run = {
+  phase: "idle",
+  turns: [],
+  question: "",
+  options: [],
+  result: null,
+  error: "",
+  startedAt: 0,
 };
 
 const runs = new Map<string, Run>();
-const ouvintes = new Map<string, Set<() => void>>();
+const listeners = new Map<string, Set<() => void>>();
 
-function avisar(chave: string): void {
-  for (const f of ouvintes.get(chave) ?? []) f();
+function notify(key: string): void {
+  for (const f of listeners.get(key) ?? []) f();
 }
 
-export function lerRun(chave: string): Run {
-  return runs.get(chave) ?? PARADA;
+export function getRun(key: string): Run {
+  return runs.get(key) ?? IDLE_RUN;
 }
 
-export function assinar(chave: string, ouvinte: () => void): () => void {
-  const set = ouvintes.get(chave) ?? new Set();
-  set.add(ouvinte);
-  ouvintes.set(chave, set);
-  return () => set.delete(ouvinte);
+export function subscribe(key: string, listener: () => void): () => void {
+  const set = listeners.get(key) ?? new Set();
+  set.add(listener);
+  listeners.set(key, set);
+  return () => set.delete(listener);
 }
 
-function por(chave: string, mudanca: Partial<Run>): void {
-  runs.set(chave, { ...lerRun(chave), ...mudanca });
-  avisar(chave);
+function patchRun(key: string, patch: Partial<Run>): void {
+  runs.set(key, { ...getRun(key), ...patch });
+  notify(key);
 }
 
-export interface Rodada {
-  pergunta?: string;
-  opcoes?: string[];
-  erro?: string;
+export interface RoundResult {
+  question?: string;
+  options?: string[];
+  error?: string;
   draft?: unknown;
 }
 
-export function comecarRodada(
-  chave: string,
-  turnos: TurnoAssistente[],
-  chamar: (turnos: TurnoAssistente[]) => Promise<Rodada>,
-  aoTerminar?: (r: Run) => void
+export function startRun(
+  key: string,
+  turns: AssistantTurn[],
+  call: (turns: AssistantTurn[]) => Promise<RoundResult>,
+  onDone?: (r: Run) => void
 ): void {
-  por(chave, {
-    fase: "rodando",
-    inicio: Date.now(),
-    turnos,
-    pergunta: "",
-    opcoes: [],
-    erro: "",
-    resultado: null,
+  patchRun(key, {
+    phase: "running",
+    startedAt: Date.now(),
+    turns,
+    question: "",
+    options: [],
+    error: "",
+    result: null,
   });
-  void chamar(turnos)
+  void call(turns)
     .then((r) => {
-      if (r.erro) {
-        por(chave, { fase: "erro", erro: r.erro });
-      } else if (r.pergunta) {
+      if (r.error) {
+        patchRun(key, { phase: "error", error: r.error });
+      } else if (r.question) {
 
-        por(chave, {
-          fase: "perguntando",
-          pergunta: r.pergunta,
-          opcoes: r.opcoes ?? [],
-          turnos: [...turnos, { quem: "assistente", texto: r.pergunta }],
+        patchRun(key, {
+          phase: "asking",
+          question: r.question,
+          options: r.options ?? [],
+          turns: [...turns, { role: "assistant", text: r.question }],
         });
       } else {
-        por(chave, { fase: "pronto", resultado: r.draft ?? null });
+        patchRun(key, { phase: "done", result: r.draft ?? null });
       }
-      aoTerminar?.(lerRun(chave));
+      onDone?.(getRun(key));
     })
     .catch((e: unknown) => {
 
-      por(chave, {
-        fase: "erro",
-        erro: (e as Error)?.message || tr("The assistant could not answer."),
+      patchRun(key, {
+        phase: "error",
+        error: (e as Error)?.message || tr("The assistant could not answer."),
       });
-      aoTerminar?.(lerRun(chave));
+      onDone?.(getRun(key));
     });
 }
 
-export function limparRun(chave: string): void {
-  runs.delete(chave);
-  avisar(chave);
+export function clearRun(key: string): void {
+  runs.delete(key);
+  notify(key);
 }
 
 export function _resetRuns(): void {
   runs.clear();
-  ouvintes.clear();
+  listeners.clear();
 }

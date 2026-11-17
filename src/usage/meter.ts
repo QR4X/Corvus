@@ -2,9 +2,9 @@ import { Notice } from "obsidian";
 import type { CorvusSettings } from "../settings";
 import { ProviderError } from "../providers/base";
 import { tr } from "../i18n/tr";
-import { lancar, podar, type Lancamento } from "./dailyLedger";
-import { ehPago, gastoDeHoje, marcosCruzados, usd } from "./dailySpend";
-import { definirAnotadorDeUso, definirGuardaDeGasto } from "./recorder";
+import { addEntry, prune, type LedgerEntry } from "./dailyLedger";
+import { isPaid, spendToday, crossedMarks, usd } from "./dailySpend";
+import { setUsageRecorder, setSpendGuard } from "./recorder";
 
 const FLUSH_DELAY_MS = 5000;
 
@@ -17,11 +17,11 @@ export class UsageMeter {
   ) {}
 
   install(): () => void {
-    definirAnotadorDeUso((provider, model, delta) => this.record(provider, model, delta));
-    definirGuardaDeGasto((provider, model) => this.guard(provider, model));
+    setUsageRecorder((provider, model, delta) => this.record(provider, model, delta));
+    setSpendGuard((provider, model) => this.guard(provider, model));
     return () => {
-      definirAnotadorDeUso(null);
-      definirGuardaDeGasto(null);
+      setUsageRecorder(null);
+      setSpendGuard(null);
       if (this.flushTimer === null) return;
       window.clearTimeout(this.flushTimer);
       this.flushTimer = null;
@@ -29,18 +29,18 @@ export class UsageMeter {
     };
   }
 
-  record(provider: string, model: string, delta: Partial<Lancamento>): void {
+  record(provider: string, model: string, delta: Partial<LedgerEntry>): void {
     const s = this.settings();
     const now = new Date();
     const ledger = (s.dailyUsage ??= {});
     const limit = s.dailySpendLimit ?? 0;
     const counts = limit > 0 && ((delta.i ?? 0) > 0 || (delta.o ?? 0) > 0);
-    const before = counts ? gastoDeHoje(ledger, now).total : 0;
-    lancar(ledger, now, provider, model, delta);
-    podar(ledger, now);
+    const before = counts ? spendToday(ledger, now).total : 0;
+    addEntry(ledger, now, provider, model, delta);
+    prune(ledger, now);
     if (counts) {
-      const after = gastoDeHoje(ledger, now).total;
-      for (const mark of marcosCruzados(before, after, limit)) this.warn(mark, after, limit);
+      const after = spendToday(ledger, now).total;
+      for (const mark of crossedMarks(before, after, limit)) this.warn(mark, after, limit);
     }
     if (this.flushTimer !== null) return;
     this.flushTimer = window.setTimeout(() => {
@@ -52,8 +52,8 @@ export class UsageMeter {
   guard(provider: string, model: string): void {
     const s = this.settings();
     const limit = s.dailySpendLimit ?? 0;
-    if (!(limit > 0) || !s.blockAtLimit || !ehPago(provider, model)) return;
-    const { total } = gastoDeHoje(s.dailyUsage ?? {}, new Date());
+    if (!(limit > 0) || !s.blockAtLimit || !isPaid(provider, model)) return;
+    const { total } = spendToday(s.dailyUsage ?? {}, new Date());
     if (total < limit) return;
     throw new ProviderError(
       tr(

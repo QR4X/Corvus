@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { TFile, TFolder, type App } from "obsidian";
 import {
-  ConflitoAoDesfazer,
-  antesDe,
-  apagarVaiPraLixeira,
-  depoisDe,
-  desfazer,
-  esquecerDesfazeres,
-  podeDesfazer,
-  registrarDesfazer,
+  UndoConflict,
+  snapshotBefore,
+  deleteGoesToTrash,
+  buildUndo,
+  undo,
+  clearUndos,
+  canUndo,
+  registerUndo,
 } from "../src/agent/undo";
 import {
   toolVaultCreate,
@@ -122,20 +122,20 @@ async function comoOAgente(
   args: Record<string, unknown>,
   tool: () => Promise<string>
 ) {
-  const antes = await antesDe(app, name, args);
+  const antes = await snapshotBefore(app, name, args);
   await tool();
-  const volta = antes ? await depoisDe(app, antes) : null;
-  if (volta) registrarDesfazer(id, volta);
+  const volta = antes ? await buildUndo(app, antes) : null;
+  if (volta) registerUndo(id, volta);
 }
 
-beforeEach(() => esquecerDesfazeres());
+beforeEach(() => clearUndos());
 
 describe("a lixeira do Obsidian decide se o YOLO apaga sozinho", () => {
   it("system e local são lixeira; none (apagar de vez) e desconhecido não", () => {
-    expect(apagarVaiPraLixeira(vaultFalso("system").app)).toBe(true);
-    expect(apagarVaiPraLixeira(vaultFalso("local").app)).toBe(true);
-    expect(apagarVaiPraLixeira(vaultFalso("none").app)).toBe(false);
-    expect(apagarVaiPraLixeira(vaultFalso(null).app)).toBe(false);
+    expect(deleteGoesToTrash(vaultFalso("system").app)).toBe(true);
+    expect(deleteGoesToTrash(vaultFalso("local").app)).toBe(true);
+    expect(deleteGoesToTrash(vaultFalso("none").app)).toBe(false);
+    expect(deleteGoesToTrash(vaultFalso(null).app)).toBe(false);
   });
 });
 
@@ -146,11 +146,11 @@ describe("desfazer cada mudança do agente", () => {
     const args = { path: "a.md", oldStr: "dois", newStr: "DOIS" };
     await comoOAgente(v.app, "e1", "vault_edit", args, () => toolVaultEdit(ctxDe(v.app), args));
     expect(await v.texto("a.md")).toBe("um DOIS três");
-    expect(podeDesfazer("e1")).toBe(true);
-    expect(await desfazer("e1")).toBe("Restored a.md");
+    expect(canUndo("e1")).toBe(true);
+    expect(await undo("e1")).toBe("Restored a.md");
     expect(await v.texto("a.md")).toBe("um dois três");
 
-    expect(podeDesfazer("e1")).toBe(false);
+    expect(canUndo("e1")).toBe(false);
   });
 
   it("editar e a pessoa mexer depois: para e pergunta — e forçar passa por cima", async () => {
@@ -159,10 +159,10 @@ describe("desfazer cada mudança do agente", () => {
     const args = { path: "a.md", oldStr: "x", newStr: "y" };
     await comoOAgente(v.app, "e2", "vault_edit", args, () => toolVaultEdit(ctxDe(v.app), args));
     await v.vault.process(v.vault.getAbstractFileByPath("a.md") as TFile, () => "y + mão da pessoa");
-    await expect(desfazer("e2")).rejects.toBeInstanceOf(ConflitoAoDesfazer);
+    await expect(undo("e2")).rejects.toBeInstanceOf(UndoConflict);
     expect(await v.texto("a.md")).toBe("y + mão da pessoa");
-    expect(podeDesfazer("e2")).toBe(true); 
-    expect(await desfazer("e2", true)).toBe("Restored a.md");
+    expect(canUndo("e2")).toBe(true); 
+    expect(await undo("e2", true)).toBe("Restored a.md");
     expect(await v.texto("a.md")).toBe("x");
   });
 
@@ -171,7 +171,7 @@ describe("desfazer cada mudança do agente", () => {
     const args = { path: "novas/b.md", content: "oi" };
     await comoOAgente(v.app, "c1", "vault_create", args, () => toolVaultCreate(ctxDe(v.app), args as never));
     expect(v.existe("novas/b.md")).toBe(true);
-    expect(await desfazer("c1")).toBe("Removed novas/b.md");
+    expect(await undo("c1")).toBe("Removed novas/b.md");
     expect(v.existe("novas/b.md")).toBe(false);
     expect(v.lixeira).toEqual(["novas/b.md"]);
   });
@@ -182,7 +182,7 @@ describe("desfazer cada mudança do agente", () => {
     const args = { from: "c.md", to: "arquivo/c.md" };
     await comoOAgente(v.app, "m1", "vault_move", args, () => toolVaultMove(ctxDe(v.app), args));
     expect(v.existe("arquivo/c.md")).toBe(true);
-    expect(await desfazer("m1")).toBe("Moved back to c.md");
+    expect(await undo("m1")).toBe("Moved back to c.md");
     expect(v.existe("c.md")).toBe(true);
     expect(await v.texto("c.md")).toBe("conteúdo");
   });
@@ -193,7 +193,7 @@ describe("desfazer cada mudança do agente", () => {
     const args = { path: "d.md" };
     await comoOAgente(v.app, "d1", "vault_delete", args, () => toolVaultDelete(ctxDe(v.app), args));
     expect(v.existe("d.md")).toBe(false);
-    expect(await desfazer("d1")).toBe("Restored d.md");
+    expect(await undo("d1")).toBe("Restored d.md");
     expect(await v.texto("d.md")).toBe("não me perca ✓");
   });
 
@@ -203,7 +203,7 @@ describe("desfazer cada mudança do agente", () => {
     const args = { path: "e.md" };
     await comoOAgente(v.app, "d2", "vault_delete", args, () => toolVaultDelete(ctxDe(v.app), args));
     await v.vault.create("e.md", "novo");
-    await expect(desfazer("d2")).rejects.toThrow(/exists again/);
+    await expect(undo("d2")).rejects.toThrow(/exists again/);
     expect(await v.texto("e.md")).toBe("novo");
   });
 
@@ -211,12 +211,12 @@ describe("desfazer cada mudança do agente", () => {
     const v = vaultFalso();
     const args = { path: "projetos" };
     await comoOAgente(v.app, "f1", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
-    expect(await desfazer("f1")).toBe("Removed folder projetos");
+    expect(await undo("f1")).toBe("Removed folder projetos");
     expect(v.existe("projetos")).toBe(false);
 
     await comoOAgente(v.app, "f2", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
     await v.vault.create("projetos/x.md", "");
-    await expect(desfazer("f2", true)).rejects.toThrow(/has files/);
+    await expect(undo("f2", true)).rejects.toThrow(/has files/);
     expect(v.existe("projetos")).toBe(true);
   });
 
@@ -225,12 +225,12 @@ describe("desfazer cada mudança do agente", () => {
     await v.vault.createFolder("ja");
     const args = { path: "ja" };
     await comoOAgente(v.app, "f3", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
-    expect(podeDesfazer("f3")).toBe(false);
+    expect(canUndo("f3")).toBe(false);
   });
 
   it("ler, listar e buscar não guardam nada", async () => {
     const v = vaultFalso();
-    expect(await antesDe(v.app, "vault_read", { path: "x.md" })).toBeNull();
-    expect(await antesDe(v.app, "vault_search", { query: "x" })).toBeNull();
+    expect(await snapshotBefore(v.app, "vault_read", { path: "x.md" })).toBeNull();
+    expect(await snapshotBefore(v.app, "vault_search", { query: "x" })).toBeNull();
   });
 });

@@ -188,17 +188,17 @@ export function prettyModelName(id: string): string {
   let s = (id || "").trim();
   if (s.includes("/")) s = s.slice(s.lastIndexOf("/") + 1); 
 
-  let tamanhoDaTag = "";
+  let tagSize = "";
   if (s.includes(":")) {
     const tag = s.slice(s.indexOf(":") + 1);
     s = s.slice(0, s.indexOf(":"));
-    if (/^\d+(\.\d+)?[bm]$/i.test(tag)) tamanhoDaTag = tag;
+    if (/^\d+(\.\d+)?[bm]$/i.test(tag)) tagSize = tag;
   }
   s = s.replace(/^(claude-|models-)/, "");
 
   s = s.replace(/(\d)-(\d+)(?![\d.]*[a-z])/gi, "$1.$2");
   s = s.replace(/[-_]/g, " ").trim();
-  const palavras = s.split(/\s+/).map((w) => {
+  const words = s.split(/\s+/).map((w) => {
     if (/^gpt$/i.test(w)) return "GPT";
 
     if (/^\d+(\.\d+)?[bmk]$/i.test(w) || /^\d+x\d+(\.\d+)?b$/i.test(w)) {
@@ -209,9 +209,9 @@ export function prettyModelName(id: string): string {
     if (/^\d/.test(w)) return w; 
     return w.charAt(0).toUpperCase() + w.slice(1);
   });
-  if (tamanhoDaTag) {
-    const tam = tamanhoDaTag.slice(0, -1) + tamanhoDaTag.slice(-1).toUpperCase();
-    if (!palavras.includes(tam)) palavras.push(tam);
+  if (tagSize) {
+    const size = tagSize.slice(0, -1) + tagSize.slice(-1).toUpperCase();
+    if (!words.includes(size)) words.push(size);
   }
-  return palavras.join(" ");
+  return words.join(" ");
 }

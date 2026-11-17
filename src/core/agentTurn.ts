@@ -11,7 +11,7 @@ import {
   storeMessagesToProvider,
 } from "../agent/conversation";
 import { decideToolGate } from "../agent/permissions";
-import { antesDe, apagarVaiPraLixeira, depoisDe, registrarDesfazer } from "../agent/undo";
+import { snapshotBefore, deleteGoesToTrash, buildUndo, registerUndo } from "../agent/undo";
 import { ConfirmationModal } from "../agent/ConfirmationModal";
 import { TOOL_REGISTRY, isTransientError } from "../agent/tools";
 import { TOOL_DEFINITIONS, getToolDefinition } from "../agent/toolSchemas";
@@ -25,7 +25,7 @@ import { responseIssue } from "../providers/base";
 import type { AIToolStep, PermissionLevel } from "../agent/types";
 import { loadAgentMd } from "./agentMd";
 import { reportMissingCredential, type EngineCtx } from "./chatEngine";
-import { buscarContextoDoVault } from "./vaultLookup";
+import { fetchVaultContext } from "./vaultLookup";
 
 export interface AgentCtx extends EngineCtx {
 
@@ -93,12 +93,12 @@ export async function runAgentTurn(
   const diffApproval = plugin.settings.agentDiffApproval !== false;
   agentApproveAllRef.current = false;
 
-  let webAprovadaNaRodada = false;
+  let webApprovedThisTurn = false;
 
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
   const vaultContextBlock = useVault
-    ? await buscarContextoDoVault({
+    ? await fetchVaultContext({
         plugin,
         t,
         effort,
@@ -108,12 +108,12 @@ export async function runAgentTurn(
       })
     : "";
 
-  const webLigada = plugin.settings.agentWeb !== false;
+  const webEnabled = plugin.settings.agentWeb !== false;
   const tavily = (plugin.settings.tavilyApiKey ?? "").trim();
-  const foraDaLista = (nome: string) =>
-    UNAVAILABLE_TOOLS.has(nome) ||
-    ((nome === "web_search" || nome === "web_fetch") && !webLigada) ||
-    (nome === "web_search" && !tavily);
+  const isToolUnavailable = (toolName: string) =>
+    UNAVAILABLE_TOOLS.has(toolName) ||
+    ((toolName === "web_search" || toolName === "web_fetch") && !webEnabled) ||
+    (toolName === "web_search" && !tavily);
 
   const agentMdBlock = await loadAgentMd(
     plugin.app,
@@ -125,7 +125,7 @@ export async function runAgentTurn(
       role: "system",
       content: buildAgentSystemPrompt(
         useChatStore.getState().sessionPersona,
-        t.agent.systemPrompt + (webLigada ? t.agent.webPrompt : ""),
+        t.agent.systemPrompt + (webEnabled ? t.agent.webPrompt : ""),
         { suffix: t.systemPrompt.vaultQaSuffix, block: vaultContextBlock },
         useChatStore.getState().sessionInstructions,
         agentMdBlock
@@ -139,7 +139,7 @@ export async function runAgentTurn(
     ),
   ];
 
-  const tools = TOOL_DEFINITIONS.filter((td) => !foraDaLista(td.name)).map((td) => ({
+  const tools = TOOL_DEFINITIONS.filter((td) => !isToolUnavailable(td.name)).map((td) => ({
     name: td.name,
     description: td.description,
     parameters: td.parameters,
@@ -298,7 +298,7 @@ export async function runAgentTurn(
         spec: ReturnType<typeof agentActivitySpec>;
       }> = [];
       for (const call of response.toolCalls) {
-        if (foraDaLista(call.name)) {
+        if (isToolUnavailable(call.name)) {
           const resultText = `Tool "${call.name}" is not available in this build. Do NOT retry — tell the user.`;
           addMessage({
             type: "ai-comment",
@@ -344,8 +344,8 @@ export async function runAgentTurn(
 
         const gate = decideToolGate(def, permissionLevel, {
           approveAll: agentApproveAllRef.current,
-          approveAllWeb: webAprovadaNaRodada,
-          apagarVaiPraLixeira: apagarVaiPraLixeira(plugin.app),
+          approveAllWeb: webApprovedThisTurn,
+          deleteGoesToTrash: deleteGoesToTrash(plugin.app),
         });
         let approved = gate === "auto";
         if (gate === "confirm") {
@@ -356,10 +356,10 @@ export async function runAgentTurn(
             strings: t.agent,
           });
 
-          const dona =
+          const ownerChatId =
             useChatStore.getState().background?.chatId ??
             useChatStore.getState().currentChatId;
-          useChatStore.getState().setWaitingChatId(dona);
+          useChatStore.getState().setWaitingChatId(ownerChatId);
           let res;
           try {
             res = await modal.openAndWait();
@@ -368,7 +368,7 @@ export async function runAgentTurn(
           }
           approved = res.approved;
           if (res.approveAll) {
-            if (def.network) webAprovadaNaRodada = true;
+            if (def.network) webApprovedThisTurn = true;
             else agentApproveAllRef.current = true;
           }
         }
@@ -432,10 +432,10 @@ export async function runAgentTurn(
         }
         const executor = TOOL_REGISTRY[call.name];
 
-        let antes: Awaited<ReturnType<typeof antesDe>> = null;
+        let snapshot: Awaited<ReturnType<typeof snapshotBefore>> = null;
         if (prep.def?.destructive) {
           try {
-            antes = await antesDe(plugin.app, call.name, call.arguments);
+            snapshot = await snapshotBefore(plugin.app, call.name, call.arguments);
           } catch (err) {
             console.warn("[corvus] no copy for Undo:", err);
           }
@@ -460,11 +460,11 @@ export async function runAgentTurn(
                 ? result.slice(0, 800).trimEnd() + "\n…"
                 : result || undefined;
             updateActivity(activityId, { phase: "done", detail }, meta);
-            if (antes) {
+            if (snapshot) {
               try {
-                const volta = await depoisDe(plugin.app, antes);
-                if (volta) {
-                  registrarDesfazer(activityId, volta);
+                const undoAction = await buildUndo(plugin.app, snapshot);
+                if (undoAction) {
+                  registerUndo(activityId, undoAction);
                   updateActivity(activityId, { undoId: activityId });
                 }
               } catch (err) {

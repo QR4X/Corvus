@@ -14,13 +14,13 @@ import {
 } from "./SheetForm";
 import { useEffect, useState } from "react";
 import type CorvusPlugin from "../main";
-import { AssistantPanel, ComAssistente, useRun } from "./AssistantPanel";
+import { AssistantPanel, WithAssistant, useRun } from "./AssistantPanel";
 import { useSheetFit } from "./Sheet";
-import { limparRun } from "../assistant/store";
+import { clearRun } from "../assistant/store";
 import { useAssistant } from "./useAssistant";
 import { mark, tr } from "../i18n/tr";
 
-export const PASSOS_SKILL = [
+export const SKILL_STEPS = [
   { id: "body", label: mark("Prompt") },
   { id: "name", label: mark("Name") },
   { id: "description", label: mark("Description") },
@@ -29,66 +29,66 @@ export const PASSOS_SKILL = [
   { id: "icon", label: mark("Icon") },
 ] as const;
 
-type PassoSkill = (typeof PASSOS_SKILL)[number]["id"];
+type SkillStep = (typeof SKILL_STEPS)[number]["id"];
 
 export function SkillForm({
   draft,
-  focar,
+  focus,
   onDraft,
   plugin,
-  passo,
-  procurando,
-  onProcurar,
+  step,
+  browsing,
+  onBrowse,
 }: {
   draft: SkillDraft;
 
-  focar: boolean;
+  focus: boolean;
   onDraft: (d: SkillDraft) => void;
   plugin: CorvusPlugin;
 
-  passo?: PassoSkill;
+  step?: SkillStep;
 
-  procurando: boolean;
-  onProcurar: (p: boolean) => void;
+  browsing: boolean;
+  onBrowse: (p: boolean) => void;
 }) {
-  const set = (campo: Partial<SkillDraft>) => onDraft({ ...draft, ...campo });
+  const set = (patch: Partial<SkillDraft>) => onDraft({ ...draft, ...patch });
 
-  useSheetFit(!procurando);
+  useSheetFit(!browsing);
 
-  const [ajudando, setAjudando] = useState<"" | "body" | "desc">("");
-  const { indisponivel, pedirSkill, pedirDescricao, alvo, modelos, livres, escolherModelo } = useAssistant(plugin);
-  const modelo = {
-    atual: alvo?.model ?? "",
-    opcoes: modelos,
-    livres,
-    onTrocar: (m: string) => void escolherModelo(m),
+  const [assisting, setAssisting] = useState<"" | "body" | "desc">("");
+  const { unavailable, askSkill, askDescription, target, models, freeModels, chooseModel } = useAssistant(plugin);
+  const modelPicker = {
+    current: target?.model ?? "",
+    options: models,
+    freeModels,
+    onPick: (m: string) => void chooseModel(m),
   };
 
   const runBody = useRun("skill");
   const runDesc = useRun("description");
 
   useEffect(() => {
-    if (runBody.fase !== "pronto" || !runBody.resultado) return;
-    set(runBody.resultado);
-    limparRun("skill");
-    setAjudando("");
-  }, [runBody.fase, runBody.resultado]);
+    if (runBody.phase !== "done" || !runBody.result) return;
+    set(runBody.result);
+    clearRun("skill");
+    setAssisting("");
+  }, [runBody.phase, runBody.result]);
 
   useEffect(() => {
-    if (runDesc.fase !== "pronto" || typeof runDesc.resultado !== "string")
+    if (runDesc.phase !== "done" || typeof runDesc.result !== "string")
       return;
-    set({ description: runDesc.resultado });
-    limparRun("description");
-    setAjudando("");
-  }, [runDesc.fase, runDesc.resultado]);
-  const cor = projectColor(draft.color);
+    set({ description: runDesc.result });
+    clearRun("description");
+    setAssisting("");
+  }, [runDesc.phase, runDesc.result]);
+  const tint = projectColor(draft.color);
 
-  if (procurando)
+  if (browsing)
     return (
       <SheetIconCatalog
         value={draft.icon}
-        tint={cor}
-        onBack={() => onProcurar(false)}
+        tint={tint}
+        onBack={() => onBrowse(false)}
         onPick={(icon) => set({ icon })}
       >
         <SheetField label={tr("Color")}>
@@ -102,7 +102,7 @@ export function SkillForm({
       </SheetIconCatalog>
     );
 
-  const mostra = (p: PassoSkill) => passo === undefined || passo === p;
+  const shows = (p: SkillStep) => step === undefined || step === p;
 
   return (
     <>
@@ -110,7 +110,7 @@ export function SkillForm({
       <div className="corvus-form-preview">
         <span
           className="corvus-thing-mark"
-          style={{ color: cor }}
+          style={{ color: tint }}
           aria-hidden="true"
         >
           <Icon name={draft.icon || "sparkles"} size={20} />
@@ -128,92 +128,92 @@ export function SkillForm({
         </span>
       </div>
 
-      {mostra("name") && (
+      {shows("name") && (
         <SheetField
           label={tr("Name")}
-          hint={passo ? tr("How you'll find it in the list.") : undefined}
+          hint={step ? tr("How you'll find it in the list.") : undefined}
         >
           <SheetInput
             value={draft.name}
             placeholder={tr("Weekly review")}
 
-            autoFocus={focar}
+            autoFocus={focus}
             onChange={(name) => set({ name })}
           />
         </SheetField>
       )}
 
       {}
-      {mostra("body") && (
+      {shows("body") && (
       <SheetField
         label={tr("Prompt")}
         hint={tr("What gets written for you when you use the skill.")}
       >
         {}
-        <ComAssistente
-          aberto={ajudando === "body"}
-          ocupado={runBody.fase === "rodando"}
-          onAbrir={() => setAjudando("body")}
-          painel={
+        <WithAssistant
+          open={assisting === "body"}
+          busy={runBody.phase === "running"}
+          onOpen={() => setAssisting("body")}
+          panel={
             <AssistantPanel
-              para="skill"
-              indisponivel={indisponivel}
-              modelo={modelo}
-              onFechar={() => setAjudando("")}
-              onPedir={(modo, turnos) => pedirSkill(modo, turnos)}
+              target="skill"
+              unavailable={unavailable}
+              modelPicker={modelPicker}
+              onClose={() => setAssisting("")}
+              onAsk={(mode, turns) => askSkill(mode, turns)}
             />
           }
         >
           <SheetTextarea
-            comSpark
+            withSpark
             value={draft.body}
 
             rows={7}
-            autoFocus={focar && passo === "body"}
+            autoFocus={focus && step === "body"}
             placeholder={tr(
               "Go through this week's notes and tell me:\n- what moved\n- what stalled\n- what I should drop"
             )}
             onChange={(body) => set({ body })}
           />
-        </ComAssistente>
+        </WithAssistant>
       </SheetField>
       )}
 
-      {mostra("description") && (
+      {shows("description") && (
       <SheetField
         label={tr("Description")}
         hint={tr("One line, shown in the list.")}
       >
         {}
-        <ComAssistente
-          aberto={ajudando === "desc"}
-          ocupado={runDesc.fase === "rodando"}
-          onAbrir={() => setAjudando("desc")}
-          painel={
+        <WithAssistant
+          open={assisting === "desc"}
+          busy={runDesc.phase === "running"}
+          onOpen={() => setAssisting("desc")}
+          panel={
             <AssistantPanel
-              para="description"
-              indisponivel={indisponivel}
-              modelo={modelo}
-              onFechar={() => setAjudando("")}
-              onPedir={(_modo, turnos) =>
-                pedirDescricao({ name: draft.name, body: draft.body }, turnos)
+              target="description"
+              unavailable={unavailable}
+              modelPicker={modelPicker}
+              onClose={() => setAssisting("")}
+              onAsk={(_mode, turns) =>
+                askDescription({ name: draft.name, body: draft.body }, turns)
               }
             />
           }
         >
           <SheetInput
-            comSpark
+            withSpark
             value={draft.description}
-            autoFocus={focar && passo === "description"}
+            autoFocus={focus && step === "description"}
             placeholder={tr("Optional")}
             onChange={(description) => set({ description })}
           />
-        </ComAssistente>
+        </WithAssistant>
       </SheetField>
       )}
 
       {}
-      {mostra("mode") && (
+      {shows("mode") && (
       <SheetField
         label={tr("Opens in")}
         hint={tr("Using the skill switches to this mode.")}
@@ -235,7 +235,7 @@ export function SkillForm({
       )}
 
       {}
-      {mostra("color") && (
+      {shows("color") && (
         <SheetField label={tr("Color")}>
           <SheetSwatches
             colors={PROJECT_COLORS}
@@ -246,13 +246,13 @@ export function SkillForm({
         </SheetField>
       )}
 
-      {mostra("icon") && (
+      {shows("icon") && (
         <SheetField label={tr("Icon")}>
           <SheetIconGrid
             icons={SKILL_ICONS}
             value={draft.icon}
-            tint={cor}
-            onBrowse={() => onProcurar(true)}
+            tint={tint}
+            onBrowse={() => onBrowse(true)}
             onPick={(icon) => set({ icon })}
           />
         </SheetField>

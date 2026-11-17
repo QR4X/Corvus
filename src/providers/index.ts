@@ -5,7 +5,7 @@ import { geminiProvider } from "./gemini";
 import { openrouterProvider } from "./openrouter";
 import { nimProvider } from "./nim";
 import { ollamaProvider } from "./ollama";
-import { anotarUso, conferirGasto } from "../usage/recorder";
+import { recordUsage, checkSpend } from "../usage/recorder";
 
 export const providers: Record<string, Provider> = {
   openai: openaiProvider,
@@ -16,59 +16,59 @@ export const providers: Record<string, Provider> = {
   ollama: ollamaProvider,
 };
 
-function comRegistro(p: Provider): Provider {
+function withUsageTracking(p: Provider): Provider {
   const w = Object.create(p) as Provider;
   w.chat = async (req, apiKey) => {
 
-    conferirGasto(p.id, req.model);
+    checkSpend(p.id, req.model);
     const res = await p.chat(req, apiKey);
-    anotarUso(p.id, req.model, { r: 1, i: res.usage?.input ?? 0, o: res.usage?.output ?? 0 });
+    recordUsage(p.id, req.model, { r: 1, i: res.usage?.input ?? 0, o: res.usage?.output ?? 0 });
     return res;
   };
   w.streamChat = async (req, apiKey, onToken, onUsage, signal, onReasoning) => {
-    conferirGasto(p.id, req.model);
-    let aceito = false;
-    let ultimo: Usage | null = null;
+    checkSpend(p.id, req.model);
+    let accepted = false;
+    let lastUsage: Usage | null = null;
     try {
       const res = await p.streamChat(
         req,
         apiKey,
         (t) => {
-          aceito = true;
+          accepted = true;
           onToken(t);
         },
         (u) => {
-          aceito = true;
-          ultimo = u;
+          accepted = true;
+          lastUsage = u;
           onUsage?.(u);
         },
         signal,
         onReasoning &&
           ((d) => {
-            aceito = true;
+            accepted = true;
             onReasoning(d);
           })
       );
-      aceito = true;
-      ultimo ??= res.usage ?? null;
+      accepted = true;
+      lastUsage ??= res.usage ?? null;
       return res;
     } finally {
-      if (aceito) {
-        anotarUso(p.id, req.model, { r: 1, i: ultimo?.input ?? 0, o: ultimo?.output ?? 0 });
+      if (accepted) {
+        recordUsage(p.id, req.model, { r: 1, i: lastUsage?.input ?? 0, o: lastUsage?.output ?? 0 });
       }
     }
   };
   return w;
 }
 
-const comUso = new WeakMap<Provider, Provider>();
+const tracked = new WeakMap<Provider, Provider>();
 
 export function getProvider(id: string): Provider {
   const p = providers[id] ?? openaiProvider;
-  let w = comUso.get(p);
+  let w = tracked.get(p);
   if (!w) {
-    w = comRegistro(p);
-    comUso.set(p, w);
+    w = withUsageTracking(p);
+    tracked.set(p, w);
   }
   return w;
 }

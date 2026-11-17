@@ -1,22 +1,22 @@
 import { describe, it, expect } from "vitest";
 import {
-  ehFree,
-  escolherAssistente,
-  motivoIndisponivel,
+  isFree,
+  pickAssistant,
+  unavailableReason,
 } from "../src/assistant/model";
-import { ehPrecoZero } from "../src/providers/openrouterFree";
+import { isZeroPrice } from "../src/providers/openrouterFree";
 import {
-  lerObjeto,
-  lerProjeto,
-  lerSkill,
-  lerPergunta,
-  lerTexto,
-  recortarJson,
+  parseObject,
+  parseProject,
+  parseSkill,
+  parseQuestion,
+  parseText,
+  extractJson,
 } from "../src/assistant/parse";
 import {
-  promptDescricao,
-  promptInstrucoes,
-  promptProjeto,
+  promptDescription,
+  promptInstructions,
+  promptProject,
   promptSkill,
 } from "../src/assistant/prompt";
 
@@ -26,7 +26,7 @@ const CORES = ["default", "#e5484d", "#4361ee"];
 describe("escolherAssistente", () => {
   it("a escolha explícita manda", () => {
     expect(
-      escolherAssistente({
+      pickAssistant({
         assistantProvider: "openai",
         assistantModel: "gpt-5",
         favoriteModels: { openrouter: ["x/y:free"] },
@@ -37,7 +37,7 @@ describe("escolherAssistente", () => {
   it("sem escolha, pega o FAVORITO free do OpenRouter", () => {
 
     expect(
-      escolherAssistente({
+      pickAssistant({
         favoriteModels: { openrouter: ["pago/modelo", "meta/llama:free"] },
         activeModels: { openrouter: ["outro/coisa:free"] },
       })
@@ -46,7 +46,7 @@ describe("escolherAssistente", () => {
 
   it("sem favorito free, cai pros modelos conhecidos", () => {
     expect(
-      escolherAssistente({
+      pickAssistant({
         favoriteModels: { openrouter: ["pago/modelo"] },
         activeModels: { openrouter: ["pago/outro", "x/y:free"] },
       })
@@ -54,23 +54,23 @@ describe("escolherAssistente", () => {
   });
 
   it("sem nada servível, devolve null — que é convite, não erro", () => {
-    expect(escolherAssistente({})).toBeNull();
+    expect(pickAssistant({})).toBeNull();
     expect(
-      escolherAssistente({ activeModels: { openrouter: ["só/pago"] } })
+      pickAssistant({ activeModels: { openrouter: ["só/pago"] } })
     ).toBeNull();
   });
 
   it("free é o sufixo, como no resto do app", () => {
-    expect(ehFree("meta/llama:free")).toBe(true);
-    expect(ehFree("meta/llama")).toBe(false);
+    expect(isFree("meta/llama:free")).toBe(true);
+    expect(isFree("meta/llama")).toBe(false);
   });
 });
 
 describe("motivoIndisponivel", () => {
   it("sem modelo e sem chave dizem coisas DIFERENTES", () => {
 
-    const semModelo = motivoIndisponivel(null, () => true);
-    const semChave = motivoIndisponivel(
+    const semModelo = unavailableReason(null, () => true);
+    const semChave = unavailableReason(
       { provider: "openrouter", model: "x:free" },
       () => false
     );
@@ -81,28 +81,28 @@ describe("motivoIndisponivel", () => {
 
   it("com modelo e chave, não há motivo", () => {
     expect(
-      motivoIndisponivel({ provider: "openrouter", model: "x:free" }, () => true)
+      unavailableReason({ provider: "openrouter", model: "x:free" }, () => true)
     ).toBeNull();
   });
 });
 
 describe("recortarJson", () => {
   it("tira a cerca de código", () => {
-    expect(recortarJson('```json\n{"a":1}\n```')).toBe('{"a":1}');
+    expect(extractJson('```json\n{"a":1}\n```')).toBe('{"a":1}');
   });
 
   it("acha o objeto no meio da prosa", () => {
 
-    expect(recortarJson('Sure! {"a":1} Hope that helps.')).toBe('{"a":1}');
+    expect(extractJson('Sure! {"a":1} Hope that helps.')).toBe('{"a":1}');
   });
 
   it("sem objeto nenhum, devolve null em vez de lançar", () => {
-    expect(recortarJson("desculpa, não entendi")).toBeNull();
-    expect(lerObjeto("desculpa")).toBeNull();
+    expect(extractJson("desculpa, não entendi")).toBeNull();
+    expect(parseObject("desculpa")).toBeNull();
   });
 
   it("JSON quebrado não derruba nada", () => {
-    expect(lerObjeto('{"a": }')).toBeNull();
+    expect(parseObject('{"a": }')).toBeNull();
   });
 });
 
@@ -117,43 +117,43 @@ describe("lerSkill", () => {
   };
 
   it("passa o que é válido", () => {
-    expect(lerSkill(ok, ICONES, "folder", CORES)).toEqual(ok);
+    expect(parseSkill(ok, ICONES, "folder", CORES)).toEqual(ok);
   });
 
   it("skill também tem cor, e fora da paleta vira default", () => {
 
-    expect(lerSkill({ ...ok, color: "roxo" }, ICONES, "folder", CORES)?.color).toBe(
+    expect(parseSkill({ ...ok, color: "roxo" }, ICONES, "folder", CORES)?.color).toBe(
       "default"
     );
 
-    expect(lerSkill(ok, ICONES, "folder")?.color).toBe("default");
+    expect(parseSkill(ok, ICONES, "folder")?.color).toBe("default");
   });
 
   it("ícone inventado vira o padrão, e não um buraco na tela", () => {
-    const r = lerSkill({ ...ok, icon: "sparkles-2" }, ICONES, "folder", CORES);
+    const r = parseSkill({ ...ok, icon: "sparkles-2" }, ICONES, "folder", CORES);
     expect(r?.icon).toBe("folder");
   });
 
   it("modo inventado vira vazio (abre onde a pessoa estiver)", () => {
-    expect(lerSkill({ ...ok, mode: "wizard" }, ICONES, "folder", CORES)?.mode).toBe("");
-    expect(lerSkill({ ...ok, mode: "agent" }, ICONES, "folder", CORES)?.mode).toBe(
+    expect(parseSkill({ ...ok, mode: "wizard" }, ICONES, "folder", CORES)?.mode).toBe("");
+    expect(parseSkill({ ...ok, mode: "agent" }, ICONES, "folder", CORES)?.mode).toBe(
       "agent"
     );
   });
 
   it("sem corpo não é skill", () => {
 
-    expect(lerSkill({ ...ok, body: "" }, ICONES, "folder", CORES)).toBeNull();
-    expect(lerSkill({ ...ok, body: 42 }, ICONES, "folder", CORES)).toBeNull();
+    expect(parseSkill({ ...ok, body: "" }, ICONES, "folder", CORES)).toBeNull();
+    expect(parseSkill({ ...ok, body: 42 }, ICONES, "folder", CORES)).toBeNull();
   });
 
   it("corpo cercado de crase entra limpo", () => {
-    const r = lerSkill({ ...ok, body: "```\nfaz isso\n```" }, ICONES, "folder", CORES);
+    const r = parseSkill({ ...ok, body: "```\nfaz isso\n```" }, ICONES, "folder", CORES);
     expect(r?.body).toBe("faz isso");
   });
 
   it("nome quilométrico não estoura o campo", () => {
-    const r = lerSkill({ ...ok, name: "a".repeat(300) }, ICONES, "folder", CORES);
+    const r = parseSkill({ ...ok, name: "a".repeat(300) }, ICONES, "folder", CORES);
     expect(r!.name.length).toBeLessThanOrEqual(60);
   });
 });
@@ -169,12 +169,12 @@ describe("lerProjeto", () => {
   };
 
   it("passa o que é válido", () => {
-    expect(lerProjeto(ok, ICONES, CORES, vault)).toEqual(ok);
+    expect(parseProject(ok, ICONES, CORES, vault)).toEqual(ok);
   });
 
   it("nota inventada é DESCARTADA", () => {
 
-    const r = lerProjeto(
+    const r = parseProject(
       { ...ok, notes: ["Refs/Kuhn.md", "Projects/Tese.md"] },
       ICONES,
       CORES,
@@ -184,7 +184,7 @@ describe("lerProjeto", () => {
   });
 
   it("nota repetida entra uma vez só", () => {
-    const r = lerProjeto(
+    const r = parseProject(
       { ...ok, notes: ["Ideias.md", "Ideias.md"] },
       ICONES,
       CORES,
@@ -194,60 +194,60 @@ describe("lerProjeto", () => {
   });
 
   it("cor fora da paleta vira o padrão", () => {
-    expect(lerProjeto({ ...ok, color: "red" }, ICONES, CORES, vault)?.color).toBe(
+    expect(parseProject({ ...ok, color: "red" }, ICONES, CORES, vault)?.color).toBe(
       "default"
     );
   });
 
   it("sem nome não é projeto", () => {
-    expect(lerProjeto({ ...ok, name: "  " }, ICONES, CORES, vault)).toBeNull();
+    expect(parseProject({ ...ok, name: "  " }, ICONES, CORES, vault)).toBeNull();
   });
 
   it("`notes` que não é lista não quebra", () => {
     expect(
-      lerProjeto({ ...ok, notes: "Refs/Kuhn.md" }, ICONES, CORES, vault)?.notes
+      parseProject({ ...ok, notes: "Refs/Kuhn.md" }, ICONES, CORES, vault)?.notes
     ).toEqual([]);
   });
 
   it("instrução vazia é válida — nem todo projeto tem o que dizer", () => {
-    const r = lerProjeto({ ...ok, instructions: "" }, ICONES, CORES, vault);
+    const r = parseProject({ ...ok, instructions: "" }, ICONES, CORES, vault);
     expect(r?.instructions).toBe("");
   });
 });
 
 describe("lerPergunta", () => {
   it("devolve a pergunta do modo guiado", () => {
-    expect(lerPergunta({ ask: "Pra que você usa isso?" })).toBe(
+    expect(parseQuestion({ ask: "Pra que você usa isso?" })).toBe(
       "Pra que você usa isso?"
     );
   });
 
   it("sem pergunta, string vazia", () => {
-    expect(lerPergunta({ draft: {} })).toBe("");
-    expect(lerPergunta(null)).toBe("");
+    expect(parseQuestion({ draft: {} })).toBe("");
+    expect(parseQuestion(null)).toBe("");
   });
 });
 
 describe("os prompts", () => {
   it("o de skill leva os ícones permitidos", () => {
-    const p = promptSkill("direto", ICONES, CORES);
+    const p = promptSkill("direct", ICONES, CORES);
     expect(p).toContain("graduation-cap");
     expect(p).toContain("Do not ask questions");
   });
 
   it("o guiado permite perguntar, com teto", () => {
-    expect(promptSkill("guiado", ICONES, CORES)).toMatch(/up to 3/i);
+    expect(promptSkill("guided", ICONES, CORES)).toMatch(/up to 3/i);
   });
 
   it("sem notas, ele MANDA devolver lista vazia", () => {
 
-    const p = promptProjeto("direto", ICONES, CORES, []);
+    const p = promptProject("direct", ICONES, CORES, []);
     expect(p).toContain('"notes": []');
     expect(p).not.toContain("Notes in this vault");
   });
 
   it("com notas, elas vão exatas", () => {
-    const p = promptProjeto("direto", ICONES, CORES, ["A/b.md"]);
+    const p = promptProject("direct", ICONES, CORES, ["A/b.md"]);
     expect(p).toContain("- A/b.md");
   });
 });
@@ -255,17 +255,17 @@ describe("os prompts", () => {
 describe("um campo só", () => {
   it("a descrição leva o prompt como matéria-prima", () => {
 
-    const p = promptDescricao({ name: "Weekly review", body: "Go through…" });
+    const p = promptDescription({ name: "Weekly review", body: "Go through…" });
     expect(p).toContain("Weekly review");
     expect(p).toContain("Go through…");
     expect(p).toContain('{"text": "..."}');
   });
 
   it("as instruções levam o projeto e as notas anexadas", () => {
-    const p = promptInstrucoes({
+    const p = promptInstructions({
       name: "Tese",
       notes: ["Refs/Kuhn.md"],
-      atual: "",
+      current: "",
     });
     expect(p).toContain("Project: Tese");
     expect(p).toContain("- Refs/Kuhn.md");
@@ -275,39 +275,39 @@ describe("um campo só", () => {
 
   it("o que já está escrito vai junto pra ser MELHORADO", () => {
 
-    const p = promptInstrucoes({
+    const p = promptInstructions({
       name: "Tese",
       notes: [],
-      atual: "Sempre citar a fonte.",
+      current: "Sempre citar a fonte.",
     });
     expect(p).toContain("Sempre citar a fonte.");
     expect(p).toMatch(/improve on it/i);
   });
 
   it("campo vazio não manda uma seção vazia", () => {
-    const p = promptInstrucoes({ name: "Tese", notes: [], atual: "   " });
+    const p = promptInstructions({ name: "Tese", notes: [], current: "   " });
     expect(p).not.toMatch(/improve on it/i);
     expect(p).not.toContain("Notes already attached");
   });
 
   it("lerTexto respeita o teto e limpa a cerca", () => {
-    expect(lerTexto({ text: "```\noi\n```" }, 140)).toBe("oi");
-    expect(lerTexto({ text: "a".repeat(500) }, 140).length).toBe(140);
-    expect(lerTexto({ text: 42 }, 140)).toBe("");
-    expect(lerTexto(null, 140)).toBe("");
+    expect(parseText({ text: "```\noi\n```" }, 140)).toBe("oi");
+    expect(parseText({ text: "a".repeat(500) }, 140).length).toBe(140);
+    expect(parseText({ text: 42 }, 140)).toBe("");
+    expect(parseText(null, 140)).toBe("");
   });
 });
 
 describe("the language", () => {
   it("all prompts instruct writing in the app language", () => {
     const todos = [
-      promptSkill("direto", ICONES, CORES),
-      promptProjeto("direto", ICONES, CORES, []),
-      promptDescricao({ name: "x", body: "y" }),
-      promptInstrucoes({
+      promptSkill("direct", ICONES, CORES),
+      promptProject("direct", ICONES, CORES, []),
+      promptDescription({ name: "x", body: "y" }),
+      promptInstructions({
         name: "x",
         notes: [],
-        atual: "",
+        current: "",
       }),
     ];
     for (const p of todos) {
@@ -320,17 +320,17 @@ describe("the language", () => {
 describe("free pelo PREÇO, não pelo nome", () => {
 
   it("a lista descoberta manda, mesmo sem o sufixo", () => {
-    expect(ehFree("vendor/modelo")).toBe(false);
-    expect(ehFree("vendor/modelo", ["vendor/modelo"])).toBe(true);
+    expect(isFree("vendor/modelo")).toBe(false);
+    expect(isFree("vendor/modelo", ["vendor/modelo"])).toBe(true);
   });
 
   it("sem lista, o sufixo ainda é o palpite", () => {
-    expect(ehFree("x/y:free", [])).toBe(true);
-    expect(ehFree("x/y:free")).toBe(true);
+    expect(isFree("x/y:free", [])).toBe(true);
+    expect(isFree("x/y:free")).toBe(true);
   });
 
   it("a assistente escolhe um grátis SEM sufixo", () => {
-    const alvo = escolherAssistente({
+    const alvo = pickAssistant({
       activeModels: { openrouter: ["pago/um", "grátis/dois"] },
       freeModels: { openrouter: ["grátis/dois"] },
     });
@@ -340,32 +340,32 @@ describe("free pelo PREÇO, não pelo nome", () => {
   it("escaneou mas não curou nada: ainda assim acha um", () => {
 
     expect(
-      escolherAssistente({ freeModels: { openrouter: ["a/b"] } })
+      pickAssistant({ freeModels: { openrouter: ["a/b"] } })
     ).toEqual({ provider: "openrouter", model: "a/b" });
   });
 });
 
 describe("ehPrecoZero", () => {
   it("zero dos dois lados é grátis", () => {
-    expect(ehPrecoZero({ prompt: "0", completion: "0" })).toBe(true);
-    expect(ehPrecoZero({ prompt: 0, completion: 0 })).toBe(true);
+    expect(isZeroPrice({ prompt: "0", completion: "0" })).toBe(true);
+    expect(isZeroPrice({ prompt: 0, completion: 0 })).toBe(true);
   });
 
   it("grátis na entrada e pago na saída NÃO é grátis", () => {
-    expect(ehPrecoZero({ prompt: "0", completion: "0.0000004" })).toBe(false);
+    expect(isZeroPrice({ prompt: "0", completion: "0.0000004" })).toBe(false);
   });
 
   it("sem preço, não assume nada", () => {
-    expect(ehPrecoZero(undefined)).toBe(false);
-    expect(ehPrecoZero({})).toBe(false);
-    expect(ehPrecoZero({ prompt: "grátis", completion: "grátis" })).toBe(false);
+    expect(isZeroPrice(undefined)).toBe(false);
+    expect(isZeroPrice({})).toBe(false);
+    expect(isZeroPrice({ prompt: "grátis", completion: "grátis" })).toBe(false);
   });
 });
 
 describe("o interrogatório pede TRÊS", () => {
   it("o prompt manda exatamente três, e proíbe uma quarta", () => {
 
-    const p = promptSkill("guiado", ICONES, CORES);
+    const p = promptSkill("guided", ICONES, CORES);
     expect(p).toMatch(/EXACTLY 3 options/);
     expect(p).toMatch(/never offer one yourself/i);
   });

@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { pareceEmbeddingDoOllama } from "../rag/types";
+import { looksLikeOllamaEmbedding } from "../rag/types";
 import {
   Provider,
   ProviderError,
@@ -19,29 +19,29 @@ import {
   fetchStream,
 } from "./_shared";
 
-interface ToolCallOllama {
+interface OllamaToolCall {
   id?: string;
   function?: { name?: string; arguments?: unknown };
 }
 
-interface MensagemOllama {
+interface OllamaMessage {
   content?: unknown;
   tool_calls?: unknown;
 }
 
-interface RespostaOllama {
-  message?: MensagemOllama;
+interface OllamaResponse {
+  message?: OllamaMessage;
   done?: boolean;
   error?: unknown;
   prompt_eval_count?: number;
   eval_count?: number;
 }
 
-interface CatalogoOllama {
+interface OllamaModelList {
   models?: Array<{ name?: unknown }>;
 }
 
-interface MensagemOpenAI {
+interface OpenAIMessage {
   role?: string;
   content?: unknown;
   tool_call_id?: string;
@@ -49,68 +49,68 @@ interface MensagemOpenAI {
 }
 
 export function toOllamaMessages(messages: ProviderRequest["messages"]): unknown[] {
-  const nomePorId = new Map<string, string>();
-  return (toOpenAIMessages(messages) as MensagemOpenAI[]).map((m) => {
+  const nameById = new Map<string, string>();
+  return (toOpenAIMessages(messages) as OpenAIMessage[]).map((m) => {
     if (m.role === "assistant" && Array.isArray(m.tool_calls)) {
       return {
         role: "assistant",
         content: typeof m.content === "string" ? m.content : "",
         tool_calls: m.tool_calls.map((tc) => {
-          const nome = tc.function?.name ?? "";
-          if (tc.id) nomePorId.set(tc.id, nome);
-          const bruto = tc.function?.arguments;
-          let args: unknown = bruto ?? {};
-          if (typeof bruto === "string") {
+          const toolName = tc.function?.name ?? "";
+          if (tc.id) nameById.set(tc.id, toolName);
+          const rawArgs = tc.function?.arguments;
+          let args: unknown = rawArgs ?? {};
+          if (typeof rawArgs === "string") {
             try {
-              args = JSON.parse(bruto);
+              args = JSON.parse(rawArgs);
             } catch {
               args = {};
             }
           }
-          return { function: { name: nome, arguments: args } };
+          return { function: { name: toolName, arguments: args } };
         }),
       };
     }
     if (m.role === "tool") {
-      const nome = m.tool_call_id ? nomePorId.get(m.tool_call_id) : undefined;
-      return { role: "tool", content: m.content, ...(nome ? { tool_name: nome } : {}) };
+      const toolName = m.tool_call_id ? nameById.get(m.tool_call_id) : undefined;
+      return { role: "tool", content: m.content, ...(toolName ? { tool_name: toolName } : {}) };
     }
     if (Array.isArray(m.content)) {
-      const partes = m.content as ParteOpenAI[];
-      const texto = partes
+      const parts = m.content as OpenAIPart[];
+      const text = parts
         .filter((p) => p.type === "text" && typeof p.text === "string")
         .map((p) => p.text as string)
         .join("\n\n");
-      const imagens = partes
+      const images = parts
         .filter((p) => p.type === "image_url")
-        .map((p) => base64DaDataUrl(p.image_url?.url ?? ""))
+        .map((p) => base64FromDataUrl(p.image_url?.url ?? ""))
         .filter((b) => b !== "");
       return {
         role: m.role,
-        content: texto,
-        ...(imagens.length > 0 ? { images: imagens } : {}),
+        content: text,
+        ...(images.length > 0 ? { images } : {}),
       };
     }
     return m;
   });
 }
 
-interface ParteOpenAI {
+interface OpenAIPart {
   type?: string;
   text?: unknown;
   image_url?: { url?: string };
 }
 
-function base64DaDataUrl(url: string): string {
-  const virgula = url.indexOf(",");
-  if (url.startsWith("data:")) return virgula >= 0 ? url.slice(virgula + 1) : "";
+function base64FromDataUrl(url: string): string {
+  const comma = url.indexOf(",");
+  if (url.startsWith("data:")) return comma >= 0 ? url.slice(comma + 1) : "";
   return /^https?:/i.test(url) ? "" : url;
 }
 
-function toolCallsDoOllama(brutas: unknown): ProviderToolCall[] {
-  if (!Array.isArray(brutas)) return [];
-  const saida: ProviderToolCall[] = [];
-  for (const [idx, tc] of (brutas as ToolCallOllama[]).entries()) {
+function parseOllamaToolCalls(rawCalls: unknown): ProviderToolCall[] {
+  if (!Array.isArray(rawCalls)) return [];
+  const calls: ProviderToolCall[] = [];
+  for (const [idx, tc] of (rawCalls as OllamaToolCall[]).entries()) {
     const fn = tc?.function;
     if (!fn?.name) continue;
     const raw = fn.arguments;
@@ -126,28 +126,28 @@ function toolCallsDoOllama(brutas: unknown): ProviderToolCall[] {
         parsedArgs = { _raw: raw };
       }
     }
-    saida.push({
+    calls.push({
       id: tc.id ?? `ollama_call_${Date.now()}_${idx}`,
       name: fn.name,
       arguments: parsedArgs,
     });
   }
-  return saida;
+  return calls;
 }
 
-interface MostraDoModelo {
+interface ModelShow {
   model_info?: Record<string, unknown>;
   capabilities?: unknown;
 }
-const mostraConhecida = new Map<string, MostraDoModelo>();
+const showCache = new Map<string, ModelShow>();
 
-async function mostraDoModelo(
+async function fetchModelShow(
   endpoint: string,
   model: string
-): Promise<MostraDoModelo | null> {
-  const chave = `${endpoint}|${model}`;
-  const sabido = mostraConhecida.get(chave);
-  if (sabido) return sabido;
+): Promise<ModelShow | null> {
+  const key = `${endpoint}|${model}`;
+  const cached = showCache.get(key);
+  if (cached) return cached;
   try {
     const res = await requestUrl({
       url: `${endpoint}/api/show`,
@@ -157,9 +157,9 @@ async function mostraDoModelo(
       throw: false,
     });
     if (res.status < 200 || res.status >= 300) return null;
-    const json = res.json as MostraDoModelo | undefined;
+    const json = res.json as ModelShow | undefined;
     if (!json || typeof json !== "object") return null;
-    mostraConhecida.set(chave, json);
+    showCache.set(key, json);
     return json;
   } catch {
 
@@ -167,30 +167,30 @@ async function mostraDoModelo(
   }
 }
 
-async function contextoDoModelo(endpoint: string, model: string): Promise<number | undefined> {
-  const info = (await mostraDoModelo(endpoint, model))?.model_info;
+async function modelContextLength(endpoint: string, model: string): Promise<number | undefined> {
+  const info = (await fetchModelShow(endpoint, model))?.model_info;
   for (const [k, v] of Object.entries(info ?? {})) {
     if (k.endsWith(".context_length") && typeof v === "number" && v > 0) return v;
   }
   return undefined;
 }
 
-function capacidadesDe(mostra: MostraDoModelo | null): string[] | null {
-  const caps = mostra?.capabilities;
+function capabilitiesOf(show: ModelShow | null): string[] | null {
+  const caps = show?.capabilities;
   if (!Array.isArray(caps)) return null;
-  const lista = caps.filter((c): c is string => typeof c === "string");
-  return lista.length > 0 ? lista : null;
+  const list = caps.filter((c): c is string => typeof c === "string");
+  return list.length > 0 ? list : null;
 }
 
-export async function enriquecerCapacidadesOllama(
+export async function enrichOllamaCapabilities(
   endpoint: string,
   models: readonly string[]
 ): Promise<number> {
   if (!endpoint) return 0;
-  let gravados = 0;
+  let recorded = 0;
   for (const model of models) {
     if (!model) continue;
-    const caps = capacidadesDe(await mostraDoModelo(endpoint, model));
+    const caps = capabilitiesOf(await fetchModelShow(endpoint, model));
     if (!caps) continue;
     recordModelInfo("ollama", model, {
 
@@ -199,32 +199,32 @@ export async function enriquecerCapacidadesOllama(
       source: "ollama",
       fetchedAt: new Date().toISOString(),
     });
-    gravados++;
+    recorded++;
   }
-  return gravados;
+  return recorded;
 }
 
-export function tokensDoPedido(req: ProviderRequest): number {
+export function estimateRequestTokens(req: ProviderRequest): number {
   let chars = 0;
-  let imagens = 0;
+  let images = 0;
   for (const m of req.messages) {
     chars += m.content.length;
     if (m.toolCalls) chars += JSON.stringify(m.toolCalls).length;
-    for (const a of m.attachments ?? []) if (a.type === "image") imagens++;
+    for (const a of m.attachments ?? []) if (a.type === "image") images++;
   }
   if (req.tools && req.tools.length > 0) chars += JSON.stringify(req.tools).length;
-  return Math.ceil(chars / 3) + imagens * 1000;
+  return Math.ceil(chars / 3) + images * 1000;
 }
 
-const DEGRAUS_DE_CONTEXTO = [8192, 16384, 32768, 65536, 131072, 262144];
+const CONTEXT_STEPS = [8192, 16384, 32768, 65536, 131072, 262144];
 
-export function contextoDoOllama(prompt: number, resposta: number, maxModelo?: number): number {
-  const precisa = prompt + Math.min(resposta, 8192);
-  const degrau =
-    DEGRAUS_DE_CONTEXTO.find((d) => d >= precisa) ??
-    DEGRAUS_DE_CONTEXTO[DEGRAUS_DE_CONTEXTO.length - 1];
-  const teto = maxModelo && maxModelo > 0 ? maxModelo : 32768;
-  return Math.min(degrau, teto);
+export function ollamaContextSize(prompt: number, output: number, modelMax?: number): number {
+  const needed = prompt + Math.min(output, 8192);
+  const step =
+    CONTEXT_STEPS.find((d) => d >= needed) ??
+    CONTEXT_STEPS[CONTEXT_STEPS.length - 1];
+  const cap = modelMax && modelMax > 0 ? modelMax : 32768;
+  return Math.min(step, cap);
 }
 
 class OllamaProvider implements Provider {
@@ -258,16 +258,16 @@ class OllamaProvider implements Provider {
     return url;
   }
 
-  private async corpo(
+  private async buildBody(
     req: ProviderRequest,
     endpoint: string,
     stream: boolean
   ): Promise<Record<string, unknown>> {
     const numPredict = resolveMaxTokens("ollama", req.model, req.maxTokens ?? 2000, req.effort);
-    const numCtx = contextoDoOllama(
-      tokensDoPedido(req),
+    const numCtx = ollamaContextSize(
+      estimateRequestTokens(req),
       numPredict,
-      await contextoDoModelo(endpoint, req.model)
+      await modelContextLength(endpoint, req.model)
     );
     const temp = resolveTemperature("ollama", req.model, req.temperature);
 
@@ -297,7 +297,7 @@ class OllamaProvider implements Provider {
 
   async chat(req: ProviderRequest, apiKey: string): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
-    const body = await this.corpo(req, endpoint, false);
+    const body = await this.buildBody(req, endpoint, false);
 
     let res;
     try {
@@ -317,14 +317,14 @@ class OllamaProvider implements Provider {
 
     ensureOkRequest(res, { label: "Ollama" });
 
-    const corpo = res.json as RespostaOllama | undefined;
-    const message = corpo?.message;
+    const payload = res.json as OllamaResponse | undefined;
+    const message = payload?.message;
     if (!message) {
       throw new ProviderError("Empty response from Ollama.", "unknown");
     }
 
-    const lidas = toolCallsDoOllama(message.tool_calls);
-    const toolCalls = lidas.length > 0 ? lidas : undefined;
+    const parsedCalls = parseOllamaToolCalls(message.tool_calls);
+    const toolCalls = parsedCalls.length > 0 ? parsedCalls : undefined;
 
     const content = typeof message.content === "string" ? message.content : "";
     if (!toolCalls && !content) {
@@ -337,10 +337,10 @@ class OllamaProvider implements Provider {
     const result: ProviderResponse = { content };
     if (toolCalls) result.toolCalls = toolCalls;
 
-    if (corpo?.prompt_eval_count !== undefined || corpo?.eval_count !== undefined) {
+    if (payload?.prompt_eval_count !== undefined || payload?.eval_count !== undefined) {
       result.usage = {
-        input: corpo.prompt_eval_count ?? 0,
-        output: corpo.eval_count ?? 0,
+        input: payload.prompt_eval_count ?? 0,
+        output: payload.eval_count ?? 0,
       };
     }
     return result;
@@ -356,7 +356,7 @@ class OllamaProvider implements Provider {
     _onReasoning?: ReasoningHandler
   ): Promise<ProviderResponse> {
     const endpoint = this.getEndpoint(apiKey);
-    const body = await this.corpo(req, endpoint, true);
+    const body = await this.buildBody(req, endpoint, true);
 
     let res: Response;
     try {
@@ -400,9 +400,9 @@ class OllamaProvider implements Provider {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
-          let json: RespostaOllama;
+          let json: OllamaResponse;
           try {
-            json = JSON.parse(trimmed) as RespostaOllama;
+            json = JSON.parse(trimmed) as OllamaResponse;
           } catch {
 
             continue;
@@ -418,7 +418,7 @@ class OllamaProvider implements Provider {
             onToken(token);
           }
 
-          const parsed = toolCallsDoOllama(message?.tool_calls);
+          const parsed = parseOllamaToolCalls(message?.tool_calls);
           if (parsed.length > 0) lastToolCalls = parsed;
           if (json?.done === true) {
             usage = {
@@ -460,7 +460,7 @@ class OllamaProvider implements Provider {
     if (res.status < 200 || res.status >= 300) {
       throw new ProviderError(`Ollama: HTTP ${res.status}`, "unknown");
     }
-    const models = (res.json as CatalogoOllama | undefined)?.models ?? [];
+    const models = (res.json as OllamaModelList | undefined)?.models ?? [];
     return models
       .map((m) => m?.name)
       .filter((n): n is string => typeof n === "string")
@@ -469,11 +469,11 @@ class OllamaProvider implements Provider {
 
   async listEmbeddingModels(apiKey: string): Promise<string[]> {
     const endpoint = this.getEndpoint(apiKey);
-    const todos = await this.listModels(apiKey);
-    const porNome = todos.filter((m) => pareceEmbeddingDoOllama(m));
-    const resto = todos.filter((m) => !pareceEmbeddingDoOllama(m));
-    const porCapacidade = await Promise.all(
-      resto.map(async (model) => {
+    const all = await this.listModels(apiKey);
+    const byName = all.filter((m) => looksLikeOllamaEmbedding(m));
+    const rest = all.filter((m) => !looksLikeOllamaEmbedding(m));
+    const byCapability = await Promise.all(
+      rest.map(async (model) => {
         try {
           const res = await requestUrl({
             url: `${endpoint}/api/show`,
@@ -489,7 +489,7 @@ class OllamaProvider implements Provider {
         }
       })
     );
-    return [...porNome, ...porCapacidade.filter((m): m is string => m !== null)].sort();
+    return [...byName, ...byCapability.filter((m): m is string => m !== null)].sort();
   }
 }
 

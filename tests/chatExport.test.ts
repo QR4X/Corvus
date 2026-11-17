@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   exportChatMarkdown,
   exportFileName,
-  limparMarcas,
+  stripMarkers,
 } from "../src/core/chatExport";
 import type { ChatData } from "../src/core/chatPersistence";
 
@@ -25,20 +25,20 @@ const chat = (over: Partial<ChatData> = {}): ChatData => ({
 
 describe("limparMarcas", () => {
   it("tira o comentário de metadados e mantém o texto", () => {
-    const r = limparMarcas("<!-- corvus: ts=123 reaction=like -->\nbom dia");
+    const r = stripMarkers("<!-- corvus: ts=123 reaction=like -->\nbom dia");
     expect(r).toBe("bom dia");
   });
 
   it("tira o paredão de base64 dos passos do agente", () => {
 
-    const r = limparMarcas("fiz isso\n\n<!-- corvus-steps: QUJDREVGRw== -->");
+    const r = stripMarkers("fiz isso\n\n<!-- corvus-steps: QUJDREVGRw== -->");
     expect(r).toBe("fiz isso");
     expect(r).not.toMatch(/corvus-steps/);
   });
 
   it("não come o markdown de verdade", () => {
     const md = "# Título\n\n- um\n- dois\n\n`code`";
-    expect(limparMarcas(md)).toBe(md);
+    expect(stripMarkers(md)).toBe(md);
   });
 });
 

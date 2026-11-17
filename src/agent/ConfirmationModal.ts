@@ -1,7 +1,7 @@
 import { App, Component, MarkdownRenderer, Modal, Setting } from "obsidian";
 import type { ToolCall, ToolDefinition } from "./types";
 import type { Translations } from "../i18n/en-us";
-import { texto } from "../core/text";
+import { asText } from "../core/text";
 
 interface ConfirmOpts {
   toolCall: ToolCall;
@@ -119,33 +119,33 @@ export class ConfirmationModal extends Modal {
     const block = (
       text: string,
       kind: "add" | "del" | "ctx",
-      como: Preview = previewFor(path)
+      preview: Preview = previewFor(path)
     ) => {
       const cls = "corvus-diff-block corvus-diff-" + kind;
-      const cortado =
+      const clipped =
         text.length > MAX_PREVIEW ? text.slice(0, MAX_PREVIEW) : text;
 
-      if (como.kind === "plain") {
-        box.createEl("pre", { cls }).textContent = cortado;
+      if (preview.kind === "plain") {
+        box.createEl("pre", { cls }).textContent = clipped;
       } else {
         const host = box.createDiv({ cls: cls + " is-rich" });
         const md =
-          como.kind === "code"
-            ? fence(cortado, como.lang)
-            : closeOpenFence(cortado);
+          preview.kind === "code"
+            ? fence(clipped, preview.lang)
+            : closeOpenFence(clipped);
         void MarkdownRenderer.render(this.app, md, host, path, this.mdOwner())
 
           .catch(() => {
             host.empty();
             host.removeClass("is-rich");
-            host.textContent = cortado;
+            host.textContent = clipped;
           });
       }
 
-      if (cortado.length < text.length) {
+      if (clipped.length < text.length) {
         box.createDiv({
           cls: "corvus-diff-more",
-          text: strings.confirmTruncated(text.length - cortado.length),
+          text: strings.confirmTruncated(text.length - clipped.length),
         });
       }
     };
@@ -153,13 +153,13 @@ export class ConfirmationModal extends Modal {
     switch (name) {
       case "vault_edit": {
         pathRow(strings.confirmLabelEdit, path);
-        block(texto(args.oldStr), "del");
-        block(texto(args.newStr), "add");
+        block(asText(args.oldStr), "del");
+        block(asText(args.newStr), "add");
         return;
       }
       case "vault_create": {
         pathRow(strings.confirmLabelCreate, path, "corvus-confirm-path-add");
-        block(texto(args.content), "add");
+        block(asText(args.content), "add");
         return;
       }
       case "vault_create_folder": {
@@ -167,8 +167,8 @@ export class ConfirmationModal extends Modal {
         return;
       }
       case "vault_move": {
-        pathRow(strings.confirmLabelFrom, texto(args.from), "corvus-confirm-path-del");
-        pathRow(strings.confirmLabelTo, texto(args.to), "corvus-confirm-path-add");
+        pathRow(strings.confirmLabelFrom, asText(args.from), "corvus-confirm-path-del");
+        pathRow(strings.confirmLabelTo, asText(args.to), "corvus-confirm-path-add");
         return;
       }
       case "vault_delete": {
@@ -178,22 +178,22 @@ export class ConfirmationModal extends Modal {
 
       case "web_search": {
         pathRow(strings.confirmLabelWebSearch, "");
-        block(texto(args.query), "ctx", { kind: "plain" });
+        block(asText(args.query), "ctx", { kind: "plain" });
         return;
       }
       case "web_fetch": {
         pathRow(strings.confirmLabelWebFetch, "");
-        block(texto(args.url), "ctx", { kind: "plain" });
+        block(asText(args.url), "ctx", { kind: "plain" });
         return;
       }
       default: {
 
         Object.entries(args).forEach(([key, value]) => {
-          const texto =
+          const valueText =
             typeof value === "string" ? value : JSON.stringify(value, null, 2);
           pathRow(key, "");
           block(
-            texto,
+            valueText,
             "ctx",
             typeof value === "string"
               ? { kind: "plain" }
@@ -292,16 +292,16 @@ export function previewFor(path: string): Preview {
 }
 
 export function fence(text: string, lang: string): string {
-  const maior = Math.max(
+  const longestRun = Math.max(
     0,
     ...Array.from(text.matchAll(/`+/g), (m) => m[0].length)
   );
-  const crases = "`".repeat(Math.max(3, maior + 1));
-  return `${crases}${lang}\n${text}\n${crases}`;
+  const ticks = "`".repeat(Math.max(3, longestRun + 1));
+  return `${ticks}${lang}\n${text}\n${ticks}`;
 }
 
 export function closeOpenFence(md: string): string {
-  const cercas = md.match(/^ {0,3}(`{3,}|~{3,})/gm);
-  if (!cercas || cercas.length % 2 === 0) return md;
-  return `${md}\n${cercas[cercas.length - 1].trim()}`;
+  const fences = md.match(/^ {0,3}(`{3,}|~{3,})/gm);
+  if (!fences || fences.length % 2 === 0) return md;
+  return `${md}\n${fences[fences.length - 1].trim()}`;
 }

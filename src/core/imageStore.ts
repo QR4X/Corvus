@@ -20,8 +20,8 @@ function imageExt(mime: string, name: string | undefined): string {
   if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
   if (mime === "image/webp") return "webp";
   if (mime === "image/gif") return "gif";
-  const nome = name?.split(".").pop() ?? "";
-  return isImageExt(nome) ? nome.toLowerCase() : "png";
+  const fromName = name?.split(".").pop() ?? "";
+  return isImageExt(fromName) ? fromName.toLowerCase() : "png";
 }
 
 export async function persistLocalImage(

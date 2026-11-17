@@ -1,43 +1,43 @@
-const TETO = 240;
+const MAX_PREVIEW_CHARS = 240;
 
 export function previewFromMarkdown(content: string): string {
-  const secoes = content.split(/^## (?:You|Assistant)\s*$/m);
+  const sections = content.split(/^## (?:You|Assistant)\s*$/m);
 
-  if (secoes.length < 2) return "";
-  for (let i = secoes.length - 1; i >= 1; i--) {
-    const texto = previewFromText(secoes[i]);
-    if (texto) return texto;
+  if (sections.length < 2) return "";
+  for (let i = sections.length - 1; i >= 1; i--) {
+    const text = previewFromText(sections[i]);
+    if (text) return text;
   }
   return "";
 }
 
-export function previewFromText(bruto: string): string {
-  return limpar(bruto).slice(0, TETO);
+export function previewFromText(raw: string): string {
+  return stripMarkdown(raw).slice(0, MAX_PREVIEW_CHARS);
 }
 
-const MARCA = String.fromCharCode(0xe000);
-const GUARDADO = new RegExp(`${MARCA}(\\d+)${MARCA}`, "g");
+const MARKER = String.fromCharCode(0xe000);
+const STASHED = new RegExp(`${MARKER}(\\d+)${MARKER}`, "g");
 
-function limpar(bruto: string): string {
+function stripMarkdown(raw: string): string {
 
-  const codigos: string[] = [];
-  const guardar = (_: string, c: string) => `${MARCA}${codigos.push(c) - 1}${MARCA}`;
-  const texto = bruto
+  const stash: string[] = [];
+  const keep = (_: string, c: string) => `${MARKER}${stash.push(c) - 1}${MARKER}`;
+  const text = raw
 
     .replace(/<!--[\s\S]*?-->/g, " ")
 
     .replace(/^```.*$/gm, " ")
 
     .replace(/^\s{0,3}(?:[#>]+|[-*+]|\d+\.)\s+/gm, " ")
-    .replace(/`([^`\n]+)`/g, guardar)
+    .replace(/`([^`\n]+)`/g, keep)
 
-    .replace(/\\([\\`*_{}[\]()#+\-.!~=|>])/g, guardar)
+    .replace(/\\([\\`*_{}[\]()#+\-.!~=|>])/g, keep)
 
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/!\[\[[^\]]*\]\]/g, " ")
 
     .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, "$1")
-    .replace(/\[\[([^\]]+)\]\]/g, (_, alvo: string) => alvo.replace(/#\^?/g, " > "))
+    .replace(/\[\[([^\]]+)\]\]/g, (_, target: string) => target.replace(/#\^?/g, " > "))
 
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
 
@@ -49,6 +49,6 @@ function limpar(bruto: string): string {
     .replace(/==(?=\S)([^=\n]*?\S)==/g, "$1")
 
     .replace(/<\/?[a-zA-Z][^<>]*>/g, " ")
-    .replace(GUARDADO, (_, i: string) => codigos[Number(i)] ?? "");
-  return texto.replace(/\s+/g, " ").trim();
+    .replace(STASHED, (_, i: string) => stash[Number(i)] ?? "");
+  return text.replace(/\s+/g, " ").trim();
 }

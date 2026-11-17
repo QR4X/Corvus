@@ -4,15 +4,15 @@ type ChatAlert = "waiting" | "running" | "unread" | null;
 
 export function chatAlert(p: {
 
-  esperando: boolean;
+  waiting: boolean;
 
-  rodando: boolean;
+  running: boolean;
 
-  naoLida: boolean;
+  unread: boolean;
 }): ChatAlert {
-  if (p.esperando) return "waiting";
-  if (p.rodando) return "running";
-  if (p.naoLida) return "unread";
+  if (p.waiting) return "waiting";
+  if (p.running) return "running";
+  if (p.unread) return "unread";
   return null;
 }
 
@@ -25,12 +25,12 @@ export const ALERT_LABEL: Record<Exclude<ChatAlert, null>, string> = {
 export function alertCount(
   chats: ReadonlyArray<{ id: string; mode: string }>,
   mode: string,
-  p: { esperando: string | null; naoLidas: ReadonlySet<string> }
+  p: { waitingId: string | null; unread: ReadonlySet<string> }
 ): number {
   let n = 0;
   for (const c of chats) {
     if (c.mode !== mode) continue;
-    if (c.id === p.esperando || p.naoLidas.has(c.id)) n += 1;
+    if (c.id === p.waitingId || p.unread.has(c.id)) n += 1;
   }
   return n;
 }

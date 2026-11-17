@@ -122,12 +122,12 @@ const PRICES_BY_PROVIDER: Record<string, PricingEntry[]> = {
   ],
 };
 
-const gratisConhecidos = new Map<string, Set<string>>();
+const knownFree = new Map<string, Set<string>>();
 
-const normalizado = (id: string) => id.toLowerCase().replace(/_/g, ".");
+const normalizeId = (id: string) => id.toLowerCase().replace(/_/g, ".");
 
-export function definirGratisConhecidos(provider: string, ids: readonly string[]): void {
-  gratisConhecidos.set(provider, new Set(ids.map(normalizado)));
+export function setKnownFree(provider: string, ids: readonly string[]): void {
+  knownFree.set(provider, new Set(ids.map(normalizeId)));
 }
 
 export function getPricing(provider: string, model: string): ModelPricing {
@@ -137,7 +137,7 @@ export function getPricing(provider: string, model: string): ModelPricing {
 
   const lower = model.toLowerCase();
 
-  if (gratisConhecidos.get(provider)?.has(normalizado(model))) {
+  if (knownFree.get(provider)?.has(normalizeId(model))) {
     return { inputPerMillion: 0, outputPerMillion: 0, tier: "free", asOf: "2026-10" };
   }
 

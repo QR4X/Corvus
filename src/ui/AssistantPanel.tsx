@@ -12,17 +12,17 @@ import { ThinkingGlyph, ThinkingInline } from "./Thinking";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { modelLogo } from "../providers/modelLogo";
 import {
-  assinar,
-  comecarRodada,
-  lerRun,
-  limparRun,
-  type Rodada,
+  subscribe,
+  startRun,
+  getRun,
+  clearRun,
+  type RoundResult,
 } from "../assistant/store";
-import type { ModoAssistente } from "../assistant/prompt";
-import type { TurnoAssistente } from "../assistant/run";
+import type { AssistantMode } from "../assistant/prompt";
+import type { AssistantTurn } from "../assistant/run";
 import { mark, tr } from "../i18n/tr";
 
-type AlvoAssistente =
+type PanelTarget =
   | "skill"
   | "project"
   | "description"
@@ -31,26 +31,26 @@ type AlvoAssistente =
 
 interface AssistantPanelProps {
 
-  para: AlvoAssistente;
+  target: PanelTarget;
 
-  chave?: string;
+  runKey?: string;
 
-  indisponivel: string | null;
+  unavailable: string | null;
 
-  onPedir: (modo: ModoAssistente, turnos: TurnoAssistente[]) => Promise<Rodada>;
+  onAsk: (mode: AssistantMode, turns: AssistantTurn[]) => Promise<RoundResult>;
 
-  onFechar: () => void;
+  onClose: () => void;
 
-  modelo?: {
-    atual: string;
-    opcoes: string[];
+  modelPicker?: {
+    current: string;
+    options: string[];
 
-    livres?: string[];
-    onTrocar: (model: string) => void;
+    freeModels?: string[];
+    onPick: (model: string) => void;
   };
 }
 
-const CONVITE: Record<AlvoAssistente, string> = {
+const PROMPT_LABEL: Record<PanelTarget, string> = {
   skill: mark("Describe the skill you want, in a line."),
   project: mark("What is this project about?"),
   description: mark("Anything to steer it? (optional)"),
@@ -58,7 +58,7 @@ const CONVITE: Record<AlvoAssistente, string> = {
   notes: mark("Anything to look for? (optional)"),
 };
 
-const EXEMPLO: Record<AlvoAssistente, string> = {
+const PLACEHOLDER: Record<PanelTarget, string> = {
   skill: mark("A weekly review that reads my notes and tells me what stalled"),
   project: mark("My master's thesis on Kuhn and scientific revolutions"),
   description: mark("Optional — it writes from the prompt above"),
@@ -66,7 +66,7 @@ const EXEMPLO: Record<AlvoAssistente, string> = {
   notes: mark("Optional — it looks at the project's name and instructions"),
 };
 
-const TITULO: Record<AlvoAssistente, string> = {
+const TITLE: Record<PanelTarget, string> = {
   skill: mark("Write it for me"),
   project: mark("Write it for me"),
   description: mark("Write it for me"),
@@ -74,7 +74,7 @@ const TITULO: Record<AlvoAssistente, string> = {
   notes: mark("Find notes for me"),
 };
 
-const VERBO: Record<AlvoAssistente, string> = {
+const ACTION_LABEL: Record<PanelTarget, string> = {
   skill: mark("Write it"),
   project: mark("Write it"),
   description: mark("Write it"),
@@ -82,7 +82,7 @@ const VERBO: Record<AlvoAssistente, string> = {
   notes: mark("Find them"),
 };
 
-const PARTE_DO_VAZIO: Record<AlvoAssistente, boolean> = {
+const STARTS_EMPTY: Record<PanelTarget, boolean> = {
   skill: false,
   project: false,
   description: true,
@@ -91,70 +91,70 @@ const PARTE_DO_VAZIO: Record<AlvoAssistente, boolean> = {
   notes: true,
 };
 
-export function useRun(chave: string) {
+export function useRun(key: string) {
   return useSyncExternalStore(
-    (f) => assinar(chave, f),
-    () => lerRun(chave)
+    (f) => subscribe(key, f),
+    () => getRun(key)
   );
 }
 
 export function AssistantPanel({
-  para,
-  chave: chaveDada,
-  indisponivel,
-  onPedir,
-  onFechar,
-  modelo,
+  target,
+  runKey: givenKey,
+  unavailable,
+  onAsk,
+  onClose,
+  modelPicker,
 }: AssistantPanelProps) {
-  const chave = chaveDada ?? para;
-  const run = useRun(chave);
-  const [texto, setTexto] = useState("");
+  const runKey = givenKey ?? target;
+  const run = useRun(runKey);
+  const [text, setText] = useState("");
 
-  const [digitando, setDigitando] = useState(false);
-  const ocupado = run.fase === "rodando";
-  const partirDoVazio = PARTE_DO_VAZIO[para];
-  const perguntando = run.fase === "perguntando";
+  const [typing, setTyping] = useState(false);
+  const busy = run.phase === "running";
+  const startsEmpty = STARTS_EMPTY[target];
+  const asking = run.phase === "asking";
 
-  const responder = (dito: string, modo: ModoAssistente) => {
-    if (ocupado) return;
-    const limpo = dito.trim();
-    if (!limpo && !partirDoVazio && !perguntando) return;
-    const proximos: TurnoAssistente[] = limpo
-      ? [...run.turnos, { quem: "pessoa", texto: limpo }]
-      : run.turnos;
-    setTexto("");
-    setDigitando(false);
+  const answer = (input: string, mode: AssistantMode) => {
+    if (busy) return;
+    const trimmed = input.trim();
+    if (!trimmed && !startsEmpty && !asking) return;
+    const nextTurns: AssistantTurn[] = trimmed
+      ? [...run.turns, { role: "user", text: trimmed }]
+      : run.turns;
+    setText("");
+    setTyping(false);
 
-    comecarRodada(chave, proximos, (t) => onPedir(modo, t));
+    startRun(runKey, nextTurns, (t) => onAsk(mode, t));
   };
 
-  const cabecalho = (
+  const header = (
     <div className="corvus-assist-head">
       <Icon name="sparkles" size={16} />
-      <span>{tr(TITULO[para])}</span>
+      <span>{tr(TITLE[target])}</span>
       {}
-      {modelo && modelo.opcoes.length > 1 && (
+      {modelPicker && modelPicker.options.length > 1 && (
         <button
           type="button"
-          className="corvus-assist-modelo"
-          title={tr("Writing with {model}", { model: modelo.atual })}
+          className="corvus-assist-model"
+          title={tr("Writing with {model}", { model: modelPicker.current })}
           onClick={(e) =>
             openActions(
               e,
 
-              modelo.opcoes.map((m) => ({
-                label: modelo.livres?.includes(m)
+              modelPicker.options.map((m) => ({
+                label: modelPicker.freeModels?.includes(m)
                   ? tr("{model} · free", { model: prettyModelName(m) })
                   : prettyModelName(m),
                 icon: modelLogo(m),
-                checked: m === modelo.atual,
-                run: () => modelo.onTrocar(m),
+                checked: m === modelPicker.current,
+                run: () => modelPicker.onPick(m),
               }))
             )
           }
         >
-          <Icon name={modelLogo(modelo.atual)} size={14} />
-          <span>{prettyModelName(modelo.atual)}</span>
+          <Icon name={modelLogo(modelPicker.current)} size={14} />
+          <span>{prettyModelName(modelPicker.current)}</span>
           <Icon name="chevron-down" size={14} />
         </button>
       )}
@@ -164,8 +164,8 @@ export function AssistantPanel({
         aria-label={tr("Close")}
         onClick={() => {
 
-          if (run.fase !== "rodando") limparRun(chave);
-          onFechar();
+          if (run.phase !== "running") clearRun(runKey);
+          onClose();
         }}
       >
         <Icon name="x" size={16} />
@@ -173,74 +173,74 @@ export function AssistantPanel({
     </div>
   );
 
-  const campoRef = useRef<HTMLTextAreaElement>(null);
-  const ancora = useRef<HTMLSpanElement>(null);
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [root, setRoot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setRaiz(ancora.current?.closest<HTMLElement>(".corvus-root") ?? null);
+    setRoot(anchorRef.current?.closest<HTMLElement>(".corvus-root") ?? null);
   }, []);
 
   useLayoutEffect(() => {
-    campoRef.current?.focus({ preventScroll: true });
-  }, [raiz, perguntando, digitando]);
+    fieldRef.current?.focus({ preventScroll: true });
+  }, [root, asking, typing]);
 
-  const camada = (dentro: ReactNode) => {
+  const inLayer = (content: ReactNode) => {
     const layer = (
       <div className="corvus-assist-layer">
         {}
         <div
           className="corvus-scrim"
           onClick={() => {
-            if (run.fase !== "rodando") limparRun(chave);
-            onFechar();
+            if (run.phase !== "running") clearRun(runKey);
+            onClose();
           }}
         />
-        {dentro}
+        {content}
       </div>
     );
     return (
       <>
         {}
-        <span ref={ancora} hidden />
-        {raiz ? createPortal(layer, raiz) : null}
+        <span ref={anchorRef} hidden />
+        {root ? createPortal(layer, root) : null}
       </>
     );
   };
 
-  if (indisponivel)
-    return camada(
+  if (unavailable)
+    return inLayer(
       <div className="corvus-assist">
-        {cabecalho}
-        <p className="corvus-assist-note">{indisponivel}</p>
+        {header}
+        <p className="corvus-assist-note">{unavailable}</p>
       </div>
     );
 
-  return camada(
-    <div className={perguntando ? "corvus-assist is-grill" : "corvus-assist"}>
-      {cabecalho}
+  return inLayer(
+    <div className={asking ? "corvus-assist is-grill" : "corvus-assist"}>
+      {header}
 
       {}
-      {perguntando && <p className="corvus-assist-ask">{run.pergunta}</p>}
+      {asking && <p className="corvus-assist-ask">{run.question}</p>}
 
       {}
-      {perguntando && !digitando && (
-        <div className="corvus-assist-opcoes">
-          {run.opcoes.map((o) => (
+      {asking && !typing && (
+        <div className="corvus-assist-options">
+          {run.options.map((o) => (
             <button
               key={o}
               type="button"
-              className="corvus-assist-opcao"
-              disabled={ocupado}
-              onClick={() => responder(o, "guiado")}
+              className="corvus-assist-option"
+              disabled={busy}
+              onClick={() => answer(o, "guided")}
             >
               {o}
             </button>
           ))}
           <button
             type="button"
-            className="corvus-assist-opcao is-escrever"
-            disabled={ocupado}
-            onClick={() => setDigitando(true)}
+            className="corvus-assist-option is-write"
+            disabled={busy}
+            onClick={() => setTyping(true)}
           >
             <Icon name="pencil" size={14} />
             <span>{tr("Let me type")}</span>
@@ -249,46 +249,46 @@ export function AssistantPanel({
       )}
 
       {}
-      {(!perguntando || digitando) && (
+      {(!asking || typing) && (
       <div className="corvus-assist-box">
         <textarea
-          ref={campoRef}
-          className="corvus-assist-campo"
-          value={texto}
-          rows={perguntando ? 2 : 3}
+          ref={fieldRef}
+          className="corvus-assist-field"
+          value={text}
+          rows={asking ? 2 : 3}
           placeholder={
-            perguntando ? tr("Or say it your way…") : tr(EXEMPLO[para])
+            asking ? tr("Or say it your way…") : tr(PLACEHOLDER[target])
           }
-          aria-label={perguntando ? run.pergunta : tr(CONVITE[para])}
-          disabled={ocupado}
-          onChange={(e) => setTexto(e.currentTarget.value)}
+          aria-label={asking ? run.question : tr(PROMPT_LABEL[target])}
+          disabled={busy}
+          onChange={(e) => setText(e.currentTarget.value)}
         />
-        <div className="corvus-assist-acoes">
+        <div className="corvus-assist-actions">
           {}
-          {ocupado ? (
-            <ThinkingInline since={run.inicio} />
+          {busy ? (
+            <ThinkingInline since={run.startedAt} />
           ) : (
             <>
               {}
-              {!perguntando && !partirDoVazio && (
+              {!asking && !startsEmpty && (
                 <button
                   type="button"
-                  className="corvus-assist-guiado"
-                  disabled={!texto.trim()}
-                  onClick={() => responder(texto, "guiado")}
+                  className="corvus-assist-guided"
+                  disabled={!text.trim()}
+                  onClick={() => answer(text, "guided")}
                 >
                   <Icon name="message-circle-question" size={15} />
                   <span>{tr("Grill me")}</span>
                 </button>
               )}
               {}
-              {digitando && (
+              {typing && (
                 <button
                   type="button"
-                  className="corvus-assist-guiado"
+                  className="corvus-assist-guided"
                   onClick={() => {
-                    setDigitando(false);
-                    setTexto("");
+                    setTyping(false);
+                    setText("");
                   }}
                 >
                   <Icon name="chevron-left" size={15} />
@@ -298,13 +298,13 @@ export function AssistantPanel({
               <button
                 type="button"
                 className="corvus-assist-cta"
-                disabled={!texto.trim() && !partirDoVazio && !perguntando}
+                disabled={!text.trim() && !startsEmpty && !asking}
                 onClick={() =>
-                  responder(texto, perguntando ? "guiado" : "direto")
+                  answer(text, asking ? "guided" : "direct")
                 }
               >
                 <Icon name="sparkles" size={16} />
-                <span>{perguntando ? tr("Send") : tr(VERBO[para])}</span>
+                <span>{asking ? tr("Send") : tr(ACTION_LABEL[target])}</span>
               </button>
             </>
           )}
@@ -313,17 +313,17 @@ export function AssistantPanel({
       )}
 
       {}
-      {ocupado && (
+      {busy && (
         <p className="corvus-assist-note">
           <Icon name="check" size={14} />
           <span>{tr("You can close this — it keeps writing.")}</span>
         </p>
       )}
 
-      {run.fase === "erro" && (
-        <p className="corvus-assist-erro" role="status">
+      {run.phase === "error" && (
+        <p className="corvus-assist-error" role="status">
           <Icon name="info" size={14} />
-          <span>{run.erro}</span>
+          <span>{run.error}</span>
         </p>
       )}
     </div>
@@ -332,56 +332,56 @@ export function AssistantPanel({
 
 function AssistantSpark({
   onClick,
-  titulo = tr("Write it for me"),
-  ocupado,
+  title: title = tr("Write it for me"),
+  busy,
 }: {
   onClick: () => void;
-  titulo?: string;
+  title?: string;
 
-  ocupado?: boolean;
+  busy?: boolean;
 }) {
-  const rotulo = ocupado ? tr("{title} — writing…", { title: titulo }) : titulo;
+  const label = busy ? tr("{title} — writing…", { title }) : title;
   return (
     <button
       type="button"
-      className={ocupado ? "corvus-assist-spark is-busy" : "corvus-assist-spark"}
-      aria-label={rotulo}
-      title={rotulo}
+      className={busy ? "corvus-assist-spark is-busy" : "corvus-assist-spark"}
+      aria-label={label}
+      title={label}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
       {}
-      {ocupado ? <ThinkingGlyph /> : <Icon name="sparkles" size={16} />}
+      {busy ? <ThinkingGlyph /> : <Icon name="sparkles" size={16} />}
     </button>
   );
 }
 
-export function ComAssistente({
+export function WithAssistant({
   children,
-  aberto,
-  onAbrir,
-  painel,
-  ocupado,
-  titulo,
+  open,
+  onOpen,
+  panel,
+  busy,
+  title,
 }: {
   children: ReactNode;
-  aberto: boolean;
-  onAbrir: () => void;
+  open: boolean;
+  onOpen: () => void;
 
-  painel: ReactNode;
-  ocupado?: boolean;
+  panel: ReactNode;
+  busy?: boolean;
 
-  titulo?: string;
+  title?: string;
 }) {
   return (
     <>
       <span className="corvus-spark-wrap">
         {children}
-        {!aberto && (
-          <AssistantSpark onClick={onAbrir} ocupado={ocupado} titulo={titulo} />
+        {!open && (
+          <AssistantSpark onClick={onOpen} busy={busy} title={title} />
         )}
       </span>
-      {aberto && painel}
+      {open && panel}
     </>
   );
 }

@@ -11,7 +11,7 @@ Rules for every answer:
 - Be concrete. Never invent a file, folder or note that was not given to you.`;
 }
 
-const SOBRE_SKILL = `A SKILL in Corvus is a saved prompt. Tapping it drops its
+const ABOUT_SKILL = `A SKILL in Corvus is a saved prompt. Tapping it drops its
 text into the composer, ready to send — it is not an agent, not a macro, not a
 setting. So the body must read as something a person would type, in the first
 person, addressed to the assistant.
@@ -30,7 +30,7 @@ Fields:
 - "body": the prompt itself. Several lines is fine. Ask for the shape of the
   answer when the shape matters (a list, a table, three bullets).`;
 
-const SOBRE_PROJETO = `A PROJECT in Corvus groups chats around one subject, and
+const ABOUT_PROJECT = `A PROJECT in Corvus groups chats around one subject, and
 carries two things into every new chat started inside it: its source notes and
 its custom instructions.
 
@@ -48,11 +48,11 @@ Fields:
   given below. Only notes that clearly belong to this subject — three right
   ones beat ten plausible ones. Empty array if none fit or no list was given.`;
 
-const DIRETO = `Return: {"draft": { ...the fields... }}
+const DIRECT = `Return: {"draft": { ...the fields... }}
 Do not ask questions. Fill everything from what you were told; where you are
 unsure, make the most useful reasonable choice.`;
 
-const GUIADO = `You may ask up to 3 short questions before writing, one at a
+const GUIDED = `You may ask up to 3 short questions before writing, one at a
 time, and only when the answer would genuinely change what you write.
 
 To ask: {"ask": "your question", "options": ["...", "...", "..."]}
@@ -68,61 +68,61 @@ When you have enough (or after 3 questions): {"draft": { ...the fields... }}
 Ask about the person's purpose and habits, never about the fields themselves —
 they will review and edit everything afterwards.`;
 
-export type ModoAssistente = "direto" | "guiado";
+export type AssistantMode = "direct" | "guided";
 
-function listas(rotulo: string, itens: readonly string[]): string {
-  return `Allowed ${rotulo}: ${itens.join(", ")}.`;
+function allowedList(label: string, items: readonly string[]): string {
+  return `Allowed ${label}: ${items.join(", ")}.`;
 }
 
 export function promptSkill(
-  modo: ModoAssistente,
-  icones: readonly string[],
-  cores: readonly string[]
+  mode: AssistantMode,
+  icons: readonly string[],
+  colors: readonly string[]
 ): string {
   return [
     base(),
-    SOBRE_SKILL,
-    listas("icon names", icones),
-    listas("color values", cores),
-    modo === "direto" ? DIRETO : GUIADO,
+    ABOUT_SKILL,
+    allowedList("icon names", icons),
+    allowedList("color values", colors),
+    mode === "direct" ? DIRECT : GUIDED,
   ].join("\n\n");
 }
 
-export function promptProjeto(
-  modo: ModoAssistente,
-  icones: readonly string[],
-  cores: readonly string[],
+export function promptProject(
+  mode: AssistantMode,
+  icons: readonly string[],
+  colors: readonly string[],
 
-  notas: readonly string[]
+  notes: readonly string[]
 ): string {
-  const partes = [
+  const parts = [
     base(),
-    SOBRE_PROJETO,
-    listas("icon names", icones),
-    listas("color values", cores),
+    ABOUT_PROJECT,
+    allowedList("icon names", icons),
+    allowedList("color values", colors),
   ];
 
-  if (notas.length)
-    partes.push(
-      `Notes in this vault (use these exact paths, or none):\n${notas
+  if (notes.length)
+    parts.push(
+      `Notes in this vault (use these exact paths, or none):\n${notes
         .map((n) => `- ${n}`)
         .join("\n")}`
     );
   else
-    partes.push(
+    parts.push(
       `You have NOT been given the vault's notes. Return "notes": [].`
     );
-  partes.push(modo === "direto" ? DIRETO : GUIADO);
-  return partes.join("\n\n");
+  parts.push(mode === "direct" ? DIRECT : GUIDED);
+  return parts.join("\n\n");
 }
 
-export const TETO_NOTAS = 300;
+export const MAX_VAULT_NOTES = 300;
 
-const UM_CAMPO = `Return: {"text": "..."} with the field's content and nothing
+const SINGLE_FIELD = `Return: {"text": "..."} with the field's content and nothing
 else. You may return {"ask": "..."} instead if one thing genuinely needs
 clarifying first — but only if the answer would really change what you write.`;
 
-export function promptDescricao(ctx: {
+export function promptDescription(ctx: {
   name: string;
   body: string;
 }): string {
@@ -134,16 +134,16 @@ mean something. Under 80 characters. Do not repeat the name. Do not start with
 "This skill".`,
     `Skill name: ${ctx.name || "(not named yet)"}`,
     `Its prompt:\n${ctx.body || "(empty)"}`,
-    UM_CAMPO,
+    SINGLE_FIELD,
   ].join("\n\n");
 }
 
-export function promptInstrucoes(ctx: {
+export function promptInstructions(ctx: {
   name: string;
   notes: readonly string[];
-  atual: string;
+  current: string;
 }): string {
-  const partes = [
+  const parts = [
     base(),
     `Write the CUSTOM INSTRUCTIONS of a project: what the model should know in
 every chat started inside it.
@@ -156,29 +156,29 @@ want to be answered. A few plain sentences, not a bulleted spec.`,
     `Project: ${ctx.name || "(not named yet)"}`,
   ];
   if (ctx.notes.length)
-    partes.push(
+    parts.push(
       `Notes already attached as its sources:\n${ctx.notes
         .map((n) => `- ${n}`)
         .join("\n")}`
     );
 
-  if (ctx.atual.trim())
-    partes.push(
-      `What is written there now — improve on it, keep what is worth keeping:\n${ctx.atual}`
+  if (ctx.current.trim())
+    parts.push(
+      `What is written there now — improve on it, keep what is worth keeping:\n${ctx.current}`
     );
-  partes.push(UM_CAMPO);
-  return partes.join("\n\n");
+  parts.push(SINGLE_FIELD);
+  return parts.join("\n\n");
 }
 
-export function promptNotas(ctx: {
+export function promptNotes(ctx: {
   name: string;
   instructions: string;
-  escolhidas: readonly string[];
-  caminhos: readonly string[];
+  picked: readonly string[];
+  paths: readonly string[];
 }): string {
-  const partes = [
+  const parts = [
     base(),
-    SOBRE_PROJETO,
+    ABOUT_PROJECT,
     `Pick the notes from this vault that this project should KNOW — they are
 attached as its sources and go in as context on every chat started inside it.
 Choose by what the path says: folder, title, date. Prefer fewer, clearly
@@ -186,21 +186,21 @@ relevant notes over many loosely related ones. If nothing fits, return none.`,
     `Project: ${ctx.name || "(not named yet)"}`,
   ];
   if (ctx.instructions.trim())
-    partes.push(`Its instructions:\n${ctx.instructions.trim()}`);
-  if (ctx.escolhidas.length)
-    partes.push(
-      `Already attached — do NOT return these again:\n${ctx.escolhidas
+    parts.push(`Its instructions:\n${ctx.instructions.trim()}`);
+  if (ctx.picked.length)
+    parts.push(
+      `Already attached — do NOT return these again:\n${ctx.picked
         .map((n) => `- ${n}`)
         .join("\n")}`
     );
-  partes.push(
-    `Notes in this vault (use these exact paths, or none):\n${ctx.caminhos
+  parts.push(
+    `Notes in this vault (use these exact paths, or none):\n${ctx.paths
       .map((n) => `- ${n}`)
       .join("\n")}`
   );
-  partes.push(
+  parts.push(
     `Return: {"notes": ["exact/path.md", ...]} — at most 10 paths, copied
 exactly from the list above, and nothing else.`
   );
-  return partes.join("\n\n");
+  return parts.join("\n\n");
 }

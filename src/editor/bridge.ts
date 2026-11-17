@@ -1,28 +1,28 @@
-export type PedidoDoEditor =
+export type EditorRequest =
 
-  | { tipo: "nota"; path: string; enviar?: string }
+  | { kind: "note"; path: string; send?: string }
 
-  | { tipo: "trecho"; path: string; texto: string };
+  | { kind: "selection"; path: string; text: string };
 
-type Ouvinte = (p: PedidoDoEditor) => void;
+type RequestListener = (p: EditorRequest) => void;
 
-let ouvinte: Ouvinte | null = null;
-const fila: PedidoDoEditor[] = [];
+let listener: RequestListener | null = null;
+const queue: EditorRequest[] = [];
 
-export function pedirAoPainel(p: PedidoDoEditor): void {
-  if (ouvinte) ouvinte(p);
-  else fila.push(p);
+export function sendToPanel(p: EditorRequest): void {
+  if (listener) listener(p);
+  else queue.push(p);
 }
 
-export function ouvirPedidos(fn: Ouvinte): () => void {
-  ouvinte = fn;
-  while (fila.length > 0) fn(fila.shift() as PedidoDoEditor);
+export function listenForRequests(fn: RequestListener): () => void {
+  listener = fn;
+  while (queue.length > 0) fn(queue.shift() as EditorRequest);
   return () => {
-    if (ouvinte === fn) ouvinte = null;
+    if (listener === fn) listener = null;
   };
 }
 
-export function esquecerPedidos(): void {
-  ouvinte = null;
-  fila.length = 0;
+export function clearRequests(): void {
+  listener = null;
+  queue.length = 0;
 }

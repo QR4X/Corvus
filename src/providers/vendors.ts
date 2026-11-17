@@ -1,8 +1,8 @@
 import { tr } from "../i18n/tr";
 
-export const PROVIDERS_MULTI_FABRICANTE = new Set(["openrouter", "nim"]);
+export const MULTI_VENDOR_PROVIDERS = new Set(["openrouter", "nim"]);
 
-const APELIDOS: Record<string, string> = {
+const ALIASES: Record<string, string> = {
   "meta-llama": "meta",
   "deepseek-ai": "deepseek",
   mistralai: "mistral",
@@ -16,7 +16,7 @@ const APELIDOS: Record<string, string> = {
   "google-deepmind": "google",
 };
 
-const NOMES: Record<string, string> = {
+const NAMES: Record<string, string> = {
   openrouter: "OpenRouter",
   openai: "OpenAI",
   anthropic: "Anthropic",
@@ -65,7 +65,7 @@ const NOMES: Record<string, string> = {
   thinkingmachines: "Thinking Machines",
 };
 
-const ORDEM = [
+const ORDER = [
   "openrouter",
   "openai",
   "anthropic",
@@ -85,14 +85,14 @@ const ORDEM = [
   "ibm",
 ];
 
-export interface Fabricante {
+export interface Vendor {
 
-  chave: string;
+  key: string;
 
-  nome: string;
+  name: string;
 }
 
-function titulo(slug: string): string {
+function titleCase(slug: string): string {
   return slug
     .split(/[-_]/)
     .filter(Boolean)
@@ -100,23 +100,23 @@ function titulo(slug: string): string {
     .join(" ");
 }
 
-export function fabricante(id: string): Fabricante {
+export function modelVendor(id: string): Vendor {
   const s = (id || "").trim().toLowerCase();
-  const barra = s.indexOf("/");
-  if (barra <= 0) return { chave: "", nome: tr("Other") };
-  const cru = s.slice(0, barra).replace(/^~/, "");
-  const chave = APELIDOS[cru] ?? cru;
-  return { chave, nome: NOMES[chave] ?? titulo(chave) };
+  const slash = s.indexOf("/");
+  if (slash <= 0) return { key: "", name: tr("Other") };
+  const raw = s.slice(0, slash).replace(/^~/, "");
+  const key = ALIASES[raw] ?? raw;
+  return { key, name: NAMES[key] ?? titleCase(key) };
 }
 
-export function compararFabricantes(a: Fabricante, b: Fabricante): number {
-  if (!a.chave !== !b.chave) return a.chave ? -1 : 1;
-  const ia = ORDEM.indexOf(a.chave);
-  const ib = ORDEM.indexOf(b.chave);
+export function compareVendors(a: Vendor, b: Vendor): number {
+  if (!a.key !== !b.key) return a.key ? -1 : 1;
+  const ia = ORDER.indexOf(a.key);
+  const ib = ORDER.indexOf(b.key);
   if (ia !== ib) {
     if (ia < 0) return 1;
     if (ib < 0) return -1;
     return ia - ib;
   }
-  return a.nome.localeCompare(b.nome);
+  return a.name.localeCompare(b.name);
 }

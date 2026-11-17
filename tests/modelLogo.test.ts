@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { modelLogo, vendorDoModelo } from "../src/providers/modelLogo";
+import { modelLogo, vendorSlug } from "../src/providers/modelLogo";
 import { getModelFamily } from "../src/providers/modelFamily";
 
 describe("vendorDoModelo", () => {
   it("lê o prefixo", () => {
-    expect(vendorDoModelo("anthropic/claude-3.5-sonnet")).toBe("anthropic");
-    expect(vendorDoModelo("Meta-Llama/Llama-3.3")).toBe("meta-llama");
+    expect(vendorSlug("anthropic/claude-3.5-sonnet")).toBe("anthropic");
+    expect(vendorSlug("Meta-Llama/Llama-3.3")).toBe("meta-llama");
   });
 
   it("id sem fabricante devolve vazio", () => {
-    expect(vendorDoModelo("gpt-5")).toBe("");
-    expect(vendorDoModelo("")).toBe("");
+    expect(vendorSlug("gpt-5")).toBe("");
+    expect(vendorSlug("")).toBe("");
   });
 });
 

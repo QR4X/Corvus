@@ -4,7 +4,8 @@ import { useChatStore } from "./src/store/chat";
 import { registerBrandLogos } from "./src/ui/brandLogos";
 import type { ChatSession } from "./src/core/session";
 import type CorvusPlugin from "./src/main";
-import { vaultAtivo } from "./src/core/vaultContext";
+import { vaultEnabled } from "./src/core/vaultContext";
+import { providerCredential } from "./src/core/providersMeta";
 import { loadSkills } from "./src/skills/skills";
 import { TFile } from "obsidian";
 
@@ -420,7 +421,7 @@ const session = {
       mode: m,
       effort,
 
-      vault: vaultAtivo(m, vaultEscolha),
+      vault: vaultEnabled(m, vaultEscolha),
       locked: st.sessionProvider !== null,
     };
   },
@@ -455,7 +456,7 @@ const session = {
 
   send: async (text: string) => {
     const st = useChatStore.getState();
-    if (!plugin.providerCredential(provider)) {
+    if (!providerCredential(plugin.settings, provider)) {
       st.addMessage({
         type: "ai-response",
         content: "Corvus: no API key configured for this provider.",

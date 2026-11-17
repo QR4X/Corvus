@@ -1,5 +1,5 @@
 import { TFile, TFolder, type App, parseYaml, normalizePath } from "obsidian";
-import { texto } from "../core/text";
+import { asText } from "../core/text";
 import { SKILLS_FOLDER } from "../core/vaultPaths";
 
 export interface Skill {
@@ -38,15 +38,15 @@ function parseSkillFile(
   body = body.trim();
   if (!body) return null;
   const base = (path.replace(/\.md$/i, "").split("/").pop() ?? path).trim();
-  const name = texto(fm.name) || base;
+  const name = asText(fm.name) || base;
   return {
     id: "skill-" + base.toLowerCase().replace(/[^\w-]+/g, "-"),
     name,
-    description: texto(fm.description),
-    icon: texto(fm.icon) || "sparkles",
+    description: asText(fm.description),
+    icon: asText(fm.icon) || "sparkles",
 
-    color: texto(fm.color) || "default",
-    mode: texto(fm.mode) || undefined,
+    color: asText(fm.color) || "default",
+    mode: asText(fm.mode) || undefined,
     body,
     path,
     mtime,
@@ -69,18 +69,18 @@ export async function loadSkills(
 ): Promise<Skill[]> {
 
   const prefix = skillsFolderPrefix(folderPath);
-  const raiz = app.vault.getAbstractFileByPath(prefix.replace(/\/$/, ""));
-  if (!(raiz instanceof TFolder)) return [];
+  const root = app.vault.getAbstractFileByPath(prefix.replace(/\/$/, ""));
+  if (!(root instanceof TFolder)) return [];
   const files: TFile[] = [];
-  const desce = (pasta: TFolder): void => {
-    for (const filho of pasta.children) {
-      if (filho instanceof TFolder) desce(filho);
-      else if (filho instanceof TFile && filho.extension === "md") {
-        files.push(filho);
+  const walk = (folder: TFolder): void => {
+    for (const child of folder.children) {
+      if (child instanceof TFolder) walk(child);
+      else if (child instanceof TFile && child.extension === "md") {
+        files.push(child);
       }
     }
   };
-  desce(raiz);
+  walk(root);
   files.sort((a, b) => a.path.localeCompare(b.path));
   const skills: Skill[] = [];
 

@@ -201,11 +201,11 @@ export class ProviderError extends Error {
 
 export interface KeyStatus {
 
-  gratis?: { limite: number; usados?: number; restantes?: number };
+  free?: { limit: number; used?: number; remaining?: number };
 
-  creditoRestante?: number | null;
+  creditRemaining?: number | null;
 
-  creditoVolta?: string;
+  creditResetsAt?: string;
 
-  gastoHoje?: number;
+  spentToday?: number;
 }

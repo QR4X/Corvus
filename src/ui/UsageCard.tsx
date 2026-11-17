@@ -8,17 +8,17 @@ import { Icon } from "./Icon";
 import { providerIcon } from "../core/providersMeta";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { RagLine } from "./RagLine";
-import { heatmapDoMes, inicioDoMes, type Celula } from "../usage/heatmap";
+import { monthHeatmap, monthStart, type HeatCell } from "../usage/heatmap";
 import {
-  diasAtivos,
-  modelosMaisUsados,
-  sequenciaDeDias,
-  trabalhoDoPeriodo,
-  type ModeloUsado,
+  activeDays,
+  topModels,
+  dayStreak,
+  periodWork,
+  type ModelUsage,
 } from "../usage/activity";
 import { tr } from "../i18n/tr";
 
-const MODELOS = 3;
+const TOP_MODELS = 3;
 
 export function UsageCard({
   plugin,
@@ -30,17 +30,17 @@ export function UsageCard({
 
   onOpen: () => void;
 }) {
-  const mapa = heatmapDoMes(chats);
+  const heatmap = monthHeatmap(chats);
 
-  const desde = inicioDoMes();
-  const doMes = chats.filter((c) => (c.date ?? "").slice(0, 10) >= desde);
-  const agg = aggregateFromSummaries(doMes, 0);
+  const since = monthStart();
+  const monthChats = chats.filter((c) => (c.date ?? "").slice(0, 10) >= since);
+  const agg = aggregateFromSummaries(monthChats, 0);
 
-  const modelos = modelosMaisUsados(chats, desde, MODELOS);
+  const models = topModels(chats, since, TOP_MODELS);
 
-  const sequencia = sequenciaDeDias(chats);
-  const ativos = diasAtivos(mapa.celulas);
-  const trabalho = trabalhoDoPeriodo(chats, desde);
+  const streak = dayStreak(chats);
+  const days = activeDays(heatmap.cells);
+  const work = periodWork(chats, since);
 
   return (
 
@@ -48,7 +48,7 @@ export function UsageCard({
       className="corvus-usage is-clickable"
       role="button"
       tabIndex={0}
-      aria-label={tr("Usage in {month} — open details", { month: mapa.rotulo })}
+      aria-label={tr("Usage in {month} — open details", { month: heatmap.label })}
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -59,7 +59,7 @@ export function UsageCard({
     >
       <div className="corvus-usage-line">
         <span className="corvus-usage-meta">
-          <span className="corvus-usage-big">{formatCompact(mapa.total)}</span>
+          <span className="corvus-usage-big">{formatCompact(heatmap.total)}</span>
           <span className="corvus-usage-unit">{tr("tokens")}</span>
           <span className="corvus-usage-sep">·</span>
           {agg.total.chats === 1 ? tr("1 chat") : tr("{n} chats", { n: agg.total.chats })}
@@ -79,16 +79,16 @@ export function UsageCard({
           )}
         </span>
         {}
-        <span className="corvus-usage-month">{mapa.rotulo}</span>
+        <span className="corvus-usage-month">{heatmap.label}</span>
       </div>
 
       {}
       <div className="corvus-usage-mid">
-        <Calendario celulas={mapa.celulas} pico={mapa.pico} />
-        {modelos.length > 0 && (
+        <HeatCalendar cells={heatmap.cells} peak={heatmap.peak} />
+        {models.length > 0 && (
           <div className="corvus-models">
-            {modelos.map((m) => (
-              <LinhaDeModelo key={m.model} m={m} />
+            {models.map((m) => (
+              <TopModelRow key={m.model} m={m} />
             ))}
           </div>
         )}
@@ -96,29 +96,29 @@ export function UsageCard({
 
       <div className="corvus-mods">
         {}
-        <Modulo
-          rotulo={tr("Streak")}
-          valor={sequencia > 0 ? String(sequencia) : "—"}
-          unidade={sequencia === 1 ? tr("day") : tr("days")}
+        <Stat
+          label={tr("Streak")}
+          value={streak > 0 ? String(streak) : "—"}
+          unit={streak === 1 ? tr("day") : tr("days")}
         />
         {}
-        <Modulo
-          rotulo={tr("Active")}
-          valor={String(ativos.ativos)}
-          unidade={tr("of {n}", { n: ativos.total })}
+        <Stat
+          label={tr("Active")}
+          value={String(days.active)}
+          unit={tr("of {n}", { n: days.total })}
         />
         {}
-        {trabalho.acoes > 0 ? (
-          <Modulo
-            rotulo={tr("Actions")}
-            valor={formatCompact(trabalho.acoes)}
-            unidade={tr("in vault")}
+        {work.actions > 0 ? (
+          <Stat
+            label={tr("Actions")}
+            value={formatCompact(work.actions)}
+            unit={tr("in vault")}
           />
         ) : (
-          <Modulo
-            rotulo={tr("Messages")}
-            valor={formatCompact(trabalho.mensagens)}
-            unidade={tr("sent")}
+          <Stat
+            label={tr("Messages")}
+            value={formatCompact(work.messages)}
+            unit={tr("sent")}
           />
         )}
       </div>
@@ -135,26 +135,26 @@ export function UsageCard({
   );
 }
 
-function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
+function HeatCalendar({ cells, peak }: { cells: HeatCell[]; peak: number }) {
   return (
     <div
       className="corvus-heat"
       role="img"
-      aria-label={tr("Daily usage this month, busiest day {n} tokens", { n: formatCompact(pico) })}
+      aria-label={tr("Daily usage this month, busiest day {n} tokens", { n: formatCompact(peak) })}
     >
-      {celulas.map((c, i) => (
+      {cells.map((c, i) => (
         <span
           key={i}
           className={
-            c.dia
-              ? `corvus-heat-cell is-${c.nivel}`
-              : c.futuro
+            c.day
+              ? `corvus-heat-cell is-${c.level}`
+              : c.future
                 ? "corvus-heat-cell is-future"
                 : "corvus-heat-cell is-void"
           }
 
           title={
-            c.dia ? tr("{day} · {n} tokens", { day: c.dia, n: formatCompact(c.tokens) }) : undefined
+            c.day ? tr("{day} · {n} tokens", { day: c.day, n: formatCompact(c.tokens) }) : undefined
           }
         />
       ))}
@@ -162,7 +162,7 @@ function Calendario({ celulas, pico }: { celulas: Celula[]; pico: number }) {
   );
 }
 
-function LinhaDeModelo({ m }: { m: ModeloUsado }) {
+function TopModelRow({ m }: { m: ModelUsage }) {
   return (
     <div className="corvus-model-row" title={tr("{n} tokens", { n: formatCompact(m.tokens) })}>
       <span
@@ -178,21 +178,21 @@ function LinhaDeModelo({ m }: { m: ModeloUsado }) {
   );
 }
 
-function Modulo({
-  rotulo,
-  valor,
-  unidade,
+function Stat({
+  label,
+  value,
+  unit,
 }: {
-  rotulo: string;
-  valor: string;
-  unidade: string;
+  label: string;
+  value: string;
+  unit: string;
 }) {
   return (
     <div className="corvus-mod">
-      <span className="corvus-mod-title">{rotulo}</span>
+      <span className="corvus-mod-title">{label}</span>
       <span className="corvus-mod-row">
-        <span className="corvus-mod-value">{valor}</span>
-        <span className="corvus-mod-unit">{unidade}</span>
+        <span className="corvus-mod-value">{value}</span>
+        <span className="corvus-mod-unit">{unit}</span>
       </span>
     </div>
   );

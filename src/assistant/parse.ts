@@ -1,22 +1,22 @@
 import { CHAT_MODES } from "../core/session";
 import { tr } from "../i18n/tr";
 
-export function recortarJson(bruto: string): string | null {
-  const texto = (bruto || "").trim();
-  if (!texto) return null;
+export function extractJson(raw: string): string | null {
+  const text = (raw || "").trim();
+  if (!text) return null;
 
-  const semCerca = texto.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
-  const abre = semCerca.indexOf("{");
-  const fecha = semCerca.lastIndexOf("}");
-  if (abre < 0 || fecha <= abre) return null;
-  return semCerca.slice(abre, fecha + 1);
+  const unfenced = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const open = unfenced.indexOf("{");
+  const close = unfenced.lastIndexOf("}");
+  if (open < 0 || close <= open) return null;
+  return unfenced.slice(open, close + 1);
 }
 
-export function lerObjeto(bruto: string): Record<string, unknown> | null {
-  const recorte = recortarJson(bruto);
-  if (!recorte) return null;
+export function parseObject(raw: string): Record<string, unknown> | null {
+  const json = extractJson(raw);
+  if (!json) return null;
   try {
-    const v = JSON.parse(recorte) as unknown;
+    const v = JSON.parse(json) as unknown;
     return v && typeof v === "object" && !Array.isArray(v)
       ? (v as Record<string, unknown>)
       : null;
@@ -25,20 +25,20 @@ export function lerObjeto(bruto: string): Record<string, unknown> | null {
   }
 }
 
-function texto(v: unknown, teto: number): string {
+function cleanText(v: unknown, max: number): string {
   if (typeof v !== "string") return "";
   return v
     .replace(/^```(?:\w+)?\s*/i, "")
     .replace(/```\s*$/, "")
     .trim()
-    .slice(0, teto);
+    .slice(0, max);
 }
 
-function daLista(v: unknown, lista: readonly string[], padrao: string): string {
-  return typeof v === "string" && lista.includes(v) ? v : padrao;
+function oneOf(v: unknown, allowed: readonly string[], fallback: string): string {
+  return typeof v === "string" && allowed.includes(v) ? v : fallback;
 }
 
-export interface SkillSugerido {
+export interface SuggestedSkill {
   name: string;
   description: string;
   icon: string;
@@ -47,7 +47,7 @@ export interface SkillSugerido {
   body: string;
 }
 
-export interface ProjetoSugerido {
+export interface SuggestedProject {
   name: string;
   icon: string;
   color: string;
@@ -56,85 +56,85 @@ export interface ProjetoSugerido {
   notes: string[];
 }
 
-export function lerSkill(
+export function parseSkill(
   obj: Record<string, unknown> | null,
-  iconesValidos: readonly string[],
-  iconePadrao: string,
-  coresValidas: readonly string[] = ["default"]
-): SkillSugerido | null {
+  validIcons: readonly string[],
+  defaultIcon: string,
+  validColors: readonly string[] = ["default"]
+): SuggestedSkill | null {
   if (!obj) return null;
-  const body = texto(obj.body, 4000);
+  const body = cleanText(obj.body, 4000);
   if (!body) return null;
   return {
-    name: texto(obj.name, 60) || tr("Untitled skill"),
-    description: texto(obj.description, 140),
-    icon: daLista(obj.icon, iconesValidos, iconePadrao),
-    color: daLista(obj.color, coresValidas, "default"),
+    name: cleanText(obj.name, 60) || tr("Untitled skill"),
+    description: cleanText(obj.description, 140),
+    icon: oneOf(obj.icon, validIcons, defaultIcon),
+    color: oneOf(obj.color, validColors, "default"),
 
-    mode: daLista(obj.mode, ["", ...CHAT_MODES], ""),
+    mode: oneOf(obj.mode, ["", ...CHAT_MODES], ""),
     body,
   };
 }
 
-export function lerProjeto(
+export function parseProject(
   obj: Record<string, unknown> | null,
-  iconesValidos: readonly string[],
-  coresValidas: readonly string[],
-  notasDoVault: readonly string[]
-): ProjetoSugerido | null {
+  validIcons: readonly string[],
+  validColors: readonly string[],
+  vaultNotes: readonly string[]
+): SuggestedProject | null {
   if (!obj) return null;
-  const name = texto(obj.name, 60);
+  const name = cleanText(obj.name, 60);
   if (!name) return null;
-  const notes = notasValidas(obj.notes, notasDoVault);
+  const notes = validNotes(obj.notes, vaultNotes);
   return {
     name,
-    icon: daLista(obj.icon, iconesValidos, iconesValidos[0] ?? "folder"),
-    color: daLista(obj.color, coresValidas, coresValidas[0] ?? "default"),
-    instructions: texto(obj.instructions, 2000),
+    icon: oneOf(obj.icon, validIcons, validIcons[0] ?? "folder"),
+    color: oneOf(obj.color, validColors, validColors[0] ?? "default"),
+    instructions: cleanText(obj.instructions, 2000),
     notes,
   };
 }
 
-function notasValidas(
-  cruas: unknown,
-  notasDoVault: readonly string[],
-  fora: readonly string[] = []
+function validNotes(
+  raw: unknown,
+  vaultNotes: readonly string[],
+  exclude: readonly string[] = []
 ): string[] {
-  const permitidas = new Set(notasDoVault);
-  const jaTem = new Set(fora);
-  return (Array.isArray(cruas) ? cruas : [])
+  const allowed = new Set(vaultNotes);
+  const taken = new Set(exclude);
+  return (Array.isArray(raw) ? raw : [])
     .filter((n): n is string => typeof n === "string")
-    .filter((n) => permitidas.has(n) && !jaTem.has(n))
+    .filter((n) => allowed.has(n) && !taken.has(n))
 
-    .filter((n, i, todas) => todas.indexOf(n) === i)
+    .filter((n, i, all) => all.indexOf(n) === i)
     .slice(0, 10);
 }
 
-export function lerNotas(
+export function parseNotes(
   obj: Record<string, unknown> | null,
-  notasDoVault: readonly string[],
-  jaEscolhidas: readonly string[] = []
+  vaultNotes: readonly string[],
+  alreadyPicked: readonly string[] = []
 ): string[] {
-  return obj ? notasValidas(obj.notes, notasDoVault, jaEscolhidas) : [];
+  return obj ? validNotes(obj.notes, vaultNotes, alreadyPicked) : [];
 }
 
-export function lerTexto(
+export function parseText(
   obj: Record<string, unknown> | null,
-  teto: number
+  max: number
 ): string {
-  return obj ? texto(obj.text, teto) : "";
+  return obj ? cleanText(obj.text, max) : "";
 }
 
-export function lerPergunta(obj: Record<string, unknown> | null): string {
-  return obj ? texto(obj.ask, 200) : "";
+export function parseQuestion(obj: Record<string, unknown> | null): string {
+  return obj ? cleanText(obj.ask, 200) : "";
 }
 
-export function lerOpcoes(obj: Record<string, unknown> | null): string[] {
-  const cruas = obj && Array.isArray(obj.options) ? obj.options : [];
-  return cruas
+export function parseOptions(obj: Record<string, unknown> | null): string[] {
+  const raw = obj && Array.isArray(obj.options) ? obj.options : [];
+  return raw
     .filter((o): o is string => typeof o === "string")
     .map((o) => o.trim().slice(0, 30))
     .filter(Boolean)
-    .filter((o, i, todas) => todas.indexOf(o) === i)
+    .filter((o, i, all) => all.indexOf(o) === i)
     .slice(0, 3);
 }

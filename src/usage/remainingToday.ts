@@ -1,97 +1,97 @@
 import type { KeyStatus } from "../providers/base";
 import { tr } from "../i18n/tr";
-import { geminiTemTierGratis } from "./freeTag";
+import { geminiHasFreeTier } from "./freeTag";
 import { openaiFreeAllowance, openaiFreeTierForModel } from "./freeTokens";
 import {
-  faltaParaVirar,
-  inicioDoDia,
-  modelosDesde,
-  somarDesde,
-  type LivroDoDia,
+  msUntilRollover,
+  startOfDay,
+  modelsSince,
+  sumSince,
+  type DailyLedger,
 } from "./dailyLedger";
-import { gastoDesde } from "./dailySpend";
+import { spendSince } from "./dailySpend";
 
-export const CHAVE_LIMITE_GASTO = "__gasto";
+export const SPEND_LIMIT_KEY = "__spend";
 
-const AI_STUDIO_LIMITES = "https://aistudio.google.com/rate-limit";
+const AI_STUDIO_LIMITS_URL = "https://aistudio.google.com/rate-limit";
 
-const PACIFICO = "America/Los_Angeles";
+const PACIFIC_TIME_ZONE = "America/Los_Angeles";
 
-function chaveDoLimite(provider: string, model: string): string {
+function limitKeyFor(provider: string, model: string): string {
   return `${provider}\u0001${model}`;
 }
 
-type Unidade = "tokens" | "requests" | "usd";
+type GaugeUnit = "tokens" | "requests" | "usd";
 
-export interface Medidor {
+export interface Gauge {
   id: string;
 
-  rotulo: string;
+  label: string;
 
-  modelo?: string;
-  usado: number;
+  model?: string;
+  used: number;
 
-  limite?: number;
+  limit?: number;
 
-  restante?: number;
-  unidade: Unidade;
+  remaining?: number;
+  unit: GaugeUnit;
 
-  fonte: "live" | "local";
+  source: "live" | "local";
 
-  nota?: string;
+  note?: string;
 
-  limiteEditavel?: string;
+  limitKey?: string;
 }
 
-export interface Cartao {
+export interface TodayCard {
   provider: "spend" | "openai" | "gemini" | "openrouter" | "nim";
-  nome: string;
+  name: string;
 
-  viraEm: number | null;
+  resetsIn: number | null;
 
-  viraOnde?: string;
+  resetsAt?: string;
 
-  semDia?: string;
-  medidores: Medidor[];
+  noReset?: string;
+  gauges: Gauge[];
 
-  vazio?: string;
+  empty?: string;
 
-  nota?: string;
+  note?: string;
 
-  link?: { rotulo: string; url: string };
+  link?: { label: string; url: string };
 
-  credito?: { restante: number | null; gastoHoje?: number; volta?: string };
+  credit?: { remaining: number | null; spentToday?: number; resets?: string };
 }
 
-export interface EntradaDoDia {
-  livro: LivroDoDia;
-  agora: Date;
+export interface TodayInput {
+  ledger: DailyLedger;
+  now: Date;
 
-  comChave: (provider: string) => boolean;
+  hasKey: (provider: string) => boolean;
   openai: { dataSharing: boolean; tier: number };
 
-  limites: Record<string, number>;
+  limits: Record<string, number>;
 
-  cotaOpenRouter?: { limit: number; remaining?: number };
+  openRouterQuota?: { limit: number; remaining?: number };
 
-  chaveOpenRouter?: KeyStatus | null;
+  openRouterKeyStatus?: KeyStatus | null;
 
-  fusoLocal?: string;
+  localTimeZone?: string;
 
-  limiteGasto?: number;
+  spendLimit?: number;
 
   blockAtLimit?: boolean;
 }
 
-const sobra = (limite: number | undefined, usado: number): number | undefined =>
-  limite == null ? undefined : Math.max(0, limite - usado);
+const remainingOf = (limit: number | undefined, used: number): number | undefined =>
+  limit == null ? undefined : Math.max(0, limit - used);
 
-function tetoInformado(limites: Record<string, number>, chave: string): number | undefined {
-  const v = limites[chave];
+function userLimit(limits: Record<string, number>, key: string): number | undefined {
+  const v = limits[key];
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined;
 }
 
-function fusoDaMaquina(): string {
+function machineTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
@@ -99,44 +99,44 @@ function fusoDaMaquina(): string {
   }
 }
 
-export function remainingToday(e: EntradaDoDia): Cartao[] {
-  const { livro, agora } = e;
-  const cartoes: Cartao[] = [];
-  const meiaNoiteUtc = inicioDoDia(agora, "UTC");
-  const viraUtc = faltaParaVirar(agora, "UTC");
-  const usouDesde = (provider: string, desde: Date) =>
-    somarDesde(livro, desde, (p) => p === provider).r > 0;
-  const fuso = e.fusoLocal ?? fusoDaMaquina();
-  const meiaNoiteLocal = inicioDoDia(agora, fuso);
+export function remainingToday(e: TodayInput): TodayCard[] {
+  const { ledger, now } = e;
+  const cards: TodayCard[] = [];
+  const utcMidnight = startOfDay(now, "UTC");
+  const utcResetIn = msUntilRollover(now, "UTC");
+  const usedSince = (provider: string, since: Date) =>
+    sumSince(ledger, since, (p) => p === provider).r > 0;
+  const timeZone = e.localTimeZone ?? machineTimeZone();
+  const localMidnight = startOfDay(now, timeZone);
 
-  const gasto = gastoDesde(livro, meiaNoiteLocal);
-  const limiteGasto = e.limiteGasto && e.limiteGasto > 0 ? e.limiteGasto : 0;
-  if (limiteGasto > 0 || gasto.total > 0) {
-    cartoes.push({
+  const spend = spendSince(ledger, localMidnight);
+  const spendLimit = e.spendLimit && e.spendLimit > 0 ? e.spendLimit : 0;
+  if (spendLimit > 0 || spend.total > 0) {
+    cards.push({
       provider: "spend",
-      nome: tr("Paid models"),
-      viraEm: faltaParaVirar(agora, fuso),
-      viraOnde: tr("midnight, your time"),
-      medidores: [
+      name: tr("Paid models"),
+      resetsIn: msUntilRollover(now, timeZone),
+      resetsAt: tr("midnight, your time"),
+      gauges: [
         {
           id: "spend-today",
-          rotulo: tr("Spent today"),
-          usado: gasto.total,
-          limite: limiteGasto || undefined,
-          restante: limiteGasto ? Math.max(0, limiteGasto - gasto.total) : undefined,
-          unidade: "usd",
-          fonte: "local",
-          limiteEditavel: CHAVE_LIMITE_GASTO,
+          label: tr("Spent today"),
+          used: spend.total,
+          limit: spendLimit || undefined,
+          remaining: spendLimit ? Math.max(0, spendLimit - spend.total) : undefined,
+          unit: "usd",
+          source: "local",
+          limitKey: SPEND_LIMIT_KEY,
         },
       ],
-      nota: [
+      note: [
         tr("Counted in this vault from public token prices. Gemini counts at paid prices, so a free-tier project may cost less."),
-        gasto.semPreco > 0
-          ? gasto.semPreco === 1
+        spend.unpriced > 0
+          ? spend.unpriced === 1
             ? tr("1 request on models without a public price isn't included.")
-            : tr("{n} requests on models without a public price aren't included.", { n: gasto.semPreco })
+            : tr("{n} requests on models without a public price aren't included.", { n: spend.unpriced })
           : "",
-        limiteGasto > 0
+        spendLimit > 0
           ? e.blockAtLimit
             ? tr("At the limit, paid models pause until midnight.")
             : tr("At the limit you get a heads-up; turn on “Stop paid models at the limit” in settings to pause them.")
@@ -148,146 +148,146 @@ export function remainingToday(e: EntradaDoDia): Cartao[] {
     });
   }
 
-  if (e.comChave("openai") || usouDesde("openai", meiaNoiteUtc)) {
-    const cota = openaiFreeAllowance(e.openai.tier, e.openai.dataSharing);
-    const base: Cartao = {
+  if (e.hasKey("openai") || usedSince("openai", utcMidnight)) {
+    const allowance = openaiFreeAllowance(e.openai.tier, e.openai.dataSharing);
+    const base: TodayCard = {
       provider: "openai",
-      nome: "OpenAI",
-      viraEm: viraUtc,
-      viraOnde: tr("00:00 UTC"),
-      medidores: [],
+      name: "OpenAI",
+      resetsIn: utcResetIn,
+      resetsAt: tr("00:00 UTC"),
+      gauges: [],
     };
     if (!e.openai.dataSharing) {
-      base.vazio = tr(
+      base.empty = tr(
         "No free tokens to track. If your organization shares API data with OpenAI, turn that on in settings."
       );
-      base.viraEm = null;
-    } else if (!cota.eligible) {
-      base.vazio = tr("Free tokens start at usage tier 1.");
-      base.viraEm = null;
+      base.resetsIn = null;
+    } else if (!allowance.eligible) {
+      base.empty = tr("Free tokens start at usage tier 1.");
+      base.resetsIn = null;
     } else {
-      const balde = (qual: "big" | "mini") => {
-        const s = somarDesde(
-          livro,
-          meiaNoiteUtc,
-          (p, m) => p === "openai" && openaiFreeTierForModel(m) === qual
+      const tierTokens = (tier: "big" | "mini") => {
+        const s = sumSince(
+          ledger,
+          utcMidnight,
+          (p, m) => p === "openai" && openaiFreeTierForModel(m) === tier
         );
         return s.i + s.o;
       };
-      const grandes = balde("big");
-      const minis = balde("mini");
-      base.medidores = [
+      const bigUsed = tierTokens("big");
+      const miniUsed = tierTokens("mini");
+      base.gauges = [
         {
           id: "openai-big",
-          rotulo: tr("Flagship models"),
-          usado: grandes,
-          limite: cota.bigPerDay,
-          restante: sobra(cota.bigPerDay, grandes),
-          unidade: "tokens",
-          fonte: "local",
+          label: tr("Flagship models"),
+          used: bigUsed,
+          limit: allowance.bigPerDay,
+          remaining: remainingOf(allowance.bigPerDay, bigUsed),
+          unit: "tokens",
+          source: "local",
         },
         {
           id: "openai-mini",
-          rotulo: tr("Mini models"),
-          usado: minis,
-          limite: cota.miniPerDay,
-          restante: sobra(cota.miniPerDay, minis),
-          unidade: "tokens",
-          fonte: "local",
+          label: tr("Mini models"),
+          used: miniUsed,
+          limit: allowance.miniPerDay,
+          remaining: remainingOf(allowance.miniPerDay, miniUsed),
+          unit: "tokens",
+          source: "local",
         },
       ];
-      base.nota = tr(
+      base.note = tr(
         "Free daily tokens for sharing API data with OpenAI. Flagship: GPT-5, GPT-4.1, GPT-4o, o1, o3. Mini: their mini and nano versions, and o4-mini. Counted in this vault: other apps on the same OpenAI organization draw from the same quota, so the real number may be lower. Resets at 00:00 UTC."
       );
     }
-    cartoes.push(base);
+    cards.push(base);
   }
 
-  const meiaNoitePacifico = inicioDoDia(agora, PACIFICO);
-  const usadosGemini = modelosDesde(livro, meiaNoitePacifico, "gemini");
-  if (e.comChave("gemini") || usadosGemini.length > 0) {
+  const pacificMidnight = startOfDay(now, PACIFIC_TIME_ZONE);
+  const geminiUsed = modelsSince(ledger, pacificMidnight, "gemini");
+  if (e.hasKey("gemini") || geminiUsed.length > 0) {
 
-    const prefixo = chaveDoLimite("gemini", "");
-    const soComTeto = Object.keys(e.limites)
-      .filter((k) => k.startsWith(prefixo))
-      .map((k) => k.slice(prefixo.length))
-      .filter((m) => m && tetoInformado(e.limites, chaveDoLimite("gemini", m)) != null)
-      .filter((m) => !usadosGemini.some((u) => u.model === m))
+    const prefix = limitKeyFor("gemini", "");
+    const limitOnly = Object.keys(e.limits)
+      .filter((k) => k.startsWith(prefix))
+      .map((k) => k.slice(prefix.length))
+      .filter((m) => m && userLimit(e.limits, limitKeyFor("gemini", m)) != null)
+      .filter((m) => !geminiUsed.some((u) => u.model === m))
       .sort((a, b) => a.localeCompare(b));
-    const modelos = [
-      ...usadosGemini.map((u) => ({ model: u.model, r: u.r })),
-      ...soComTeto.map((model) => ({ model, r: 0 })),
+    const models = [
+      ...geminiUsed.map((u) => ({ model: u.model, r: u.r })),
+      ...limitOnly.map((model) => ({ model, r: 0 })),
     ];
-    cartoes.push({
+    cards.push({
       provider: "gemini",
-      nome: "Gemini",
-      viraEm: faltaParaVirar(agora, PACIFICO),
-      viraOnde: tr("midnight Pacific"),
-      medidores: modelos.map(({ model, r }): Medidor => {
-        const chave = chaveDoLimite("gemini", model);
-        const limite = tetoInformado(e.limites, chave);
+      name: "Gemini",
+      resetsIn: msUntilRollover(now, PACIFIC_TIME_ZONE),
+      resetsAt: tr("midnight Pacific"),
+      gauges: models.map(({ model, r }): Gauge => {
+        const key = limitKeyFor("gemini", model);
+        const limit = userLimit(e.limits, key);
         return {
           id: `gemini:${model}`,
-          rotulo: model,
-          modelo: model,
-          usado: r,
-          limite,
-          restante: sobra(limite, r),
-          unidade: "requests",
-          fonte: "local",
-          limiteEditavel: chave,
-          ...(geminiTemTierGratis(model) ? {} : { nota: tr("Paid only") }),
+          label: model,
+          model,
+          used: r,
+          limit,
+          remaining: remainingOf(limit, r),
+          unit: "requests",
+          source: "local",
+          limitKey: key,
+          ...(geminiHasFreeTier(model) ? {} : { note: tr("Paid only") }),
         };
       }),
-      vazio: modelos.length === 0 ? tr("Nothing used since midnight Pacific.") : undefined,
-      nota: tr(
+      empty: models.length === 0 ? tr("Nothing used since midnight Pacific.") : undefined,
+      note: tr(
         "Requests per day, per model and per Google Cloud project. The free tier only exists on projects without billing, and Google shows its numbers in AI Studio, not in the docs: set each model's limit here to see what's left. Resets at midnight Pacific."
       ),
-      link: { rotulo: tr("Your limits in AI Studio"), url: AI_STUDIO_LIMITES },
+      link: { label: tr("Your limits in AI Studio"), url: AI_STUDIO_LIMITS_URL },
     });
   }
 
-  if (e.comChave("openrouter") || usouDesde("openrouter", meiaNoiteUtc)) {
+  if (e.hasKey("openrouter") || usedSince("openrouter", utcMidnight)) {
 
-    const local = somarDesde(
-      livro,
-      meiaNoiteUtc,
+    const local = sumSince(
+      ledger,
+      utcMidnight,
       (p, m) => p === "openrouter" && m.endsWith(":free")
     ).r;
-    const viva = e.chaveOpenRouter ?? null;
-    const g = viva?.gratis;
-    let medidor: Medidor;
-    if (g && (g.usados != null || g.restantes != null)) {
-      const usado = g.usados ?? Math.max(0, g.limite - (g.restantes ?? g.limite));
-      medidor = {
+    const live = e.openRouterKeyStatus ?? null;
+    const g = live?.free;
+    let gauge: Gauge;
+    if (g && (g.used != null || g.remaining != null)) {
+      const used = g.used ?? Math.max(0, g.limit - (g.remaining ?? g.limit));
+      gauge = {
         id: "openrouter-free",
-        rotulo: tr("Free models"),
-        usado,
-        limite: g.limite,
-        restante: g.restantes ?? sobra(g.limite, usado),
-        unidade: "requests",
-        fonte: "live",
+        label: tr("Free models"),
+        used,
+        limit: g.limit,
+        remaining: g.remaining ?? remainingOf(g.limit, used),
+        unit: "requests",
+        source: "live",
       };
     } else {
-      const limite = g?.limite ?? e.cotaOpenRouter?.limit;
-      medidor = {
+      const limit = g?.limit ?? e.openRouterQuota?.limit;
+      gauge = {
         id: "openrouter-free",
-        rotulo: tr("Free models"),
-        usado: local,
-        limite,
-        restante: sobra(limite, local),
-        unidade: "requests",
-        fonte: "local",
+        label: tr("Free models"),
+        used: local,
+        limit,
+        remaining: remainingOf(limit, local),
+        unit: "requests",
+        source: "local",
       };
     }
-    const cartao: Cartao = {
+    const card: TodayCard = {
       provider: "openrouter",
-      nome: "OpenRouter",
-      viraEm: viraUtc,
-      viraOnde: tr("00:00 UTC"),
-      medidores: [medidor],
-      nota: [
-        medidor.fonte === "live"
+      name: "OpenRouter",
+      resetsIn: utcResetIn,
+      resetsAt: tr("00:00 UTC"),
+      gauges: [gauge],
+      note: [
+        gauge.source === "live"
           ? tr("Counted by OpenRouter for this key, across every app that uses it.")
           : tr("Counted on this device: OpenRouter didn't answer, so other apps using this key aren't included."),
         tr(
@@ -295,42 +295,42 @@ export function remainingToday(e: EntradaDoDia): Cartao[] {
         ),
       ].join(" "),
     };
-    if (viva && (viva.creditoRestante !== undefined || viva.gastoHoje !== undefined)) {
-      cartao.credito = {
-        restante: viva.creditoRestante ?? null,
-        ...(viva.gastoHoje !== undefined ? { gastoHoje: viva.gastoHoje } : {}),
-        ...(viva.creditoVolta ? { volta: viva.creditoVolta } : {}),
+    if (live && (live.creditRemaining !== undefined || live.spentToday !== undefined)) {
+      card.credit = {
+        remaining: live.creditRemaining ?? null,
+        ...(live.spentToday !== undefined ? { spentToday: live.spentToday } : {}),
+        ...(live.creditResetsAt ? { resets: live.creditResetsAt } : {}),
       };
     }
-    cartoes.push(cartao);
+    cards.push(card);
   }
 
-  if (e.comChave("nim") || usouDesde("nim", meiaNoiteLocal)) {
-    const hoje = somarDesde(livro, meiaNoiteLocal, (p) => p === "nim").r;
-    cartoes.push({
+  if (e.hasKey("nim") || usedSince("nim", localMidnight)) {
+    const today = sumSince(ledger, localMidnight, (p) => p === "nim").r;
+    cards.push({
       provider: "nim",
-      nome: "NVIDIA NIM",
-      viraEm: null,
-      semDia: tr("no daily cap"),
-      medidores: [
+      name: "NVIDIA NIM",
+      resetsIn: null,
+      noReset: tr("no daily cap"),
+      gauges: [
         {
           id: "nim-today",
-          rotulo: tr("All models"),
-          usado: hoje,
-          unidade: "requests",
-          fonte: "local",
+          label: tr("All models"),
+          used: today,
+          unit: "requests",
+          source: "local",
         },
       ],
-      nota: tr(
+      note: tr(
         "Free endpoints allow 40 requests a minute. NVIDIA publishes no daily cap, so this is just what you used today (your local day)."
       ),
     });
   }
 
-  return cartoes;
+  return cards;
 }
 
-export function emQuanto(ms: number): string {
+export function shortDuration(ms: number): string {
   const min = Math.floor(ms / 60_000);
   if (min < 1) return "<1m";
   const h = Math.floor(min / 60);
@@ -339,14 +339,14 @@ export function emQuanto(ms: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-export function fracaoQueSobra(m: Medidor): number | null {
-  if (m.limite == null || m.limite <= 0 || m.restante == null) return null;
-  return Math.max(0, Math.min(1, m.restante / m.limite));
+export function remainingFraction(m: Gauge): number | null {
+  if (m.limit == null || m.limit <= 0 || m.remaining == null) return null;
+  return Math.max(0, Math.min(1, m.remaining / m.limit));
 }
 
-export function nivel(m: Medidor): "ok" | "baixo" | "fim" | null {
-  const f = fracaoQueSobra(m);
+export function gaugeLevel(m: Gauge): "ok" | "low" | "depleted" | null {
+  const f = remainingFraction(m);
   if (f == null) return null;
-  if (m.restante === 0) return "fim";
-  return f <= 0.1 ? "baixo" : "ok";
+  if (m.remaining === 0) return "depleted";
+  return f <= 0.1 ? "low" : "ok";
 }

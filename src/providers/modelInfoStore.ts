@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { ehGratisNoOpenRouter } from "./openrouterFree";
+import { isFreeOnOpenRouter } from "./openrouterFree";
 
 interface EnrichedModelInfo {
 
@@ -164,9 +164,9 @@ function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
   const output = perMillion(raw.pricing?.completion);
   const imgRaw = parseFloat(raw.pricing?.image ?? "");
 
-  const gratis =
+  const isFree =
     typeof raw.id === "string" &&
-    ehGratisNoOpenRouter({
+    isFreeOnOpenRouter({
       id: raw.id,
       pricing: raw.pricing,
       architecture: raw.architecture,
@@ -174,7 +174,7 @@ function toEnriched(raw: OpenRouterModel): EnrichedModelInfo {
     });
   const tier: "free" | "paid" | "unknown" =
     input === 0 && output === 0
-      ? gratis
+      ? isFree
         ? "free"
         : "unknown"
       : input === null || output === null
@@ -209,7 +209,7 @@ export function recordModelInfo(
   CACHE[cacheKey(provider, model)] = info;
 }
 
-function gravarDoCatalogo(
+function recordFromCatalog(
   catalog: OpenRouterModel[],
   provider: string,
   model: string
@@ -227,17 +227,17 @@ export async function enrichModelsFromCatalog(
   models: readonly string[]
 ): Promise<number> {
 
-  const faltando = models.filter((m) => m && !CACHE[cacheKey(provider, m)]);
-  if (faltando.length === 0) return 0;
+  const missing = models.filter((m) => m && !CACHE[cacheKey(provider, m)]);
+  if (missing.length === 0) return 0;
   let catalog: OpenRouterModel[];
   try {
     catalog = await loadOpenRouterCatalog();
   } catch {
     return 0; 
   }
-  let gravados = 0;
-  for (const model of faltando) {
-    if (gravarDoCatalogo(catalog, provider, model)) gravados++;
+  let recorded = 0;
+  for (const model of missing) {
+    if (recordFromCatalog(catalog, provider, model)) recorded++;
   }
-  return gravados;
+  return recorded;
 }

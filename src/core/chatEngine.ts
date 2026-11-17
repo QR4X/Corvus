@@ -1,12 +1,12 @@
 import { useChatStore } from "../store/chat";
 import type { getProvider } from "../providers";
-import { semCredencial, describeProviderError } from "./helpers";
+import { missingCredentialError, describeProviderError } from "./helpers";
 import { resolveEffortConfig, effortToMaxTokensSmart, isEffortLevel } from "./effort";
 import { resolveMaxTokens } from "../providers/paramPolicy";
 import { responseIssue } from "../providers/base";
 import { getContextWindow } from "./contextWindows";
 import {
-  blocoDeNotasAnexadas,
+  attachedNotesSection,
   buildChatSystemPrompt,
   storeMessagesToProvider,
 } from "../agent/conversation";
@@ -17,7 +17,7 @@ import type {
   ProviderMessage,
 } from "../providers/base";
 import type CorvusPlugin from "../main";
-import { buscarContextoDoVault } from "./vaultLookup";
+import { fetchVaultContext } from "./vaultLookup";
 import { loadAgentMd } from "./agentMd";
 
 interface AbortRef {
@@ -41,7 +41,7 @@ export interface EngineCtx {
 
 export function reportMissingCredential(ctx: EngineCtx): boolean {
   const { t, activeProviderId, activeProvider, apiKeyFor } = ctx;
-  const missing = semCredencial(activeProviderId, apiKeyFor(activeProviderId), t, activeProvider.name);
+  const missing = missingCredentialError(activeProviderId, apiKeyFor(activeProviderId), t, activeProvider.name);
   if (!missing) return false;
   useChatStore.getState().addMessage({
     type: "ai-response",
@@ -86,7 +86,7 @@ export async function streamReply(
   const effortCfg = resolveEffortConfig(effort, plugin.settings.effortConfigs);
 
   const vaultContextBlock = useVault
-    ? await buscarContextoDoVault({
+    ? await fetchVaultContext({
         plugin,
         t,
         effort,
@@ -123,7 +123,7 @@ export async function streamReply(
         (a): a is NoteAttachment => a.type === "note"
       );
 
-      noteContextBlock = blocoDeNotasAnexadas(noteAtts);
+      noteContextBlock = attachedNotesSection(noteAtts);
     }
     const agentMdBlock = await loadAgentMd(
       plugin.app,
@@ -220,7 +220,7 @@ export async function streamReply(
       }
     }
 
-    const tetoEnviado = resolveMaxTokens(
+    const sentMaxTokens = resolveMaxTokens(
       activeProviderId,
       activeModel,
       maxTokens,
@@ -230,7 +230,7 @@ export async function streamReply(
       responseId !== null &&
       response.finishReason === undefined &&
       lastOutputTokens > 0 &&
-      lastOutputTokens >= tetoEnviado * 0.95
+      lastOutputTokens >= sentMaxTokens * 0.95
     ) {
       useChatStore.getState().setTruncated(responseId, true);
     }

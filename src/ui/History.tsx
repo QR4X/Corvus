@@ -22,34 +22,34 @@ import { tr } from "../i18n/tr";
 export function History({
   plugin,
   session,
-  aba,
-  onAba,
+  tab,
+  onTab,
   onBack,
   onOpenChat,
 }: {
   plugin: CorvusPlugin;
   session: ChatSession;
-  aba: string;
-  onAba: (id: string) => void;
+  tab: string;
+  onTab: (id: string) => void;
   onBack: () => void;
   onOpenChat: (chat: ChatSummary) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [buscando, setBuscando] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const chats = useChatSummaries(plugin);
-  const naoLidas = useUnreadChats(plugin);
-  const esperandoId = useChatStore((s) => s.waitingChatId);
+  const unread = useUnreadChats(plugin);
+  const waitingId = useChatStore((s) => s.waitingChatId);
 
-  const abas = moduleSegments(chats);
+  const tabs = moduleSegments(chats);
 
-  const atual = abas.some((s) => s.id === aba)
-    ? aba
-    : (abas.find((x) => x.id === defaultSegment(chats, plugin.settings.defaultMode))
-        ?.id ?? abas[0]?.id ?? SEGMENT_ALL);
+  const activeTab = tabs.some((s) => s.id === tab)
+    ? tab
+    : (tabs.find((x) => x.id === defaultSegment(chats, plugin.settings.defaultMode))
+        ?.id ?? tabs[0]?.id ?? SEGMENT_ALL);
 
-  const doSeg = useMemo(() => filterSegment(chats, atual), [chats, atual]);
-  const busca = useMemo(() => searchChats(doSeg, query), [doSeg, query]);
-  const visiveis = busca.hits;
+  const inSegment = useMemo(() => filterSegment(chats, activeTab), [chats, activeTab]);
+  const search = useMemo(() => searchChats(inSegment, query), [inSegment, query]);
+  const visible = search.hits;
 
   return (
     <div className="corvus-chat">
@@ -69,20 +69,20 @@ export function History({
       <div className="corvus-messages corvus-home">
 
         {}
-        {abas.length > 1 && (
+        {tabs.length > 1 && (
           <Segmented
-            options={abas.map((s) => ({
+            options={tabs.map((s) => ({
               id: s.id,
               label: s.label,
               dot:
                 alertCount(chats, s.id, {
-                  esperando: esperandoId,
-                  naoLidas,
+                  waitingId,
+                  unread,
                 }) > 0,
             }))}
-            value={atual}
+            value={activeTab}
             label={tr("Filter chats by mode")}
-            onChange={onAba}
+            onChange={onTab}
           />
         )}
 
@@ -91,21 +91,21 @@ export function History({
           value={query}
           placeholder={tr("Search")}
           label={tr("Search chats")}
-          found={visiveis.length}
+          found={visible.length}
           onChange={setQuery}
-          onOpen={() => setBuscando(true)}
+          onOpen={() => setSearchOpen(true)}
         />
 
-        {visiveis.length > 0 && (
+        {visible.length > 0 && (
           <ChatList
             plugin={plugin}
             session={session}
-            chats={visiveis}
+            chats={visible}
             onOpen={onOpenChat}
           />
         )}
 
-        {visiveis.length === 0 && (
+        {visible.length === 0 && (
           <div className="corvus-home-empty">
             <Icon name="message-circle" size={42} />
             <p>
@@ -119,23 +119,23 @@ export function History({
 
       {}
       <SearchSheet
-        open={buscando}
+        open={searchOpen}
         title={tr("Search chats")}
         placeholder={tr("Search")}
         value={query}
-        found={visiveis.length}
-        invalid={busca.invalida}
+        found={visible.length}
+        invalid={search.invalid}
         onChange={setQuery}
-        onClose={() => setBuscando(false)}
+        onClose={() => setSearchOpen(false)}
       >
-        {visiveis.length > 0 ? (
+        {visible.length > 0 ? (
           <ChatList
             plugin={plugin}
             session={session}
-            chats={visiveis}
+            chats={visible}
             onOpen={(c) => {
 
-              setBuscando(false);
+              setSearchOpen(false);
               onOpenChat(c);
             }}
           />

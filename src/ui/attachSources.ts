@@ -11,7 +11,7 @@ export interface ArtifactLike {
   mtime: number;
 }
 
-const MIDIA = new Set([
+const MEDIA_EXTS = new Set([
   "png",
   "jpg",
   "jpeg",
@@ -27,59 +27,59 @@ const MIDIA = new Set([
 ]);
 
 export function rankArtifacts(
-  arquivos: readonly ArtifactLike[],
-  limite = 40
+  files: readonly ArtifactLike[],
+  limit = 40
 ): ArtifactLike[] {
-  return arquivos
+  return files
     .filter(
       (f) =>
         f.path.startsWith(`${GENERATION_FOLDER}/`) &&
-        MIDIA.has(f.extension.toLowerCase())
+        MEDIA_EXTS.has(f.extension.toLowerCase())
     )
     .slice()
     .sort((a, b) => b.mtime - a.mtime)
-    .slice(0, limite);
+    .slice(0, limit);
 }
 
 export function vaultArtifacts(app: App): ArtifactLike[] {
-  const pasta = app.vault.getAbstractFileByPath(GENERATION_FOLDER);
-  if (!(pasta instanceof TFolder)) return [];
-  const saida: ArtifactLike[] = [];
+  const folder = app.vault.getAbstractFileByPath(GENERATION_FOLDER);
+  if (!(folder instanceof TFolder)) return [];
+  const out: ArtifactLike[] = [];
 
-  const desce = (f: TFolder): void => {
-    for (const filho of f.children) {
-      if (filho instanceof TFolder) desce(filho);
-      else if (filho instanceof TFile) {
-        saida.push({
-          path: filho.path,
-          basename: filho.basename,
-          extension: filho.extension,
-          mtime: filho.stat?.mtime ?? 0,
+  const walk = (f: TFolder): void => {
+    for (const child of f.children) {
+      if (child instanceof TFolder) walk(child);
+      else if (child instanceof TFile) {
+        out.push({
+          path: child.path,
+          basename: child.basename,
+          extension: child.extension,
+          mtime: child.stat?.mtime ?? 0,
         });
       }
     }
   };
-  desce(pasta);
-  return saida;
+  walk(folder);
+  return out;
 }
 
-export function normalizeUrl(entrada: string): string | null {
-  const url = entrada.trim();
+export function normalizeUrl(input: string): string | null {
+  const url = input.trim();
   if (!url) return null;
-  const cheia = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  const full = /^https?:\/\//i.test(url) ? url : `https://${url}`;
   try {
-    const u = new URL(cheia);
+    const u = new URL(full);
     return u.hostname.includes(".") ? u.toString() : null;
   } catch {
     return null;
   }
 }
 
-export function linkNote(url: string, titulo: string | null, texto: string): NoteAttachment {
+export function linkNote(url: string, title: string | null, text: string): NoteAttachment {
   return {
     type: "note",
-    path: titulo ? `${titulo} — ${url}` : url,
-    content: `Fonte: ${url}\n\n${texto}`,
+    path: title ? `${title} — ${url}` : url,
+    content: `Fonte: ${url}\n\n${text}`,
   };
 }
 
@@ -106,17 +106,17 @@ export function attachmentThumb(
   }
   if (a.type === "pdf") return { kind: "emoji", char: "📕" };
   if (a.type === "audio") return { kind: "emoji", char: "🎙️" };
-  const origem = noteKind(a.path);
-  if (origem === "link") return { kind: "emoji", char: "🔗" };
-  if (origem === "pasted") return { kind: "emoji", char: "📋" };
+  const origin = noteKind(a.path);
+  if (origin === "link") return { kind: "emoji", char: "🔗" };
+  if (origin === "pasted") return { kind: "emoji", char: "📋" };
   return { kind: "emoji", char: "📄" };
 }
 
 export function attachmentLabel(a: MessageAttachment): string {
   if (a.type === "note") {
 
-    const corte = a.path.indexOf(" — http");
-    if (corte > 0) return a.path.slice(0, corte);
+    const cut = a.path.indexOf(" — http");
+    if (cut > 0) return a.path.slice(0, cut);
     if (/^https?:\/\//.test(a.path)) {
       try {
         return new URL(a.path).hostname;
@@ -125,8 +125,8 @@ export function attachmentLabel(a: MessageAttachment): string {
       }
     }
 
-    const colado = /^Pasted text \(([^)]*)\)$/.exec(a.path);
-    if (colado) return tr("Pasted text ({size})", { size: colado[1] });
+    const pasted = /^Pasted text \(([^)]*)\)$/.exec(a.path);
+    if (pasted) return tr("Pasted text ({size})", { size: pasted[1] });
     return a.path.split("/").pop() ?? a.path;
   }
   if (a.type === "image") return a.name ?? tr("Image");

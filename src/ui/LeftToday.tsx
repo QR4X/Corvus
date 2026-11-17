@@ -6,13 +6,13 @@ import type { KeyStatus } from "../providers/base";
 import { prettyModelName } from "../providers/modelDescriptions";
 import { formatCompact } from "../usage/format";
 import {
-  CHAVE_LIMITE_GASTO,
-  emQuanto,
-  fracaoQueSobra,
-  nivel,
+  SPEND_LIMIT_KEY,
+  shortDuration,
+  remainingFraction,
+  gaugeLevel,
   remainingToday,
-  type Cartao,
-  type Medidor,
+  type TodayCard,
+  type Gauge,
 } from "../usage/remainingToday";
 import { usd } from "../usage/dailySpend";
 import { providerIcon } from "../core/providersMeta";
@@ -20,125 +20,125 @@ import { Icon } from "./Icon";
 import { uiLocale, tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
 
-const CHAVE_ABERTOS = "corvus-left-today-open";
+const OPEN_CARDS_KEY = "corvus-left-today-open";
 
-function lerAbertos(app: App): Set<string> {
+function readOpenCards(app: App): Set<string> {
   try {
-    const v: unknown = app.loadLocalStorage(CHAVE_ABERTOS);
+    const v: unknown = app.loadLocalStorage(OPEN_CARDS_KEY);
     return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
   } catch {
     return new Set();
   }
 }
 
-function gravarAbertos(app: App, abertos: Set<string>): void {
+function writeOpenCards(app: App, openIds: Set<string>): void {
   try {
-    app.saveLocalStorage(CHAVE_ABERTOS, abertos.size ? Array.from(abertos) : null);
+    app.saveLocalStorage(OPEN_CARDS_KEY, openIds.size ? Array.from(openIds) : null);
   } catch { void 0; }
 }
 
-function numero(n: number, unidade: Medidor["unidade"]): string {
-  if (unidade === "usd") return usd(n);
-  return unidade === "tokens" ? formatCompact(n) : Math.round(n).toLocaleString(uiLocale());
+function formatAmount(n: number, unit: Gauge["unit"]): string {
+  if (unit === "usd") return usd(n);
+  return unit === "tokens" ? formatCompact(n) : Math.round(n).toLocaleString(uiLocale());
 }
 
-function quantos(n: number, unidade: Medidor["unidade"]): string {
-  if (unidade === "tokens") return tr("{n} tokens", { n: numero(n, unidade) });
-  if (unidade === "usd") return numero(n, unidade);
-  return n === 1 ? tr("1 request") : tr("{n} requests", { n: numero(n, unidade) });
+function amountWithUnit(n: number, unit: Gauge["unit"]): string {
+  if (unit === "tokens") return tr("{n} tokens", { n: formatAmount(n, unit) });
+  if (unit === "usd") return formatAmount(n, unit);
+  return n === 1 ? tr("1 request") : tr("{n} requests", { n: formatAmount(n, unit) });
 }
 
-function sobram(n: number, unidade: Medidor["unidade"]): string {
-  return n === 1 && unidade !== "usd" ? tr("1 left") : tr("{n} left", { n: numero(n, unidade) });
+function leftLabel(n: number, unit: Gauge["unit"]): string {
+  return n === 1 && unit !== "usd" ? tr("1 left") : tr("{n} left", { n: formatAmount(n, unit) });
 }
 
-function usadosDe(usado: number, limite: number, unidade: Medidor["unidade"]): string {
-  const u = numero(usado, unidade);
-  if (unidade === "usd") return tr("{used} of {limit} spent", { used: u, limit: numero(limite, unidade) });
-  if (unidade === "tokens") {
-    return tr("{used} of {limit} tokens used", { used: u, limit: numero(limite, unidade) });
+function usedOfLimit(used: number, limit: number, unit: Gauge["unit"]): string {
+  const u = formatAmount(used, unit);
+  if (unit === "usd") return tr("{used} of {limit} spent", { used: u, limit: formatAmount(limit, unit) });
+  if (unit === "tokens") {
+    return tr("{used} of {limit} tokens used", { used: u, limit: formatAmount(limit, unit) });
   }
-  return limite === 1
+  return limit === 1
     ? tr("{used} of 1 request used", { used: u })
-    : tr("{used} of {limit} requests used", { used: u, limit: numero(limite, unidade) });
+    : tr("{used} of {limit} requests used", { used: u, limit: formatAmount(limit, unit) });
 }
 
-function dinheiro(n: number): string {
+function formatDollars(n: number): string {
   if (n === 0) return "$0.00";
   if (n > 0 && n < 0.01) return "<$0.01";
   return `$${n.toFixed(2)}`;
 }
 
-function voltaDoCredito(volta: string): string {
-  if (volta === "daily") return tr("resets daily");
-  if (volta === "weekly") return tr("resets weekly");
-  if (volta === "monthly") return tr("resets monthly");
-  return tr("resets {when}", { when: volta });
+function creditResetLabel(resets: string): string {
+  if (resets === "daily") return tr("resets daily");
+  if (resets === "weekly") return tr("resets weekly");
+  if (resets === "monthly") return tr("resets monthly");
+  return tr("resets {when}", { when: resets });
 }
 
-function nomeDo(m: Medidor): string {
-  return m.modelo ? prettyModelName(m.modelo) : m.rotulo;
+function gaugeName(m: Gauge): string {
+  return m.model ? prettyModelName(m.model) : m.label;
 }
 
 export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   const s = plugin.settings;
 
-  const [agora, setAgora] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const t = window.setInterval(() => setAgora(new Date()), 60_000);
+    const t = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(t);
   }, []);
 
-  const [abertos, setAbertos] = useState(() => lerAbertos(plugin.app));
-  const alternar = (provider: string) => {
-    const novo = new Set(abertos);
-    if (novo.has(provider)) novo.delete(provider);
-    else novo.add(provider);
-    setAbertos(novo);
-    gravarAbertos(plugin.app, novo);
+  const [openCards, setOpenCards] = useState(() => readOpenCards(plugin.app));
+  const toggle = (provider: string) => {
+    const next = new Set(openCards);
+    if (next.has(provider)) next.delete(provider);
+    else next.add(provider);
+    setOpenCards(next);
+    writeOpenCards(plugin.app, next);
   };
 
-  const chaveOR = providerCredential(plugin.settings, "openrouter").trim();
-  const [viva, setViva] = useState<KeyStatus | null | undefined>(undefined);
-  const [lendo, setLendo] = useState(false);
-  const perguntar = useCallback(async () => {
-    if (!chaveOR) return;
-    setLendo(true);
+  const openRouterKey = providerCredential(plugin.settings, "openrouter").trim();
+  const [keyStatus, setKeyStatus] = useState<KeyStatus | null | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+  const fetchKeyStatus = useCallback(async () => {
+    if (!openRouterKey) return;
+    setLoading(true);
     try {
-      setViva((await getProvider("openrouter").keyStatus?.(chaveOR)) ?? null);
-      setAgora(new Date());
+      setKeyStatus((await getProvider("openrouter").keyStatus?.(openRouterKey)) ?? null);
+      setNow(new Date());
     } finally {
-      setLendo(false);
+      setLoading(false);
     }
-  }, [chaveOR]);
+  }, [openRouterKey]);
   useEffect(() => {
-    void perguntar();
-  }, [perguntar]);
+    void fetchKeyStatus();
+  }, [fetchKeyStatus]);
 
-  const salvarLimite = (chave: string, n: number | null) => {
-    if (chave === CHAVE_LIMITE_GASTO) {
+  const saveLimit = (key: string, n: number | null) => {
+    if (key === SPEND_LIMIT_KEY) {
       s.dailySpendLimit = n ?? 0;
       void plugin.saveSettings();
       return;
     }
-    const limites = (s.dailyLimits ??= {});
-    if (n == null) delete limites[chave];
-    else limites[chave] = n;
+    const limits = (s.dailyLimits ??= {});
+    if (n == null) delete limits[key];
+    else limits[key] = n;
     void plugin.saveSettings();
   };
 
-  const cartoes = remainingToday({
-    livro: s.dailyUsage ?? {},
-    agora,
-    comChave: (id) => !!providerCredential(plugin.settings, id).trim(),
+  const cards = remainingToday({
+    ledger: s.dailyUsage ?? {},
+    now,
+    hasKey: (id) => !!providerCredential(plugin.settings, id).trim(),
     openai: { dataSharing: s.openaiDataSharing === true, tier: s.openaiTier ?? 1 },
-    limites: s.dailyLimits ?? {},
-    cotaOpenRouter: s.freeQuota?.openrouter,
-    chaveOpenRouter: viva,
-    limiteGasto: s.dailySpendLimit ?? 0,
+    limits: s.dailyLimits ?? {},
+    openRouterQuota: s.freeQuota?.openrouter,
+    openRouterKeyStatus: keyStatus,
+    spendLimit: s.dailySpendLimit ?? 0,
     blockAtLimit: s.blockAtLimit === true,
   });
-  if (cartoes.length === 0) return null;
+  if (cards.length === 0) return null;
 
   return (
     <section className="corvus-home-block corvus-left" aria-label={tr("Left today")}>
@@ -146,16 +146,16 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
         <span className="corvus-section-label">{tr("Left today")}</span>
       </div>
       <div className="corvus-usage-list">
-        {cartoes.map((c) => (
-          <CartaoDoDia
+        {cards.map((c) => (
+          <TodayCardItem
             key={c.provider}
             c={c}
-            aberto={abertos.has(c.provider)}
-            onAlternar={() => alternar(c.provider)}
-            onSalvarLimite={salvarLimite}
-            atualizar={
-              c.provider === "openrouter" && chaveOR
-                ? { lendo, ir: () => void perguntar() }
+            isOpen={openCards.has(c.provider)}
+            onToggle={() => toggle(c.provider)}
+            onSaveLimit={saveLimit}
+            refresh={
+              c.provider === "openrouter" && openRouterKey
+                ? { loading, run: () => void fetchKeyStatus() }
                 : undefined
             }
           />
@@ -165,42 +165,42 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
   );
 }
 
-function CartaoDoDia({
+function TodayCardItem({
   c,
-  aberto,
-  onAlternar,
-  onSalvarLimite,
-  atualizar,
+  isOpen,
+  onToggle,
+  onSaveLimit,
+  refresh,
 }: {
-  c: Cartao;
-  aberto: boolean;
-  onAlternar: () => void;
-  onSalvarLimite: (chave: string, n: number | null) => void;
+  c: TodayCard;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSaveLimit: (key: string, n: number | null) => void;
 
-  atualizar?: { lendo: boolean; ir: () => void };
+  refresh?: { loading: boolean; run: () => void };
 }) {
-  const idCorpo = `corvus-left-${c.provider}`;
+  const bodyId = `corvus-left-${c.provider}`;
 
-  const comBarra = c.medidores.filter((m) => fracaoQueSobra(m) != null);
+  const withBar = c.gauges.filter((m) => remainingFraction(m) != null);
   return (
-    <div className={aberto ? "corvus-left-prov is-open" : "corvus-left-prov"}>
+    <div className={isOpen ? "corvus-left-prov is-open" : "corvus-left-prov"}>
       <button
         type="button"
         className="corvus-left-head"
-        aria-expanded={aberto}
-        aria-controls={idCorpo}
-        onClick={onAlternar}
+        aria-expanded={isOpen}
+        aria-controls={bodyId}
+        onClick={onToggle}
       >
         <span className="corvus-card-mark" aria-hidden="true">
           <Icon name={c.provider === "spend" ? "wallet" : providerIcon(c.provider)} size={20} />
         </span>
-        <span className="corvus-left-name">{c.nome}</span>
-        {aberto && (c.viraEm != null || c.semDia) && (
+        <span className="corvus-left-name">{c.name}</span>
+        {isOpen && (c.resetsIn != null || c.noReset) && (
           <span
             className="corvus-left-reset"
-            title={c.viraOnde ? tr("Resets at {when}", { when: c.viraOnde }) : undefined}
+            title={c.resetsAt ? tr("Resets at {when}", { when: c.resetsAt }) : undefined}
           >
-            {c.viraEm != null ? tr("resets in {time}", { time: emQuanto(c.viraEm) }) : c.semDia}
+            {c.resetsIn != null ? tr("resets in {time}", { time: shortDuration(c.resetsIn) }) : c.noReset}
           </span>
         )}
         <span className="corvus-left-chev" aria-hidden="true">
@@ -208,22 +208,22 @@ function CartaoDoDia({
         </span>
       </button>
 
-      {aberto ? (
-        <div className="corvus-left-body" id={idCorpo}>
-          {c.vazio && <p className="corvus-left-note">{c.vazio}</p>}
-          {c.medidores.map((m) => (
-            <LinhaDoMedidor
+      {isOpen ? (
+        <div className="corvus-left-body" id={bodyId}>
+          {c.empty && <p className="corvus-left-note">{c.empty}</p>}
+          {c.gauges.map((m) => (
+            <GaugeRow
               key={m.id}
               m={m}
-              ajuda={c.link}
-              atualizar={m.id === "openrouter-free" ? atualizar : undefined}
-              onSalvarLimite={onSalvarLimite}
+              help={c.link}
+              refresh={m.id === "openrouter-free" ? refresh : undefined}
+              onSaveLimit={onSaveLimit}
             />
           ))}
-          {c.credito && <LinhaDoCredito credito={c.credito} />}
-          {c.nota && (
+          {c.credit && <CreditRow credit={c.credit} />}
+          {c.note && (
             <p className="corvus-left-note">
-              {c.nota}
+              {c.note}
               {c.link && (
                 <>
                   {" "}
@@ -233,7 +233,7 @@ function CartaoDoDia({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {c.link.rotulo}
+                    {c.link.label}
                   </a>
                 </>
               )}
@@ -241,11 +241,11 @@ function CartaoDoDia({
           )}
         </div>
       ) : (
-        comBarra.length > 0 && (
+        withBar.length > 0 && (
 
-          <div className="corvus-left-bars" id={idCorpo} onClick={onAlternar}>
-            {comBarra.map((m) => (
-              <Barra key={m.id} m={m} />
+          <div className="corvus-left-bars" id={bodyId} onClick={onToggle}>
+            {withBar.map((m) => (
+              <GaugeBar key={m.id} m={m} />
             ))}
           </div>
         )
@@ -254,87 +254,87 @@ function CartaoDoDia({
   );
 }
 
-function Barra({ m }: { m: Medidor }) {
-  const f = fracaoQueSobra(m);
-  if (f == null || m.limite == null || m.restante == null) return null;
-  const n = nivel(m);
-  const texto =
-    m.restante === 1 && m.unidade !== "usd"
-      ? tr("{name}: 1 of {limit} left", { name: nomeDo(m), limit: numero(m.limite, m.unidade) })
+function GaugeBar({ m }: { m: Gauge }) {
+  const f = remainingFraction(m);
+  if (f == null || m.limit == null || m.remaining == null) return null;
+  const n = gaugeLevel(m);
+  const label =
+    m.remaining === 1 && m.unit !== "usd"
+      ? tr("{name}: 1 of {limit} left", { name: gaugeName(m), limit: formatAmount(m.limit, m.unit) })
       : tr("{name}: {left} of {limit} left", {
-          name: nomeDo(m),
-          left: numero(m.restante, m.unidade),
-          limit: numero(m.limite, m.unidade),
+          name: gaugeName(m),
+          left: formatAmount(m.remaining, m.unit),
+          limit: formatAmount(m.limit, m.unit),
         });
   return (
     <span
       className={n ? `corvus-left-bar is-${n}` : "corvus-left-bar"}
       role="meter"
       aria-valuemin={0}
-      aria-valuemax={m.limite}
-      aria-valuenow={m.restante}
-      aria-label={texto}
-      title={texto}
+      aria-valuemax={m.limit}
+      aria-valuenow={m.remaining}
+      aria-label={label}
+      title={label}
     >
       <span className="corvus-left-fill" style={{ "--corvus-left": f } as CSSProperties} />
     </span>
   );
 }
 
-function LinhaDoMedidor({
+function GaugeRow({
   m,
-  ajuda,
-  atualizar,
-  onSalvarLimite,
+  help,
+  refresh,
+  onSaveLimit,
 }: {
-  m: Medidor;
+  m: Gauge;
 
-  ajuda?: { rotulo: string; url: string };
+  help?: { label: string; url: string };
 
-  atualizar?: { lendo: boolean; ir: () => void };
-  onSalvarLimite: (chave: string, n: number | null) => void;
+  refresh?: { loading: boolean; run: () => void };
+  onSaveLimit: (key: string, n: number | null) => void;
 }) {
-  const nome = nomeDo(m);
-  const n = nivel(m);
-  const dinheiro = m.unidade === "usd";
-  const valor =
-    m.restante != null
-      ? sobram(m.restante, m.unidade)
-      : dinheiro
-        ? tr("{n} spent", { n: numero(m.usado, m.unidade) })
-        : quantos(m.usado, m.unidade);
-  const conta =
-    m.limite != null
-      ? usadosDe(m.usado, m.limite, m.unidade)
-      : m.limiteEditavel
+  const name = gaugeName(m);
+  const n = gaugeLevel(m);
+  const isMoney = m.unit === "usd";
+  const value =
+    m.remaining != null
+      ? leftLabel(m.remaining, m.unit)
+      : isMoney
+        ? tr("{n} spent", { n: formatAmount(m.used, m.unit) })
+        : amountWithUnit(m.used, m.unit);
+  const usage =
+    m.limit != null
+      ? usedOfLimit(m.used, m.limit, m.unit)
+      : m.limitKey
         ? tr("No daily limit set")
         : null;
-  const pe = [conta, m.nota].filter(Boolean).join(" · ");
+  const footer = [usage, m.note].filter(Boolean).join(" · ");
   return (
     <div className={n ? `corvus-left-row is-${n}` : "corvus-left-row"}>
-      <span className="corvus-left-row-name">{nome}</span>
-      <span className="corvus-left-row-value">{valor}</span>
-      <Barra m={m} />
-      {pe && <span className="corvus-left-row-sub">{pe}</span>}
-      {m.limiteEditavel ? (
-        <EditorDeLimite
-          atual={m.limite}
-          nome={nome}
-          ajuda={ajuda}
-          dinheiro={dinheiro}
-          onSalvar={(v) => onSalvarLimite(m.limiteEditavel!, v)}
+      <span className="corvus-left-row-name">{name}</span>
+      <span className="corvus-left-row-value">{value}</span>
+      <GaugeBar m={m} />
+      {footer && <span className="corvus-left-row-sub">{footer}</span>}
+      {m.limitKey ? (
+        <LimitEditor
+          current={m.limit}
+          name={name}
+          help={help}
+          isMoney={isMoney}
+          onSave={(v) => onSaveLimit(m.limitKey!, v)}
         />
       ) : (
-        atualizar && (
+        refresh && (
           <button
             type="button"
             className="corvus-home-filter is-accent corvus-left-action"
             aria-label={tr("Ask OpenRouter again")}
-            disabled={atualizar.lendo}
-            onClick={atualizar.ir}
+            disabled={refresh.loading}
+            onClick={refresh.run}
           >
-            <Icon name={atualizar.lendo ? "loader" : "refresh-cw"} size={14} />
-            <span>{atualizar.lendo ? tr("Asking…") : tr("Refresh")}</span>
+            <Icon name={refresh.loading ? "loader" : "refresh-cw"} size={14} />
+            <span>{refresh.loading ? tr("Asking…") : tr("Refresh")}</span>
           </button>
         )
       )}
@@ -342,57 +342,57 @@ function LinhaDoMedidor({
   );
 }
 
-function EditorDeLimite({
-  atual,
-  nome,
-  ajuda,
-  dinheiro = false,
-  onSalvar,
+function LimitEditor({
+  current,
+  name,
+  help,
+  isMoney: isMoney = false,
+  onSave,
 }: {
-  atual?: number;
-  nome: string;
-  ajuda?: { rotulo: string; url: string };
+  current?: number;
+  name: string;
+  help?: { label: string; url: string };
 
-  dinheiro?: boolean;
-  onSalvar: (n: number | null) => void;
+  isMoney?: boolean;
+  onSave: (n: number | null) => void;
 }) {
-  const [aberto, setAberto] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [txt, setTxt] = useState("");
-  const campo = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (aberto) campo.current?.focus();
-  }, [aberto]);
-  if (!aberto) {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+  if (!editing) {
     return (
       <button
         type="button"
         className="corvus-home-filter is-accent corvus-left-action"
         aria-label={
-          dinheiro
-            ? atual
+          isMoney
+            ? current
               ? tr("Edit the daily spending limit")
               : tr("Set the daily spending limit")
-            : atual
-              ? tr("Edit the daily limit for {name}", { name: nome })
-              : tr("Set the daily limit for {name}", { name: nome })
+            : current
+              ? tr("Edit the daily limit for {name}", { name })
+              : tr("Set the daily limit for {name}", { name })
         }
         onClick={() => {
-          setTxt(atual ? String(atual) : "");
-          setAberto(true);
+          setTxt(current ? String(current) : "");
+          setEditing(true);
         }}
       >
-        <span>{atual ? tr("Edit") : tr("Set limit")}</span>
+        <span>{current ? tr("Edit") : tr("Set limit")}</span>
       </button>
     );
   }
 
-  const salvar = () => {
-    const bruto = (campo.current?.value ?? txt).trim().replace(",", ".");
-    const v = Number(bruto);
-    const valido = bruto && Number.isFinite(v) && v > 0;
-    onSalvar(valido ? (dinheiro ? Math.round(v * 100) / 100 : Math.floor(v)) : null);
-    setAberto(false);
+  const save = () => {
+    const raw = (inputRef.current?.value ?? txt).trim().replace(",", ".");
+    const v = Number(raw);
+    const valid = raw && Number.isFinite(v) && v > 0;
+    onSave(valid ? (isMoney ? Math.round(v * 100) / 100 : Math.floor(v)) : null);
+    setEditing(false);
   };
   return (
     <>
@@ -400,40 +400,40 @@ function EditorDeLimite({
         <input
           type="number"
           inputMode="numeric"
-          min={dinheiro ? 0 : 1}
-          step={dinheiro ? 0.5 : 1}
+          min={isMoney ? 0 : 1}
+          step={isMoney ? 0.5 : 1}
           className="corvus-left-input"
           value={txt}
-          placeholder={dinheiro ? tr("$ a day") : tr("Per day")}
+          placeholder={isMoney ? tr("$ a day") : tr("Per day")}
           aria-label={
-            dinheiro ? tr("Daily spending limit in dollars") : tr("Requests per day for {name}", { name: nome })
+            isMoney ? tr("Daily spending limit in dollars") : tr("Requests per day for {name}", { name })
           }
-          ref={campo}
+          ref={inputRef}
           onChange={(e) => setTxt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") salvar();
-            if (e.key === "Escape") setAberto(false);
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
           }}
         />
         <button
           type="button"
           className="corvus-icon-btn"
           aria-label={tr("Save limit")}
-          onClick={salvar}
+          onClick={save}
         >
           <Icon name="check" />
         </button>
       </span>
-      {ajuda && (
+      {help && (
         <span className="corvus-left-row-hint">
           {tr("Requests per day.")}{" "}
           <a
             className="corvus-left-link"
-            href={ajuda.url}
+            href={help.url}
             target="_blank"
             rel="noopener noreferrer"
           >
-            {ajuda.rotulo}
+            {help.label}
           </a>
         </span>
       )}
@@ -441,18 +441,18 @@ function EditorDeLimite({
   );
 }
 
-function LinhaDoCredito({
-  credito,
+function CreditRow({
+  credit,
 }: {
-  credito: NonNullable<Cartao["credito"]>;
+  credit: NonNullable<TodayCard["credit"]>;
 }) {
-  const comTeto = credito.restante != null;
-  const pe = comTeto
+  const capped = credit.remaining != null;
+  const footer = capped
     ? [
-        credito.gastoHoje != null
-          ? tr("{amount} spent today", { amount: dinheiro(credito.gastoHoje) })
+        credit.spentToday != null
+          ? tr("{amount} spent today", { amount: formatDollars(credit.spentToday) })
           : null,
-        credito.volta ? voltaDoCredito(credito.volta) : null,
+        credit.resets ? creditResetLabel(credit.resets) : null,
       ]
         .filter(Boolean)
         .join(" · ")
@@ -460,14 +460,14 @@ function LinhaDoCredito({
   return (
     <div className="corvus-left-row">
       <span className="corvus-left-row-name">
-        {comTeto ? tr("Key credit") : tr("Spent today")}
+        {capped ? tr("Key credit") : tr("Spent today")}
       </span>
       <span className="corvus-left-row-value">
-        {comTeto
-          ? tr("{n} left", { n: dinheiro(credito.restante ?? 0) })
-          : dinheiro(credito.gastoHoje ?? 0)}
+        {capped
+          ? tr("{n} left", { n: formatDollars(credit.remaining ?? 0) })
+          : formatDollars(credit.spentToday ?? 0)}
       </span>
-      {pe && <span className="corvus-left-row-sub">{pe}</span>}
+      {footer && <span className="corvus-left-row-sub">{footer}</span>}
     </div>
   );
 }

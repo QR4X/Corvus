@@ -2,148 +2,148 @@ import { Notice, SuggestModal, type App, type Editor, type EditorPosition } from
 import type CorvusPlugin from "../main";
 import { getProvider } from "../providers";
 import type { ProviderMessage } from "../providers/base";
-import { modeloSalvoPara } from "../core/defaultModel";
+import { savedModelFor } from "../core/defaultModel";
 import { mark, tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
 
-export type AcaoNoTexto = "rewrite" | "fix" | "translate" | "continue";
+export type TextAction = "rewrite" | "fix" | "translate" | "continue";
 
-const CONTEXTO_CONTINUAR = 6000;
+const CONTINUE_CONTEXT_CHARS = 6000;
 
-const SO_O_TEXTO =
+const ONLY_THE_TEXT =
   "Reply with ONLY the resulting text: no preface, no explanation, no quotes around it, no code fences.";
 
-export function mensagensDaAcao(
-  acao: AcaoNoTexto,
-  texto: string,
-  opts: { idioma?: string } = {}
+export function actionMessages(
+  action: TextAction,
+  text: string,
+  opts: { language?: string } = {}
 ): ProviderMessage[] {
-  const sistema = (() => {
-    switch (acao) {
+  const system = (() => {
+    switch (action) {
       case "rewrite":
-        return `Rewrite the user's text so it reads clearly and well. Keep its meaning, tone and language, and keep the Markdown formatting (links, [[wikilinks]], lists, emphasis, code). ${SO_O_TEXTO}`;
+        return `Rewrite the user's text so it reads clearly and well. Keep its meaning, tone and language, and keep the Markdown formatting (links, [[wikilinks]], lists, emphasis, code). ${ONLY_THE_TEXT}`;
       case "fix":
-        return `Fix grammar, spelling and punctuation in the user's text, changing as little as possible. Keep its language, meaning, tone and Markdown formatting. ${SO_O_TEXTO}`;
+        return `Fix grammar, spelling and punctuation in the user's text, changing as little as possible. Keep its language, meaning, tone and Markdown formatting. ${ONLY_THE_TEXT}`;
       case "translate":
-        return `Translate the user's text into ${opts.idioma ?? "English"}. Keep the Markdown formatting, links, [[wikilinks]] and code exactly as they are. ${SO_O_TEXTO}`;
+        return `Translate the user's text into ${opts.language ?? "English"}. Keep the Markdown formatting, links, [[wikilinks]] and code exactly as they are. ${ONLY_THE_TEXT}`;
       case "continue":
-        return `The user is writing a note and stopped where the text ends. Continue it from exactly that point, in the same language, voice and format, for one or two paragraphs at most. Do not repeat what is already written. ${SO_O_TEXTO}`;
+        return `The user is writing a note and stopped where the text ends. Continue it from exactly that point, in the same language, voice and format, for one or two paragraphs at most. Do not repeat what is already written. ${ONLY_THE_TEXT}`;
     }
   })();
   return [
-    { role: "system", content: sistema },
-    { role: "user", content: texto },
+    { role: "system", content: system },
+    { role: "user", content: text },
   ];
 }
 
-export function limparResposta(bruta: string): string {
-  let s = bruta.replace(/\r\n/g, "\n").trim();
-  const cerca = /^```[\w-]*\n([\s\S]*?)\n```$/.exec(s);
-  if (cerca) s = cerca[1].trim();
-  const aspas = /^(["“'])([\s\S]*)(["”'])$/.exec(s);
-  if (aspas && !aspas[2].includes(aspas[1] === "“" ? "”" : aspas[1])) s = aspas[2].trim();
+export function cleanReply(raw: string): string {
+  let s = raw.replace(/\r\n/g, "\n").trim();
+  const fenced = /^```[\w-]*\n([\s\S]*?)\n```$/.exec(s);
+  if (fenced) s = fenced[1].trim();
+  const quoted = /^(["“'])([\s\S]*)(["”'])$/.exec(s);
+  if (quoted && !quoted[2].includes(quoted[1] === "“" ? "”" : quoted[1])) s = quoted[2].trim();
   return s;
 }
 
-export function emendar(antes: string, continuacao: string): string {
-  if (!antes || /\s$/.test(antes) || /^\s/.test(continuacao)) return continuacao;
-  return ` ${continuacao}`;
+export function joinContinuation(before: string, continuation: string): string {
+  if (!before || /\s$/.test(before) || /^\s/.test(continuation)) return continuation;
+  return ` ${continuation}`;
 }
 
-const ROTULO: Record<AcaoNoTexto, string> = {
+const PROGRESS_LABEL: Record<TextAction, string> = {
   rewrite: mark("Rewriting with {model}…"),
   fix: mark("Fixing with {model}…"),
   translate: mark("Translating with {model}…"),
   continue: mark("Writing with {model}…"),
 };
 
-export async function acaoNoTexto(
+export async function runTextAction(
   plugin: CorvusPlugin,
   editor: Editor,
-  acao: AcaoNoTexto,
-  opts: { idioma?: string } = {}
+  action: TextAction,
+  opts: { language?: string } = {}
 ): Promise<void> {
   const s = plugin.settings;
   const providerId = s.defaultProvider || "openai";
-  const model = modeloSalvoPara(s, providerId);
-  const chave = providerCredential(plugin.settings, providerId).trim();
+  const model = savedModelFor(s, providerId);
+  const apiKey = providerCredential(plugin.settings, providerId).trim();
   if (!model) {
     new Notice(tr("Pick a default model in the plugin settings first."));
     return;
   }
-  if (!chave) {
+  if (!apiKey) {
     new Notice(tr("Add your {provider} key in the plugin settings first.", { provider: providerId }));
     return;
   }
 
-  let de: EditorPosition;
-  let ate: EditorPosition;
+  let from: EditorPosition;
+  let to: EditorPosition;
   let original: string;
-  let entrada: string;
-  if (acao === "continue") {
-    de = ate = editor.getCursor("to");
-    const tudoAntes = editor.getRange({ line: 0, ch: 0 }, de);
-    entrada = tudoAntes.slice(-CONTEXTO_CONTINUAR);
+  let input: string;
+  if (action === "continue") {
+    from = to = editor.getCursor("to");
+    const textBefore = editor.getRange({ line: 0, ch: 0 }, from);
+    input = textBefore.slice(-CONTINUE_CONTEXT_CHARS);
     original = "";
-    if (!entrada.trim()) {
+    if (!input.trim()) {
       new Notice(tr("Write something first: the model continues from what's there."));
       return;
     }
   } else {
-    de = editor.getCursor("from");
-    ate = editor.getCursor("to");
-    original = editor.getRange(de, ate);
-    entrada = original;
+    from = editor.getCursor("from");
+    to = editor.getCursor("to");
+    original = editor.getRange(from, to);
+    input = original;
     if (!original.trim()) {
       new Notice(tr("Select some text first."));
       return;
     }
   }
 
-  const aviso = new Notice(tr(ROTULO[acao], { model }), 0);
+  const notice = new Notice(tr(PROGRESS_LABEL[action], { model }), 0);
   try {
     const res = await getProvider(providerId).chat(
-      { model, messages: mensagensDaAcao(acao, entrada, opts) },
-      chave
+      { model, messages: actionMessages(action, input, opts) },
+      apiKey
     );
-    const resultado = limparResposta(res.content ?? "");
-    if (!resultado) throw new Error(tr("the model returned nothing"));
+    const result = cleanReply(res.content ?? "");
+    if (!result) throw new Error(tr("the model returned nothing"));
 
-    if (acao === "continue") {
+    if (action === "continue") {
 
-      const antesAgora = editor.getRange({ line: 0, ch: 0 }, de);
-      if (!antesAgora.endsWith(entrada.slice(-200))) {
-        await copiar(resultado);
+      const textBeforeNow = editor.getRange({ line: 0, ch: 0 }, from);
+      if (!textBeforeNow.endsWith(input.slice(-200))) {
+        await copyToClipboard(result);
         return;
       }
-      editor.replaceRange(emendar(antesAgora, resultado), de);
+      editor.replaceRange(joinContinuation(textBeforeNow, result), from);
       return;
     }
-    if (editor.getRange(de, ate) !== original) {
-      await copiar(resultado);
+    if (editor.getRange(from, to) !== original) {
+      await copyToClipboard(result);
       return;
     }
-    editor.replaceRange(resultado, de, ate);
+    editor.replaceRange(result, from, to);
 
-    const fim = editor.offsetToPos(editor.posToOffset(de) + resultado.length);
-    editor.setSelection(de, fim);
+    const end = editor.offsetToPos(editor.posToOffset(from) + result.length);
+    editor.setSelection(from, end);
   } catch (err) {
     new Notice(tr("Couldn't finish: {error}", { error: err instanceof Error ? err.message : String(err) }));
   } finally {
-    aviso.hide();
+    notice.hide();
   }
 }
 
-async function copiar(texto: string): Promise<void> {
+async function copyToClipboard(text: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(texto);
+    await navigator.clipboard.writeText(text);
     new Notice(tr("The text changed while the model was writing, so nothing was replaced. The result is on your clipboard."), 8000);
   } catch {
     new Notice(tr("The text changed while the model was writing, so nothing was replaced."), 8000);
   }
 }
 
-const IDIOMAS = [
+const LANGUAGES = [
   mark("English"),
   mark("Portuguese (Brazil)"),
   mark("Spanish"),
@@ -160,30 +160,30 @@ const IDIOMAS = [
   mark("Portuguese (Portugal)"),
 ];
 
-export class IdiomaModal extends SuggestModal<string> {
+export class LanguageModal extends SuggestModal<string> {
   constructor(
     app: App,
-    private readonly escolher: (idioma: string) => void
+    private readonly onChoose: (language: string) => void
   ) {
     super(app);
     this.modalEl.addClass("corvus-language-modal");
     this.setPlaceholder(tr("Translate into…"));
   }
 
-  getSuggestions(busca: string): string[] {
-    const q = busca.trim().toLowerCase();
+  getSuggestions(query: string): string[] {
+    const q = query.trim().toLowerCase();
 
-    const nomes = (l: string) => [l.toLowerCase(), tr(l).toLowerCase()];
-    const achados = IDIOMAS.filter((l) => nomes(l).some((n) => n.includes(q)));
-    return q && !achados.some((l) => nomes(l).includes(q)) ? [busca.trim(), ...achados] : achados;
+    const namesOf = (l: string) => [l.toLowerCase(), tr(l).toLowerCase()];
+    const matches = LANGUAGES.filter((l) => namesOf(l).some((n) => n.includes(q)));
+    return q && !matches.some((l) => namesOf(l).includes(q)) ? [query.trim(), ...matches] : matches;
   }
 
-  renderSuggestion(idioma: string, el: HTMLElement): void {
+  renderSuggestion(language: string, el: HTMLElement): void {
 
-    el.setText(IDIOMAS.includes(idioma) ? tr(idioma) : idioma);
+    el.setText(LANGUAGES.includes(language) ? tr(language) : language);
   }
 
-  onChooseSuggestion(idioma: string): void {
-    this.escolher(idioma);
+  onChooseSuggestion(language: string): void {
+    this.onChoose(language);
   }
 }

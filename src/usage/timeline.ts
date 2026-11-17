@@ -1,161 +1,161 @@
 import type { UsageBucket } from "./aggregate";
 import { mark, tr } from "../i18n/tr";
 
-const DIA_MS = 86_400_000;
+const DAY_MS = 86_400_000;
 
-const MESES = [
+const MONTHS = [
   mark("Jan"), mark("Feb"), mark("Mar"), mark("Apr"), mark("May"), mark("Jun"),
   mark("Jul"), mark("Aug"), mark("Sep"), mark("Oct"), mark("Nov"), mark("Dec"),
 ];
 
-function nomeDoMes(m: number): string | null {
-  const nome = MESES[m - 1];
-  return nome ? tr(nome) : null;
+function monthName(m: number): string | null {
+  const name = MONTHS[m - 1];
+  return name ? tr(name) : null;
 }
 
-export function diaCurto(iso: string, comAno = false): string {
-  const [a, m, d] = iso.split("-").map(Number);
-  const mes = nomeDoMes(m);
-  if (!a || !mes || !d) return iso;
-  return comAno
-    ? tr("{month} {day}, {year}", { month: mes, day: d, year: a })
-    : tr("{month} {day}", { month: mes, day: d });
+export function shortDay(iso: string, withYear = false): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const month = monthName(m);
+  if (!y || !month || !d) return iso;
+  return withYear
+    ? tr("{month} {day}, {year}", { month, day: d, year: y })
+    : tr("{month} {day}", { month, day: d });
 }
 
-export type Passo = "day" | "week" | "month";
+export type ChartStep = "day" | "week" | "month";
 
-export interface Coluna {
+export interface Column {
 
-  inicio: string;
+  start: string;
 
-  rotulo: string;
+  label: string;
 
-  titulo: string;
-  entrada: number;
-  saida: number;
+  title: string;
+  tokensIn: number;
+  tokensOut: number;
   total: number;
   chats: number;
 }
 
-function ms(dia: string): number {
-  return Date.parse(`${dia}T00:00:00Z`);
+function ms(day: string): number {
+  return Date.parse(`${day}T00:00:00Z`);
 }
 
-function chave(t: number): string {
+function dayKey(t: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
 
-export function diasEntre(de: string, ate: string): number {
-  return Math.round((ms(ate) - ms(de)) / DIA_MS) + 1;
+export function daysBetween(from: string, to: string): number {
+  return Math.round((ms(to) - ms(from)) / DAY_MS) + 1;
 }
 
-export function passoDe(dias: number): Passo {
-  if (dias <= 31) return "day";
-  if (dias <= 182) return "week";
+export function stepFor(days: number): ChartStep {
+  if (days <= 31) return "day";
+  if (days <= 182) return "week";
   return "month";
 }
 
-function inicioDoPasso(t: number, passo: Passo): number {
+function stepStart(t: number, step: ChartStep): number {
   const d = new Date(t);
-  if (passo === "week") {
+  if (step === "week") {
     const dow = (d.getUTCDay() + 6) % 7;
-    return t - dow * DIA_MS;
+    return t - dow * DAY_MS;
   }
-  if (passo === "month") {
+  if (step === "month") {
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
   }
   return t;
 }
 
-function rotuloDe(inicio: string, passo: Passo): string {
-  if (passo === "month") {
-    const m = Number(inicio.split("-")[1]);
-    return nomeDoMes(m) ?? inicio;
+function stepLabel(start: string, step: ChartStep): string {
+  if (step === "month") {
+    const m = Number(start.split("-")[1]);
+    return monthName(m) ?? start;
   }
-  return diaCurto(inicio);
+  return shortDay(start);
 }
 
-function tituloDe(inicio: string, fim: string, passo: Passo): string {
-  const ano = inicio.slice(0, 4);
-  if (passo === "day") return diaCurto(inicio, true);
-  if (passo === "month") {
-    const m = Number(inicio.split("-")[1]);
-    return `${nomeDoMes(m) ?? inicio} ${ano}`;
+function stepTitle(start: string, end: string, step: ChartStep): string {
+  const year = start.slice(0, 4);
+  if (step === "day") return shortDay(start, true);
+  if (step === "month") {
+    const m = Number(start.split("-")[1]);
+    return `${monthName(m) ?? start} ${year}`;
   }
   return tr("{start} – {end}, {year}", {
-    start: diaCurto(inicio),
-    end: diaCurto(fim),
-    year: ano,
+    start: shortDay(start),
+    end: shortDay(end),
+    year,
   });
 }
 
-export function janelaDoGrafico(
-  dias: number,
+export function chartWindow(
+  days: number,
   byDay: Record<string, UsageBucket>,
-  agora: number = Date.now()
-): { de: string; ate: string } | null {
-  const chaves = Object.keys(byDay).filter((k) => Number.isFinite(ms(k))).sort();
-  if (chaves.length === 0) return null;
-  const primeira = chaves[0];
-  const ultima = chaves[chaves.length - 1];
-  if (dias <= 0) return { de: primeira, ate: ultima };
-  const hoje = chave(agora);
-  const inicio = chave(ms(hoje) - (dias - 1) * DIA_MS);
+  now: number = Date.now()
+): { from: string; to: string } | null {
+  const keys = Object.keys(byDay).filter((k) => Number.isFinite(ms(k))).sort();
+  if (keys.length === 0) return null;
+  const first = keys[0];
+  const last = keys[keys.length - 1];
+  if (days <= 0) return { from: first, to: last };
+  const today = dayKey(now);
+  const start = dayKey(ms(today) - (days - 1) * DAY_MS);
   return {
-    de: inicio < primeira ? inicio : primeira,
-    ate: hoje > ultima ? hoje : ultima,
+    from: start < first ? start : first,
+    to: today > last ? today : last,
   };
 }
 
-export function serieDoTempo(
+export function timeSeries(
   byDay: Record<string, UsageBucket>,
-  de: string,
-  ate: string,
-  passo: Passo
-): Coluna[] {
-  const inicio = ms(de);
-  const fim = ms(ate);
-  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim < inicio) return [];
+  from: string,
+  to: string,
+  step: ChartStep
+): Column[] {
+  const start = ms(from);
+  const end = ms(to);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
 
-  const colunas: Coluna[] = [];
-  const porInicio = new Map<string, Coluna>();
+  const columns: Column[] = [];
+  const byStart = new Map<string, Column>();
 
-  for (let t = inicioDoPasso(inicio, passo); t <= fim; ) {
-    const k = chave(t);
-    const proximo =
-      passo === "month"
+  for (let t = stepStart(start, step); t <= end; ) {
+    const k = dayKey(t);
+    const next =
+      step === "month"
         ? Date.UTC(new Date(t).getUTCFullYear(), new Date(t).getUTCMonth() + 1, 1)
-        : t + (passo === "week" ? 7 : 1) * DIA_MS;
+        : t + (step === "week" ? 7 : 1) * DAY_MS;
 
-    const ultimoDia = chave(Math.min(proximo - DIA_MS, fim));
-    const col: Coluna = {
-      inicio: k,
-      rotulo: rotuloDe(k, passo),
-      titulo: tituloDe(k, ultimoDia, passo),
-      entrada: 0,
-      saida: 0,
+    const lastDay = dayKey(Math.min(next - DAY_MS, end));
+    const col: Column = {
+      start: k,
+      label: stepLabel(k, step),
+      title: stepTitle(k, lastDay, step),
+      tokensIn: 0,
+      tokensOut: 0,
       total: 0,
       chats: 0,
     };
-    colunas.push(col);
-    porInicio.set(k, col);
-    t = proximo;
+    columns.push(col);
+    byStart.set(k, col);
+    t = next;
   }
 
-  for (const [dia, b] of Object.entries(byDay)) {
-    const t = ms(dia);
-    if (!Number.isFinite(t) || t < inicio || t > fim) continue;
-    const col = porInicio.get(chave(inicioDoPasso(t, passo)));
+  for (const [day, b] of Object.entries(byDay)) {
+    const t = ms(day);
+    if (!Number.isFinite(t) || t < start || t > end) continue;
+    const col = byStart.get(dayKey(stepStart(t, step)));
     if (!col) continue;
-    col.entrada += b.tokensIn;
-    col.saida += b.tokensOut;
+    col.tokensIn += b.tokensIn;
+    col.tokensOut += b.tokensOut;
     col.total += b.tokensIn + b.tokensOut;
     col.chats += b.chats;
   }
 
-  return colunas;
+  return columns;
 }
 
-export function picoDa(colunas: readonly Coluna[]): number {
-  return colunas.reduce((p, c) => (c.total > p ? c.total : p), 0);
+export function peakOf(columns: readonly Column[]): number {
+  return columns.reduce((p, c) => (c.total > p ? c.total : p), 0);
 }

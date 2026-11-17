@@ -2,7 +2,7 @@ import { providerCredential, type Credentials } from "../core/providersMeta";
 import { requestUrl } from "obsidian";
 import { ProviderError } from "../providers/base";
 import { getEmbeddingSpec } from "./types";
-import { anotarUso } from "../usage/recorder";
+import { recordUsage } from "../usage/recorder";
 
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
 const OPENROUTER_EMBEDDINGS_ENDPOINT =
@@ -11,7 +11,7 @@ const GEMINI_EMBEDDINGS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/embeddings";
 const NIM_EMBEDDINGS_ENDPOINT = "https://integrate.api.nvidia.com/v1/embeddings";
 
-function ehVetor(v: unknown): v is number[] {
+function isVector(v: unknown): v is number[] {
   return Array.isArray(v) && v.every((n) => typeof n === "number");
 }
 
@@ -133,7 +133,7 @@ async function embedOpenAICompat(
 
   const out = new Array<number[]>(texts.length);
   for (const d of parsed.data ?? []) {
-    if (d && d.index >= 0 && d.index < out.length && ehVetor(d.embedding)) {
+    if (d && d.index >= 0 && d.index < out.length && isVector(d.embedding)) {
       out[d.index] = d.embedding;
     }
   }
@@ -146,7 +146,7 @@ async function embedOpenAICompat(
     }
   }
 
-  anotarUso(provider, model, { r: 1, i: parsed.usage?.prompt_tokens ?? 0 });
+  recordUsage(provider, model, { r: 1, i: parsed.usage?.prompt_tokens ?? 0 });
   return out;
 }
 
@@ -290,7 +290,7 @@ async function embedBatchOpenRouter(
       );
     }
     const emb = parsed.data[0]?.embedding;
-    if (!ehVetor(emb) || emb.length === 0) {
+    if (!isVector(emb) || emb.length === 0) {
       throw new ProviderError(
         "Nemotron returned data with no embedding (empty or invalid item).",
         "unknown"
@@ -298,7 +298,7 @@ async function embedBatchOpenRouter(
     }
     results.push(emb);
 
-    anotarUso("openrouter", model, { r: 1, i: parsed.usage?.prompt_tokens ?? 0 });
+    recordUsage("openrouter", model, { r: 1, i: parsed.usage?.prompt_tokens ?? 0 });
   }
   return results;
 }
@@ -310,7 +310,7 @@ export async function embedOllama(
 ): Promise<number[][]> {
   const base = (endpoint || "http://localhost:11434").replace(/\/+$/, "");
   if (texts.length === 0) return [];
-  const pedir = async (path: string, body: unknown) => {
+  const post = async (path: string, body: unknown) => {
     try {
       return await withTimeout(
         requestUrl({
@@ -328,36 +328,36 @@ export async function embedOllama(
     }
   };
 
-  const res = await pedir("/api/embed", { model, input: texts, truncate: true });
+  const res = await post("/api/embed", { model, input: texts, truncate: true });
   if (res.status === 404) {
 
     const out: number[][] = [];
     for (const prompt of texts) {
-      const r = await pedir("/api/embeddings", { model, prompt });
+      const r = await post("/api/embeddings", { model, prompt });
       if (r.status >= 400) {
         throw new ProviderError(`Ollama embeddings returned ${r.status}: ${r.text?.slice(0, 200) ?? ""}`, "unknown");
       }
       const emb = (r.json as { embedding?: unknown } | undefined)?.embedding;
-      if (!ehVetor(emb) || emb.length === 0) {
+      if (!isVector(emb) || emb.length === 0) {
         throw new ProviderError(`Ollama returned no embedding for ${model}.`, "unknown");
       }
       out.push(emb);
-      anotarUso("ollama", model, { r: 1 });
+      recordUsage("ollama", model, { r: 1 });
     }
     return out;
   }
   if (res.status >= 400) {
     throw new ProviderError(`Ollama embeddings returned ${res.status}: ${res.text?.slice(0, 200) ?? ""}`, "unknown");
   }
-  const lista = (res.json as { embeddings?: unknown } | undefined)?.embeddings;
-  if (!Array.isArray(lista) || lista.length !== texts.length || !lista.every((v) => ehVetor(v) && v.length > 0)) {
+  const vectors = (res.json as { embeddings?: unknown } | undefined)?.embeddings;
+  if (!Array.isArray(vectors) || vectors.length !== texts.length || !vectors.every((v) => isVector(v) && v.length > 0)) {
     throw new ProviderError(
-      `Ollama returned ${Array.isArray(lista) ? lista.length : 0} vectors for ${texts.length} inputs.`,
+      `Ollama returned ${Array.isArray(vectors) ? vectors.length : 0} vectors for ${texts.length} inputs.`,
       "unknown"
     );
   }
-  anotarUso("ollama", model, { r: 1 });
-  return lista as number[][];
+  recordUsage("ollama", model, { r: 1 });
+  return vectors as number[][];
 }
 
 export async function embedItems(

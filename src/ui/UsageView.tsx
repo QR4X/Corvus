@@ -11,37 +11,37 @@ import { formatUsd, formatUsdRounded } from "../usage/pricing";
 import { formatCompact } from "../usage/format";
 import { saveUsageMarkdown } from "../usage/export";
 import {
-  FILTRO_VAZIO,
-  alternar,
-  aplicar,
-  opcoes,
-  type Opcao,
+  EMPTY_FILTER,
+  toggleValue,
+  applyFilter,
+  filterOptions,
+  type FilterOption,
   type UsageFilter,
 } from "../usage/filters";
 import {
-  A_VISTA,
-  buscarOpcoes,
-  conversasDoTopo,
-  faixaDeDatas,
-  marcados,
-  mediaPorConversa,
-  metricaDa,
-  modelosDaPagina,
-  opcoesAVista,
-  relatorioDe,
-  semADimensao,
-  valeFiltrar,
-  type Fatia,
-  type Metrica,
+  VISIBLE_OPTIONS,
+  searchOptions,
+  topChats,
+  dateRange,
+  selectedCount,
+  averagePerChat,
+  metricOf,
+  pageModels,
+  visibleOptions,
+  sliceReport,
+  withoutDimension,
+  worthFiltering,
+  type Slice,
+  type Metric,
 } from "../usage/page";
 import {
-  janelaDoGrafico,
-  passoDe,
-  picoDa,
-  serieDoTempo,
-  diasEntre,
-  type Coluna,
-  type Passo,
+  chartWindow,
+  stepFor,
+  peakOf,
+  timeSeries,
+  daysBetween,
+  type Column,
+  type ChartStep,
 } from "../usage/timeline";
 import { Sheet, SheetNote, SheetSearch } from "./Sheet";
 import { moduleIcon, moduleLabel, relativeShort } from "./modules";
@@ -51,147 +51,147 @@ import { modelLogo } from "../providers/modelLogo";
 import { LeftToday } from "./LeftToday";
 import { mark, tr } from "../i18n/tr";
 
-const PERIODOS = [
+const PERIOD_OPTIONS = [
   { id: "0", label: mark("All time") },
   { id: "7", label: mark("7 days") },
   { id: "30", label: mark("30 days") },
   { id: "90", label: mark("90 days") },
 ];
 
-const TOPO = 10;
+const TOP_CHATS = 10;
 
-const BUSCA_A_PARTIR = 8;
+const SEARCH_THRESHOLD = 8;
 
-const PASSO: Record<Passo, string> = {
+const STEP_LABELS: Record<ChartStep, string> = {
   day: mark("Daily"),
   week: mark("Weekly"),
   month: mark("Monthly"),
 };
 
-type Dimensao = "providers" | "models" | "modes";
+type Dimension = "providers" | "models" | "modes";
 
 export function UsageView({
   plugin,
   session,
-  filtro: f,
-  onFiltro: setF,
+  filter: f,
+  onFilter: setF,
   onBack,
   onOpenChat,
 }: {
   plugin: CorvusPlugin;
   session: ChatSession;
 
-  filtro: UsageFilter;
-  onFiltro: (f: UsageFilter) => void;
+  filter: UsageFilter;
+  onFilter: (f: UsageFilter) => void;
   onBack: () => void;
 
   onOpenChat: () => void;
 }) {
   const chats = useChatSummaries(plugin);
-  const [salvando, setSalvando] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [lista, setLista] = useState<Dimensao>("models");
-  const [listaAberta, setListaAberta] = useState(false);
-  const [buscaLista, setBuscaLista] = useState("");
+  const [listDim, setListDim] = useState<Dimension>("models");
+  const [listOpen, setListOpen] = useState(false);
+  const [listQuery, setListQuery] = useState("");
 
-  const porProvider = useMemo(() => opcoes(chats, "provider"), [chats]);
-  const porModelo = useMemo(() => opcoes(chats, "model"), [chats]);
-  const porModo = useMemo(() => opcoes(chats, "mode"), [chats]);
+  const providerOptions = useMemo(() => filterOptions(chats, "provider"), [chats]);
+  const modelOptions = useMemo(() => filterOptions(chats, "model"), [chats]);
+  const modeOptions = useMemo(() => filterOptions(chats, "mode"), [chats]);
 
-  const recorte = useMemo(() => aplicar(chats, f), [chats, f]);
-  const agg = useMemo(() => aggregateFromSummaries(recorte, 0), [recorte]);
-  const m = metricaDa(agg.total);
-  const modelos = useMemo(() => modelosDaPagina(agg), [agg]);
-  const topo = useMemo(() => conversasDoTopo(agg, TOPO), [agg]);
-  const media = mediaPorConversa(agg.total);
+  const filtered = useMemo(() => applyFilter(chats, f), [chats, f]);
+  const agg = useMemo(() => aggregateFromSummaries(filtered, 0), [filtered]);
+  const m = metricOf(agg.total);
+  const models = useMemo(() => pageModels(agg), [agg]);
+  const top = useMemo(() => topChats(agg, TOP_CHATS), [agg]);
+  const average = averagePerChat(agg.total);
 
-  const dimensoes: Array<{
-    chave: Dimensao;
-    titulo: string;
+  const dimensions: Array<{
+    key: Dimension;
+    title: string;
 
     plural: string;
 
-    busca: string;
-    ops: Opcao[];
-    nome: (id: string) => string;
-    icone: (id: string) => string;
+    searchLabel: string;
+    ops: FilterOption[];
+    nameOf: (id: string) => string;
+    iconOf: (id: string) => string;
   }> = [
     {
-      chave: "providers",
-      titulo: tr("Provider"),
+      key: "providers",
+      title: tr("Provider"),
       plural: tr("Providers"),
-      busca: tr("Search providers"),
-      ops: porProvider,
-      nome: (id) => PROVIDERS.find((p) => p.id === id)?.name ?? id,
-      icone: providerIcon,
+      searchLabel: tr("Search providers"),
+      ops: providerOptions,
+      nameOf: (id) => PROVIDERS.find((p) => p.id === id)?.name ?? id,
+      iconOf: providerIcon,
     },
 
     {
-      chave: "models",
-      titulo: tr("Model"),
+      key: "models",
+      title: tr("Model"),
       plural: tr("Models"),
-      busca: tr("Search models"),
-      ops: porModelo,
-      nome: prettyModelName,
-      icone: modelLogo,
+      searchLabel: tr("Search models"),
+      ops: modelOptions,
+      nameOf: prettyModelName,
+      iconOf: modelLogo,
     },
     {
-      chave: "modes",
-      titulo: tr("Mode"),
+      key: "modes",
+      title: tr("Mode"),
       plural: tr("Modes"),
-      busca: tr("Search modes"),
-      ops: porModo,
-      nome: moduleLabel,
-      icone: moduleIcon,
+      searchLabel: tr("Search modes"),
+      ops: modeOptions,
+      nameOf: moduleLabel,
+      iconOf: moduleIcon,
     },
   ];
-  const visiveis = dimensoes.filter((d) => valeFiltrar(d.ops, f[d.chave]));
-  const naLista = dimensoes.find((d) => d.chave === lista) ?? dimensoes[1];
+  const visibleDims = dimensions.filter((d) => worthFiltering(d.ops, f[d.key]));
+  const listed = dimensions.find((d) => d.key === listDim) ?? dimensions[1];
 
-  const aggLista = useMemo(
-    () => aggregateFromSummaries(aplicar(chats, semADimensao(f, lista)), 0),
-    [chats, f, lista]
+  const listAgg = useMemo(
+    () => aggregateFromSummaries(applyFilter(chats, withoutDimension(f, listDim)), 0),
+    [chats, f, listDim]
   );
-  const mLista = metricaDa(aggLista.total);
+  const listMetric = metricOf(listAgg.total);
 
-  const serie = useMemo((): { colunas: Coluna[]; passo: Passo } => {
-    const j = janelaDoGrafico(f.days, agg.byDay);
-    if (!j) return { colunas: [], passo: "day" };
-    const passo = passoDe(diasEntre(j.de, j.ate));
-    return { colunas: serieDoTempo(agg.byDay, j.de, j.ate, passo), passo };
+  const series = useMemo((): { columns: Column[]; step: ChartStep } => {
+    const j = chartWindow(f.days, agg.byDay);
+    if (!j) return { columns: [], step: "day" };
+    const step = stepFor(daysBetween(j.from, j.to));
+    return { columns: timeSeries(agg.byDay, j.from, j.to, step), step };
   }, [agg, f.days]);
-  const achadas = buscarOpcoes(naLista.ops, buscaLista, naLista.nome);
-  const relatorio = relatorioDe(
-    achadas,
-    lista === "providers"
-      ? aggLista.byProvider
-      : lista === "models"
-        ? aggLista.byModel
-        : aggLista.byMode,
-    aggLista.total
+  const matches = searchOptions(listed.ops, listQuery, listed.nameOf);
+  const report = sliceReport(
+    matches,
+    listDim === "providers"
+      ? listAgg.byProvider
+      : listDim === "models"
+        ? listAgg.byModel
+        : listAgg.byMode,
+    listAgg.total
   );
 
-  const escopo = [
+  const scope = [
     f.days === 0 ? tr("All time") : tr("Last {n} days", { n: f.days }),
-    ...dimensoes
-      .filter((d) => d.chave !== lista)
-      .flatMap((d) => f[d.chave].map(d.nome)),
-    contagem(aggLista.total.chats),
-    mLista === "cost"
-      ? formatUsdRounded(aggLista.total.cost)
+    ...dimensions
+      .filter((d) => d.key !== listDim)
+      .flatMap((d) => f[d.key].map(d.nameOf)),
+    chatCount(listAgg.total.chats),
+    listMetric === "cost"
+      ? formatUsdRounded(listAgg.total.cost)
       : tr("{n} tokens", {
-          n: formatCompact(aggLista.total.tokensIn + aggLista.total.tokensOut),
+          n: formatCompact(listAgg.total.tokensIn + listAgg.total.tokensOut),
         }),
   ];
 
-  const verTodos = (d: Dimensao) => {
-    setLista(d);
-    setBuscaLista("");
-    setListaAberta(true);
+  const showAll = (d: Dimension) => {
+    setListDim(d);
+    setListQuery("");
+    setListOpen(true);
   };
 
-  const salvarRelatorio = async () => {
-    setSalvando(true);
+  const saveReport = async () => {
+    setSaving(true);
     try {
 
       const r = await saveUsageMarkdown(
@@ -209,16 +209,16 @@ export function UsageView({
         })
       );
     } finally {
-      setSalvando(false);
+      setSaving(false);
     }
   };
 
-  const abrir = (c: ChatUsageRow) => {
+  const openChat = (c: ChatUsageRow) => {
     void session.load(c);
     onOpenChat();
   };
 
-  const vazio = agg.total.chats === 0;
+  const isEmpty = agg.total.chats === 0;
 
   return (
     <div className="corvus-chat">
@@ -238,11 +238,11 @@ export function UsageView({
           className="corvus-topbar-action corvus-topbar-end"
           aria-label={tr("Save this report as a note")}
           title={tr("Save this report as a note")}
-          disabled={salvando || vazio}
-          onClick={() => void salvarRelatorio()}
+          disabled={saving || isEmpty}
+          onClick={() => void saveReport()}
         >
-          <Icon name={salvando ? "loader" : "file-down"} size={18} />
-          <span>{salvando ? tr("Saving…") : tr("Report")}</span>
+          <Icon name={saving ? "loader" : "file-down"} size={18} />
+          <span>{saving ? tr("Saving…") : tr("Report")}</span>
         </button>
       </header>
 
@@ -252,7 +252,7 @@ export function UsageView({
 
         {}
         <Segmented
-          options={PERIODOS.map((p) => ({ ...p, label: tr(p.label) }))}
+          options={PERIOD_OPTIONS.map((p) => ({ ...p, label: tr(p.label) }))}
           value={String(f.days)}
           label={tr("Period")}
 
@@ -281,98 +281,98 @@ export function UsageView({
           </span>
           {}
           <span className="corvus-usage-sub">
-            {contagem(agg.total.chats)}
-            {!vazio && (
+            {chatCount(agg.total.chats)}
+            {!isEmpty && (
               <>
                 <span className="corvus-usage-sep">·</span>
-                {faixaDeDatas(agg.periodStart, agg.periodEnd)}
+                {dateRange(agg.periodStart, agg.periodEnd)}
               </>
             )}
           </span>
           <div className="corvus-mods">
             {}
-            <Modulo
-              icone="arrow-up-from-line"
-              rotulo={tr("Sent")}
-              valor={formatCompact(agg.total.tokensIn)}
-              unidade={tr("tokens")}
+            <Stat
+              icon="arrow-up-from-line"
+              label={tr("Sent")}
+              value={formatCompact(agg.total.tokensIn)}
+              unit={tr("tokens")}
             />
-            <Modulo
-              icone="arrow-down-to-line"
-              rotulo={tr("Received")}
-              valor={formatCompact(agg.total.tokensOut)}
-              unidade={tr("tokens")}
+            <Stat
+              icon="arrow-down-to-line"
+              label={tr("Received")}
+              value={formatCompact(agg.total.tokensOut)}
+              unit={tr("tokens")}
             />
-            <Modulo
-              icone="message-circle"
-              rotulo={tr("Per chat")}
-              valor={
-                media == null
+            <Stat
+              icon="message-circle"
+              label={tr("Per chat")}
+              value={
+                average == null
                   ? "—"
                   : m === "cost"
-                    ? formatUsdRounded(media)
-                    : formatCompact(Math.round(media))
+                    ? formatUsdRounded(average)
+                    : formatCompact(Math.round(average))
               }
-              unidade={m === "cost" ? tr("avg") : tr("tokens")}
+              unit={m === "cost" ? tr("avg") : tr("tokens")}
             />
           </div>
         </section>
 
         {}
-        {serie.colunas.length > 1 && picoDa(serie.colunas) > 0 ? (
-          <GraficoNoTempo colunas={serie.colunas} passo={serie.passo} />
+        {series.columns.length > 1 && peakOf(series.columns) > 0 ? (
+          <TimeChart columns={series.columns} step={series.step} />
         ) : (
 
-          <GraficoVazio
-            motivo={
+          <EmptyChart
+            reason={
 
               chats.length === 0
                 ? tr("Your tokens land here as you chat.")
                 : agg.total.chats === 0
                   ? tr("Nothing to plot yet.")
-                  : picoDa(serie.colunas) === 0
+                  : peakOf(series.columns) === 0
                     ? tr("No tokens recorded in these chats.")
                     : tr("Just one day so far — the shape fills in as you go.")
             }
           />
         )}
 
-        {visiveis.length > 0 && (
+        {visibleDims.length > 0 && (
           <section className="corvus-home-block corvus-usage-filters">
             <div className="corvus-home-headrow">
               <span className="corvus-section-label">{tr("Filter")}</span>
               {}
-              {marcados(f) > 0 && (
+              {selectedCount(f) > 0 && (
                 <button
                   type="button"
                   className="corvus-home-filter is-accent"
-                  onClick={() => setF({ ...FILTRO_VAZIO, days: f.days })}
+                  onClick={() => setF({ ...EMPTY_FILTER, days: f.days })}
                 >
                   <Icon name="x" size={16} />
                   <span>{tr("Clear")}</span>
                 </button>
               )}
             </div>
-            {visiveis.map((d) => (
-              <div key={d.chave} className="corvus-usage-dim">
+            {visibleDims.map((d) => (
+              <div key={d.key} className="corvus-usage-dim">
                 {}
                 <div className="corvus-usage-dim-head">
-                  <span className="corvus-usage-dim-label">{d.titulo}</span>
-                  {d.ops.length > A_VISTA && (
+                  <span className="corvus-usage-dim-label">{d.title}</span>
+                  {d.ops.length > VISIBLE_OPTIONS && (
                     <button
                       type="button"
                       className="corvus-home-filter is-accent"
-                      onClick={() => verTodos(d.chave)}
+                      onClick={() => showAll(d.key)}
                     >
                       <span>{tr("See all {n}", { n: d.ops.length })}</span>
                       <Icon name="chevron-right" size={16} />
                     </button>
                   )}
                 </div>
-                <div className="corvus-choices" role="group" aria-label={d.titulo}>
-                  {opcoesAVista(d.ops, f[d.chave]).map((o) => {
-                    const on = f[d.chave].includes(o.id);
-                    const nome = d.nome(o.id);
+                <div className="corvus-choices" role="group" aria-label={d.title}>
+                  {visibleOptions(d.ops, f[d.key]).map((o) => {
+                    const on = f[d.key].includes(o.id);
+                    const name = d.nameOf(o.id);
                     return (
                       <button
                         key={o.id}
@@ -380,13 +380,13 @@ export function UsageView({
                         className={on ? "corvus-choice is-on" : "corvus-choice"}
                         aria-pressed={on}
 
-                        aria-label={`${nome}, ${contagem(o.count)}`}
+                        aria-label={`${name}, ${chatCount(o.count)}`}
                         onClick={() =>
-                          setF({ ...f, [d.chave]: alternar(f[d.chave], o.id) })
+                          setF({ ...f, [d.key]: toggleValue(f[d.key], o.id) })
                         }
                       >
-                        <Icon name={d.icone(o.id)} size={16} />
-                        <span>{nome}</span>
+                        <Icon name={d.iconOf(o.id)} size={16} />
+                        <span>{name}</span>
                         <sup className="corvus-choice-count" aria-hidden="true">
                           {o.count}
                         </sup>
@@ -399,7 +399,7 @@ export function UsageView({
           </section>
         )}
 
-        {vazio ? (
+        {isEmpty ? (
           <div className="corvus-home-empty">
             <Icon name="chart-no-axes-column" size={42} />
             <p>
@@ -414,13 +414,13 @@ export function UsageView({
             <section className="corvus-home-block">
               <span className="corvus-section-label">{tr("By model")}</span>
               <div className="corvus-usage-list">
-                {modelos.map((r) => (
-                  <LinhaDeFatia
+                {models.map((r) => (
+                  <SliceRow
                     key={r.id}
                     r={r}
                     m={m}
-                    nome={prettyModelName(r.id)}
-                    icone={modelLogo(r.id)}
+                    name={prettyModelName(r.id)}
+                    icon={modelLogo(r.id)}
                   />
                 ))}
               </div>
@@ -431,12 +431,12 @@ export function UsageView({
                 {m === "cost" ? tr("Most expensive chats") : tr("Biggest chats")}
               </span>
               <div className="corvus-usage-list">
-                {topo.map((c) => (
-                  <LinhaDeConversa
+                {top.map((c) => (
+                  <ChatRow
                     key={c.id}
                     c={c}
                     m={m}
-                    onOpen={() => abrir(c)}
+                    onOpen={() => openChat(c)}
                   />
                 ))}
               </div>
@@ -447,44 +447,44 @@ export function UsageView({
 
       {}
       <Sheet
-        title={naLista.plural}
-        open={listaAberta}
-        onClose={() => setListaAberta(false)}
+        title={listed.plural}
+        open={listOpen}
+        onClose={() => setListOpen(false)}
       >
-        {naLista.ops.length > BUSCA_A_PARTIR && (
+        {listed.ops.length > SEARCH_THRESHOLD && (
           <SheetSearch
-            value={buscaLista}
-            placeholder={naLista.busca}
-            found={achadas.length}
-            onChange={setBuscaLista}
+            value={listQuery}
+            placeholder={listed.searchLabel}
+            found={matches.length}
+            onChange={setListQuery}
           />
         )}
         <p className="corvus-usage-report-head">
-          {escopo.map((parte, i) => (
+          {scope.map((part, i) => (
             <span key={i}>
               {i > 0 && <span className="corvus-usage-sep">·</span>}
-              {parte}
+              {part}
             </span>
           ))}
         </p>
-        {achadas.length === 0 ? (
+        {matches.length === 0 ? (
           <SheetNote>{tr("Nothing matches that search.")}</SheetNote>
         ) : (
           <div className="corvus-usage-list">
-            {relatorio.usadas.map((r) => (
-              <LinhaDeFatia
+            {report.used.map((r) => (
+              <SliceRow
                 key={r.id}
                 r={r}
-                m={mLista}
-                nome={naLista.nome(r.id)}
-                icone={naLista.icone(r.id)}
+                m={listMetric}
+                name={listed.nameOf(r.id)}
+                icon={listed.iconOf(r.id)}
               />
             ))}
-            {relatorio.paradas.map((o) => (
-              <LinhaParada
+            {report.idle.map((o) => (
+              <IdleRow
                 key={o.id}
-                nome={naLista.nome(o.id)}
-                icone={naLista.icone(o.id)}
+                name={listed.nameOf(o.id)}
+                icon={listed.iconOf(o.id)}
               />
             ))}
           </div>
@@ -494,28 +494,28 @@ export function UsageView({
   );
 }
 
-function contagem(n: number): string {
+function chatCount(n: number): string {
   return n === 1 ? tr("1 chat") : tr("{n} chats", { n });
 }
 
-function GraficoNoTempo({
-  colunas,
-  passo,
+function TimeChart({
+  columns,
+  step,
 }: {
-  colunas: Coluna[];
-  passo: Passo;
+  columns: Column[];
+  step: ChartStep;
 }) {
 
-  const [escolhida, setEscolhida] = useState<string | null>(null);
-  const pico = picoDa(colunas);
-  const alta = colunas.reduce((a, b) => (b.total > a.total ? b : a));
-  const alvo = colunas.find((c) => c.inicio === escolhida) ?? alta;
+  const [selected, setSelected] = useState<string | null>(null);
+  const peak = peakOf(columns);
+  const highest = columns.reduce((a, b) => (b.total > a.total ? b : a));
+  const target = columns.find((c) => c.start === selected) ?? highest;
 
   return (
     <section className="corvus-home-block" aria-label={tr("Tokens over time")}>
       <div className="corvus-home-headrow">
         <span className="corvus-section-label">{tr("Over time")}</span>
-        <span className="corvus-chart-step">{tr(PASSO[passo])}</span>
+        <span className="corvus-chart-step">{tr(STEP_LABELS[step])}</span>
       </div>
       <div className="corvus-chart">
         {}
@@ -530,64 +530,64 @@ function GraficoNoTempo({
           </span>
           {}
           <span className="corvus-chart-peak">
-            {tr("peak {n}", { n: formatCompact(pico) })}
+            {tr("peak {n}", { n: formatCompact(peak) })}
           </span>
         </div>
         <div
           className="corvus-chart-plot"
           role="group"
           aria-label={
-            passo === "day"
+            step === "day"
               ? tr("Tokens per day")
-              : passo === "week"
+              : step === "week"
                 ? tr("Tokens per week")
                 : tr("Tokens per month")
           }
         >
-          {colunas.map((c) => (
+          {columns.map((c) => (
             <button
-              key={c.inicio}
+              key={c.start}
               type="button"
               className={
-                c.inicio === alvo.inicio
+                c.start === target.start
                   ? "corvus-chart-col is-on"
                   : "corvus-chart-col"
               }
-              aria-pressed={c.inicio === alvo.inicio}
+              aria-pressed={c.start === target.start}
 
               aria-label={tr("{when}: {sent} sent, {received} received", {
-                when: c.titulo,
-                sent: formatCompact(c.entrada),
-                received: formatCompact(c.saida),
+                when: c.title,
+                sent: formatCompact(c.tokensIn),
+                received: formatCompact(c.tokensOut),
               })}
               title={tr("{when} · {sent} sent · {received} received", {
-                when: c.titulo,
-                sent: formatCompact(c.entrada),
-                received: formatCompact(c.saida),
+                when: c.title,
+                sent: formatCompact(c.tokensIn),
+                received: formatCompact(c.tokensOut),
               })}
-              onClick={() => setEscolhida(c.inicio)}
+              onClick={() => setSelected(c.start)}
             >
               {}
               <span className="corvus-chart-stack">
                 <span
                   className="corvus-chart-air"
-                  style={{ flexGrow: Math.max(pico - c.total, 0) }}
+                  style={{ flexGrow: Math.max(peak - c.total, 0) }}
                 />
-                {c.saida > 0 && (
+                {c.tokensOut > 0 && (
                   <span
 
                     className={
-                      c.entrada > 0
+                      c.tokensIn > 0
                         ? "corvus-chart-bar is-out has-in"
                         : "corvus-chart-bar is-out"
                     }
-                    style={{ flexGrow: c.saida }}
+                    style={{ flexGrow: c.tokensOut }}
                   />
                 )}
-                {c.entrada > 0 && (
+                {c.tokensIn > 0 && (
                   <span
                     className="corvus-chart-bar is-in"
-                    style={{ flexGrow: c.entrada }}
+                    style={{ flexGrow: c.tokensIn }}
                   />
                 )}
               </span>
@@ -596,36 +596,36 @@ function GraficoNoTempo({
         </div>
         {}
         <div className="corvus-chart-axis">
-          <span>{colunas[0].rotulo}</span>
-          <span>{colunas[colunas.length - 1].rotulo}</span>
+          <span>{columns[0].label}</span>
+          <span>{columns[columns.length - 1].label}</span>
         </div>
         <p className="corvus-chart-readout">
-          <span className="corvus-chart-when">{alvo.titulo}</span>
+          <span className="corvus-chart-when">{target.title}</span>
           <span className="corvus-usage-sep">·</span>
-          {tr("{n} sent", { n: formatCompact(alvo.entrada) })}
+          {tr("{n} sent", { n: formatCompact(target.tokensIn) })}
           <span className="corvus-usage-sep">·</span>
-          {tr("{n} received", { n: formatCompact(alvo.saida) })}
+          {tr("{n} received", { n: formatCompact(target.tokensOut) })}
         </p>
       </div>
     </section>
   );
 }
 
-function LinhaDeFatia({
+function SliceRow({
   r,
   m,
-  nome,
-  icone,
+  name,
+  icon,
 }: {
-  r: Fatia;
-  m: Metrica;
+  r: Slice;
+  m: Metric;
 
-  nome: string;
-  icone: string;
+  name: string;
+  icon: string;
 }) {
-  const chats = contagem(r.chats);
-  const preco =
-    r.preco === "gratis" ? tr("Free") : r.preco === "sem-preco" ? "—" : formatUsd(r.cost);
+  const chats = chatCount(r.chats);
+  const price =
+    r.price === "free" ? tr("Free") : r.price === "unpriced" ? "—" : formatUsd(r.cost);
   return (
     <div className="corvus-usage-row">
       <span
@@ -634,16 +634,16 @@ function LinhaDeFatia({
         aria-hidden="true"
       >
         <span className="corvus-donut" />
-        <Icon name={icone} size={16} />
+        <Icon name={icon} size={16} />
       </span>
       <span className="corvus-usage-row-text">
-        <span className="corvus-usage-row-name">{nome}</span>
+        <span className="corvus-usage-row-name">{name}</span>
         <span className="corvus-usage-row-sub">
           {chats}
           <span className="corvus-usage-sep">·</span>
           {m === "cost"
             ? tr("{n} tokens", { n: formatCompact(r.tokens) })
-            : r.preco === "sem-preco"
+            : r.price === "unpriced"
               ? tr("no public price")
               : tr("free")}
         </span>
@@ -651,22 +651,22 @@ function LinhaDeFatia({
       <span className="corvus-usage-row-end">
         <span
           className="corvus-usage-row-value"
-          title={r.preco === "sem-preco" ? tr("No public price") : undefined}
+          title={r.price === "unpriced" ? tr("No public price") : undefined}
         >
-          {m === "cost" ? preco : formatCompact(r.tokens)}
-          {r.piso && <span className="corvus-usage-approx">+</span>}
+          {m === "cost" ? price : formatCompact(r.tokens)}
+          {r.isFloor && <span className="corvus-usage-approx">+</span>}
         </span>
         <span className="corvus-usage-row-pct">
-          {r.quase ? "<1%" : `${r.pct}%`}
+          {r.nearZero ? "<1%" : `${r.pct}%`}
         </span>
       </span>
     </div>
   );
 }
 
-const FANTASMA = [22, 34, 26, 42, 30, 47, 26, 38, 30, 44, 25, 35];
+const GHOST_BARS = [22, 34, 26, 42, 30, 47, 26, 38, 30, 44, 25, 35];
 
-function GraficoVazio({ motivo }: { motivo: string }) {
+function EmptyChart({ reason }: { reason: string }) {
   return (
     <section className="corvus-home-block" aria-label={tr("Tokens over time")}>
       <div className="corvus-home-headrow">
@@ -685,7 +685,7 @@ function GraficoVazio({ motivo }: { motivo: string }) {
           </span>
         </div>
         <div className="corvus-chart-plot">
-          {FANTASMA.map((h, i) => (
+          {GHOST_BARS.map((h, i) => (
             <span key={i} className="corvus-chart-col" aria-hidden="true">
               <span className="corvus-chart-stack">
                 <span className="corvus-chart-air" style={{ flexGrow: 100 - h }} />
@@ -693,14 +693,14 @@ function GraficoVazio({ motivo }: { motivo: string }) {
               </span>
             </span>
           ))}
-          <p className="corvus-chart-motivo">{motivo}</p>
+          <p className="corvus-chart-reason">{reason}</p>
         </div>
       </div>
     </section>
   );
 }
 
-function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
+function IdleRow({ name, icon }: { name: string; icon: string }) {
   return (
     <div className="corvus-usage-row is-idle">
       <span
@@ -709,10 +709,10 @@ function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
         aria-hidden="true"
       >
         <span className="corvus-donut" />
-        <Icon name={icone} size={16} />
+        <Icon name={icon} size={16} />
       </span>
       <span className="corvus-usage-row-text">
-        <span className="corvus-usage-row-name">{nome}</span>
+        <span className="corvus-usage-row-name">{name}</span>
         <span className="corvus-usage-row-sub">{tr("No chats in this slice")}</span>
       </span>
       <span className="corvus-usage-row-end">
@@ -722,13 +722,13 @@ function LinhaParada({ nome, icone }: { nome: string; icone: string }) {
   );
 }
 
-function LinhaDeConversa({
+function ChatRow({
   c,
   m,
   onOpen,
 }: {
   c: ChatUsageRow;
-  m: Metrica;
+  m: Metric;
   onOpen: () => void;
 }) {
   return (
@@ -758,26 +758,26 @@ function LinhaDeConversa({
   );
 }
 
-function Modulo({
-  icone,
-  rotulo,
-  valor,
-  unidade,
+function Stat({
+  icon,
+  label,
+  value,
+  unit,
 }: {
-  icone: string;
-  rotulo: string;
-  valor: string;
-  unidade: string;
+  icon: string;
+  label: string;
+  value: string;
+  unit: string;
 }) {
   return (
     <div className="corvus-mod">
       <span className="corvus-mod-title has-icon">
-        <Icon name={icone} size={12} />
-        <span>{rotulo}</span>
+        <Icon name={icon} size={12} />
+        <span>{label}</span>
       </span>
       <span className="corvus-mod-row">
-        <span className="corvus-mod-value">{valor}</span>
-        <span className="corvus-mod-unit">{unidade}</span>
+        <span className="corvus-mod-value">{value}</span>
+        <span className="corvus-mod-unit">{unit}</span>
       </span>
     </div>
   );

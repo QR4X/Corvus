@@ -6,7 +6,7 @@ import { effortToVaultLookup } from "./effort";
 type AddMessage = (m: Record<string, unknown>) => string;
 type UpdateActivity = (id: string, patch: Record<string, unknown>) => void;
 
-export async function buscarContextoDoVault({
+export async function fetchVaultContext({
   plugin,
   t,
   effort,
@@ -59,7 +59,7 @@ export async function buscarContextoDoVault({
       return "";
     }
 
-    const bloco = hits
+    const block = hits
       .map((h) => {
         const base = h.path.replace(/\.md$/i, "").split("/").pop() ?? h.path;
         return `### [[${base}]]\n_(${h.path})_\n\n${h.text}`;
@@ -76,7 +76,7 @@ export async function buscarContextoDoVault({
           ? t.vault.foundContextKeywordFallback(hits.length)
           : t.vault.foundContextKeyword(hits.length),
     });
-    return bloco;
+    return block;
   } catch (err) {
     console.error("[corvus] vault search failed:", err);
     updateActivity(searchActivityId, {

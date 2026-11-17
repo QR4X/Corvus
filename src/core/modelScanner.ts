@@ -2,7 +2,7 @@ import type { DataAdapter } from "obsidian";
 import type { CorvusSettings } from "../settings";
 import type { VectorIndex } from "../rag/vectorIndex";
 import { getProvider } from "../providers";
-import { enriquecerCapacidadesOllama } from "../providers/ollama";
+import { enrichOllamaCapabilities } from "../providers/ollama";
 import {
   enrichModelsFromCatalog,
   getModelInfoCache,
@@ -10,13 +10,13 @@ import {
 } from "../providers/modelInfoStore";
 import {
   inferEmbeddingSpec,
-  pareceEmbeddingDoOllama,
+  looksLikeOllamaEmbedding,
   registerDiscoveredEmbeddings,
   type EmbeddingProvider,
 } from "../rag/types";
-import { somarDescobertos } from "../rag/discovered";
-import { definirGratisConhecidos } from "../usage/pricing";
-import { alinharAoInstalado, listaDeFabrica } from "./ollamaDefault";
+import { mergeDiscovered } from "../rag/discovered";
+import { setKnownFree } from "../usage/pricing";
+import { alignToInstalled, isFactoryList } from "./ollamaDefault";
 import { EMBEDDING_PROVIDERS, providerCredential } from "./providersMeta";
 
 interface ModelScannerHost {
@@ -39,7 +39,7 @@ export class ModelScanner {
     void this.enrichActive();
     this.registerEmbeddings();
     for (const [provider, ids] of Object.entries(this.s.freeModels ?? {})) {
-      definirGratisConhecidos(provider, ids);
+      setKnownFree(provider, ids);
     }
     void this.syncOllama({ onlyFactoryList: true });
   }
@@ -91,7 +91,7 @@ export class ModelScanner {
       map.ollama = next;
     } else {
       if (ids.length === 0) return [];
-      map[providerId] = somarDescobertos(map[providerId], ids);
+      map[providerId] = mergeDiscovered(map[providerId], ids);
     }
     this.s.discoveredEmbeddings = map;
     this.registerEmbeddings();
@@ -103,7 +103,7 @@ export class ModelScanner {
     const s = this.s;
     if (!s.ollamaEndpoint) return null;
     const untouched =
-      listaDeFabrica(s.activeModels.ollama ?? []) &&
+      isFactoryList(s.activeModels.ollama ?? []) &&
       (s.favoriteModels?.ollama ?? []).length === 0 &&
       s.ollamaSeenModels === undefined;
     if (opts.onlyFactoryList && !untouched) return null;
@@ -125,17 +125,17 @@ export class ModelScanner {
   private alignOllama(installed: readonly string[]): boolean {
     const s = this.s;
     const before = {
-      ativos: s.activeModels.ollama ?? [],
-      favoritos: s.favoriteModels?.ollama ?? [],
-      modelo: s.ollamaModel ?? "",
-      vistos: s.ollamaSeenModels ?? null,
+      active: s.activeModels.ollama ?? [],
+      favorites: s.favoriteModels?.ollama ?? [],
+      model: s.ollamaModel ?? "",
+      seen: s.ollamaSeenModels ?? null,
     };
-    const after = alinharAoInstalado(before, installed, pareceEmbeddingDoOllama);
+    const after = alignToInstalled(before, installed, looksLikeOllamaEmbedding);
     if (JSON.stringify(before) === JSON.stringify(after)) return false;
-    s.activeModels = { ...s.activeModels, ollama: [...after.ativos] };
-    s.favoriteModels = { ...(s.favoriteModels ?? {}), ollama: [...after.favoritos] };
-    s.ollamaModel = after.modelo;
-    s.ollamaSeenModels = [...after.vistos];
+    s.activeModels = { ...s.activeModels, ollama: [...after.active] };
+    s.favoriteModels = { ...(s.favoriteModels ?? {}), ollama: [...after.favorites] };
+    s.ollamaModel = after.model;
+    s.ollamaSeenModels = [...after.seen];
     return true;
   }
 
@@ -149,7 +149,7 @@ export class ModelScanner {
       if (quota) (this.s.freeQuota ??= {})[providerId] = { ...quota, at: Date.now() };
       if (free.length) {
         (this.s.freeModels ??= {})[providerId] = free;
-        definirGratisConhecidos(providerId, free);
+        setKnownFree(providerId, free);
       }
       if (quota || free.length) await this.host.save();
     } catch (err) {
@@ -171,7 +171,7 @@ export class ModelScanner {
     if (list.length === 0) return 0;
     try {
       return providerId === "ollama"
-        ? await enriquecerCapacidadesOllama(this.s.ollamaEndpoint, list)
+        ? await enrichOllamaCapabilities(this.s.ollamaEndpoint, list)
         : await enrichModelsFromCatalog(providerId, list);
     } catch (err) {
       console.error("[corvus] enriquecerCapacidades failed:", err);

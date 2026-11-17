@@ -21,24 +21,24 @@ export function compactTokens(n: number): string {
   return String(n);
 }
 
-export function gratisDeVerdade(
+export function isTrulyFree(
   model: string,
-  livres: readonly string[] | undefined,
-  palpite: boolean
+  freeIds: readonly string[] | undefined,
+  guess: boolean
 ): boolean {
 
   if (/:free$/i.test(model)) return true;
-  if (!livres || livres.length === 0) return palpite;
-  const igual = (s: string) => s.toLowerCase().replace(/_/g, ".");
-  const alvo = igual(model);
-  return livres.some((l) => igual(l) === alvo);
+  if (!freeIds || freeIds.length === 0) return guess;
+  const normalize = (s: string) => s.toLowerCase().replace(/_/g, ".");
+  const target = normalize(model);
+  return freeIds.some((l) => normalize(l) === target);
 }
 
-function milhar(n: number): string {
+function groupDigits(n: number): string {
   return n.toLocaleString(uiLocale());
 }
 
-export function geminiTemTierGratis(model: string): boolean {
+export function geminiHasFreeTier(model: string): boolean {
   const id = (model || "").toLowerCase().replace(/^(models|google)\//, "");
   if (/(image|imagen|veo|lyria|omni)/.test(id)) return false;
   if (/^gemini-\d+(\.\d+)?-flash/.test(id)) return true;
@@ -61,7 +61,7 @@ export function freeTag(
 
     tier: number;
 
-    cota?: { limit: number; remaining?: number };
+    quota?: { limit: number; remaining?: number };
   }
 ): FreeTag | null {
   const pool = provider === "openai" ? openaiFreeTierForModel(model) : null;
@@ -69,15 +69,15 @@ export function freeTag(
 
     const allow = openaiFreeAllowance(Math.max(opts.tier, 1), true);
     const perDay = pool === "mini" ? allow.miniPerDay : allow.bigPerDay;
-    const qtd = compactTokens(perDay);
+    const amount = compactTokens(perDay);
     if (opts.dataSharing) {
       return {
         kind: "daily",
         perDay,
-        label: tr("{n}/day", { n: qtd }),
+        label: tr("{n}/day", { n: amount }),
         detail: tr(
           "{n} tokens a day at no cost while you share API data with OpenAI. Past that, this model is billed normally — and the quota counts ALL your OpenAI API use, not just this vault.",
-          { n: qtd }
+          { n: amount }
         ),
       };
     }
@@ -85,16 +85,16 @@ export function freeTag(
     return {
       kind: "offer",
       perDay,
-      label: tr("+{n}/day", { n: qtd }),
+      label: tr("+{n}/day", { n: amount }),
       detail: tr(
         "Turn on data sharing in OpenAI's Data controls to get {n} tokens a day here at no cost.",
-        { n: qtd }
+        { n: amount }
       ),
     };
   }
 
   if (provider === "gemini") {
-    if (!geminiTemTierGratis(model)) return null;
+    if (!geminiHasFreeTier(model)) return null;
     return {
       kind: "offer",
       label: tr("free tier"),
@@ -106,30 +106,30 @@ export function freeTag(
   if (!opts.free) return null;
 
   if (provider === "openrouter") {
-    const c = opts.cota;
-    const frase = c
+    const c = opts.quota;
+    const sentence = c
       ? c.limit >= 1000
         ? tr(
             "No cost. OpenRouter's free models share 20 requests a minute and {limit} a day on this key.",
-            { limit: milhar(c.limit) }
+            { limit: groupDigits(c.limit) }
           )
         : tr(
             "No cost. OpenRouter's free models share 20 requests a minute and {limit} a day on this key — 1,000 once you've bought $10 in credits.",
-            { limit: milhar(c.limit) }
+            { limit: groupDigits(c.limit) }
           )
       : tr(
           "No cost. OpenRouter's free models share 20 requests a minute and 50 a day (1,000 once you've bought $10 in credits)."
         );
-    const resta =
+    const remainingNote =
       c?.remaining != null
-        ? tr("{n} were left when you fetched.", { n: milhar(c.remaining) })
+        ? tr("{n} were left when you fetched.", { n: groupDigits(c.remaining) })
         : "";
     return {
       kind: "always",
-      label: c ? tr("free · {n}/day", { n: milhar(c.limit) }) : tr("free"),
+      label: c ? tr("free · {n}/day", { n: groupDigits(c.limit) }) : tr("free"),
       detail: [
-        frase,
-        resta,
+        sentence,
+        remainingNote,
         tr("A free variant can run on a different host, with a smaller context than the paid one."),
       ]
         .filter(Boolean)

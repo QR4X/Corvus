@@ -11,8 +11,8 @@ import {
 } from "./base";
 import { isEmbeddingModelId } from "../rag/types";
 import {
-  ehRecusaDeRaciocinioComFerramentas,
-  lembrarSemRaciocinioComFerramentas,
+  isReasoningWithToolsRejection,
+  rememberNoReasoningWithTools,
 } from "./paramPolicy";
 import {
   buildChatBody,
@@ -25,25 +25,25 @@ import {
   fetchStream,
 } from "./_shared";
 
-import type { ErroNoFio, RespostaNoFio } from "./_shared";
+import type { WireError, WireResponse } from "./_shared";
 
-interface ItemDeImagem {
+interface ImageItem {
   b64_json?: string;
   url?: string;
   revised_prompt?: string;
 }
 
-interface RespostaDeImagemOpenAI extends ErroNoFio {
+interface OpenAIImageResponse extends WireError {
   data?: unknown;
 }
 
-interface CatalogoOpenAI {
+interface OpenAIModelList {
   data?: Array<{ id?: unknown }>;
 }
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-function recusouRaciocinioComFerramentas(
+function rejectedReasoningWithTools(
   err: unknown,
   body: Record<string, unknown>,
   model: string
@@ -52,8 +52,8 @@ function recusouRaciocinioComFerramentas(
   if (!body.tools || body.reasoning_effort === undefined || body.reasoning_effort === "none") {
     return false;
   }
-  if (!ehRecusaDeRaciocinioComFerramentas(err.message)) return false;
-  lembrarSemRaciocinioComFerramentas(model);
+  if (!isReasoningWithToolsRejection(err.message)) return false;
+  rememberNoReasoningWithTools(model);
   body.reasoning_effort = "none";
   return true;
 }
@@ -75,7 +75,7 @@ export class OpenAIProvider implements Provider {
       maxTokensField: "max_completion_tokens", 
     });
 
-    const pedir = async () => {
+    const send = async () => {
       let r;
       try {
         r = await requestUrl({
@@ -94,14 +94,14 @@ export class OpenAIProvider implements Provider {
     };
     let res;
     try {
-      res = await pedir();
+      res = await send();
     } catch (err) {
-      if (!recusouRaciocinioComFerramentas(err, body, req.model)) throw err;
-      res = await pedir();
+      if (!rejectedReasoningWithTools(err, body, req.model)) throw err;
+      res = await send();
     }
 
-    const corpo = res.json as RespostaNoFio | undefined;
-    const message = corpo?.choices?.[0]?.message;
+    const payload = res.json as WireResponse | undefined;
+    const message = payload?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Empty response from OpenAI.", "unknown");
     const { content, toolCalls, invalidToolCalls } = parseOpenAIChatMessage(message);
     if (invalidToolCalls) {
@@ -110,7 +110,7 @@ export class OpenAIProvider implements Provider {
     if (!toolCalls && !content) {
       throw new ProviderError("Empty response from OpenAI (no text or tool_calls).", "unknown");
     }
-    return { content, toolCalls, usage: usageFrom(corpo ?? {}) };
+    return { content, toolCalls, usage: usageFrom(payload ?? {}) };
   }
 
   async streamChat(
@@ -135,7 +135,7 @@ export class OpenAIProvider implements Provider {
       maxTokensField: "max_completion_tokens",
     });
 
-    const abrir = () =>
+    const openStream = () =>
       fetchStream(OPENAI_ENDPOINT, {
         method: "POST",
         headers: {
@@ -147,7 +147,7 @@ export class OpenAIProvider implements Provider {
       });
     let res: Response;
     try {
-      res = await abrir();
+      res = await openStream();
     } catch (err) {
 
       if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -162,8 +162,8 @@ export class OpenAIProvider implements Provider {
     try {
       await ensureOkStream(res, { label: "OpenAI" });
     } catch (err) {
-      if (!recusouRaciocinioComFerramentas(err, body, req.model)) throw err;
-      res = await abrir();
+      if (!rejectedReasoningWithTools(err, body, req.model)) throw err;
+      res = await openStream();
       await ensureOkStream(res, { label: "OpenAI" });
     }
     if (!res.body) throw new ProviderError("Empty stream from OpenAI.", "unknown");
@@ -228,7 +228,7 @@ export class OpenAIProvider implements Provider {
     }
     if (res.status === 403) {
 
-      const apiMsg = (res.json as ErroNoFio | undefined)?.error?.message ?? "";
+      const apiMsg = (res.json as WireError | undefined)?.error?.message ?? "";
       const isOrgIssue = /verif|organization/i.test(apiMsg);
       if (isOrgIssue || isGptImage) {
         throw new ProviderError(
@@ -253,19 +253,19 @@ export class OpenAIProvider implements Provider {
     }
     if (res.status < 200 || res.status >= 300) {
       const msg =
-        (res.json as ErroNoFio | undefined)?.error?.message ??
+        (res.json as WireError | undefined)?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
       throw new ProviderError(`OpenAI images (${res.status}): ${msg}`, "unknown");
     }
-    const items = (res.json as RespostaDeImagemOpenAI | undefined)?.data;
+    const items = (res.json as OpenAIImageResponse | undefined)?.data;
     if (!Array.isArray(items) || items.length === 0) {
       throw new ProviderError("OpenAI: response had no images (empty data).", "unknown");
     }
 
     const sizeRequested = request.size && request.size !== "auto" ? body.size as string : "";
     const [width, height] = parseSize(sizeRequested);
-    return (items as ItemDeImagem[]).map((it) => {
+    return (items as ImageItem[]).map((it) => {
       const b64 = it.b64_json ?? "";
       if (!b64) {
 
@@ -319,7 +319,7 @@ export class OpenAIProvider implements Provider {
     }
     if (res.status < 200 || res.status >= 300) {
       const msg =
-        (res.json as ErroNoFio | undefined)?.error?.message ?? `HTTP ${res.status}`;
+        (res.json as WireError | undefined)?.error?.message ?? `HTTP ${res.status}`;
       throw new ProviderError(`OpenAI TTS: ${msg}`, "unknown");
     }
 
@@ -345,7 +345,7 @@ export class OpenAIProvider implements Provider {
       throw new ProviderError(`OpenAI: HTTP ${res.status}`, "unknown");
     }
 
-    const all: string[] = ((res.json as CatalogoOpenAI | undefined)?.data ?? [])
+    const all: string[] = ((res.json as OpenAIModelList | undefined)?.data ?? [])
       .map((m) => m?.id)
       .filter((id): id is string => typeof id === "string");
     return all.filter(isRelevantOpenAIModel).sort();
@@ -361,7 +361,7 @@ export class OpenAIProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return [];
-      const all: string[] = ((res.json as CatalogoOpenAI | undefined)?.data ?? [])
+      const all: string[] = ((res.json as OpenAIModelList | undefined)?.data ?? [])
         .map((m) => m?.id)
         .filter((id): id is string => typeof id === "string");
       return all.filter(isEmbeddingModelId).sort();

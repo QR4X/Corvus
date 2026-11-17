@@ -10,7 +10,7 @@ import {
   UsageHandler,
   ReasoningHandler,
 } from "./base";
-import { aplicarEsforco, resolveTemperature, resolveMaxTokens } from "./paramPolicy";
+import { applyEffort, resolveTemperature, resolveMaxTokens } from "./paramPolicy";
 import {
   ensureOkRequest,
   ensureOkStream,
@@ -87,7 +87,7 @@ interface AnthropicBody {
   output_config?: { effort: string };
 }
 
-interface BlocoDaResposta {
+interface ResponseBlock {
   type?: string;
   text?: unknown;
   id?: string;
@@ -95,17 +95,17 @@ interface BlocoDaResposta {
   input?: unknown;
 }
 
-interface UsoAnthropic {
+interface AnthropicUsage {
   input_tokens?: number;
   output_tokens?: number;
 }
 
-interface RespostaAnthropic {
-  content?: BlocoDaResposta[];
-  usage?: UsoAnthropic;
+interface AnthropicResponse {
+  content?: ResponseBlock[];
+  usage?: AnthropicUsage;
 }
 
-interface EventoAnthropic {
+interface AnthropicEvent {
   type?: string;
   index?: number;
   content_block?: { type?: string; id?: string; name?: string };
@@ -115,12 +115,12 @@ interface EventoAnthropic {
     thinking?: unknown;
     partial_json?: string;
   };
-  message?: { usage?: UsoAnthropic };
-  usage?: UsoAnthropic;
+  message?: { usage?: AnthropicUsage };
+  usage?: AnthropicUsage;
   error?: { message?: string };
 }
 
-interface ModelosAnthropic {
+interface AnthropicModelList {
   data?: Array<{ id?: string }>;
 }
 
@@ -274,7 +274,7 @@ function buildBody(req: ProviderRequest, stream: boolean): AnthropicBody {
   const temp = resolveTemperature("anthropic", req.model, req.temperature);
   if (temp !== undefined) body.temperature = temp;
 
-  aplicarEsforco(body as unknown as Record<string, unknown>, "anthropic", req.model, req.effort);
+  applyEffort(body as unknown as Record<string, unknown>, "anthropic", req.model, req.effort);
   if (req.tools && req.tools.length > 0) {
     body.tools = req.tools.map((t) => ({
       name: t.name,
@@ -322,8 +322,8 @@ class AnthropicProvider implements Provider {
 
     ensureOkRequest(res, { label: "Anthropic" });
 
-    const corpo = res.json as RespostaAnthropic | undefined;
-    const content = corpo?.content;
+    const payload = res.json as AnthropicResponse | undefined;
+    const content = payload?.content;
     if (!Array.isArray(content)) {
       throw new ProviderError("Empty response from Anthropic.", "unknown");
     }
@@ -352,7 +352,7 @@ class AnthropicProvider implements Provider {
     const result: ProviderResponse = { content: text };
     if (toolCalls.length > 0) result.toolCalls = toolCalls;
 
-    const usage = corpo?.usage;
+    const usage = payload?.usage;
     if (usage) {
       result.usage = {
         input: usage.input_tokens ?? 0,
@@ -428,9 +428,9 @@ class AnthropicProvider implements Provider {
         if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
         if (!data) continue;
-        let json: EventoAnthropic;
+        let json: AnthropicEvent;
         try {
-          json = JSON.parse(data) as EventoAnthropic;
+          json = JSON.parse(data) as AnthropicEvent;
         } catch {
 
           continue;
@@ -537,8 +537,8 @@ class AnthropicProvider implements Provider {
         throw: false,
       });
       if (res.status < 200 || res.status >= 300) return this.curatedModels();
-      const catalogo = res.json as ModelosAnthropic | undefined;
-      const ids: string[] = (catalogo?.data ?? [])
+      const catalog = res.json as AnthropicModelList | undefined;
+      const ids: string[] = (catalog?.data ?? [])
         .map((m) => m.id)
         .filter((id): id is string => typeof id === "string");
 

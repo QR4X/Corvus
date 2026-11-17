@@ -16,14 +16,14 @@ import {
 } from "./SheetForm";
 import { SheetGroup, SheetNote, SheetRow, useSheetFit } from "./Sheet";
 import type CorvusPlugin from "../main";
-import { AssistantPanel, ComAssistente, useRun } from "./AssistantPanel";
-import { limparRun } from "../assistant/store";
-import type { ProjetoSugerido } from "../assistant/parse";
+import { AssistantPanel, WithAssistant, useRun } from "./AssistantPanel";
+import { clearRun } from "../assistant/store";
+import type { SuggestedProject } from "../assistant/parse";
 import { useAssistant } from "./useAssistant";
 import { rankNotes, vaultNotes } from "./notePicker";
 import { mark, tr } from "../i18n/tr";
 
-export const PASSOS_PROJETO = [
+export const PROJECT_STEPS = [
   { id: "name", label: mark("Name") },
   { id: "notes", label: mark("Notes") },
   { id: "instructions", label: mark("Instructions") },
@@ -31,132 +31,132 @@ export const PASSOS_PROJETO = [
   { id: "icon", label: mark("Icon") },
 ] as const;
 
-type PassoProjeto = (typeof PASSOS_PROJETO)[number]["id"];
+type ProjectStep = (typeof PROJECT_STEPS)[number]["id"];
 
-export interface ExtrasProjeto {
+export interface ProjectExtras {
   notes: string[];
   instructions: string;
 }
 
-export const EXTRAS_VAZIOS: ExtrasProjeto = { notes: [], instructions: "" };
+export const EMPTY_EXTRAS: ProjectExtras = { notes: [], instructions: "" };
 
-function juntar(a: readonly string[], b: readonly string[]): string[] {
+function mergeUnique(a: readonly string[], b: readonly string[]): string[] {
   return [...new Set([...a, ...b])];
 }
 
-const nomeDaNota = (path: string) =>
+const noteName = (path: string) =>
   path.split("/").pop()?.replace(/\.md$/i, "") ?? path;
 
 export function ProjectForm({
   draft,
-  focar,
+  focus,
   onDraft,
   plugin,
   extras,
   onExtras,
-  passo,
-  procurando,
-  onProcurar,
+  step,
+  browsing,
+  onBrowse,
 }: {
   draft: ProjectDraft;
-  focar: boolean;
+  focus: boolean;
   onDraft: (d: ProjectDraft) => void;
   plugin: CorvusPlugin;
-  extras: ExtrasProjeto;
-  onExtras: (e: ExtrasProjeto) => void;
+  extras: ProjectExtras;
+  onExtras: (e: ProjectExtras) => void;
 
-  passo?: PassoProjeto;
+  step?: ProjectStep;
 
-  procurando: boolean;
-  onProcurar: (p: boolean) => void;
+  browsing: boolean;
+  onBrowse: (p: boolean) => void;
 }) {
-  const set = (campo: Partial<ProjectDraft>) => onDraft({ ...draft, ...campo });
-  const cor = projectColor(draft.color);
+  const set = (patch: Partial<ProjectDraft>) => onDraft({ ...draft, ...patch });
+  const tint = projectColor(draft.color);
 
-  const [ajudando, setAjudando] = useState<
+  const [assisting, setAssisting] = useState<
     "" | "project" | "notes" | "instructions"
   >("");
 
-  const [busca, setBusca] = useState("");
+  const [noteQuery, setNoteQuery] = useState("");
   const {
-    indisponivel,
-    pedirProjeto,
-    pedirNotas,
-    pedirInstrucoes,
-    deixarVerNotas,
-    veOVault,
-    alvo,
-    modelos,
-    livres,
-    escolherModelo,
+    unavailable,
+    askProject,
+    askNotes,
+    askInstructions,
+    allowVault,
+    seesVault,
+    target,
+    models,
+    freeModels,
+    chooseModel,
   } = useAssistant(plugin);
-  const modelo = {
-    atual: alvo?.model ?? "",
-    opcoes: modelos,
-    livres,
-    onTrocar: (m: string) => void escolherModelo(m),
+  const modelPicker = {
+    current: target?.model ?? "",
+    options: models,
+    freeModels,
+    onPick: (m: string) => void chooseModel(m),
   };
 
-  const [liberou, setLiberou] = useState(false);
-  const podeVerNotas = veOVault || liberou;
+  const [allowed, setAllowed] = useState(false);
+  const canSeeNotes = seesVault || allowed;
 
-  useSheetFit(!procurando);
+  useSheetFit(!browsing);
 
-  const mostra = (p: PassoProjeto) =>
-    passo === undefined
+  const shows = (p: ProjectStep) =>
+    step === undefined
       ? p === "name" || p === "color" || p === "icon"
-      : passo === p;
+      : step === p;
 
-  const runProjeto = useRun("project");
+  const runProject = useRun("project");
   useEffect(() => {
-    if (runProjeto.fase !== "pronto" || !runProjeto.resultado) return;
-    const d = runProjeto.resultado as ProjetoSugerido;
+    if (runProject.phase !== "done" || !runProject.result) return;
+    const d = runProject.result as SuggestedProject;
     set({ name: d.name, icon: d.icon, color: d.color });
     onExtras({
-      notes: juntar(extras.notes, d.notes),
+      notes: mergeUnique(extras.notes, d.notes),
       instructions: extras.instructions.trim()
         ? extras.instructions
         : d.instructions,
     });
-    limparRun("project");
-    setAjudando("");
-  }, [runProjeto.fase, runProjeto.resultado]);
+    clearRun("project");
+    setAssisting("");
+  }, [runProject.phase, runProject.result]);
 
-  const runNotas = useRun("notes");
+  const runNotes = useRun("notes");
   useEffect(() => {
-    if (runNotas.fase !== "pronto" || !Array.isArray(runNotas.resultado))
+    if (runNotes.phase !== "done" || !Array.isArray(runNotes.result))
       return;
     onExtras({
       ...extras,
-      notes: juntar(extras.notes, runNotas.resultado as string[]),
+      notes: mergeUnique(extras.notes, runNotes.result as string[]),
     });
-    limparRun("notes");
-    setAjudando("");
-  }, [runNotas.fase, runNotas.resultado]);
+    clearRun("notes");
+    setAssisting("");
+  }, [runNotes.phase, runNotes.result]);
 
   const runInstr = useRun("project-instructions");
   useEffect(() => {
-    if (runInstr.fase !== "pronto" || typeof runInstr.resultado !== "string")
+    if (runInstr.phase !== "done" || typeof runInstr.result !== "string")
       return;
-    onExtras({ ...extras, instructions: runInstr.resultado });
-    limparRun("project-instructions");
-    setAjudando("");
-  }, [runInstr.fase, runInstr.resultado]);
+    onExtras({ ...extras, instructions: runInstr.result });
+    clearRun("project-instructions");
+    setAssisting("");
+  }, [runInstr.phase, runInstr.result]);
 
-  const achadas = useMemo(() => {
-    if (passo !== "notes" || !busca.trim()) return [];
-    const escolhidas = new Set(extras.notes);
-    return rankNotes(vaultNotes(plugin.app), busca, 30).filter(
-      (n) => !escolhidas.has(n.path)
+  const hits = useMemo(() => {
+    if (step !== "notes" || !noteQuery.trim()) return [];
+    const picked = new Set(extras.notes);
+    return rankNotes(vaultNotes(plugin.app), noteQuery, 30).filter(
+      (n) => !picked.has(n.path)
     );
-  }, [passo, busca, extras.notes, plugin]);
+  }, [step, noteQuery, extras.notes, plugin]);
 
-  if (procurando)
+  if (browsing)
     return (
       <SheetIconCatalog
         value={draft.icon}
-        tint={cor}
-        onBack={() => onProcurar(false)}
+        tint={tint}
+        onBack={() => onBrowse(false)}
         onPick={(icon) => set({ icon })}
       >
         <SheetField label={tr("Color")}>
@@ -170,7 +170,7 @@ export function ProjectForm({
       </SheetIconCatalog>
     );
 
-  const quantas = extras.notes.length;
+  const noteCount = extras.notes.length;
 
   return (
     <>
@@ -178,7 +178,7 @@ export function ProjectForm({
       <div className="corvus-form-preview">
         <span
           className="corvus-thing-mark"
-          style={{ color: cor }}
+          style={{ color: tint }}
           aria-hidden="true"
         >
           <Icon name={draft.icon} size={20} />
@@ -188,105 +188,105 @@ export function ProjectForm({
             {draft.name.trim() || tr("Untitled project")}
           </span>
           <span className="corvus-thing-note">
-            {quantas === 0
+            {noteCount === 0
               ? tr("No notes yet")
-              : quantas === 1
+              : noteCount === 1
                 ? tr("1 note")
-                : tr("{n} notes", { n: quantas })}
+                : tr("{n} notes", { n: noteCount })}
             {extras.instructions.trim() ? ` · ${tr("instructions")}` : ""}
           </span>
         </span>
       </div>
 
-      {mostra("name") && (
+      {shows("name") && (
         <SheetField
           label={tr("Name")}
-          hint={passo ? tr("Or describe it and let ✨ set up the whole project.") : undefined}
+          hint={step ? tr("Or describe it and let ✨ set up the whole project.") : undefined}
         >
           {}
-          <ComAssistente
-            aberto={ajudando === "project"}
-            ocupado={runProjeto.fase === "rodando"}
-            onAbrir={() => setAjudando("project")}
-            painel={
+          <WithAssistant
+            open={assisting === "project"}
+            busy={runProject.phase === "running"}
+            onOpen={() => setAssisting("project")}
+            panel={
               <AssistantPanel
-                para="project"
-                indisponivel={indisponivel}
-                modelo={modelo}
-                onFechar={() => setAjudando("")}
-                onPedir={(modo, turnos) => pedirProjeto(modo, turnos)}
+                target="project"
+                unavailable={unavailable}
+                modelPicker={modelPicker}
+                onClose={() => setAssisting("")}
+                onAsk={(mode, turns) => askProject(mode, turns)}
               />
             }
           >
             <SheetInput
-              comSpark
+              withSpark
               value={draft.name}
               placeholder={tr("Thesis, Client X, Apartment…")}
-              autoFocus={focar && (passo === undefined || passo === "name")}
+              autoFocus={focus && (step === undefined || step === "name")}
               onChange={(name) => set({ name })}
             />
-          </ComAssistente>
+          </WithAssistant>
         </SheetField>
       )}
 
-      {mostra("notes") && (
+      {shows("notes") && (
         <>
           <SheetField
             label={tr("Notes")}
             hint={tr("What this project should know — they go in as context on every chat started in it.")}
           >
             {}
-            <ComAssistente
-              titulo={tr("Find notes for me")}
-              aberto={ajudando === "notes"}
-              ocupado={runNotas.fase === "rodando"}
-              onAbrir={() => setAjudando("notes")}
-              painel={
+            <WithAssistant
+              title={tr("Find notes for me")}
+              open={assisting === "notes"}
+              busy={runNotes.phase === "running"}
+              onOpen={() => setAssisting("notes")}
+              panel={
                 <AssistantPanel
-                  para="notes"
-                  indisponivel={indisponivel}
-                  modelo={modelo}
-                  onFechar={() => setAjudando("")}
-                  onPedir={(_modo, turnos) =>
-                    pedirNotas(
+                  target="notes"
+                  unavailable={unavailable}
+                  modelPicker={modelPicker}
+                  onClose={() => setAssisting("")}
+                  onAsk={(_mode, turns) =>
+                    askNotes(
                       {
                         name: draft.name,
                         instructions: extras.instructions,
-                        escolhidas: extras.notes,
+                        picked: extras.notes,
                       },
-                      turnos
+                      turns
                     )
                   }
                 />
               }
             >
               <SheetInput
-                comSpark
-                value={busca}
+                withSpark
+                value={noteQuery}
                 placeholder={tr("Search notes to add")}
-                onChange={setBusca}
+                onChange={setNoteQuery}
               />
-            </ComAssistente>
+            </WithAssistant>
           </SheetField>
 
           {}
-          {!podeVerNotas && (
+          {!canSeeNotes && (
             <SheetGroup>
               <SheetRow
                 icon="eye"
                 title={tr("Let ✨ see your note names")}
                 note={tr("Only titles and folders — never what is inside a note.")}
                 onClick={() => {
-                  setLiberou(true);
-                  void deixarVerNotas();
+                  setAllowed(true);
+                  void allowVault();
                 }}
               />
             </SheetGroup>
           )}
 
-          {busca.trim() !== "" && (
+          {noteQuery.trim() !== "" && (
             <SheetGroup label={tr("In your vault")}>
-              {achadas.map((n) => (
+              {hits.map((n) => (
                 <SheetRow
                   key={n.path}
                   dense
@@ -297,26 +297,26 @@ export function ProjectForm({
                     icon: "plus",
                     label: tr("Add {path}", { path: n.path }),
                     onClick: () =>
-                      onExtras({ ...extras, notes: juntar(extras.notes, [n.path]) }),
+                      onExtras({ ...extras, notes: mergeUnique(extras.notes, [n.path]) }),
                   }}
                   onClick={() =>
-                    onExtras({ ...extras, notes: juntar(extras.notes, [n.path]) })
+                    onExtras({ ...extras, notes: mergeUnique(extras.notes, [n.path]) })
                   }
                 />
               ))}
-              {achadas.length === 0 && (
+              {hits.length === 0 && (
                 <SheetNote>{tr("No note matches that.")}</SheetNote>
               )}
             </SheetGroup>
           )}
 
-          <SheetGroup label={quantas ? tr("In this project") : undefined}>
+          <SheetGroup label={noteCount ? tr("In this project") : undefined}>
             {extras.notes.map((path) => (
               <SheetRow
                 key={path}
                 dense
                 icon="file-text"
-                title={nomeDaNota(path)}
+                title={noteName(path)}
                 note={path}
                 action={{
                   icon: "x",
@@ -330,7 +330,7 @@ export function ProjectForm({
                 onClick={() => undefined}
               />
             ))}
-            {quantas === 0 && (
+            {noteCount === 0 && (
               <SheetNote>
                 {tr(
                   "No notes yet. Search above, or tap ✨ to have the assistant find them. You can also skip this and add notes later."
@@ -341,7 +341,7 @@ export function ProjectForm({
         </>
       )}
 
-      {mostra("instructions") && (
+      {shows("instructions") && (
         <SheetField
           label={tr("Instructions")}
           hint={tr(
@@ -349,45 +349,45 @@ export function ProjectForm({
           )}
         >
           {}
-          <ComAssistente
-            aberto={ajudando === "instructions"}
-            ocupado={runInstr.fase === "rodando"}
-            onAbrir={() => setAjudando("instructions")}
-            painel={
+          <WithAssistant
+            open={assisting === "instructions"}
+            busy={runInstr.phase === "running"}
+            onOpen={() => setAssisting("instructions")}
+            panel={
               <AssistantPanel
-                para="instructions"
-                chave="project-instructions"
-                indisponivel={indisponivel}
-                modelo={modelo}
-                onFechar={() => setAjudando("")}
-                onPedir={(_modo, turnos) =>
-                  pedirInstrucoes(
+                target="instructions"
+                runKey="project-instructions"
+                unavailable={unavailable}
+                modelPicker={modelPicker}
+                onClose={() => setAssisting("")}
+                onAsk={(_mode, turns) =>
+                  askInstructions(
                     {
                       name: draft.name,
                       notes: extras.notes,
-                      atual: extras.instructions,
+                      current: extras.instructions,
                     },
-                    turnos
+                    turns
                   )
                 }
               />
             }
           >
             <SheetTextarea
-              comSpark
+              withSpark
               value={extras.instructions}
               rows={7}
-              autoFocus={focar && passo === "instructions"}
+              autoFocus={focus && step === "instructions"}
               placeholder={tr(
                 "Answer in Portuguese.\nCite the note you took it from.\nShort paragraphs, no bullet lists."
               )}
               onChange={(instructions) => onExtras({ ...extras, instructions })}
             />
-          </ComAssistente>
+          </WithAssistant>
         </SheetField>
       )}
 
-      {mostra("color") && (
+      {shows("color") && (
         <SheetField label={tr("Color")}>
           <SheetSwatches
             colors={PROJECT_COLORS}
@@ -398,13 +398,13 @@ export function ProjectForm({
         </SheetField>
       )}
 
-      {mostra("icon") && (
+      {shows("icon") && (
         <SheetField label={tr("Icon")}>
           <SheetIconGrid
             icons={PROJECT_ICONS}
             value={draft.icon}
-            tint={cor}
-            onBrowse={() => onProcurar(true)}
+            tint={tint}
+            onBrowse={() => onBrowse(true)}
             onPick={(icon) => set({ icon })}
           />
         </SheetField>

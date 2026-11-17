@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { App, Component, Keymap, MarkdownRenderer, Platform, type HoverParent } from "obsidian";
 import {
-  abrirLinkDaResposta,
-  linkInterno,
-  previaDoLink,
-  textoDoLink,
+  openResponseLink,
+  internalLink,
+  previewLink,
+  linkText,
 } from "./responseLinks";
 
 const THROTTLE_MS = 140;
@@ -75,30 +75,30 @@ export function Markdown({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const abrir = (e: MouseEvent) => {
-      const a = linkInterno(e.target, el);
+    const openLink = (e: MouseEvent) => {
+      const a = internalLink(e.target, el);
       if (!a) return;
 
       if (e.type === "auxclick" && e.button !== 1) return;
       e.preventDefault();
       e.stopPropagation();
-      abrirLinkDaResposta(app, textoDoLink(a), Keymap.isModEvent(e), el);
+      openResponseLink(app, linkText(a), Keymap.isModEvent(e), el);
     };
-    const previa = (e: MouseEvent) => {
-      const a = linkInterno(e.target, el);
+    const preview = (e: MouseEvent) => {
+      const a = internalLink(e.target, el);
 
       if (!a || a.contains(e.relatedTarget as Node | null)) return;
-      previaDoLink(app, e, a, hoverRef.current);
+      previewLink(app, e, a, hoverRef.current);
     };
-    el.addEventListener("click", abrir);
-    el.addEventListener("auxclick", abrir);
-    if (!Platform.isMobile) el.addEventListener("mouseover", previa);
-    const pai = hoverRef.current;
+    el.addEventListener("click", openLink);
+    el.addEventListener("auxclick", openLink);
+    if (!Platform.isMobile) el.addEventListener("mouseover", preview);
+    const hoverParent = hoverRef.current;
     return () => {
-      el.removeEventListener("click", abrir);
-      el.removeEventListener("auxclick", abrir);
-      el.removeEventListener("mouseover", previa);
-      pai.hoverPopover?.unload();
+      el.removeEventListener("click", openLink);
+      el.removeEventListener("auxclick", openLink);
+      el.removeEventListener("mouseover", preview);
+      hoverParent.hoverPopover?.unload();
     };
   }, [app]);
 

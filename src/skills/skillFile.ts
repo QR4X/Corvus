@@ -12,7 +12,7 @@ export interface SkillDraft {
   body: string;
 }
 
-export const SKILL_DRAFT_VAZIO: SkillDraft = {
+export const EMPTY_SKILL_DRAFT: SkillDraft = {
   name: "",
   description: "",
   icon: "sparkles",
@@ -28,18 +28,18 @@ export const SKILL_ICONS: string[] = [
   "search", "map", "flask-conical", "target",
 ];
 
-const PROIBIDOS = /[\\/:*?"<>|#^[\]]/g;
+const FORBIDDEN_CHARS = /[\\/:*?"<>|#^[\]]/g;
 
-export function skillFileName(nome: string): string {
-  const limpo = nome
-    .replace(PROIBIDOS, "-")
+export function skillFileName(name: string): string {
+  const cleaned = name
+    .replace(FORBIDDEN_CHARS, "-")
 
     .replace(/\s+/g, " ")
     .replace(/^[.\s]+|[.\s]+$/g, "")
     .trim();
 
-  if (!/[\p{L}\p{N}]/u.test(limpo)) return "Skill.md";
-  return limpo + ".md";
+  if (!/[\p{L}\p{N}]/u.test(cleaned)) return "Skill.md";
+  return cleaned + ".md";
 }
 
 function yaml(v: string): string {
@@ -47,34 +47,34 @@ function yaml(v: string): string {
 }
 
 export function skillMarkdown(d: SkillDraft): string {
-  const linhas = [
+  const lines = [
     "---",
     `name: ${yaml(d.name.trim())}`,
     `description: ${yaml(d.description.trim())}`,
     `icon: ${yaml(d.icon || "sparkles")}`,
   ];
 
-  if (d.color && d.color !== "default") linhas.push(`color: ${yaml(d.color)}`);
+  if (d.color && d.color !== "default") lines.push(`color: ${yaml(d.color)}`);
 
-  if (d.mode) linhas.push(`mode: ${yaml(d.mode)}`);
-  linhas.push("---", "", d.body.trim(), "");
-  return linhas.join("\n");
+  if (d.mode) lines.push(`mode: ${yaml(d.mode)}`);
+  lines.push("---", "", d.body.trim(), "");
+  return lines.join("\n");
 }
 
-export function skillProblema(
+export function skillProblem(
   d: SkillDraft,
 
-  existentes: readonly string[],
+  existing: readonly string[],
 
-  atual?: string
+  current?: string
 ): string | null {
   if (!d.name.trim()) return tr("Give it a name.");
   if (!d.body.trim())
     return tr("Write the prompt — that is what the skill is.");
-  const alvo = skillFileName(d.name);
-  const colide = existentes.some(
-    (p) => p !== atual && (p.split("/").pop() ?? p).toLowerCase() === alvo.toLowerCase()
+  const target = skillFileName(d.name);
+  const collides = existing.some(
+    (p) => p !== current && (p.split("/").pop() ?? p).toLowerCase() === target.toLowerCase()
   );
-  if (colide) return tr("There is already a skill with that name.");
+  if (collides) return tr("There is already a skill with that name.");
   return null;
 }

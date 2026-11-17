@@ -1,38 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { emendar, limparResposta, mensagensDaAcao, IdiomaModal } from "../src/editor/inline";
-import { esquecerPedidos, ouvirPedidos, pedirAoPainel, type PedidoDoEditor } from "../src/editor/bridge";
-import { registrarComandosDoEditor, PEDIDO_RESUMO } from "../src/editor/commands";
+import { joinContinuation, cleanReply, actionMessages, LanguageModal } from "../src/editor/inline";
+import { clearRequests, listenForRequests, sendToPanel, type EditorRequest } from "../src/editor/bridge";
+import { registerEditorCommands, SUMMARIZE_REQUEST } from "../src/editor/commands";
 import type CorvusPlugin from "../src/main";
 
 describe("ações no texto", () => {
   it("cada ação pede só o texto de volta; tradução nomeia o idioma", () => {
     for (const acao of ["rewrite", "fix", "translate", "continue"] as const) {
-      const [sistema, usuario] = mensagensDaAcao(acao, "olá", { idioma: "Japanese" });
+      const [sistema, usuario] = actionMessages(acao, "olá", { language: "Japanese" });
       expect(sistema.role).toBe("system");
       expect(sistema.content).toMatch(/ONLY the resulting text/);
       expect(usuario).toEqual({ role: "user", content: "olá" });
     }
-    expect(mensagensDaAcao("translate", "x", { idioma: "Japanese" })[0].content).toMatch(/into Japanese/);
-    expect(mensagensDaAcao("rewrite", "x")[0].content).toMatch(/Keep its meaning, tone and language/);
+    expect(actionMessages("translate", "x", { language: "Japanese" })[0].content).toMatch(/into Japanese/);
+    expect(actionMessages("rewrite", "x")[0].content).toMatch(/Keep its meaning, tone and language/);
   });
 
   it("limpa a cerca de código e as aspas em volta da resposta inteira", () => {
-    expect(limparResposta("```markdown\nTexto novo.\n```")).toBe("Texto novo.");
-    expect(limparResposta('"Texto novo."')).toBe("Texto novo.");
-    expect(limparResposta("“Texto novo.”")).toBe("Texto novo.");
+    expect(cleanReply("```markdown\nTexto novo.\n```")).toBe("Texto novo.");
+    expect(cleanReply('"Texto novo."')).toBe("Texto novo.");
+    expect(cleanReply("“Texto novo.”")).toBe("Texto novo.");
 
-    expect(limparResposta('"um" e "dois"')).toBe('"um" e "dois"');
-    expect(limparResposta("  normal \r\n")).toBe("normal");
+    expect(cleanReply('"um" e "dois"')).toBe('"um" e "dois"');
+    expect(cleanReply("  normal \r\n")).toBe("normal");
   });
 
   it("emendar: espaço só quando nenhum lado tem branco", () => {
-    expect(emendar("Era uma vez", "um gato.")).toBe(" um gato.");
-    expect(emendar("Fim.\n", "Outro parágrafo.")).toBe("Outro parágrafo.");
-    expect(emendar("Fim.", "\n\nOutro.")).toBe("\n\nOutro.");
+    expect(joinContinuation("Era uma vez", "um gato.")).toBe(" um gato.");
+    expect(joinContinuation("Fim.\n", "Outro parágrafo.")).toBe("Outro parágrafo.");
+    expect(joinContinuation("Fim.", "\n\nOutro.")).toBe("\n\nOutro.");
   });
 
   it("o idioma digitado que não está na lista vira a primeira opção", () => {
-    const m = new IdiomaModal({} as never, () => {});
+    const m = new LanguageModal({} as never, () => {});
     expect(m.modalEl.hasClass("corvus-language-modal")).toBe(true);
     expect(m.getSuggestions("port")).toEqual(["port", "Portuguese (Brazil)", "Portuguese (Portugal)"]);
     expect(m.getSuggestions("Spanish")).toEqual(["Spanish"]);
@@ -42,19 +42,19 @@ describe("ações no texto", () => {
 
 describe("a ponte editor → painel", () => {
   it("pedido sem painel espera na fila; o painel, ao montar, recebe", () => {
-    esquecerPedidos();
-    const recebidos: PedidoDoEditor[] = [];
-    pedirAoPainel({ tipo: "nota", path: "a.md" });
-    pedirAoPainel({ tipo: "trecho", path: "b.md", texto: "x" });
-    const parar = ouvirPedidos((p) => recebidos.push(p));
-    expect(recebidos.map((p) => p.tipo)).toEqual(["nota", "trecho"]);
+    clearRequests();
+    const recebidos: EditorRequest[] = [];
+    sendToPanel({ kind: "note", path: "a.md" });
+    sendToPanel({ kind: "selection", path: "b.md", text: "x" });
+    const parar = listenForRequests((p) => recebidos.push(p));
+    expect(recebidos.map((p) => p.kind)).toEqual(["note", "selection"]);
 
-    pedirAoPainel({ tipo: "nota", path: "c.md", enviar: PEDIDO_RESUMO });
+    sendToPanel({ kind: "note", path: "c.md", send: SUMMARIZE_REQUEST });
     expect(recebidos).toHaveLength(3);
     parar();
-    pedirAoPainel({ tipo: "nota", path: "d.md" });
+    sendToPanel({ kind: "note", path: "d.md" });
     expect(recebidos).toHaveLength(3); 
-    esquecerPedidos();
+    clearRequests();
   });
 });
 
@@ -68,7 +68,7 @@ describe("os comandos", () => {
       registerEvent: () => {},
       activateView: async () => {},
     } as unknown as CorvusPlugin;
-    registrarComandosDoEditor(plugin);
+    registerEditorCommands(plugin);
     expect(comandos.map((c) => c.id)).toEqual([
       "ask-about-note",
       "summarize-note",

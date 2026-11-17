@@ -27,28 +27,28 @@ export function normalizePath(
     .replace(/\/+/g, "/")
     .replace(/^\//, "");
 
-  const segs = normalized.split("/");
-  if (segs.some((s) => s === ".." || s === ".")) {
+  const segments = normalized.split("/");
+  if (segments.some((s) => s === ".." || s === ".")) {
     throw new Error("Paths containing '..' are not allowed.");
   }
   if (normalized.includes(":")) {
     throw new Error("Paths containing ':' are not allowed (no drive letters).");
   }
 
-  const oculto = segs.find((s) => s.startsWith("."));
-  if (oculto) {
+  const hidden = segments.find((s) => s.startsWith("."));
+  if (hidden) {
     throw new Error(
-      `Hidden folders are off limits to the agent: "${oculto}". ` +
+      `Hidden folders are off limits to the agent: "${hidden}". ` +
         `They hold app config and plugin data, not your notes.`
     );
   }
 
-  for (const pasta of appDataPaths) {
-    const alvo = pasta.replace(/\/+$/, "");
-    if (!alvo || alvo === ".") continue;
-    if (normalized === alvo || normalized.startsWith(alvo + "/")) {
+  for (const dataPath of appDataPaths) {
+    const prefix = dataPath.replace(/\/+$/, "");
+    if (!prefix || prefix === ".") continue;
+    if (normalized === prefix || normalized.startsWith(prefix + "/")) {
       throw new Error(
-        `App data folders are off limits to the agent: "${alvo}". ` +
+        `App data folders are off limits to the agent: "${prefix}". ` +
           `They hold your chats and the RAG index, not your notes.`
       );
     }
@@ -59,24 +59,24 @@ export function normalizePath(
   return normalized;
 }
 
-function achar(app: App, path: string): TAbstractFile | null {
+function findEntry(app: App, path: string): TAbstractFile | null {
   return app.vault.getAbstractFileByPath(path);
 }
 
-function acharArquivo(app: App, path: string): TFile {
-  const alvo = achar(app, path);
-  if (!alvo) throw new Error(`File does not exist: ${path}`);
-  if (!(alvo instanceof TFile)) throw new Error(`${path} is not a file.`);
-  return alvo;
+function findFile(app: App, path: string): TFile {
+  const target = findEntry(app, path);
+  if (!target) throw new Error(`File does not exist: ${path}`);
+  if (!(target instanceof TFile)) throw new Error(`${path} is not a file.`);
+  return target;
 }
 
-async function garantirPasta(app: App, dir: string): Promise<void> {
+async function ensureFolder(app: App, dir: string): Promise<void> {
   if (!dir) return;
-  const partes = dir.split("/");
-  let caminho = "";
-  for (const parte of partes) {
-    caminho = caminho ? `${caminho}/${parte}` : parte;
-    if (!achar(app, caminho)) await app.vault.createFolder(caminho);
+  const parts = dir.split("/");
+  let current = "";
+  for (const part of parts) {
+    current = current ? `${current}/${part}` : part;
+    if (!findEntry(app, current)) await app.vault.createFolder(current);
   }
 }
 
@@ -93,18 +93,18 @@ interface ListArgs {
 async function toolVaultList(ctx: ToolContext, args: ListArgs): Promise<string> {
   const folder = args.folder ? normalizePath(args.folder, ctx.appDataPaths) : "";
 
-  const alvo = folder ? achar(ctx.app, folder) : ctx.app.vault.getRoot();
-  if (!alvo) {
+  const target = folder ? findEntry(ctx.app, folder) : ctx.app.vault.getRoot();
+  if (!target) {
     return `Folder does not exist: ${folder}`;
   }
-  if (!(alvo instanceof TFolder)) {
+  if (!(target instanceof TFolder)) {
     return `${folder} is not a folder.`;
   }
 
-  const folders = alvo.children
+  const folders = target.children
     .filter((c): c is TFolder => c instanceof TFolder)
     .map((f) => `📁 ${f.path}`);
-  const files = alvo.children
+  const files = target.children
     .filter((c): c is TFile => c instanceof TFile)
     .map((f) => `📄 ${f.path}`);
   const all = [...folders, ...files];
@@ -122,7 +122,7 @@ const MAX_READ_CHARS = 200_000;
 
 export async function toolVaultRead(ctx: ToolContext, args: ReadArgs): Promise<string> {
   const path = normalizePath(args.path, ctx.appDataPaths);
-  const file = acharArquivo(ctx.app, path);
+  const file = findFile(ctx.app, path);
 
   const content = await ctx.app.vault.read(file);
   if (content.length > MAX_READ_CHARS) {
@@ -145,12 +145,12 @@ export async function toolVaultCreate(
   args: CreateArgs
 ): Promise<string> {
   const path = normalizePath(args.path, ctx.appDataPaths);
-  if (achar(ctx.app, path)) {
+  if (findEntry(ctx.app, path)) {
     throw new Error(
       `File already exists: ${path}. Use vault_edit to modify or vault_move to rename.`
     );
   }
-  await garantirPasta(ctx.app, dirOf(path));
+  await ensureFolder(ctx.app, dirOf(path));
   await ctx.app.vault.create(path, args.content ?? "");
   return `File created: ${path} (${(args.content ?? "").length} chars)`;
 }
@@ -165,7 +165,7 @@ interface EditArgs {
 
 export async function toolVaultEdit(ctx: ToolContext, args: EditArgs): Promise<string> {
   const path = normalizePath(args.path, ctx.appDataPaths);
-  const file = acharArquivo(ctx.app, path);
+  const file = findFile(ctx.app, path);
   const content = await ctx.app.vault.read(file);
   const occurrences = content.split(args.oldStr).length - 1;
   if (occurrences === 0) {
@@ -180,8 +180,8 @@ export async function toolVaultEdit(ctx: ToolContext, args: EditArgs): Promise<s
     );
   }
 
-  await ctx.app.vault.process(file, (atual) =>
-    atual.split(args.oldStr).join(args.newStr)
+  await ctx.app.vault.process(file, (current) =>
+    current.split(args.oldStr).join(args.newStr)
   );
   const delta = args.newStr.length - args.oldStr.length;
   const sign = delta >= 0 ? "+" : "";
@@ -196,19 +196,19 @@ interface MoveArgs {
 export async function toolVaultMove(ctx: ToolContext, args: MoveArgs): Promise<string> {
   const from = normalizePath(args.from, ctx.appDataPaths);
   const to = normalizePath(args.to, ctx.appDataPaths);
-  const alvo = achar(ctx.app, from);
-  if (!alvo) {
+  const target = findEntry(ctx.app, from);
+  if (!target) {
     throw new Error(`Source does not exist: ${from}`);
   }
-  if (achar(ctx.app, to)) {
+  if (findEntry(ctx.app, to)) {
     throw new Error(`Destination already exists: ${to}. Refusing to overwrite.`);
   }
-  if (alvo instanceof TFolder && (to === from || to.startsWith(from + "/"))) {
+  if (target instanceof TFolder && (to === from || to.startsWith(from + "/"))) {
     throw new Error("Cannot move a folder into itself.");
   }
-  await garantirPasta(ctx.app, dirOf(to));
+  await ensureFolder(ctx.app, dirOf(to));
 
-  await ctx.app.fileManager.renameFile(alvo, to);
+  await ctx.app.fileManager.renameFile(target, to);
   return `Moved: ${from} → ${to} (links updated)`;
 }
 
@@ -221,19 +221,19 @@ export async function toolVaultDelete(
   args: DeleteArgs
 ): Promise<string> {
   const path = normalizePath(args.path, ctx.appDataPaths);
-  const alvo = achar(ctx.app, path);
-  if (!alvo) {
+  const target = findEntry(ctx.app, path);
+  if (!target) {
     throw new Error(`File does not exist: ${path}`);
   }
-  if (alvo instanceof TFolder && alvo.children.length > 0) {
+  if (target instanceof TFolder && target.children.length > 0) {
     throw new Error(
       `Folder ${path} is not empty. Delete the files first (safety).`
     );
   }
 
-  await ctx.app.fileManager.trashFile(alvo);
-  const oQue = alvo instanceof TFolder ? "Empty folder" : "File";
-  return `${oQue} moved to trash: ${path}`;
+  await ctx.app.fileManager.trashFile(target);
+  const kind = target instanceof TFolder ? "Empty folder" : "File";
+  return `${kind} moved to trash: ${path}`;
 }
 
 interface CreateFolderArgs {
@@ -245,10 +245,10 @@ export async function toolVaultCreateFolder(
   args: CreateFolderArgs
 ): Promise<string> {
   const path = normalizePath(args.path, ctx.appDataPaths);
-  if (achar(ctx.app, path)) {
+  if (findEntry(ctx.app, path)) {
     return `Folder already exists: ${path}`;
   }
-  await garantirPasta(ctx.app, path);
+  await ensureFolder(ctx.app, path);
   return `Folder created: ${path}`;
 }
 

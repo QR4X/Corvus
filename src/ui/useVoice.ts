@@ -67,7 +67,7 @@ export function extensionFor(mimeType: string): string {
   return "webm";
 }
 
-interface Segmento {
+interface Segment {
   chunks: Blob[];
   mime: string;
 }
@@ -85,29 +85,29 @@ export function useVoice(opts: VoiceOptions): Voice {
   const bufRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const rafRef = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
-  const nivelRef = useRef<number | null>(null);
+  const levelTimerRef = useRef<number | null>(null);
   const interimRef = useRef<number | null>(null);
-  const primeiroParcialRef = useRef<number | null>(null);
+  const firstInterimRef = useRef<number | null>(null);
 
-  const segsRef = useRef<Segmento[]>([]);
+  const segsRef = useRef<Segment[]>([]);
 
-  const finaisRef = useRef<(string | undefined)[]>([]);
+  const finalsRef = useRef<(string | undefined)[]>([]);
 
-  const falharamRef = useRef<Set<number>>(new Set());
+  const failedRef = useRef<Set<number>>(new Set());
 
-  const pendentesRef = useRef<Promise<unknown>[]>([]);
+  const pendingRef = useRef<Promise<unknown>[]>([]);
 
-  const atualRef = useRef(0);
+  const currentSegRef = useRef(0);
 
-  const parcialRef = useRef("");
+  const partialRef = useRef("");
 
-  const parcialOcupadoRef = useRef(false);
+  const partialBusyRef = useRef(false);
 
-  const silencioDesdeRef = useRef<number | null>(null);
+  const silenceSinceRef = useRef<number | null>(null);
 
-  const segIniciadoRef = useRef(0);
+  const segStartedRef = useRef(0);
 
-  const rotacionandoRef = useRef(false);
+  const rotatingRef = useRef(false);
 
   const discardedRef = useRef(false);
   const startedAtRef = useRef(0);
@@ -118,15 +118,15 @@ export function useVoice(opts: VoiceOptions): Voice {
   const cleanup = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     if (tickRef.current !== null) window.clearInterval(tickRef.current);
-    if (nivelRef.current !== null) window.clearInterval(nivelRef.current);
+    if (levelTimerRef.current !== null) window.clearInterval(levelTimerRef.current);
     if (interimRef.current !== null) window.clearInterval(interimRef.current);
-    if (primeiroParcialRef.current !== null)
-      window.clearTimeout(primeiroParcialRef.current);
+    if (firstInterimRef.current !== null)
+      window.clearTimeout(firstInterimRef.current);
     rafRef.current = null;
     tickRef.current = null;
-    nivelRef.current = null;
+    levelTimerRef.current = null;
     interimRef.current = null;
-    primeiroParcialRef.current = null;
+    firstInterimRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     void audioCtxRef.current?.close().catch(() => {});
@@ -138,7 +138,7 @@ export function useVoice(opts: VoiceOptions): Voice {
 
   useEffect(() => cleanup, [cleanup]);
 
-  const lerNivel = useCallback(() => {
+  const readLevel = useCallback(() => {
     const analyser = analyserRef.current;
     const buf = bufRef.current;
     if (!analyser || !buf) return null;
@@ -148,24 +148,24 @@ export function useVoice(opts: VoiceOptions): Voice {
       const d = (v - 128) / 128;
       sum += d * d;
     }
-    const nivel = Math.min(1, Math.sqrt(sum / buf.length) * 3);
-    if (nivel < SILENCE_LEVEL) {
-      if (silencioDesdeRef.current === null)
-        silencioDesdeRef.current = Date.now();
+    const level = Math.min(1, Math.sqrt(sum / buf.length) * 3);
+    if (level < SILENCE_LEVEL) {
+      if (silenceSinceRef.current === null)
+        silenceSinceRef.current = Date.now();
     } else {
-      silencioDesdeRef.current = null;
+      silenceSinceRef.current = null;
     }
-    return nivel;
+    return level;
   }, []);
 
-  const publicar = useCallback(() => {
+  const publish = useCallback(() => {
     if (discardedRef.current) return;
     optsRef.current.onTranscript(
-      joinTranscripts(finaisRef.current, parcialRef.current)
+      joinTranscripts(finalsRef.current, partialRef.current)
     );
   }, []);
 
-  const enviar = useCallback(async (seg: Segmento) => {
+  const upload = useCallback(async (seg: Segment) => {
     const blob = new Blob(seg.chunks, { type: seg.mime });
     return transcribeAudio({
       apiKey: optsRef.current.apiKey(),
@@ -176,48 +176,48 @@ export function useVoice(opts: VoiceOptions): Voice {
     });
   }, []);
 
-  const transcreverSegmento = useCallback(
+  const transcribeSegment = useCallback(
     async (i: number) => {
       const seg = segsRef.current[i];
       if (!seg || seg.chunks.length === 0) return;
       try {
-        const text = await enviar(seg);
-        finaisRef.current[i] = text.trim();
-        falharamRef.current.delete(i);
-        publicar();
+        const text = await upload(seg);
+        finalsRef.current[i] = text.trim();
+        failedRef.current.delete(i);
+        publish();
       } catch {
 
-        falharamRef.current.add(i);
+        failedRef.current.add(i);
       }
     },
-    [enviar, publicar]
+    [upload, publish]
   );
 
-  const transcreverParcial = useCallback(async () => {
-    if (parcialOcupadoRef.current) return;
+  const transcribePartial = useCallback(async () => {
+    if (partialBusyRef.current) return;
     const rec = recRef.current;
     if (!rec || rec.state !== "recording") return;
-    const i = atualRef.current;
+    const i = currentSegRef.current;
     const seg = segsRef.current[i];
     if (!seg || seg.chunks.length === 0) return;
-    parcialOcupadoRef.current = true;
+    partialBusyRef.current = true;
     try {
-      const text = await enviar({ chunks: [...seg.chunks], mime: seg.mime });
+      const text = await upload({ chunks: [...seg.chunks], mime: seg.mime });
 
       if (
-        atualRef.current === i &&
+        currentSegRef.current === i &&
         !discardedRef.current &&
         recRef.current?.state === "recording"
       ) {
-        parcialRef.current = text.trim();
-        publicar();
+        partialRef.current = text.trim();
+        publish();
       }
     } catch { void 0; } finally {
-      parcialOcupadoRef.current = false;
+      partialBusyRef.current = false;
     }
-  }, [enviar, publicar]);
+  }, [upload, publish]);
 
-  const abrirRecorder = useCallback((i: number) => {
+  const openRecorder = useCallback((i: number) => {
     const stream = streamRef.current;
     if (!stream) return null;
     const mime = bestAudioMime((t) =>
@@ -246,43 +246,43 @@ export function useVoice(opts: VoiceOptions): Voice {
     return rec;
   }, []);
 
-  const rotacionar = useCallback(
-    (aoParar: () => void) => {
-      const i = atualRef.current;
-      pendentesRef.current.push(transcreverSegmento(i));
-      atualRef.current = i + 1;
-      parcialRef.current = "";
-      segIniciadoRef.current = Date.now();
-      silencioDesdeRef.current = null;
+  const rotate = useCallback(
+    (onStop: () => void) => {
+      const i = currentSegRef.current;
+      pendingRef.current.push(transcribeSegment(i));
+      currentSegRef.current = i + 1;
+      partialRef.current = "";
+      segStartedRef.current = Date.now();
+      silenceSinceRef.current = null;
 
-      const rec = abrirRecorder(atualRef.current);
+      const rec = openRecorder(currentSegRef.current);
       if (!rec) return;
-      rec.onstop = aoParar;
+      rec.onstop = onStop;
       recRef.current = rec;
       rec.start(TIMESLICE_MS);
     },
-    [abrirRecorder, transcreverSegmento]
+    [openRecorder, transcribeSegment]
   );
 
-  const finalizar = useCallback(async () => {
-    pendentesRef.current.push(transcreverSegmento(atualRef.current));
-    parcialRef.current = "";
-    await Promise.allSettled(pendentesRef.current);
-    pendentesRef.current = [];
-    const falhos = [...falharamRef.current];
-    if (falhos.length) {
-      await Promise.allSettled(falhos.map((i) => transcreverSegmento(i)));
+  const finalize = useCallback(async () => {
+    pendingRef.current.push(transcribeSegment(currentSegRef.current));
+    partialRef.current = "";
+    await Promise.allSettled(pendingRef.current);
+    pendingRef.current = [];
+    const failed = [...failedRef.current];
+    if (failed.length) {
+      await Promise.allSettled(failed.map((i) => transcribeSegment(i)));
     }
-    publicar();
-    if (falharamRef.current.size) {
+    publish();
+    if (failedRef.current.size) {
       optsRef.current.onNotice(
         tr("Part of the recording could not be transcribed — check the connection.")
       );
     }
     if (!discardedRef.current) {
-      optsRef.current.onFinal(joinTranscripts(finaisRef.current, ""));
+      optsRef.current.onFinal(joinTranscripts(finalsRef.current, ""));
     }
-  }, [publicar, transcreverSegmento]);
+  }, [publish, transcribeSegment]);
 
   const start = useCallback(async () => {
     if (recRef.current) return false;
@@ -319,28 +319,28 @@ export function useVoice(opts: VoiceOptions): Voice {
     }
     streamRef.current = stream;
     segsRef.current = [];
-    finaisRef.current = [];
-    falharamRef.current = new Set();
-    pendentesRef.current = [];
-    atualRef.current = 0;
-    parcialRef.current = "";
-    parcialOcupadoRef.current = false;
-    silencioDesdeRef.current = null;
+    finalsRef.current = [];
+    failedRef.current = new Set();
+    pendingRef.current = [];
+    currentSegRef.current = 0;
+    partialRef.current = "";
+    partialBusyRef.current = false;
+    silenceSinceRef.current = null;
     analyserRef.current = null;
     bufRef.current = null;
     discardedRef.current = false;
-    rotacionandoRef.current = false;
+    rotatingRef.current = false;
     setSeconds(0);
 
     setLevels(new Array(LEVEL_SLOTS).fill(0));
 
-    const rec = abrirRecorder(0);
+    const rec = openRecorder(0);
     if (!rec) return false;
-    const aoParar = () => {
+    const onStop = () => {
 
-      if (rotacionandoRef.current) {
-        rotacionandoRef.current = false;
-        rotacionar(aoParar);
+      if (rotatingRef.current) {
+        rotatingRef.current = false;
+        rotate(onStop);
         return;
       }
       cleanup();
@@ -349,55 +349,55 @@ export function useVoice(opts: VoiceOptions): Voice {
         return;
       }
       setState("working");
-      void finalizar().then(() => setState("idle"));
+      void finalize().then(() => setState("idle"));
     };
-    rec.onstop = aoParar;
+    rec.onstop = onStop;
     recRef.current = rec;
     rec.start(TIMESLICE_MS);
 
     startedAtRef.current = Date.now();
-    segIniciadoRef.current = Date.now();
+    segStartedRef.current = Date.now();
 
     tickRef.current = window.setInterval(() => {
-      const atual = recRef.current;
-      if (atual?.state !== "recording") return;
-      const agora = Date.now();
-      const elapsed = (agora - startedAtRef.current) / 1000;
+      const active = recRef.current;
+      if (active?.state !== "recording") return;
+      const now = Date.now();
+      const elapsed = (now - startedAtRef.current) / 1000;
       setSeconds(elapsed);
       if (elapsed >= MAX_SECONDS) {
         optsRef.current.onNotice(tr("Recording stopped at 5 minutes."));
-        atual.stop();
+        active.stop();
         return;
       }
-      const silencioMs = silencioDesdeRef.current
-        ? agora - silencioDesdeRef.current
+      const silenceMs = silenceSinceRef.current
+        ? now - silenceSinceRef.current
         : 0;
       if (
-        !rotacionandoRef.current &&
-        shouldRotate({ duracaoMs: agora - segIniciadoRef.current, silencioMs })
+        !rotatingRef.current &&
+        shouldRotate({ durationMs: now - segStartedRef.current, silenceMs })
       ) {
-        rotacionandoRef.current = true;
+        rotatingRef.current = true;
         try {
-          atual.stop();
+          active.stop();
         } catch {
-          rotacionandoRef.current = false;
+          rotatingRef.current = false;
         }
       }
     }, 200);
 
-    nivelRef.current = window.setInterval(() => {
-      if (recRef.current?.state === "recording") lerNivel();
+    levelTimerRef.current = window.setInterval(() => {
+      if (recRef.current?.state === "recording") readLevel();
     }, LEVEL_MS);
 
-    const rodada = () => {
-      const atual = recRef.current;
-      if (atual?.state !== "recording") return;
+    const requestInterim = () => {
+      const active = recRef.current;
+      if (active?.state !== "recording") return;
 
-      atual.requestData();
-      void transcreverParcial();
+      active.requestData();
+      void transcribePartial();
     };
-    primeiroParcialRef.current = window.setTimeout(rodada, FIRST_INTERIM_MS);
-    interimRef.current = window.setInterval(rodada, INTERIM_MS);
+    firstInterimRef.current = window.setTimeout(requestInterim, FIRST_INTERIM_MS);
+    interimRef.current = window.setInterval(requestInterim, INTERIM_MS);
 
     try {
       const ctx = new AudioContext();
@@ -415,20 +415,20 @@ export function useVoice(opts: VoiceOptions): Voice {
         const now = performance.now();
         if (now - last < 90) return;
         last = now;
-        const nivel = lerNivel();
-        if (nivel !== null) setLevels((prev) => [...prev, nivel].slice(-LEVEL_SLOTS));
+        const level = readLevel();
+        if (level !== null) setLevels((prev) => [...prev, level].slice(-LEVEL_SLOTS));
       };
       sample();
     } catch { void 0; }
 
     setState("recording");
     return true;
-  }, [abrirRecorder, cleanup, finalizar, lerNivel, rotacionar, transcreverParcial]);
+  }, [openRecorder, cleanup, finalize, readLevel, rotate, transcribePartial]);
 
   const cancel = useCallback(() => {
     const rec = recRef.current;
     discardedRef.current = true;
-    rotacionandoRef.current = false;
+    rotatingRef.current = false;
     optsRef.current.onCancel();
     if (rec && rec.state !== "inactive") rec.stop();
     else {
@@ -440,7 +440,7 @@ export function useVoice(opts: VoiceOptions): Voice {
   const finish = useCallback(() => {
     const rec = recRef.current;
     if (!rec) return;
-    rotacionandoRef.current = false;
+    rotatingRef.current = false;
     try {
       if (rec.state !== "inactive") rec.stop();
     } catch {

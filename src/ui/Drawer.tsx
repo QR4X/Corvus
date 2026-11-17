@@ -29,7 +29,7 @@ export function Drawer({
   plugin,
   open,
   view,
-  modulo,
+  moduleId,
   onEnterModule,
   onNavigate,
   onClose,
@@ -38,20 +38,20 @@ export function Drawer({
   open: boolean;
   view: ViewId;
 
-  modulo: string;
+  moduleId: string;
   onEnterModule: (mode: string) => void;
   onNavigate: (view: ViewId) => void;
   onClose: () => void;
 }) {
   const sessionMode = useChatStore((s) => s.sessionMode);
-  const esperandoId = useChatStore((s) => s.waitingChatId);
+  const waitingId = useChatStore((s) => s.waitingChatId);
   const chats = useChatSummaries(plugin);
-  const naoLidas = useUnreadChats(plugin);
+  const unread = useUnreadChats(plugin);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const moduloAtual =
+  const currentModule =
     view === "module"
-      ? modulo
+      ? moduleId
       : isChatMode(sessionMode)
         ? sessionMode
         : isChatMode(plugin.settings.defaultMode)
@@ -74,7 +74,7 @@ export function Drawer({
     return () => doc.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const modulosVisiveis = useMemo(() => modulesInUse(chats), [chats]);
+  const visibleModules = useMemo(() => modulesInUse(chats), [chats]);
 
   const go = (id: ViewId) => {
     onNavigate(id);
@@ -108,11 +108,11 @@ export function Drawer({
 
         <nav className="corvus-drawer-nav">
             {}
-            {modulosVisiveis.map((m) => {
+            {visibleModules.map((m) => {
               const stats = moduleStats(chats, m.id);
-              const pedindo = alertCount(chats, m.id, {
-                esperando: esperandoId,
-                naoLidas,
+              const alerts = alertCount(chats, m.id, {
+                waitingId,
+                unread,
               });
               return (
                 <button
@@ -120,7 +120,7 @@ export function Drawer({
                   type="button"
                   className={
                     (view === "chat" || view === "module") &&
-                    moduloAtual === m.id
+                    currentModule === m.id
                       ? "corvus-nav-item corvus-module-item is-active"
                       : "corvus-nav-item corvus-module-item"
                   }
@@ -134,8 +134,8 @@ export function Drawer({
                     </span>
                   </span>
                   {}
-                  {pedindo > 0 && (
-                    <span className="corvus-module-badge">{pedindo}</span>
+                  {alerts > 0 && (
+                    <span className="corvus-module-badge">{alerts}</span>
                   )}
                   <Icon
                     name="chevron-right"

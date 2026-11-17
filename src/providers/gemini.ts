@@ -20,23 +20,23 @@ import {
   streamFallbackToChat,
   fetchStream,
 } from "./_shared";
-import type { ErroNoFio, RespostaNoFio } from "./_shared";
+import type { WireError, WireResponse } from "./_shared";
 
-interface ParteDeImagem {
+interface ImagePart {
   inlineData?: { data: string; mimeType: string };
   inline_data?: { data: string; mime_type: string };
   text?: string;
 }
 
-interface RespostaDeImagem extends ErroNoFio {
-  candidates?: Array<{ content?: { parts?: ParteDeImagem[] } }>;
+interface ImageResponse extends WireError {
+  candidates?: Array<{ content?: { parts?: ImagePart[] } }>;
 }
 
-interface RespostaImagen extends ErroNoFio {
+interface ImagenResponse extends WireError {
   predictions?: Array<{ bytesBase64Encoded?: string; mimeType?: string }>;
 }
 
-interface CatalogoGemini {
+interface GeminiModelList {
   data?: Array<{ id?: unknown }>;
 }
 
@@ -102,15 +102,15 @@ class GeminiProvider implements Provider {
     }
 
     if (res.status >= 400) {
-      const detail = (res.json as ErroNoFio | undefined)?.error?.message ?? "";
+      const detail = (res.json as WireError | undefined)?.error?.message ?? "";
       if (isGeminiBillingError(res.status, detail, "chat")) {
         throw new ProviderError(`Gemini billing: ${detail}`, "billing");
       }
     }
     ensureOkRequest(res, { label: "Gemini", authStatuses: [401, 403] });
 
-    const corpo = res.json as RespostaNoFio | undefined;
-    const message = corpo?.choices?.[0]?.message;
+    const payload = res.json as WireResponse | undefined;
+    const message = payload?.choices?.[0]?.message;
     if (!message) throw new ProviderError("Empty response from Gemini.", "unknown");
     const { content, toolCalls, invalidToolCalls } = parseOpenAIChatMessage(message);
     if (invalidToolCalls) {
@@ -119,7 +119,7 @@ class GeminiProvider implements Provider {
     if (!toolCalls && !content) {
       throw new ProviderError("Empty response from Gemini (no text or tool_calls).", "unknown");
     }
-    return { content, toolCalls, usage: usageFrom(corpo ?? {}) };
+    return { content, toolCalls, usage: usageFrom(payload ?? {}) };
   }
 
   async streamChat(
@@ -168,7 +168,7 @@ class GeminiProvider implements Provider {
     if (!res.ok) {
 
       try {
-        const j = (await res.clone().json()) as ErroNoFio;
+        const j = (await res.clone().json()) as WireError;
         const msg = j?.error?.message;
         if (typeof msg === "string" && isGeminiBillingError(res.status, msg, "chat")) {
           throw new ProviderError(`Gemini billing: ${msg}`, "billing");
@@ -233,7 +233,7 @@ class GeminiProvider implements Provider {
     }
     if (res.status < 200 || res.status >= 300) {
       const detail =
-        (res.json as ErroNoFio | undefined)?.error?.message ??
+        (res.json as WireError | undefined)?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
       console.error("[corvus] Gemini image gen failed:", res.status, res.json ?? res.text);
@@ -250,9 +250,9 @@ class GeminiProvider implements Provider {
       throw new ProviderError(`Gemini images (${res.status}): ${detail}`, "unknown");
     }
 
-    const imagem = res.json as RespostaDeImagem | undefined;
-    const parts: ParteDeImagem[] =
-      imagem?.candidates?.[0]?.content?.parts ?? [];
+    const imageRes = res.json as ImageResponse | undefined;
+    const parts: ImagePart[] =
+      imageRes?.candidates?.[0]?.content?.parts ?? [];
     const items: MediaGenerationItem[] = [];
     let textAccum = "";
     for (const p of parts) {
@@ -314,7 +314,7 @@ class GeminiProvider implements Provider {
     }
     if (res.status < 200 || res.status >= 300) {
       const detail =
-        (res.json as ErroNoFio | undefined)?.error?.message ??
+        (res.json as WireError | undefined)?.error?.message ??
         (typeof res.text === "string" ? res.text.slice(0, 240) : null) ??
         `HTTP ${res.status}`;
       console.error("[corvus] Imagen gen failed:", res.status, res.json ?? res.text);
@@ -329,7 +329,7 @@ class GeminiProvider implements Provider {
       }
       throw new ProviderError(`Imagen (${res.status}): ${detail}`, "unknown");
     }
-    const preds = (res.json as RespostaImagen | undefined)?.predictions ?? [];
+    const preds = (res.json as ImagenResponse | undefined)?.predictions ?? [];
     const items: MediaGenerationItem[] = [];
     for (const p of preds) {
       if (p.bytesBase64Encoded) {
@@ -368,7 +368,7 @@ class GeminiProvider implements Provider {
       throw new ProviderError(`Gemini: HTTP ${res.status}`, "unknown");
     }
 
-    const all: string[] = ((res.json as CatalogoGemini | undefined)?.data ?? [])
+    const all: string[] = ((res.json as GeminiModelList | undefined)?.data ?? [])
       .map((m) => m?.id)
       .filter((id): id is string => typeof id === "string");
     return all
@@ -388,7 +388,7 @@ class GeminiProvider implements Provider {
       });
       if (res.status < 200 || res.status >= 300) return [];
 
-      const all: string[] = ((res.json as CatalogoGemini | undefined)?.data ?? [])
+      const all: string[] = ((res.json as GeminiModelList | undefined)?.data ?? [])
         .map((m) => m?.id)
         .filter((id): id is string => typeof id === "string");
       return all

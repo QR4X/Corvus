@@ -143,7 +143,7 @@ export function effortToVaultLookup(
   return { topK: cfg.vaultTopK, excerptChars: cfg.vaultExcerptChars };
 }
 
-export function tokensCurtos(n: number): string {
+export function shortTokenCount(n: number): string {
   if (n < 1000) return String(n);
   return `${Math.round(n / 100) / 10}k`;
 }
@@ -152,7 +152,7 @@ export function effortNumbers(cfg: EffortConfig): string {
   const tok =
     cfg.maxTokens === 0
       ? tr("up to {pct}% of context", { pct: cfg.contextReservePercent })
-      : tr("≤{n} tok", { n: tokensCurtos(cfg.maxTokens) });
+      : tr("≤{n} tok", { n: shortTokenCount(cfg.maxTokens) });
   return tok;
 }
 

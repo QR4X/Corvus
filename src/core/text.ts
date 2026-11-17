@@ -1,6 +1,6 @@
-export function texto(v: unknown, padrao = ""): string {
+export function asText(v: unknown, fallback = ""): string {
   if (typeof v === "string") return v;
-  if (typeof v === "number") return Number.isFinite(v) ? String(v) : padrao;
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : fallback;
   if (typeof v === "boolean" || typeof v === "bigint") return String(v);
-  return padrao;
+  return fallback;
 }

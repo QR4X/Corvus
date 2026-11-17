@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
-  acompanharEscrita,
+  watchWakeLock,
   type WakeLockEnv,
   type WakeLockSentinel,
 } from "../src/core/wakeLock";
@@ -55,7 +55,7 @@ afterEach(() => {
 describe("acompanharEscrita", () => {
   it("pede o lock quando o turno começa e solta quando termina", async () => {
     const env = fakeEnv();
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(env.pedidos).toEqual(["screen"]));
     useChatStore.setState({ isLoading: false });
@@ -66,7 +66,7 @@ describe("acompanharEscrita", () => {
   it("o toggle desligado no meio do turno solta o lock", async () => {
     const env = fakeEnv();
     let ligado = true;
-    const vigia = acompanharEscrita(() => ligado, env);
+    const vigia = watchWakeLock(() => ligado, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
     ligado = false;
@@ -77,7 +77,7 @@ describe("acompanharEscrita", () => {
 
   it("não segura com o app fora da tela, e re-segura ao voltar", async () => {
     const env = fakeEnv();
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
 
@@ -93,7 +93,7 @@ describe("acompanharEscrita", () => {
 
   it("sem suporte da API nunca lança", async () => {
     const env = fakeEnv({ wakeLock: undefined });
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => {
       expect(env.pedidos).toEqual([]);
@@ -110,7 +110,7 @@ describe("acompanharEscrita", () => {
         },
       },
     });
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(env.pedidos).toEqual([]));
     vigia.dispose();
@@ -118,7 +118,7 @@ describe("acompanharEscrita", () => {
 
   it("dispose solta o lock e para de escutar", async () => {
     const env = fakeEnv();
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
     vigia.dispose();
@@ -141,7 +141,7 @@ describe("acompanharEscrita", () => {
         },
       },
     });
-    const vigia = acompanharEscrita(() => true, env);
+    const vigia = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     useChatStore.setState({ isLoading: false }); 
     liberar({ release: async () => {}, addEventListener: () => {} });

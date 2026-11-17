@@ -12,38 +12,38 @@ describe("shouldRotate", () => {
   it("não corta no meio da frase", () => {
 
     expect(
-      shouldRotate({ duracaoMs: MIN_SEGMENT_MS + 5000, silencioMs: 0 })
+      shouldRotate({ durationMs: MIN_SEGMENT_MS + 5000, silenceMs: 0 })
     ).toBe(false);
   });
 
   it("não corta numa pausa curta demais — respiro não é fim de frase", () => {
     expect(
-      shouldRotate({ duracaoMs: MIN_SEGMENT_MS + 1000, silencioMs: SILENCE_MS - 1 })
+      shouldRotate({ durationMs: MIN_SEGMENT_MS + 1000, silenceMs: SILENCE_MS - 1 })
     ).toBe(false);
   });
 
   it("corta na pausa depois do mínimo", () => {
     expect(
-      shouldRotate({ duracaoMs: MIN_SEGMENT_MS, silencioMs: SILENCE_MS })
+      shouldRotate({ durationMs: MIN_SEGMENT_MS, silenceMs: SILENCE_MS })
     ).toBe(true);
   });
 
   it("segura o corte enquanto o segmento é curto, mesmo em silêncio", () => {
 
     expect(
-      shouldRotate({ duracaoMs: MIN_SEGMENT_MS - 1, silencioMs: 5000 })
+      shouldRotate({ durationMs: MIN_SEGMENT_MS - 1, silenceMs: 5000 })
     ).toBe(false);
   });
 
   it("no teto corta mesmo sem pausa nenhuma", () => {
-    expect(shouldRotate({ duracaoMs: MAX_SEGMENT_MS, silencioMs: 0 })).toBe(true);
+    expect(shouldRotate({ durationMs: MAX_SEGMENT_MS, silenceMs: 0 })).toBe(true);
   });
 
   it("sem medidor de nível (silêncio sempre 0) só o teto corta", () => {
-    expect(shouldRotate({ duracaoMs: MAX_SEGMENT_MS - 1, silencioMs: 0 })).toBe(
+    expect(shouldRotate({ durationMs: MAX_SEGMENT_MS - 1, silenceMs: 0 })).toBe(
       false
     );
-    expect(shouldRotate({ duracaoMs: MAX_SEGMENT_MS + 1, silencioMs: 0 })).toBe(
+    expect(shouldRotate({ durationMs: MAX_SEGMENT_MS + 1, silenceMs: 0 })).toBe(
       true
     );
   });

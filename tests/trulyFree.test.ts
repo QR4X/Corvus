@@ -1,31 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { compararFabricantes, fabricante } from "../src/providers/vendors";
-import { buildModelCatalog, porFabricante, soltosPorFabricante } from "../src/ui/modelCatalog";
-import { gratisDoCatalogoNvidia } from "../src/providers/nim";
-import { cotaGratisDaChave } from "../src/providers/openrouter";
-import { ehGratisNoOpenRouter } from "../src/providers/openrouterFree";
-import { freeTag, geminiTemTierGratis, gratisDeVerdade } from "../src/usage/freeTag";
+import { compareVendors, modelVendor } from "../src/providers/vendors";
+import { buildModelCatalog, byVendor, looseByVendor } from "../src/ui/modelCatalog";
+import { freeFromNvidiaCatalog } from "../src/providers/nim";
+import { keyFreeQuota } from "../src/providers/openrouter";
+import { isFreeOnOpenRouter } from "../src/providers/openrouterFree";
+import { freeTag, geminiHasFreeTier, isTrulyFree } from "../src/usage/freeTag";
 
 describe("fabricante de um id vendor/modelo", () => {
   it("prefixos diferentes pra mesma casa viram uma só", () => {
-    expect(fabricante("meta-llama/llama-3.3-70b-instruct")).toEqual({ chave: "meta", nome: "Meta" });
-    expect(fabricante("meta/llama-3.1-70b-instruct")).toEqual({ chave: "meta", nome: "Meta" });
-    expect(fabricante("deepseek-ai/deepseek-v4.1-flash").nome).toBe("DeepSeek");
-    expect(fabricante("deepseek/deepseek-chat").chave).toBe("deepseek");
-    expect(fabricante("x-ai/grok-4").nome).toBe("xAI");
-    expect(fabricante("mistralai/mistral-large").nome).toBe("Mistral");
+    expect(modelVendor("meta-llama/llama-3.3-70b-instruct")).toEqual({ key: "meta", name: "Meta" });
+    expect(modelVendor("meta/llama-3.1-70b-instruct")).toEqual({ key: "meta", name: "Meta" });
+    expect(modelVendor("deepseek-ai/deepseek-v4.1-flash").name).toBe("DeepSeek");
+    expect(modelVendor("deepseek/deepseek-chat").key).toBe("deepseek");
+    expect(modelVendor("x-ai/grok-4").name).toBe("xAI");
+    expect(modelVendor("mistralai/mistral-large").name).toBe("Mistral");
   });
 
   it("casa nova ganha nome a partir do prefixo; sem prefixo é Other", () => {
-    expect(fabricante("some-new-lab/model-x").nome).toBe("Some New Lab");
-    expect(fabricante("gpt-5")).toEqual({ chave: "", nome: "Other" });
+    expect(modelVendor("some-new-lab/model-x").name).toBe("Some New Lab");
+    expect(modelVendor("gpt-5")).toEqual({ key: "", name: "Other" });
   });
 
   it("ordem: as grandes primeiro, o resto por nome, Other no fim", () => {
     const nomes = ["poolside/x", "anthropic/x", "zzz/x", "openai/x", "abc/x", "sem-prefixo"]
-      .map(fabricante)
-      .sort(compararFabricantes)
-      .map((f) => f.nome);
+      .map(modelVendor)
+      .sort(compareVendors)
+      .map((f) => f.name);
     expect(nomes).toEqual(["OpenAI", "Anthropic", "Abc", "Poolside", "Zzz", "Other"]);
   });
 });
@@ -41,18 +41,18 @@ describe("o catálogo por fabricante", () => {
   ];
 
   it("cada fabricante junta as classes dele, na ordem das casas", () => {
-    const grupos = porFabricante(buildModelCatalog("openrouter", modelos));
-    expect(grupos.map((g) => g.fabricante.nome)).toEqual(["OpenAI", "Anthropic", "Meta", "Perplexity"]);
-    const anthropic = grupos.find((g) => g.fabricante.chave === "anthropic")!;
+    const grupos = byVendor(buildModelCatalog("openrouter", modelos));
+    expect(grupos.map((g) => g.vendor.name)).toEqual(["OpenAI", "Anthropic", "Meta", "Perplexity"]);
+    const anthropic = grupos.find((g) => g.vendor.key === "anthropic")!;
     expect(anthropic.total).toBe(2);
 
-    const todos = grupos.flatMap((g) => g.secoes.flatMap((s) => s.family.models)).sort();
+    const todos = grupos.flatMap((g) => g.sections.flatMap((s) => s.family.models)).sort();
     expect(todos).toEqual([...modelos].sort());
   });
 
   it("o filtro Free (lista solta) também sai por fabricante", () => {
-    const g = soltosPorFabricante(["meta/llama-3.2-11b-vision-instruct", "deepseek-ai/deepseek-v4.1-flash", "meta/llama-guard-4-12b"]);
-    expect(g.map((x) => [x.fabricante.nome, x.models.length])).toEqual([["Meta", 2], ["DeepSeek", 1]]);
+    const g = looseByVendor(["meta/llama-3.2-11b-vision-instruct", "deepseek-ai/deepseek-v4.1-flash", "meta/llama-guard-4-12b"]);
+    expect(g.map((x) => [x.vendor.name, x.models.length])).toEqual([["Meta", 2], ["DeepSeek", 1]]);
   });
 });
 
@@ -88,57 +88,57 @@ describe("NIM: grátis = a mark 'Free Endpoint' do catálogo da NVIDIA", () => {
   };
 
   it("id = publisher/nome, com o _ da NVIDIA virando o . da API", () => {
-    const { ids, total } = gratisDoCatalogoNvidia(pagina);
+    const { ids, total } = freeFromNvidiaCatalog(pagina);
     expect(ids.sort()).toEqual(["deepseek-ai/deepseek-v4.1-flash", "nvidia/riva-translate-4b-instruct-v1.1"]);
     expect(total).toBe(3);
   });
 
   it("catálogo quebrado: nada", () => {
-    expect(gratisDoCatalogoNvidia(undefined).ids).toEqual([]);
-    expect(gratisDoCatalogoNvidia({ results: "x" }).ids).toEqual([]);
+    expect(freeFromNvidiaCatalog(undefined).ids).toEqual([]);
+    expect(freeFromNvidiaCatalog({ results: "x" }).ids).toEqual([]);
   });
 });
 
 describe("OpenRouter: a cota diária dos grátis na chave", () => {
   it("o free_model_daily_requests, quando vem", () => {
-    expect(cotaGratisDaChave({ data: { free_model_daily_requests: { used: 13, limit: 50, remaining: 37 } } })).toEqual({
+    expect(keyFreeQuota({ data: { free_model_daily_requests: { used: 13, limit: 50, remaining: 37 } } })).toEqual({
       limit: 50,
       remaining: 37,
     });
   });
 
   it("senão, o is_free_tier: sem crédito comprado = 50; com = 1.000", () => {
-    expect(cotaGratisDaChave({ data: { is_free_tier: true } })).toEqual({ limit: 50 });
-    expect(cotaGratisDaChave({ data: { is_free_tier: false } })).toEqual({ limit: 1000 });
-    expect(cotaGratisDaChave({ data: {} })).toBeNull();
-    expect(cotaGratisDaChave(null)).toBeNull();
+    expect(keyFreeQuota({ data: { is_free_tier: true } })).toEqual({ limit: 50 });
+    expect(keyFreeQuota({ data: { is_free_tier: false } })).toEqual({ limit: 1000 });
+    expect(keyFreeQuota({ data: {} })).toBeNull();
+    expect(keyFreeQuota(null)).toBeNull();
   });
 });
 
 describe("grátis de verdade e a etiqueta", () => {
   it("sem :free, a lista do fetch decide (preço zero de verdade); com :free, é a grátis declarada", () => {
     const livres = ["vendor/promo-model", "meta-llama/llama-3.3-70b-instruct:free"];
-    expect(gratisDeVerdade("vendor/promo-model", livres, false)).toBe(true);
-    expect(gratisDeVerdade("vendor/paid-model", livres, true)).toBe(false); 
+    expect(isTrulyFree("vendor/promo-model", livres, false)).toBe(true);
+    expect(isTrulyFree("vendor/paid-model", livres, true)).toBe(false); 
 
-    expect(gratisDeVerdade("other/thing:free", livres, false)).toBe(true);
+    expect(isTrulyFree("other/thing:free", livres, false)).toBe(true);
   });
 
   it("sem lista (ninguém buscou), vale o palpite", () => {
-    expect(gratisDeVerdade("x/y:free", undefined, true)).toBe(true);
-    expect(gratisDeVerdade("x/y", [], false)).toBe(false);
+    expect(isTrulyFree("x/y:free", undefined, true)).toBe(true);
+    expect(isTrulyFree("x/y", [], false)).toBe(false);
   });
 
   it("NIM: o _ e o . são o mesmo modelo", () => {
-    expect(gratisDeVerdade("nvidia/llama-3.1-nemotron-safety-guard-8b-v3", ["nvidia/llama-3_1-nemotron-safety-guard-8b-v3"], false)).toBe(true);
+    expect(isTrulyFree("nvidia/llama-3.1-nemotron-safety-guard-8b-v3", ["nvidia/llama-3_1-nemotron-safety-guard-8b-v3"], false)).toBe(true);
   });
 
   it("OpenRouter mostra a cota da chave no rótulo", () => {
     const base = { free: true, dataSharing: false, tier: 1 };
-    expect(freeTag("openrouter", "a/b:free", { ...base, cota: { limit: 50, remaining: 37 } })?.label).toBe("free · 50/day");
-    expect(freeTag("openrouter", "a/b:free", { ...base, cota: { limit: 1000 } })?.label).toBe("free · 1,000/day");
+    expect(freeTag("openrouter", "a/b:free", { ...base, quota: { limit: 50, remaining: 37 } })?.label).toBe("free · 50/day");
+    expect(freeTag("openrouter", "a/b:free", { ...base, quota: { limit: 1000 } })?.label).toBe("free · 1,000/day");
     expect(freeTag("openrouter", "a/b:free", base)?.label).toBe("free");
-    expect(freeTag("openrouter", "a/b:free", { ...base, cota: { limit: 50, remaining: 37 } })?.detail).toContain("37 were left");
+    expect(freeTag("openrouter", "a/b:free", { ...base, quota: { limit: 50, remaining: 37 } })?.detail).toContain("37 were left");
   });
 
   it("NIM diz o limite por minuto; não grátis, nada", () => {
@@ -169,21 +169,21 @@ describe("Google de verdade — o Rafael desconfiou, e com razão", () => {
   };
 
   it("OpenRouter: o Lyria tem preço zero no catálogo mas cobra por clipe — NÃO é grátis", () => {
-    expect(ehGratisNoOpenRouter(lyria)).toBe(false);
+    expect(isFreeOnOpenRouter(lyria)).toBe(false);
 
-    expect(ehGratisNoOpenRouter({ ...lyria, architecture: { output_modalities: ["text"] } })).toBe(false);
+    expect(isFreeOnOpenRouter({ ...lyria, architecture: { output_modalities: ["text"] } })).toBe(false);
 
-    expect(ehGratisNoOpenRouter({ ...lyria, description: "Music model." })).toBe(false);
+    expect(isFreeOnOpenRouter({ ...lyria, description: "Music model." })).toBe(false);
   });
 
   it("OpenRouter: o Gemma :free é grátis declarado; o Ling sem sufixo, de texto e sem preço, também", () => {
-    expect(ehGratisNoOpenRouter(gemmaFree)).toBe(true);
-    expect(ehGratisNoOpenRouter(ling)).toBe(true);
+    expect(isFreeOnOpenRouter(gemmaFree)).toBe(true);
+    expect(isFreeOnOpenRouter(ling)).toBe(true);
   });
 
   it("OpenRouter: qualquer campo de preço acima de zero tira (imagem, áudio, busca…)", () => {
-    expect(ehGratisNoOpenRouter({ ...ling, pricing: { prompt: "0", completion: "0", image: "0.04" } })).toBe(false);
-    expect(ehGratisNoOpenRouter({ ...ling, pricing: { prompt: "0", completion: "0.0000004" } })).toBe(false);
+    expect(isFreeOnOpenRouter({ ...ling, pricing: { prompt: "0", completion: "0", image: "0.04" } })).toBe(false);
+    expect(isFreeOnOpenRouter({ ...ling, pricing: { prompt: "0", completion: "0.0000004" } })).toBe(false);
   });
 
   it("Gemini: tier grátis só nos modelos que o Google lista assim", () => {
@@ -199,7 +199,7 @@ describe("Google de verdade — o Rafael desconfiou, e com razão", () => {
       "gemma-4-31b-it",
       "models/gemini-2.5-flash",
     ]) {
-      expect(geminiTemTierGratis(m), m).toBe(true);
+      expect(geminiHasFreeTier(m), m).toBe(true);
     }
     for (const m of [
       "gemini-2.5-flash-image", 
@@ -213,7 +213,7 @@ describe("Google de verdade — o Rafael desconfiou, e com razão", () => {
       "imagen-4.0-generate-001",
       "gemini-9-ultra", 
     ]) {
-      expect(geminiTemTierGratis(m), m).toBe(false);
+      expect(geminiHasFreeTier(m), m).toBe(false);
     }
   });
 

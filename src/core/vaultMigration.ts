@@ -38,30 +38,30 @@ export async function migrateLegacyFolders(
   let moved = false;
   for (const mv of HIDDEN_MOVES) {
     const go = shouldMigrate({
-      caminhoAtual: settings[mv.campo],
-      legado: mv.legado,
-      novo: mv.novo,
-      origemExiste: await ad.exists(mv.legado),
-      destinoExiste: await hasEntries(ad, mv.novo),
+      currentPath: settings[mv.field],
+      legacy: mv.legacy,
+      target: mv.target,
+      sourceExists: await ad.exists(mv.legacy),
+      targetExists: await hasEntries(ad, mv.target),
     });
     if (!go) continue;
     try {
-      await moveFolder(ad, mv.legado, mv.novo);
-      settings[mv.campo] = mv.novo;
+      await moveFolder(ad, mv.legacy, mv.target);
+      settings[mv.field] = mv.target;
       moved = true;
     } catch (err) {
-      console.error(`[corvus] migration of ${mv.legado} failed:`, err);
+      console.error(`[corvus] migration of ${mv.legacy} failed:`, err);
     }
   }
   const appRoot = CHATS_FOLDER.split("/")[0];
   for (const m of legacyModeMoves(appRoot, CHATS_FOLDER, CHAT_MODES)) {
-    if (!(await ad.exists(m.de))) continue;
-    if ((await ad.list(m.de)).files.length === 0) continue;
+    if (!(await ad.exists(m.from))) continue;
+    if ((await ad.list(m.from)).files.length === 0) continue;
     try {
-      await moveFolder(ad, m.de, m.para);
+      await moveFolder(ad, m.from, m.to);
       moved = true;
     } catch (err) {
-      console.error(`[corvus] migration of ${m.de} failed:`, err);
+      console.error(`[corvus] migration of ${m.from} failed:`, err);
     }
   }
   if (!moved) return;

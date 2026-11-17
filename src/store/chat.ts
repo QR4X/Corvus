@@ -245,13 +245,13 @@ function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function escritaDoTurno(
+function writeToTurn(
   state: ChatState,
-  mudar: (msgs: ChatMessage[]) => ChatMessage[]
+  update: (msgs: ChatMessage[]) => ChatMessage[]
 ): Partial<ChatState> {
   const bg = state.background;
-  if (!bg) return { messages: mudar(state.messages) };
-  return { background: { ...bg, messages: mudar(bg.messages) } };
+  if (!bg) return { messages: update(state.messages) };
+  return { background: { ...bg, messages: update(bg.messages) } };
 }
 
 const BASE_RESET = {
@@ -304,7 +304,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (msg) => {
     const id = makeId();
     set((state) =>
-      escritaDoTurno(state, (ms) => [
+      writeToTurn(state, (ms) => [
         ...ms,
         { ...msg, id, timestamp: Date.now() },
       ])
@@ -318,7 +318,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   appendToMessage: (id, text) =>
     set((state) =>
-      escritaDoTurno(state, (ms) =>
+      writeToTurn(state, (ms) =>
         ms.map((m) => {
           if (m.id !== id) return m;
           if (m.type === "ai-options") return m;
@@ -329,7 +329,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   appendReasoning: (id, text) =>
     set((state) =>
-      escritaDoTurno(state, (ms) =>
+      writeToTurn(state, (ms) =>
         ms.map((m) =>
           m.id === id && m.type === "ai-response"
             ? { ...m, reasoning: (m.reasoning ?? "") + text }
@@ -339,23 +339,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ),
   markUndone: (id) =>
     set((state) => {
-      const marcar = (ms: ChatMessage[]) =>
+      const markAll = (ms: ChatMessage[]) =>
         ms.map((m) =>
           m.id === id && m.type === "ai-comment" && m.activity
             ? { ...m, activity: { ...m.activity, undone: true } }
             : m
         );
       return {
-        messages: marcar(state.messages),
+        messages: markAll(state.messages),
         ...(state.background
-          ? { background: { ...state.background, messages: marcar(state.background.messages) } }
+          ? { background: { ...state.background, messages: markAll(state.background.messages) } }
           : {}),
       };
     }),
 
   updateActivity: (id, patch, contentPatch) =>
     set((state) =>
-      escritaDoTurno(state, (ms) =>
+      writeToTurn(state, (ms) =>
         ms.map((m) => {
           if (m.id !== id) return m;
           if (m.type !== "ai-comment") return m;
@@ -378,7 +378,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
   setAgentSteps: (id, steps) =>
     set((state) =>
-      escritaDoTurno(state, (ms) =>
+      writeToTurn(state, (ms) =>
         ms.map((m) =>
           m.id === id && m.type === "ai-response"
             ? { ...m, agentSteps: steps }
@@ -388,7 +388,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ),
   setTruncated: (id, truncated) =>
     set((state) =>
-      escritaDoTurno(state, (ms) =>
+      writeToTurn(state, (ms) =>
         ms.map((m) =>
           m.id === id && m.type === "ai-response" ? { ...m, truncated } : m
         )

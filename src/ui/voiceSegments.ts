@@ -7,18 +7,18 @@ export const MIN_SEGMENT_MS = 2500;
 export const MAX_SEGMENT_MS = 12000;
 
 export function shouldRotate(p: {
-  duracaoMs: number;
-  silencioMs: number;
+  durationMs: number;
+  silenceMs: number;
 }): boolean {
-  if (p.duracaoMs >= MAX_SEGMENT_MS) return true;
-  return p.duracaoMs >= MIN_SEGMENT_MS && p.silencioMs >= SILENCE_MS;
+  if (p.durationMs >= MAX_SEGMENT_MS) return true;
+  return p.durationMs >= MIN_SEGMENT_MS && p.silenceMs >= SILENCE_MS;
 }
 
 export function joinTranscripts(
-  finais: ReadonlyArray<string | undefined>,
-  parcial = ""
+  finals: ReadonlyArray<string | undefined>,
+  partial = ""
 ): string {
-  return [...finais, parcial]
+  return [...finals, partial]
     .map((t) => (t ?? "").trim())
     .filter(Boolean)
     .join(" ")
@@ -26,12 +26,12 @@ export function joinTranscripts(
     .trim();
 }
 
-export function bestAudioMime(suporta: (t: string) => boolean): string | undefined {
-  const candidatos = [
+export function bestAudioMime(supports: (t: string) => boolean): string | undefined {
+  const candidates = [
     "audio/webm;codecs=opus",
     "audio/ogg;codecs=opus",
     "audio/webm",
     "audio/mp4",
   ];
-  return candidatos.find((t) => suporta(t));
+  return candidates.find((t) => supports(t));
 }

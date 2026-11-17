@@ -125,7 +125,7 @@ describe("speak", () => {
 
   it("a mesma amostra de novo não gasta outra chamada; outra voz, sim", async () => {
     const tocarAteOFim = async (voz: string) => {
-      const { fala } = await falando("Amostra", { voice: voz, guardar: true });
+      const { fala } = await falando("Amostra", { voice: voz, cache: true });
       AudioDeMentira.todos.at(-1)?.onended?.();
       await fala;
     };
@@ -138,7 +138,7 @@ describe("speak", () => {
 
   it("guarda poucas: passou de 16, a mais antiga sai e volta a custar uma chamada", async () => {
     const tocarAteOFim = async (voz: string) => {
-      const { fala } = await falando("Amostra de despejo", { voice: voz, guardar: true });
+      const { fala } = await falando("Amostra de despejo", { voice: voz, cache: true });
       AudioDeMentira.todos.at(-1)?.onended?.();
       await fala;
     };

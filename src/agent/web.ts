@@ -2,11 +2,11 @@ import { requestUrl } from "obsidian";
 import { htmlTitle, htmlToText } from "../core/html";
 import type { ToolContext } from "./types";
 
-const MAX_PAGINA = 20_000;
+const MAX_PAGE_CHARS = 20_000;
 
 const TAVILY_SEARCH = "https://api.tavily.com/search";
 
-export function ehEnderecoLocal(host: string): boolean {
+export function isLocalAddress(host: string): boolean {
   const h = host.toLowerCase().replace(/^\[|\]$/g, "");
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) {
     return true;
@@ -29,17 +29,17 @@ export function ehEnderecoLocal(host: string): boolean {
   );
 }
 
-export function urlPermitida(entrada: string): URL {
+export function allowedUrl(input: string): URL {
   let u: URL;
   try {
-    u = new URL(entrada.trim());
+    u = new URL(input.trim());
   } catch {
-    throw new Error(`Not a valid URL: ${entrada.slice(0, 120)}`);
+    throw new Error(`Not a valid URL: ${input.slice(0, 120)}`);
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") {
     throw new Error(`Only http and https pages can be opened (got ${u.protocol}).`);
   }
-  if (ehEnderecoLocal(u.hostname)) {
+  if (isLocalAddress(u.hostname)) {
     throw new Error(`Refusing a local address (${u.hostname}): the agent only opens public web pages.`);
   }
   return u;
@@ -50,7 +50,7 @@ interface FetchArgs {
 }
 
 export async function toolWebFetch(_ctx: ToolContext, args: FetchArgs): Promise<string> {
-  const u = urlPermitida(String(args.url ?? ""));
+  const u = allowedUrl(String(args.url ?? ""));
   const res = await requestUrl({
     url: u.toString(),
     method: "GET",
@@ -60,20 +60,20 @@ export async function toolWebFetch(_ctx: ToolContext, args: FetchArgs): Promise<
   if (res.status >= 400) {
     throw new Error(`The page answered ${res.status}.`);
   }
-  const tipo = String(res.headers?.["content-type"] ?? res.headers?.["Content-Type"] ?? "").toLowerCase();
-  const corpo = res.text ?? "";
-  let titulo: string | null = null;
-  let texto: string;
-  if (tipo.includes("html") || (!tipo && /<html|<body|<title/i.test(corpo))) {
-    titulo = htmlTitle(corpo);
-    texto = htmlToText(corpo, MAX_PAGINA);
-  } else if (tipo.startsWith("text/") || tipo.includes("json") || tipo.includes("xml") || !tipo) {
-    texto = corpo.length > MAX_PAGINA ? `${corpo.slice(0, MAX_PAGINA)}\n\n[…]` : corpo;
+  const contentType = String(res.headers?.["content-type"] ?? res.headers?.["Content-Type"] ?? "").toLowerCase();
+  const body = res.text ?? "";
+  let title: string | null = null;
+  let text: string;
+  if (contentType.includes("html") || (!contentType && /<html|<body|<title/i.test(body))) {
+    title = htmlTitle(body);
+    text = htmlToText(body, MAX_PAGE_CHARS);
+  } else if (contentType.startsWith("text/") || contentType.includes("json") || contentType.includes("xml") || !contentType) {
+    text = body.length > MAX_PAGE_CHARS ? `${body.slice(0, MAX_PAGE_CHARS)}\n\n[…]` : body;
   } else {
-    throw new Error(`Not a text page (${tipo.split(";")[0]}) — only HTML and text can be read.`);
+    throw new Error(`Not a text page (${contentType.split(";")[0]}) — only HTML and text can be read.`);
   }
-  if (!texto.trim()) throw new Error("The page has no readable text.");
-  return [`Title: ${titulo ?? "(none)"}`, `URL: ${u.toString()}`, "", texto].join("\n");
+  if (!text.trim()) throw new Error("The page has no readable text.");
+  return [`Title: ${title ?? "(none)"}`, `URL: ${u.toString()}`, "", text].join("\n");
 }
 
 interface SearchArgs {
@@ -81,36 +81,36 @@ interface SearchArgs {
   maxResults?: number;
 }
 
-interface ResultadoTavily {
+interface TavilyResult {
   title?: unknown;
   url?: unknown;
   content?: unknown;
 }
 
-export function formatarBusca(query: string, json: unknown): string {
-  const lista = (json as { results?: unknown } | null)?.results;
-  const resultados = Array.isArray(lista) ? (lista as ResultadoTavily[]) : [];
-  const linhas = resultados
+export function formatSearchResults(query: string, json: unknown): string {
+  const raw = (json as { results?: unknown } | null)?.results;
+  const results = Array.isArray(raw) ? (raw as TavilyResult[]) : [];
+  const lines = results
     .filter((r) => typeof r?.url === "string")
     .map((r, i) => {
-      const titulo = typeof r.title === "string" && r.title.trim() ? r.title.trim() : String(r.url);
-      const trecho = typeof r.content === "string" ? r.content.replace(/\s+/g, " ").trim().slice(0, 600) : "";
-      return `${i + 1}. ${titulo}\n   ${String(r.url)}${trecho ? `\n   ${trecho}` : ""}`;
+      const title = typeof r.title === "string" && r.title.trim() ? r.title.trim() : String(r.url);
+      const snippet = typeof r.content === "string" ? r.content.replace(/\s+/g, " ").trim().slice(0, 600) : "";
+      return `${i + 1}. ${title}\n   ${String(r.url)}${snippet ? `\n   ${snippet}` : ""}`;
     });
-  if (linhas.length === 0) return `No web results for "${query}".`;
-  return `Web search — ${linhas.length} result(s) for "${query}":\n\n${linhas.join("\n\n")}\n\nOpen a result with web_fetch before relying on it, and cite the URLs you use.`;
+  if (lines.length === 0) return `No web results for "${query}".`;
+  return `Web search — ${lines.length} result(s) for "${query}":\n\n${lines.join("\n\n")}\n\nOpen a result with web_fetch before relying on it, and cite the URLs you use.`;
 }
 
 export async function toolWebSearch(ctx: ToolContext, args: SearchArgs): Promise<string> {
   const query = String(args.query ?? "").trim();
   if (!query) throw new Error("Empty 'query' parameter.");
-  const chave = ctx.web?.tavilyApiKey?.trim() ?? "";
-  if (!chave) throw new Error("Web search needs a Tavily key (Settings › Agent).");
+  const apiKey = ctx.web?.tavilyApiKey?.trim() ?? "";
+  if (!apiKey) throw new Error("Web search needs a Tavily key (Settings › Agent).");
   const max = Math.min(Math.max(Math.round(Number(args.maxResults) || 5), 1), 10);
   const res = await requestUrl({
     url: TAVILY_SEARCH,
     method: "POST",
-    headers: { Authorization: `Bearer ${chave}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ query, max_results: max, search_depth: "basic" }),
     throw: false,
   });
@@ -119,5 +119,5 @@ export async function toolWebSearch(ctx: ToolContext, args: SearchArgs): Promise
     throw new Error("Tavily's limit for this key was reached (the free plan has 1,000 searches a month).");
   }
   if (res.status >= 400) throw new Error(`Tavily answered ${res.status}.`);
-  return formatarBusca(query, res.json);
+  return formatSearchResults(query, res.json);
 }

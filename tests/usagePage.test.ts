@@ -2,22 +2,22 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  A_VISTA,
-  buscarOpcoes,
-  conversasDoTopo,
-  faixaDeDatas,
-  fatiasDe,
-  opcoesAVista,
-  relatorioDe,
-  semADimensao,
-  marcados,
-  mediaPorConversa,
-  metricaDa,
-  modelosDaPagina,
-  precoDo,
-  valeFiltrar,
+  VISIBLE_OPTIONS,
+  searchOptions,
+  topChats,
+  dateRange,
+  slicesOf,
+  visibleOptions,
+  sliceReport,
+  withoutDimension,
+  selectedCount,
+  averagePerChat,
+  metricOf,
+  pageModels,
+  priceKind,
+  worthFiltering,
 } from "../src/usage/page";
-import { FILTRO_VAZIO } from "../src/usage/filters";
+import { EMPTY_FILTER } from "../src/usage/filters";
 import type {
   ChatUsageRow,
   UsageAggregate,
@@ -77,30 +77,30 @@ function agregado(
 
 describe("a unidade da página", () => {
   it("dinheiro quando houve dinheiro, tokens quando não", () => {
-    expect(metricaDa(balde({ cost: 0.01 }))).toBe("cost");
-    expect(metricaDa(balde({ cost: 0 }))).toBe("tokens");
+    expect(metricOf(balde({ cost: 0.01 }))).toBe("cost");
+    expect(metricOf(balde({ cost: 0 }))).toBe("tokens");
 
-    expect(metricaDa(balde({ cost: 0, hasUnknownCost: true }))).toBe("tokens");
+    expect(metricOf(balde({ cost: 0, hasUnknownCost: true }))).toBe("tokens");
   });
 
   it("zero não é uma coisa só: grátis ≠ sem preço público", () => {
-    expect(precoDo(balde({ cost: 1 }))).toBe("pago");
-    expect(precoDo(balde({ cost: 0 }))).toBe("gratis");
-    expect(precoDo(balde({ cost: 0, hasUnknownCost: true }))).toBe("sem-preco");
+    expect(priceKind(balde({ cost: 1 }))).toBe("paid");
+    expect(priceKind(balde({ cost: 0 }))).toBe("free");
+    expect(priceKind(balde({ cost: 0, hasUnknownCost: true }))).toBe("unpriced");
   });
 
   it("a média por conversa fala a unidade da página", () => {
-    expect(mediaPorConversa(balde({ chats: 0, cost: 0 }))).toBeNull();
-    expect(mediaPorConversa(balde({ chats: 4, cost: 2 }))).toBe(0.5);
+    expect(averagePerChat(balde({ chats: 0, cost: 0 }))).toBeNull();
+    expect(averagePerChat(balde({ chats: 4, cost: 2 }))).toBe(0.5);
     expect(
-      mediaPorConversa(balde({ chats: 2, cost: 0, tokensIn: 300, tokensOut: 100 }))
+      averagePerChat(balde({ chats: 2, cost: 0, tokensIn: 300, tokensOut: 100 }))
     ).toBe(200);
   });
 });
 
 describe("By model", () => {
   it("do mais caro pro mais barato, com a fatia do DINHEIRO", () => {
-    const r = modelosDaPagina(
+    const r = pageModels(
       agregado({
         "gpt-5": balde({ cost: 1, tokensIn: 9000 }),
         "claude-sonnet-4-6": balde({ cost: 3, tokensIn: 100 }),
@@ -112,41 +112,41 @@ describe("By model", () => {
   });
 
   it("sem dinheiro nenhum, a ordem e a fatia são do volume", () => {
-    const r = modelosDaPagina(
+    const r = pageModels(
       agregado({
         "llama3.2": balde({ tokensIn: 100, tokensOut: 0 }),
         "qwen2.5": balde({ tokensIn: 300, tokensOut: 0 }),
       })
     );
-    expect(r.map((m) => [m.id, m.pct, m.preco])).toEqual([
-      ["qwen2.5", 75, "gratis"],
-      ["llama3.2", 25, "gratis"],
+    expect(r.map((m) => [m.id, m.pct, m.price])).toEqual([
+      ["qwen2.5", 75, "free"],
+      ["llama3.2", 25, "free"],
     ]);
   });
 
   it("quem pesou alguma coisa nunca aparece com 0%", () => {
-    const r = modelosDaPagina(
+    const r = pageModels(
       agregado({
         grande: balde({ cost: 3.1 }),
         pequeno: balde({ cost: 0.0039 }),
       })
     );
     const p = r.find((m) => m.id === "pequeno")!;
-    expect(p.quase).toBe(true);
+    expect(p.nearZero).toBe(true);
 
     expect(p.pct).toBe(1);
-    expect(r.find((m) => m.id === "grande")!.quase).toBe(false);
+    expect(r.find((m) => m.id === "grande")!.nearZero).toBe(false);
   });
 
   it("pago com conversa sem preço dentro é um PISO", () => {
-    const [m] = modelosDaPagina(
+    const [m] = pageModels(
       agregado({ x: balde({ cost: 1, hasUnknownCost: true }) })
     );
-    expect(m.piso).toBe(true);
+    expect(m.isFloor).toBe(true);
   });
 
   it("empate resolve por volume e depois pelo nome — a ordem não pula", () => {
-    const r = modelosDaPagina(
+    const r = pageModels(
       agregado({
         b: balde({ tokensIn: 10 }),
         a: balde({ tokensIn: 10 }),
@@ -170,14 +170,14 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
       "claude-sonnet-4-6": balde({ cost: 3 }),
     };
     const total = agregado(baldes).total;
-    const r = relatorioDe(ops, baldes, total);
-    expect(r.usadas.map((u) => [u.id, u.pct])).toEqual([
+    const r = sliceReport(ops, baldes, total);
+    expect(r.used.map((u) => [u.id, u.pct])).toEqual([
       ["claude-sonnet-4-6", 75],
       ["gpt-5", 25],
     ]);
 
-    expect(r.paradas.map((o) => o.id)).toEqual(["gemini-2.5-flash"]);
-    expect(r.usadas.length + r.paradas.length).toBe(ops.length);
+    expect(r.idle.map((o) => o.id)).toEqual(["gemini-2.5-flash"]);
+    expect(r.used.length + r.idle.length).toBe(ops.length);
   });
 
   it("só entra o que é da lista — a busca recorta o relatório", () => {
@@ -185,16 +185,16 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
       "gpt-5": balde({ cost: 1 }),
       "claude-sonnet-4-6": balde({ cost: 3 }),
     };
-    const r = relatorioDe([ops[0]], baldes, agregado(baldes).total);
-    expect(r.usadas.map((u) => u.id)).toEqual(["gpt-5"]);
+    const r = sliceReport([ops[0]], baldes, agregado(baldes).total);
+    expect(r.used.map((u) => u.id)).toEqual(["gpt-5"]);
 
-    expect(r.usadas[0].pct).toBe(25);
-    expect(r.paradas).toEqual([]);
+    expect(r.used[0].pct).toBe(25);
+    expect(r.idle).toEqual([]);
   });
 
   it("o recorte do relatório tira só o filtro da própria dimensão", () => {
     const f = { providers: ["openai"], models: ["gpt-5"], modes: ["agent"], days: 30 };
-    expect(semADimensao(f, "models")).toEqual({
+    expect(withoutDimension(f, "models")).toEqual({
       providers: ["openai"],
       models: [],
       modes: ["agent"],
@@ -207,7 +207,7 @@ describe("o relatório de uma dimensão inteira (o See all)", () => {
   it("fatiasDe serve pra qualquer agrupamento — o By model é um caso dela", () => {
     const baldes = { a: balde({ cost: 1 }), b: balde({ cost: 1 }) };
     const agg = agregado(baldes);
-    expect(fatiasDe(baldes, agg.total)).toEqual(modelosDaPagina(agg));
+    expect(slicesOf(baldes, agg.total)).toEqual(pageModels(agg));
   });
 });
 
@@ -215,24 +215,24 @@ describe("a lista do topo", () => {
   const chats = [
     linha({ id: "cara", cost: 2, tokensIn: 10 }),
     linha({ id: "barata", cost: 1, tokensIn: 5000 }),
-    linha({ id: "sem-preco", cost: null, tokensIn: 90 }),
+    linha({ id: "unpriced", cost: null, tokensIn: 90 }),
   ];
 
   it("com dinheiro, as mais CARAS (a ordem do aggregate)", () => {
     const agg = agregado({ m: balde({ cost: 3 }) }, chats);
-    expect(conversasDoTopo(agg, 10).map((c) => c.id)).toEqual([
+    expect(topChats(agg, 10).map((c) => c.id)).toEqual([
       "cara",
       "barata",
-      "sem-preco",
+      "unpriced",
     ]);
-    expect(conversasDoTopo(agg, 1)).toHaveLength(1);
+    expect(topChats(agg, 1)).toHaveLength(1);
   });
 
   it("sem dinheiro, as MAIORES", () => {
     const agg = agregado({ m: balde({ cost: 0 }) }, chats);
-    expect(conversasDoTopo(agg, 10).map((c) => c.id)).toEqual([
+    expect(topChats(agg, 10).map((c) => c.id)).toEqual([
       "barata",
-      "sem-preco",
+      "unpriced",
       "cara",
     ]);
   });
@@ -240,19 +240,19 @@ describe("a lista do topo", () => {
 
 describe("a faixa de datas do recorte", () => {
   it("vazio sem conversa", () => {
-    expect(faixaDeDatas(null, null)).toBe("");
+    expect(dateRange(null, null)).toBe("");
   });
 
   it("um dia só é um dia", () => {
-    expect(faixaDeDatas("2026-09-11", "2026-09-11")).toBe("Sep 11");
+    expect(dateRange("2026-09-11", "2026-09-11")).toBe("Sep 11");
   });
 
   it("no mesmo ano, sem o ano", () => {
-    expect(faixaDeDatas("2026-06-01", "2026-09-29")).toBe("Jun 1 – Sep 29");
+    expect(dateRange("2026-06-01", "2026-09-29")).toBe("Jun 1 – Sep 29");
   });
 
   it("atravessando a virada, o ano aparece no começo", () => {
-    expect(faixaDeDatas("2025-12-03", "2026-01-15")).toBe(
+    expect(dateRange("2025-12-03", "2026-01-15")).toBe(
       "Dec 3, 2025 – Jan 15"
     );
   });
@@ -260,9 +260,9 @@ describe("a faixa de datas do recorte", () => {
 
 describe("os filtros que valem a pena", () => {
   it("conta só os de lista — o período tem o seletor dele", () => {
-    expect(marcados(FILTRO_VAZIO)).toBe(0);
+    expect(selectedCount(EMPTY_FILTER)).toBe(0);
     expect(
-      marcados({ providers: ["a"], models: ["b", "c"], modes: [], days: 30 })
+      selectedCount({ providers: ["a"], models: ["b", "c"], modes: [], days: 30 })
     ).toBe(3);
   });
 
@@ -275,26 +275,26 @@ describe("os filtros que valem a pena", () => {
   ];
 
   it("à vista ficam as TRÊS mais usadas — o resto é do See all", () => {
-    expect(A_VISTA).toBe(3);
-    expect(opcoesAVista(ops, []).map((o) => o.id)).toEqual([
+    expect(VISIBLE_OPTIONS).toBe(3);
+    expect(visibleOptions(ops, []).map((o) => o.id)).toEqual([
       "gpt-5",
       "claude-sonnet-4-6",
       "gpt-4o",
     ]);
 
-    expect(opcoesAVista(ops.slice(0, 2), [])).toHaveLength(2);
+    expect(visibleOptions(ops.slice(0, 2), [])).toHaveLength(2);
   });
 
   it("marcada fora das três volta pra fileira, NA FRENTE", () => {
 
-    expect(opcoesAVista(ops, ["llama3.2"]).map((o) => o.id)).toEqual([
+    expect(visibleOptions(ops, ["llama3.2"]).map((o) => o.id)).toEqual([
       "llama3.2",
       "gpt-5",
       "claude-sonnet-4-6",
       "gpt-4o",
     ]);
 
-    expect(opcoesAVista(ops, ["gpt-4o"]).map((o) => o.id)).toEqual([
+    expect(visibleOptions(ops, ["gpt-4o"]).map((o) => o.id)).toEqual([
       "gpt-5",
       "claude-sonnet-4-6",
       "gpt-4o",
@@ -304,21 +304,21 @@ describe("os filtros que valem a pena", () => {
   it("a busca da lista acha pelo nome do app E pelo id", () => {
     const nome = (id: string) =>
       ({ "claude-sonnet-4-6": "Sonnet 4.6", "gpt-5": "GPT 5" })[id] ?? id;
-    expect(buscarOpcoes(ops, "sonnet 4.6", nome).map((o) => o.id)).toEqual([
+    expect(searchOptions(ops, "sonnet 4.6", nome).map((o) => o.id)).toEqual([
       "claude-sonnet-4-6",
     ]);
-    expect(buscarOpcoes(ops, "CLAUDE", nome).map((o) => o.id)).toEqual([
+    expect(searchOptions(ops, "CLAUDE", nome).map((o) => o.id)).toEqual([
       "claude-sonnet-4-6",
     ]);
-    expect(buscarOpcoes(ops, "  ", nome)).toHaveLength(ops.length);
-    expect(buscarOpcoes(ops, "mistral", nome)).toEqual([]);
+    expect(searchOptions(ops, "  ", nome)).toHaveLength(ops.length);
+    expect(searchOptions(ops, "mistral", nome)).toEqual([]);
   });
 
   it("uma opção só não filtra nada — a não ser que esteja marcada", () => {
-    expect(valeFiltrar([{ id: "openai", count: 9 }], [])).toBe(false);
-    expect(valeFiltrar([{ id: "openai", count: 9 }], ["openai"])).toBe(true);
+    expect(worthFiltering([{ id: "openai", count: 9 }], [])).toBe(false);
+    expect(worthFiltering([{ id: "openai", count: 9 }], ["openai"])).toBe(true);
     expect(
-      valeFiltrar(
+      worthFiltering(
         [
           { id: "openai", count: 9 },
           { id: "anthropic", count: 2 },
@@ -427,8 +427,8 @@ describe("o desenho da página de uso", () => {
   });
 
   it("a fileira mostra as três; o See all abre a lista inteira numa folha", () => {
-    expect(VIEW).toContain("opcoesAVista(d.ops, f[d.chave])");
-    expect(VIEW).toMatch(/d\.ops\.length > A_VISTA/);
+    expect(VIEW).toContain("visibleOptions(d.ops, f[d.key])");
+    expect(VIEW).toMatch(/d\.ops\.length > VISIBLE_OPTIONS/);
     expect(VIEW).toContain('tr("See all {n}", { n: d.ops.length })');
     expect(VIEW).toMatch(/<Sheet\b/);
   });
@@ -436,13 +436,13 @@ describe("o desenho da página de uso", () => {
   it("a lista do See all é RELATÓRIO, não seletor — nada com cara de toque", () => {
 
     expect(VIEW).not.toMatch(/<SheetRow\b/);
-    expect(VIEW).toMatch(/<LinhaDeFatia\b[\s\S]*?m=\{mLista\}/);
-    expect(VIEW).toContain("relatorioDe(");
-    expect(VIEW).toContain("semADimensao(f, lista)");
+    expect(VIEW).toMatch(/<SliceRow\b[\s\S]*?m=\{listMetric\}/);
+    expect(VIEW).toContain("sliceReport(");
+    expect(VIEW).toContain("withoutDimension(f, listDim)");
 
     const linha = VIEW.slice(
-      VIEW.indexOf("function LinhaDeFatia"),
-      VIEW.indexOf("function LinhaParada")
+      VIEW.indexOf("function SliceRow"),
+      VIEW.indexOf("function IdleRow")
     );
     expect(linha).not.toContain("<button");
     expect(linha).not.toContain("onClick");

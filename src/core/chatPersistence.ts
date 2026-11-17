@@ -2,7 +2,7 @@ import type { App } from "obsidian";
 import type { AIToolStep } from "../agent/types";
 import type { MessageAttachment } from "../providers/base";
 import { previewFromMarkdown } from "./chatPreview";
-import { texto } from "./text";
+import { asText } from "./text";
 import { tr } from "../i18n/tr";
 import { ensureFolder } from "./vaultFs";
 
@@ -410,12 +410,12 @@ export function parseChatMarkdown(content: string): ChatData {
   const fm = parseSimpleYaml(match[1]);
   const messages = parseBody(match[2]);
   return {
-    id: texto(fm.id),
-    title: texto(fm.title, "Untitled"),
+    id: asText(fm.id),
+    title: asText(fm.title, "Untitled"),
     date: String(fm.date ?? new Date().toISOString()),
     mode: String(fm.mode ?? "chat"),
     provider: String(fm.provider ?? "openai"),
-    model: texto(fm.model),
+    model: asText(fm.model),
     effort: String(fm.effort ?? "med"),
     persona: fm.persona ? String(fm.persona) : undefined,
     instructions: fm.instructions ? String(fm.instructions) : undefined,
@@ -459,13 +459,13 @@ export function summaryFromFrontmatter(
   preview: string = ""
 ): ChatSummary {
   return {
-    id: texto(fm.id),
-    title: texto(fm.title, "Untitled"),
-    date: texto(fm.date),
-    mode: texto(fm.mode, fallbackMode),
-    provider: texto(fm.provider),
-    model: texto(fm.model),
-    effort: texto(fm.effort),
+    id: asText(fm.id),
+    title: asText(fm.title, "Untitled"),
+    date: asText(fm.date),
+    mode: asText(fm.mode, fallbackMode),
+    provider: asText(fm.provider),
+    model: asText(fm.model),
+    effort: asText(fm.effort),
     tokensIn: Number(fm.tokens_in ?? 0),
     tokensOut: Number(fm.tokens_out ?? 0),
     messageCount: Number(fm.message_count ?? 0),
@@ -599,13 +599,13 @@ export async function setChatInstructions(
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) throw new Error(tr("Invalid frontmatter in this chat file."));
   let fm = match[1].replace(/^instructions:\s*.*$\n?/m, "");
-  const texto = instructions.trim();
-  if (texto) {
-    const linha = `instructions: ${yamlString(texto)}`;
+  const trimmed = instructions.trim();
+  if (trimmed) {
+    const fmLine = `instructions: ${yamlString(trimmed)}`;
 
     fm = /^tokens_in:/m.test(fm)
-      ? fm.replace(/^tokens_in:/m, () => `${linha}\ntokens_in:`)
-      : `${fm.replace(/\n+$/, "")}\n${linha}`;
+      ? fm.replace(/^tokens_in:/m, () => `${fmLine}\ntokens_in:`)
+      : `${fm.replace(/\n+$/, "")}\n${fmLine}`;
   }
   await app.vault.adapter.write(path, `---\n${fm}\n---\n${match[2]}`);
 }

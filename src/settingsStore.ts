@@ -1,6 +1,6 @@
 import { Notice, type App } from "obsidian";
 import { migrateLegacyFields } from "./core/legacySettings";
-import { FABRICA_ATE_0923, revisarOllamaPadrao } from "./core/ollamaDefault";
+import { OLLAMA_DEFAULTS_UNTIL_0923, reviewOllamaDefault } from "./core/ollamaDefault";
 import { tr } from "./i18n/tr";
 import { DEFAULT_SETTINGS, SECRET_FIELDS, type CorvusSettings } from "./settings";
 
@@ -39,7 +39,7 @@ export class SettingsStore {
     migrateLegacyFields(saved);
     const s: CorvusSettings = Object.assign({}, DEFAULT_SETTINGS, saved);
 
-    const ollama = revisarOllamaPadrao(saved, FABRICA_ATE_0923);
+    const ollama = reviewOllamaDefault(saved, OLLAMA_DEFAULTS_UNTIL_0923);
     if (ollama !== null) s.ollamaEndpoint = ollama;
     s.ollamaDefaultReviewed = true;
 

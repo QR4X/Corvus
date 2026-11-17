@@ -8,59 +8,59 @@ import {
 } from "obsidian";
 import { tr } from "../i18n/tr";
 
-export const FONTE_DO_HOVER = "corvus";
+export const HOVER_SOURCE = "corvus";
 
-export function linkInterno(
-  alvo: EventTarget | null,
-  raiz: HTMLElement
+export function internalLink(
+  target: EventTarget | null,
+  root: HTMLElement
 ): HTMLAnchorElement | null {
-  const el = alvo as HTMLElement | null;
+  const el = target as HTMLElement | null;
   const a = el?.closest?.<HTMLAnchorElement>("a.internal-link") ?? null;
-  return a && raiz.contains(a) ? a : null;
+  return a && root.contains(a) ? a : null;
 }
 
-export function textoDoLink(a: HTMLElement): string {
+export function linkText(a: HTMLElement): string {
   return a.getAttribute("data-href") || a.getAttribute("href") || a.textContent || "";
 }
 
-export function abrirLinkDaResposta(
+export function openResponseLink(
   app: App,
-  texto: string,
-  aba: PaneType | boolean,
-  dentro: Element
+  link: string,
+  newLeaf: PaneType | boolean,
+  container: Element
 ): boolean {
-  const caminho = getLinkpath(texto);
-  if (!app.metadataCache.getFirstLinkpathDest(caminho, "")) {
-    new Notice(tr("Not found: {path}", { path: caminho || texto }));
+  const linkPath = getLinkpath(link);
+  if (!app.metadataCache.getFirstLinkpathDest(linkPath, "")) {
+    new Notice(tr("Not found: {path}", { path: linkPath || link }));
     return false;
   }
-  void app.workspace.openLinkText(texto, "", aba);
-  if (Platform.isMobile) fecharGavetaDa(app, dentro);
+  void app.workspace.openLinkText(link, "", newLeaf);
+  if (Platform.isMobile) collapseDrawerOf(app, container);
   return true;
 }
 
-function fecharGavetaDa(app: App, dentro: Element): void {
+function collapseDrawerOf(app: App, container: Element): void {
   const ws = app.workspace;
-  const folha = ws
-    .getLeavesOfType(FONTE_DO_HOVER)
-    .find((l) => l.view.containerEl.contains(dentro));
-  const raiz = folha?.getRoot();
-  if (raiz === ws.rightSplit) ws.rightSplit.collapse();
-  else if (raiz === ws.leftSplit) ws.leftSplit.collapse();
+  const leaf = ws
+    .getLeavesOfType(HOVER_SOURCE)
+    .find((l) => l.view.containerEl.contains(container));
+  const root = leaf?.getRoot();
+  if (root === ws.rightSplit) ws.rightSplit.collapse();
+  else if (root === ws.leftSplit) ws.leftSplit.collapse();
 }
 
-export function previaDoLink(
+export function previewLink(
   app: App,
   ev: MouseEvent,
   a: HTMLElement,
-  pai: HoverParent
+  parent: HoverParent
 ): void {
   app.workspace.trigger("hover-link", {
     event: ev,
-    source: FONTE_DO_HOVER,
-    hoverParent: pai,
+    source: HOVER_SOURCE,
+    hoverParent: parent,
     targetEl: a,
-    linktext: textoDoLink(a),
+    linktext: linkText(a),
     sourcePath: "",
   });
 }

@@ -1,6 +1,6 @@
 import { getModelFamily } from "./modelFamily";
 
-const MARCAS: Record<string, string> = {
+const BRAND_LOGOS: Record<string, string> = {
   openai: "logo-openai",
   anthropic: "logo-anthropic",
   google: "logo-gemini",
@@ -28,14 +28,14 @@ const MARCAS: Record<string, string> = {
   stability: "logo-stability",
 };
 
-export function vendorDoModelo(id: string): string {
+export function vendorSlug(id: string): string {
   const s = (id || "").trim().toLowerCase();
-  const barra = s.indexOf("/");
-  return barra > 0 ? s.slice(0, barra) : "";
+  const slash = s.indexOf("/");
+  return slash > 0 ? s.slice(0, slash) : "";
 }
 
 export function modelLogo(id: string): string {
-  const mark = MARCAS[vendorDoModelo(id)];
+  const mark = BRAND_LOGOS[vendorSlug(id)];
   if (mark) return mark;
 
   const s = (id || "").toLowerCase();

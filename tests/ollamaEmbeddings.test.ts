@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import { embedItems, embedOllama } from "../src/rag/embeddings";
-import { inferEmbeddingSpec, pareceEmbeddingDoOllama, registerDiscoveredEmbeddings } from "../src/rag/types";
+import { inferEmbeddingSpec, looksLikeOllamaEmbedding, registerDiscoveredEmbeddings } from "../src/rag/types";
 import { EMBEDDING_PROVIDERS } from "../src/core/providersMeta";
 import { ollamaProvider } from "../src/providers/ollama";
 
@@ -14,10 +14,10 @@ afterEach(() => {
 describe("os modelos de embedding do Ollama", () => {
   it("as famílias comuns se reconhecem pelo nome", () => {
     for (const m of ["nomic-embed-text:latest", "mxbai-embed-large", "bge-m3", "all-minilm:l6-v2", "snowflake-arctic-embed:m", "granite-embedding:278m", "embeddinggemma", "qwen3-embedding:0.6b"]) {
-      expect(pareceEmbeddingDoOllama(m), m).toBe(true);
+      expect(looksLikeOllamaEmbedding(m), m).toBe(true);
     }
     for (const m of ["llama3.2", "gemma3:4b", "qwen3:8b", "deepseek-r1", "mistral"]) {
-      expect(pareceEmbeddingDoOllama(m), m).toBe(false);
+      expect(looksLikeOllamaEmbedding(m), m).toBe(false);
     }
   });
 

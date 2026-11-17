@@ -23,48 +23,48 @@ interface WakeLockWatch {
   dispose(): void;
 }
 
-export function acompanharEscrita(
-  ligado: () => boolean,
+export function watchWakeLock(
+  enabled: () => boolean,
   env: WakeLockEnv = window
 ): WakeLockWatch {
-  let sentinela: WakeLockSentinel | null = null;
+  let sentinel: WakeLockSentinel | null = null;
 
-  let geracao = 0;
+  let generation = 0;
 
-  const soltar = (): void => {
-    geracao++;
-    const s = sentinela;
-    sentinela = null;
+  const release = (): void => {
+    generation++;
+    const s = sentinel;
+    sentinel = null;
     if (s) void s.release().catch(() => {});
   };
 
-  const segurar = async (): Promise<void> => {
-    if (sentinela || !env.wakeLock) return;
-    const g = geracao;
+  const acquire = async (): Promise<void> => {
+    if (sentinel || !env.wakeLock) return;
+    const g = generation;
     try {
       const s = await env.wakeLock.request("screen");
-      if (g !== geracao) return; 
-      sentinela = s;
+      if (g !== generation) return; 
+      sentinel = s;
       s.addEventListener("release", () => {
 
-        if (sentinela === s) sentinela = null;
+        if (sentinel === s) sentinel = null;
       });
     } catch {
-      sentinela = null; 
+      sentinel = null; 
     }
   };
 
   const recheck = (): void => {
-    const escrevendo = useChatStore.getState().isLoading;
-    if (!escrevendo || !ligado() || env.document.visibilityState !== "visible") {
-      soltar();
+    const writing = useChatStore.getState().isLoading;
+    if (!writing || !enabled() || env.document.visibilityState !== "visible") {
+      release();
       return;
     }
-    void segurar();
+    void acquire();
   };
 
-  const noStore = useChatStore.subscribe((estado, antes) => {
-    if (estado.isLoading !== antes.isLoading) recheck();
+  const noStore = useChatStore.subscribe((state, prev) => {
+    if (state.isLoading !== prev.isLoading) recheck();
   });
   env.document.addEventListener("visibilitychange", recheck);
 
@@ -73,7 +73,7 @@ export function acompanharEscrita(
     dispose: () => {
       noStore();
       env.document.removeEventListener("visibilitychange", recheck);
-      soltar();
+      release();
     },
   };
 }

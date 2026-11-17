@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  FILTRO_VAZIO,
-  alternar,
-  aplicar,
-  opcoes,
+  EMPTY_FILTER,
+  toggleValue,
+  applyFilter,
+  filterOptions,
 } from "../src/usage/filters";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
@@ -35,7 +35,7 @@ describe("opcoes", () => {
   ];
 
   it("lista o que existe, do mais usado pro menos", () => {
-    expect(opcoes(chats, "provider")).toEqual([
+    expect(filterOptions(chats, "provider")).toEqual([
       { id: "openai", count: 2 },
       { id: "anthropic", count: 1 },
     ]);
@@ -43,25 +43,25 @@ describe("opcoes", () => {
 
   it("valor vazio não vira opção", () => {
 
-    expect(opcoes([chat({ model: "" })], "model")).toEqual([]);
+    expect(filterOptions([chat({ model: "" })], "model")).toEqual([]);
   });
 
   it("empate resolve pelo nome — ordem estável", () => {
 
     const empate = [chat({ id: "a", model: "zzz" }), chat({ id: "b", model: "aaa" })];
-    expect(opcoes(empate, "model").map((o) => o.id)).toEqual(["aaa", "zzz"]);
+    expect(filterOptions(empate, "model").map((o) => o.id)).toEqual(["aaa", "zzz"]);
   });
 });
 
 describe("alternar", () => {
   it("liga o que estava fora e desliga o que estava dentro", () => {
-    expect(alternar([], "openai")).toEqual(["openai"]);
-    expect(alternar(["openai"], "openai")).toEqual([]);
+    expect(toggleValue([], "openai")).toEqual(["openai"]);
+    expect(toggleValue(["openai"], "openai")).toEqual([]);
   });
 
   it("não mexe no array original", () => {
     const antes = ["openai"];
-    alternar(antes, "anthropic");
+    toggleValue(antes, "anthropic");
     expect(antes).toEqual(["openai"]);
   });
 });
@@ -74,29 +74,29 @@ describe("aplicar", () => {
   ];
 
   it("sem filtro, passa tudo", () => {
-    expect(aplicar(chats, FILTRO_VAZIO)).toHaveLength(3);
+    expect(applyFilter(chats, EMPTY_FILTER)).toHaveLength(3);
   });
 
   it("lista vazia é 'sem restrição', não 'nenhum'", () => {
 
-    expect(aplicar(chats, { ...FILTRO_VAZIO, providers: [] })).toHaveLength(3);
+    expect(applyFilter(chats, { ...EMPTY_FILTER, providers: [] })).toHaveLength(3);
   });
 
   it("filtra por provider, modelo e modo", () => {
     expect(
-      aplicar(chats, { ...FILTRO_VAZIO, providers: ["openai"] }).map((c) => c.id)
+      applyFilter(chats, { ...EMPTY_FILTER, providers: ["openai"] }).map((c) => c.id)
     ).toEqual(["a", "c"]);
     expect(
-      aplicar(chats, { ...FILTRO_VAZIO, models: ["gpt-4o"] }).map((c) => c.id)
+      applyFilter(chats, { ...EMPTY_FILTER, models: ["gpt-4o"] }).map((c) => c.id)
     ).toEqual(["c"]);
     expect(
-      aplicar(chats, { ...FILTRO_VAZIO, modes: ["agent"] }).map((c) => c.id)
+      applyFilter(chats, { ...EMPTY_FILTER, modes: ["agent"] }).map((c) => c.id)
     ).toEqual(["b", "c"]);
   });
 
   it("dois filtros se somam (E, não OU)", () => {
-    const r = aplicar(chats, {
-      ...FILTRO_VAZIO,
+    const r = applyFilter(chats, {
+      ...EMPTY_FILTER,
       providers: ["openai"],
       modes: ["agent"],
     });
@@ -104,8 +104,8 @@ describe("aplicar", () => {
   });
 
   it("vários valores na mesma dimensão são OU", () => {
-    const r = aplicar(chats, {
-      ...FILTRO_VAZIO,
+    const r = applyFilter(chats, {
+      ...EMPTY_FILTER,
       providers: ["openai", "anthropic"],
     });
     expect(r).toHaveLength(3);
@@ -116,20 +116,20 @@ describe("aplicar", () => {
       chat({ id: "nova", date: dias(2) }),
       chat({ id: "velha", date: dias(40) }),
     ];
-    expect(aplicar(velhas, { ...FILTRO_VAZIO, days: 7 }).map((c) => c.id)).toEqual([
+    expect(applyFilter(velhas, { ...EMPTY_FILTER, days: 7 }).map((c) => c.id)).toEqual([
       "nova",
     ]);
   });
 
   it("data ilegível fica de fora de um filtro por período", () => {
 
-    const r = aplicar([chat({ date: "sei lá" })], { ...FILTRO_VAZIO, days: 7 });
+    const r = applyFilter([chat({ date: "sei lá" })], { ...EMPTY_FILTER, days: 7 });
     expect(r).toHaveLength(0);
   });
 
   it("sem período, a data ilegível continua passando", () => {
 
-    const r = aplicar([chat({ date: "sei lá" })], FILTRO_VAZIO);
+    const r = applyFilter([chat({ date: "sei lá" })], EMPTY_FILTER);
     expect(r).toHaveLength(1);
   });
 });
