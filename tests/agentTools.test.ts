@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { TFile, TFolder } from "obsidian";
 import {
   toolVaultRead,
   toolVaultCreate,
+  toolVaultCreateFolder,
   toolVaultEdit,
   toolVaultMove,
   toolVaultDelete,
@@ -14,101 +13,116 @@ import {
 
 function makeApp() {
   const files = new Map<string, string>();
-  const nos = new Map<string, TFile | TFolder>();
+  const nodes = new Map<string, TFile | TFolder>();
 
-  const lixeira: string[] = [];
-  const renomeados: Array<[string, string]> = [];
+  const trash: string[] = [];
+  const renamed: Array<[string, string]> = [];
+  const adapterAccess: string[] = [];
 
-  const raiz = Object.assign(new TFolder(), { path: "", name: "", children: [] as unknown[] });
-  nos.set("", raiz);
+  const root = Object.assign(new TFolder(), { path: "", name: "", children: [] as unknown[] });
+  nodes.set("", root);
 
-  const paiDe = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
-  const nomeDe = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+  const parentOf = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+  const nameOf = (p: string) => p.slice(p.lastIndexOf("/") + 1);
 
-  function registrar(no: TFile | TFolder, p: string) {
-    nos.set(p, no);
-    const pai = nos.get(paiDe(p)) as TFolder | undefined;
-    if (pai) (pai.children as unknown[]).push(no);
+  function register(node: TFile | TFolder, p: string) {
+    nodes.set(p, node);
+    const parent = nodes.get(parentOf(p)) as TFolder | undefined;
+    if (parent) (parent.children as unknown[]).push(node);
   }
-  function esquecer(p: string) {
-    const no = nos.get(p);
-    const pai = nos.get(paiDe(p)) as TFolder | undefined;
-    if (pai && no) {
-      const c = pai.children as unknown[];
-      const i = c.indexOf(no);
+  function forget(p: string) {
+    const node = nodes.get(p);
+    const parent = nodes.get(parentOf(p)) as TFolder | undefined;
+    if (parent && node) {
+      const c = parent.children as unknown[];
+      const i = c.indexOf(node);
       if (i >= 0) c.splice(i, 1);
     }
-    nos.delete(p);
+    nodes.delete(p);
   }
 
+  const adapter = new Proxy(
+    {},
+    {
+      get(_target, key) {
+        adapterAccess.push(String(key));
+        return () => {
+          throw new Error(`adapter.${String(key)} must not be used`);
+        };
+      },
+    }
+  );
+
   const vault = {
-    getRoot: () => raiz,
-    getAbstractFileByPath: (p: string) => nos.get(p) ?? null,
+    adapter,
+    getRoot: () => root,
+    getAbstractFileByPath: (p: string) => nodes.get(p) ?? null,
     async read(f: TFile) {
       return files.get((f as unknown as { path: string }).path) ?? "";
     },
     async create(p: string, c: string) {
-      const f = Object.assign(new TFile(), { path: p, name: nomeDe(p), extension: "md" });
+      const f = Object.assign(new TFile(), { path: p, name: nameOf(p), extension: "md" });
       files.set(p, c);
-      registrar(f, p);
+      register(f, p);
       return f;
     },
     async createFolder(p: string) {
-      const d = Object.assign(new TFolder(), { path: p, name: nomeDe(p), children: [] as unknown[] });
-      registrar(d, p);
+      const d = Object.assign(new TFolder(), { path: p, name: nameOf(p), children: [] as unknown[] });
+      register(d, p);
       return d;
     },
     async process(f: TFile, fn: (s: string) => string) {
       const p = (f as unknown as { path: string }).path;
-      const novo = fn(files.get(p) ?? "");
-      files.set(p, novo);
-      return novo;
+      const next = fn(files.get(p) ?? "");
+      files.set(p, next);
+      return next;
     },
   };
 
   const fileManager = {
-    async renameFile(no: TFile | TFolder, destino: string) {
-      const de = (no as unknown as { path: string }).path;
-      renomeados.push([de, destino]);
-      esquecer(de);
-      if (files.has(de)) {
-        files.set(destino, files.get(de)!);
-        files.delete(de);
+    async renameFile(node: TFile | TFolder, destination: string) {
+      const from = (node as unknown as { path: string }).path;
+      renamed.push([from, destination]);
+      forget(from);
+      if (files.has(from)) {
+        files.set(destination, files.get(from)!);
+        files.delete(from);
       }
-      (no as unknown as { path: string; name: string }).path = destino;
-      (no as unknown as { path: string; name: string }).name = nomeDe(destino);
-      registrar(no, destino);
+      (node as unknown as { path: string; name: string }).path = destination;
+      (node as unknown as { path: string; name: string }).name = nameOf(destination);
+      register(node, destination);
     },
-    async trashFile(no: TFile | TFolder) {
-      const p = (no as unknown as { path: string }).path;
-      lixeira.push(p);
-      esquecer(p);
+    async trashFile(node: TFile | TFolder) {
+      const p = (node as unknown as { path: string }).path;
+      trash.push(p);
+      forget(p);
       files.delete(p);
     },
   };
-  return { app: { vault, fileManager } as any, files, lixeira, renomeados } as {
+  return { app: { vault, fileManager }, files, trash, renamed, adapterAccess } as {
     app: unknown;
     files: Map<string, string>;
-    lixeira: string[];
-    renomeados: Array<[string, string]>;
+    trash: string[];
+    renamed: Array<[string, string]>;
+    adapterAccess: string[];
   };
 }
 function makeCtx(app: unknown, appDataPaths: string[] = []): any {
   return { app, vectorIndex: null, appDataPaths, embed: {} };
 }
 
-describe("path sandboxing (segurança — anti traversal)", () => {
+describe("path sandboxing against traversal", () => {
   const malicious = [
     "../secret.md",
     "../../etc/passwd",
     "notes/../../escape.md",
-    "C:\\Windows\\System32", 
+    "C:\\Windows\\System32",
     "drive:/x",
-    "a/" + "b/".repeat(40) + "deep.md", 
+    "a/" + "b/".repeat(40) + "deep.md",
     "",
   ];
   for (const p of malicious) {
-    it(`recusa "${p.slice(0, 24)}"`, async () => {
+    it(`rejects "${p.slice(0, 24)}"`, async () => {
       const { app, files } = makeApp();
       const ctx = makeCtx(app);
       await expect(toolVaultRead(ctx, { path: p })).rejects.toThrow();
@@ -117,7 +131,7 @@ describe("path sandboxing (segurança — anti traversal)", () => {
     });
   }
 
-  it("path normal é aceito (read de arquivo existente)", async () => {
+  it("accepts a normal path and reads the existing file", async () => {
     const { app } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "notes/ok.md", content: "hi" });
@@ -125,61 +139,58 @@ describe("path sandboxing (segurança — anti traversal)", () => {
   });
 });
 
-describe("pasta oculta é proibida PRO AGENTE", () => {
-
-  const proibidos = [
-    ".obsidian/plugins/x/main.js", 
+describe("hidden folders are off limits to the agent", () => {
+  const forbidden = [
+    ".obsidian/plugins/x/main.js",
     ".obsidian/app.json",
-    ".corvus/chats/algum.md", 
+    ".corvus/chats/some.md",
     ".git/config",
-    ".trash/nota.md",
-    "notes/.obsidian/x.json", 
+    ".trash/note.md",
+    "notes/.obsidian/x.json",
     "a/.git/config",
   ];
-  for (const p of proibidos) {
-    it(`recusa "${p}"`, () => {
+  for (const p of forbidden) {
+    it(`rejects "${p}"`, () => {
       expect(() => normalizePath(p)).toThrow(/hidden folders/i);
     });
   }
 
-  it("nota comum com ponto no NOME continua passando", () => {
-
-    expect(normalizePath("notas/v1.2.md")).toBe("notas/v1.2.md");
-    expect(normalizePath("Dr. Silva/consulta.md")).toBe("Dr. Silva/consulta.md");
+  it("still accepts a regular note with a dot in its name", () => {
+    expect(normalizePath("notes/v1.2.md")).toBe("notes/v1.2.md");
+    expect(normalizePath("Dr. Smith/appointment.md")).toBe("Dr. Smith/appointment.md");
   });
 
-  it("nenhuma tool escapa: todas passam pelo sandbox", async () => {
+  it("routes every tool through the sandbox", async () => {
     const { app, files } = makeApp();
     const ctx = makeCtx(app);
-    const alvo = ".obsidian/plugins/evil/main.js";
-    await expect(toolVaultCreate(ctx, { path: alvo, content: "x" })).rejects.toThrow(
+    const target = ".obsidian/plugins/evil/main.js";
+    await expect(toolVaultCreate(ctx, { path: target, content: "x" })).rejects.toThrow(
       /hidden folders/i
     );
-    await expect(toolVaultRead(ctx, { path: alvo })).rejects.toThrow(/hidden folders/i);
+    await expect(toolVaultRead(ctx, { path: target })).rejects.toThrow(/hidden folders/i);
     await expect(
-      toolVaultEdit(ctx, { path: alvo, oldStr: "a", newStr: "b" })
+      toolVaultEdit(ctx, { path: target, oldStr: "a", newStr: "b" })
     ).rejects.toThrow(/hidden folders/i);
-    await expect(toolVaultDelete(ctx, { path: alvo })).rejects.toThrow(/hidden folders/i);
+    await expect(toolVaultDelete(ctx, { path: target })).rejects.toThrow(/hidden folders/i);
     await expect(
-      toolVaultMove(ctx, { from: "a.md", to: alvo })
+      toolVaultMove(ctx, { from: "a.md", to: target })
     ).rejects.toThrow(/hidden folders/i);
     expect(files.size).toBe(0);
   });
 });
 
-describe("storage VISÍVEL do app (chat folder) é proibido PRO AGENTE", () => {
-
-  it("normalizePath barra o prefixo exato e tudo abaixo dele", () => {
-    const pastas = ["corvus/chats", ".corvus/index"];
+describe("visible app storage (chat folder) is off limits to the agent", () => {
+  it("normalizePath blocks the exact prefix and everything below it", () => {
+    const folders = ["corvus/chats", ".corvus/index"];
     for (const p of ["corvus/chats", "corvus/chats/chat/c1.md", "corvus/chats/agent/x.md", ".corvus/index/embeddings.json"]) {
-      expect(() => normalizePath(p, pastas)).toThrow(/off limits/i);
+      expect(() => normalizePath(p, folders)).toThrow(/off limits/i);
     }
 
-    expect(normalizePath("corvus/notas/plano.md", pastas)).toBe("corvus/notas/plano.md");
-    expect(normalizePath("corvus-chats/qualquer.md", pastas)).toBe("corvus-chats/qualquer.md");
+    expect(normalizePath("corvus/notes/plan.md", folders)).toBe("corvus/notes/plan.md");
+    expect(normalizePath("corvus-chats/anything.md", folders)).toBe("corvus-chats/anything.md");
   });
 
-  it("nenhuma tool escreve no storage visível do app", async () => {
+  it("no tool writes into the visible app storage", async () => {
     const { app, files } = makeApp();
     const ctx = makeCtx(app, ["corvus/chats"]);
     await expect(
@@ -192,12 +203,12 @@ describe("storage VISÍVEL do app (chat folder) é proibido PRO AGENTE", () => {
   });
 });
 
-describe("normalizePath (direto)", () => {
-  it("normaliza barras e tira leading slash", () => {
+describe("normalizePath", () => {
+  it("normalizes slashes and strips the leading slash", () => {
     expect(normalizePath("/notes//a.md")).toBe("notes/a.md");
     expect(normalizePath("notes\\sub\\a.md")).toBe("notes/sub/a.md");
   });
-  it("recusa .., : e profundidade", () => {
+  it("rejects .., drive colons and excessive depth", () => {
     expect(() => normalizePath("../x")).toThrow();
     expect(() => normalizePath("c:/x")).toThrow();
     expect(() => normalizePath("a/" + "b/".repeat(40) + "c")).toThrow();
@@ -205,21 +216,21 @@ describe("normalizePath (direto)", () => {
   });
 });
 
-describe("isTransientError (retry só em erro transitório)", () => {
-  it("rede/timeout/lock/busy → true", () => {
+describe("isTransientError", () => {
+  it("treats network, timeout, lock and busy errors as transient", () => {
     for (const m of ["network down", "Request timeout", "file is locked", "resource busy"]) {
       expect(isTransientError(m)).toBe(true);
     }
   });
-  it("erro de path/arg → false (não retenta)", () => {
-    expect(isTransientError("Arquivo não existe: a.md")).toBe(false);
-    expect(isTransientError("String não encontrada")).toBe(false);
+  it("does not retry path or argument errors", () => {
+    expect(isTransientError("File does not exist: a.md")).toBe(false);
+    expect(isTransientError("String not found")).toBe(false);
     expect(isTransientError("")).toBe(false);
   });
 });
 
 describe("toolVaultCreate", () => {
-  it("cria + recusa sobrescrever existente", async () => {
+  it("creates a file and refuses to overwrite an existing one", async () => {
     const { app } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "a.md", content: "1" });
@@ -230,22 +241,22 @@ describe("toolVaultCreate", () => {
 });
 
 describe("toolVaultEdit", () => {
-  it("substitui ocorrência única", async () => {
+  it("replaces a single occurrence", async () => {
     const { app, files } = makeApp();
     const ctx = makeCtx(app);
-    await toolVaultCreate(ctx, { path: "a.md", content: "olá mundo" });
-    await toolVaultEdit(ctx, { path: "a.md", oldStr: "mundo", newStr: "vault" });
-    expect(files.get("a.md")).toBe("olá vault");
+    await toolVaultCreate(ctx, { path: "a.md", content: "hello world" });
+    await toolVaultEdit(ctx, { path: "a.md", oldStr: "world", newStr: "vault" });
+    expect(files.get("a.md")).toBe("hello vault");
   });
-  it("RECUSA quando a string aparece N vezes (ambíguo)", async () => {
+  it("refuses when the string appears several times", async () => {
     const { app } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "a.md", content: "x x x" });
     await expect(
       toolVaultEdit(ctx, { path: "a.md", oldStr: "x", newStr: "y" })
-    ).rejects.toThrow(/aparece 3x|ambig/i);
+    ).rejects.toThrow(/appears 3x|ambig/i);
   });
-  it("erro quando a string não existe", async () => {
+  it("fails when the string is missing", async () => {
     const { app } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "a.md", content: "abc" });
@@ -255,8 +266,8 @@ describe("toolVaultEdit", () => {
   });
 });
 
-describe("toolVaultMove / Delete", () => {
-  it("move e recusa sobrescrever destino", async () => {
+describe("toolVaultMove and toolVaultDelete", () => {
+  it("moves a file and refuses to overwrite the destination", async () => {
     const { app, files } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "a.md", content: "1" });
@@ -269,34 +280,38 @@ describe("toolVaultMove / Delete", () => {
       /already exists/i
     );
   });
-  it("mover passa pelo fileManager — é ele que reescreve os [[links]]", () => {
 
-    const fonte = readFileSync(resolve(__dirname, "../src/agent/tools.ts"), "utf8");
-    expect(fonte).toContain("app.fileManager.renameFile(");
-    expect(fonte).not.toMatch(/await adapter\.rename\(/);
+  it("moves through the file manager so links get rewritten", async () => {
+    const { app, renamed } = makeApp();
+    const ctx = makeCtx(app);
+    await toolVaultCreate(ctx, { path: "a.md", content: "1" });
+    await toolVaultMove(ctx, { from: "a.md", to: "sub/b.md" });
+    expect(renamed).toEqual([["a.md", "sub/b.md"]]);
   });
 
-  it("apagar vai pra LIXEIRA, nunca direto pro nada", async () => {
-    const { app, files, lixeira } = makeApp();
+  it("sends deleted files to the trash", async () => {
+    const { app, files, trash } = makeApp();
     const ctx = makeCtx(app);
     await toolVaultCreate(ctx, { path: "a.md", content: "1" });
     const msg = await toolVaultDelete(ctx, { path: "a.md" });
     expect(files.has("a.md")).toBe(false);
 
-    expect(lixeira).toEqual(["a.md"]);
+    expect(trash).toEqual(["a.md"]);
     expect(msg).toMatch(/trash/i);
     await expect(toolVaultDelete(ctx, { path: "nope.md" })).rejects.toThrow(
       /does not exist/i
     );
   });
 
-  it("nenhuma tool do agente chama o adapter", async () => {
-
-    const fonte = readFileSync(resolve(__dirname, "../src/agent/tools.ts"), "utf8");
-    const semComentario = fonte
-      .replace(/\/\/.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    expect(semComentario).not.toContain("vault.adapter");
-    expect(semComentario).not.toMatch(/adapter\./);
+  it("never touches the vault adapter", async () => {
+    const { app, adapterAccess } = makeApp();
+    const ctx = makeCtx(app);
+    await toolVaultCreateFolder(ctx, { path: "dir" });
+    await toolVaultCreate(ctx, { path: "dir/a.md", content: "one" });
+    await toolVaultRead(ctx, { path: "dir/a.md" });
+    await toolVaultEdit(ctx, { path: "dir/a.md", oldStr: "one", newStr: "two" });
+    await toolVaultMove(ctx, { from: "dir/a.md", to: "other/b.md" });
+    await toolVaultDelete(ctx, { path: "other/b.md" });
+    expect(adapterAccess).toEqual([]);
   });
 });

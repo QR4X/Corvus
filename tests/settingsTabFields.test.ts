@@ -1,8 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { describe, it, expect, vi } from "vitest";
 
-const DO_OBSIDIAN = [
+const captured = vi.hoisted(() => ({ tab: null as object | null }));
+
+vi.mock("obsidian", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  class PluginSettingTab {
+    constructor() {
+      captured.tab = this;
+    }
+  }
+  return { ...actual, PluginSettingTab };
+});
+
+import { CorvusSettingsTab } from "../src/ui/SettingsTab";
+
+const OBSIDIAN_MEMBERS = [
   "app",
   "setting",
   "navEl",
@@ -18,15 +30,21 @@ const DO_OBSIDIAN = [
   "renderTab",
 ];
 
-const SRC = readFileSync(resolve(__dirname, "../src/ui/SettingsTab.ts"), "utf8");
+describe("CorvusSettingsTab does not shadow Obsidian SettingTab members", () => {
+  it("none of our fields or methods reuses a SettingTab name", () => {
+    try {
+      new CorvusSettingsTab({} as never, {} as never);
+    } catch (err) {
+      expect(err).toBeInstanceOf(Error);
+    }
+    const tab = captured.tab;
+    expect(tab).not.toBeNull();
+    const ours = [
+      ...Object.keys(tab as object),
+      ...Object.getOwnPropertyNames(CorvusSettingsTab.prototype),
+    ];
 
-describe("CorvusSettingsTab não pisa em campo do Obsidian", () => {
-  it("nenhum campo/método nosso reusa um nome do SettingTab", () => {
-    const nossos = [
-      ...SRC.matchAll(/^\s{2}(?:private |protected |public )?(?:readonly )?(?:async )?(\w+)\s*[(:=<]/gm),
-    ].map((m) => m[1]);
-
-    expect(nossos).toEqual(expect.arrayContaining(["tabBarEl", "slots", "renderNav"]));
-    expect(nossos.filter((n) => DO_OBSIDIAN.includes(n))).toEqual([]);
+    expect(ours).toEqual(expect.arrayContaining(["tabBarEl", "slots", "renderNav"]));
+    expect(ours.filter((n) => OBSIDIAN_MEMBERS.includes(n))).toEqual([]);
   });
 });

@@ -51,7 +51,7 @@ function setup() {
   return { plugin };
 }
 
-const IMAGEM = {
+const IMAGE = {
   type: "image" as const,
   dataUrl: "data:image/png;base64,QUJD",
   mimeType: "image/png",
@@ -80,22 +80,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("enviar guarda os anexos na mensagem", () => {
-  it("imagem `data:` vira anexo da mensagem com path no vault (bytes uma vez)", async () => {
+describe("sending keeps attachments on the message", () => {
+  it("stores a data: image in the vault once and attaches it with its path", async () => {
     const { plugin } = setup();
-    useChatStore.getState().addAttachment(IMAGEM);
-    expect(await session!.send("olha isso")).toBe(true);
+    useChatStore.getState().addAttachment(IMAGE);
+    expect(await session!.send("look at this")).toBe(true);
 
     const msg = useChatStore
       .getState()
       .messages.find((m) => m.type === "user");
-    if (msg?.type !== "user") throw new Error("mensagem do user não existe");
+    if (msg?.type !== "user") throw new Error("user message missing");
     expect(msg.attachments).toHaveLength(1);
     expect(msg.attachments?.[0]).toMatchObject({
       type: "image",
       name: "print.png",
       mimeType: "image/png",
-      dataUrl: IMAGEM.dataUrl, 
+      dataUrl: IMAGE.dataUrl,
     });
     expect(msg.attachments?.[0].path).toMatch(
       new RegExp(`^${GENERATION_FOLDER}/images/.+\\.png$`)
@@ -105,25 +105,25 @@ describe("enviar guarda os anexos na mensagem", () => {
     expect(useChatStore.getState().attachments).toEqual([]);
   });
 
-  it("URL externa passa sem gravar — persiste a própria URL", async () => {
+  it("passes an external URL through without writing and persists the URL itself", async () => {
     const { plugin } = setup();
-    const externa = {
+    const external = {
       type: "image" as const,
-      dataUrl: "https://exemplo.com/foto.png",
-      name: "foto.png",
+      dataUrl: "https://example.com/photo.png",
+      name: "photo.png",
     };
-    useChatStore.getState().addAttachment(externa);
-    expect(await session!.send("olha o link")).toBe(true);
+    useChatStore.getState().addAttachment(external);
+    expect(await session!.send("look at the link")).toBe(true);
 
     const msg = useChatStore
       .getState()
       .messages.find((m) => m.type === "user");
-    if (msg?.type !== "user") throw new Error("mensagem do user não existe");
-    expect(msg.attachments?.[0]).toEqual(externa);
+    if (msg?.type !== "user") throw new Error("user message missing");
+    expect(msg.attachments?.[0]).toEqual(external);
     expect(plugin.app.vault.adapter.writeBinary).not.toHaveBeenCalled();
   });
 
-  it("save do chat persiste só o descritor — nunca a data URL", async () => {
+  it("saves only the descriptor, never the data URL", async () => {
     const { plugin } = setup();
     const saved: persistence.ChatData[] = [];
     vi.spyOn(persistence, "saveChat").mockImplementation(
@@ -134,8 +134,8 @@ describe("enviar guarda os anexos na mensagem", () => {
         return "chat.md";
       }
     );
-    useChatStore.getState().addAttachment(IMAGEM);
-    expect(await session!.send("olha isso")).toBe(true);
+    useChatStore.getState().addAttachment(IMAGE);
+    expect(await session!.send("look at this")).toBe(true);
     session!.flushSave();
     await vi.waitFor(() => expect(saved).toHaveLength(1));
 
@@ -153,8 +153,8 @@ describe("enviar guarda os anexos na mensagem", () => {
   });
 });
 
-describe("persistLocalImage (novo helper)", () => {
-  it("grava a imagem no vault e devolve o anexo com path", async () => {
+describe("persistLocalImage", () => {
+  it("writes the image to the vault and returns the attachment with its path", async () => {
     const writes: string[] = [];
     const app = {
       vault: {
@@ -166,7 +166,7 @@ describe("persistLocalImage (novo helper)", () => {
       },
     } as unknown as CorvusPlugin["app"];
     const out = await persistLocalImage(app, {
-      ...IMAGEM,
+      ...IMAGE,
       mimeType: "image/jpeg",
       dataUrl: "data:image/jpeg;base64,QUJD",
     });
@@ -174,39 +174,39 @@ describe("persistLocalImage (novo helper)", () => {
     expect(writes).toHaveLength(1);
   });
 
-  it("URL externa não grava nada (passa igual)", async () => {
+  it("writes nothing for an external URL and returns it unchanged", async () => {
     const app = {
       vault: { adapter: { writeBinary: vi.fn(async () => undefined) } },
     } as unknown as CorvusPlugin["app"];
-    const externa = { type: "image" as const, dataUrl: "https://x.com/a.png" };
-    await expect(persistLocalImage(app, externa)).resolves.toBe(externa);
+    const external = { type: "image" as const, dataUrl: "https://x.com/a.png" };
+    await expect(persistLocalImage(app, external)).resolves.toBe(external);
   });
 
-  it("falha de escrita não derruba o envio (anexo fica sem path)", async () => {
+  it("keeps sending without a path when the write fails", async () => {
     const app = {
-      vault: { adapter: { writeBinary: vi.fn(async () => { throw new Error("cheio"); }) } },
+      vault: { adapter: { writeBinary: vi.fn(async () => { throw new Error("disk full"); }) } },
     } as unknown as CorvusPlugin["app"];
-    const out = await persistLocalImage(app, IMAGEM);
+    const out = await persistLocalImage(app, IMAGE);
     expect(out.path).toBeUndefined();
   });
 });
 
-describe("descritores do .md ↔ anexos (persistência)", () => {
-  it("toStoredAttachments descarta os bytes, mantém só o descritor", () => {
+describe("stored attachment descriptors", () => {
+  it("toStoredAttachments drops the bytes and keeps only the descriptor", () => {
     expect(
       toStoredAttachments([
-        { ...IMAGEM, dataUrl: "data:image/png;base64,BASE64 GIGANTE", path: `${GENERATION_FOLDER}/images/1-p.png` },
-        { type: "image", dataUrl: "https://exemplo.com/foto.png", name: "foto.png" },
-        { type: "note", path: "PROJECTS/FRAMEWORKS.md", content: "conteúdo longo…" },
+        { ...IMAGE, dataUrl: "data:image/png;base64,HUGE BASE64", path: `${GENERATION_FOLDER}/images/1-p.png` },
+        { type: "image", dataUrl: "https://example.com/photo.png", name: "photo.png" },
+        { type: "note", path: "PROJECTS/FRAMEWORKS.md", content: "long content…" },
       ])
     ).toEqual([
       { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "print.png", mimeType: "image/png" },
-      { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
+      { type: "image", path: "https://example.com/photo.png", name: "photo.png" },
       { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
     ]);
   });
 
-  it("fromStoredAttachments relê o path e reconstroi a data URL de exibição", async () => {
+  it("fromStoredAttachments rereads the path and rebuilds the display data URL", async () => {
     const app = {
       vault: {
         adapter: {
@@ -216,7 +216,7 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
     } as unknown as CorvusPlugin["app"];
     const out = await fromStoredAttachments(app, [
       { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
-      { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
+      { type: "image", path: "https://example.com/photo.png", name: "photo.png" },
       { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
       { type: "audio", path: `${GENERATION_FOLDER}/audio/x.webm`, durationMs: 500 },
     ]);
@@ -226,17 +226,17 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
       dataUrl: "data:image/png;base64,WFla",
       name: "p.png",
     });
-    expect(out[1]).toEqual({ type: "image", dataUrl: "https://exemplo.com/foto.png", name: "foto.png" });
+    expect(out[1]).toEqual({ type: "image", dataUrl: "https://example.com/photo.png", name: "photo.png" });
     expect(out[2]).toEqual({ type: "note", path: "PROJECTS/FRAMEWORKS.md", content: "" });
     expect(out[3]).toEqual({ type: "audio", path: `${GENERATION_FOLDER}/audio/x.webm`, durationMs: 500 });
   });
 
-  it("imagem apagada do vault não quebra o load (vira vazio, chip de emoji)", async () => {
+  it("loads an image deleted from the vault as empty instead of failing", async () => {
     const app = {
       vault: {
         adapter: {
           readBinary: vi.fn(async () => {
-            throw new Error("arquivo sumiu");
+            throw new Error("file gone");
           }),
         },
       },
@@ -253,8 +253,8 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
   });
 });
 
-describe("reload do chat", () => {
-  it("load() reconstrói a data URL a partir do path gravado", async () => {
+describe("chat reload", () => {
+  it("load() rebuilds the data URL from the stored path", async () => {
     setup();
     const chat: ChatData = {
       id: "chat-1",
@@ -269,7 +269,7 @@ describe("reload do chat", () => {
       messages: [
         {
           type: "user",
-          content: "olha",
+          content: "look",
           timestamp: 1,
           attachments: [
             { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
@@ -286,7 +286,7 @@ describe("reload do chat", () => {
     const msg = useChatStore
       .getState()
       .messages.find((m) => m.type === "user");
-    if (msg?.type !== "user") throw new Error("mensagem do user não existe");
+    if (msg?.type !== "user") throw new Error("user message missing");
     expect(msg.attachments?.[0]).toMatchObject({
       type: "image",
       path: `${GENERATION_FOLDER}/images/1-p.png`,

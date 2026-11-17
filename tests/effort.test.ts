@@ -8,27 +8,27 @@ import {
 } from "../src/core/effort";
 
 describe("isEffortLevel", () => {
-  it("aceita os 5 níveis válidos", () => {
+  it("accepts the five valid levels", () => {
     for (const lvl of ["low", "med", "high", "xhigh", "max"]) {
       expect(isEffortLevel(lvl)).toBe(true);
     }
   });
-  it("rejeita lixo", () => {
+  it("rejects anything else", () => {
     expect(isEffortLevel("ultra")).toBe(false);
     expect(isEffortLevel("")).toBe(false);
   });
 });
 
 describe("resolveEffortConfig", () => {
-  it("nível desconhecido cai pra 'med'", () => {
+  it("falls back to med for an unknown level", () => {
     expect(resolveEffortConfig("bogus")).toEqual(DEFAULT_EFFORT_CONFIGS.med);
   });
 
-  it("sem overrides devolve o default do nível", () => {
+  it("returns the level default without overrides", () => {
     expect(resolveEffortConfig("low")).toEqual(DEFAULT_EFFORT_CONFIGS.low);
   });
 
-  it("override parcial mescla só os campos presentes", () => {
+  it("merges only the fields present in a partial override", () => {
     const cfg = resolveEffortConfig("low", { low: { maxTokens: 999 } });
     expect(cfg.maxTokens).toBe(999);
 
@@ -36,8 +36,7 @@ describe("resolveEffortConfig", () => {
     expect(cfg.vaultTopK).toBe(DEFAULT_EFFORT_CONFIGS.low.vaultTopK);
   });
 
-  it("REGRESSÃO: override com 0/false é respeitado (não cai no default por falsy)", () => {
-
+  it("respects 0 and false overrides instead of falling back to defaults", () => {
     const cfg = resolveEffortConfig("high", {
       high: { temperature: 0, toolRetryOnError: 0, parallelToolCalls: false },
     });
@@ -48,23 +47,20 @@ describe("resolveEffortConfig", () => {
 });
 
 describe("effortToMaxTokensSmart", () => {
-  it("níveis com cap fixo ignoram o context window", () => {
+  it("fixed-cap levels ignore the context window", () => {
     expect(effortToMaxTokensSmart("low", 200_000)).toBe(512);
     expect(effortToMaxTokensSmart("high", 200_000)).toBe(6000);
   });
 
-  it("max usa ~80% do context window menos 1k de reserva", () => {
-
+  it("max uses about 80% of the context window minus a 1k reserve", () => {
     expect(effortToMaxTokensSmart("max", 200_000)).toBe(159_000);
   });
 
-  it("max nunca devolve menos que o piso de 2048", () => {
-
+  it("max never returns less than the 2048 floor", () => {
     expect(effortToMaxTokensSmart("max", 1000)).toBe(2048);
   });
 
-  it("override do contextReservePercent é clampado em [10, 95]", () => {
-
+  it("clamps a contextReservePercent override to [10, 95]", () => {
     const v = effortToMaxTokensSmart("max", 100_000, {
       max: { contextReservePercent: 200 },
     });
@@ -73,7 +69,7 @@ describe("effortToMaxTokensSmart", () => {
 });
 
 describe("effortToVaultLookup", () => {
-  it("extrai topK + excerptChars do config do nível", () => {
+  it("reads topK and excerptChars from the level config", () => {
     expect(effortToVaultLookup("low")).toEqual({ topK: 3, excerptChars: 300 });
     expect(effortToVaultLookup("max")).toEqual({ topK: 12, excerptChars: 2000 });
   });

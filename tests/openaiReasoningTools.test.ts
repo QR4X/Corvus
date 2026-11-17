@@ -8,26 +8,26 @@ import { buildChatBody } from "../src/providers/_shared";
 import { OpenAIProvider } from "../src/providers/openai";
 import type { ProviderRequest } from "../src/providers/base";
 
-const ferramenta = {
+const toolDef = {
   name: "vault_list",
   description: "List files.",
   parameters: { type: "object", properties: {} },
 };
-const pedido = (model: string, comFerramentas = true): ProviderRequest =>
+const request = (model: string, withTools = true): ProviderRequest =>
   ({
     model,
     messages: [{ role: "user", content: "organize my vault" }],
     effort: "med",
-    ...(comFerramentas ? { tools: [ferramenta] } : {}),
+    ...(withTools ? { tools: [toolDef] } : {}),
   }) as unknown as ProviderRequest;
 
-const RECUSA = (m: string) =>
+const REJECTION = (m: string) =>
   `Function tools with reasoning_effort are not supported for ${m} in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.`;
 
 afterEach(() => __setRequestUrl(null));
 
-describe("quem recusa ferramentas com raciocínio", () => {
-  it("GPT-5.4 em diante (e variantes); antes disso e o-series, não", () => {
+describe("models that reject tools with reasoning", () => {
+  it("flags GPT-5.4 and later variants but not earlier models or the o-series", () => {
     for (const m of ["gpt-5.4", "gpt-5.4-mini", "gpt-5.5", "gpt-5.6-luna", "gpt-5.10", "gpt-6"]) {
       expect(noReasoningWithTools("openai", m), m).toBe(true);
     }
@@ -36,61 +36,61 @@ describe("quem recusa ferramentas com raciocínio", () => {
     }
   });
 
-  it("só no provider da OpenAI (o OpenRouter tem o seu próprio caminho)", () => {
+  it("applies only to the OpenAI provider", () => {
     expect(noReasoningWithTools("openrouter", "openai/gpt-5.4")).toBe(false);
   });
 
-  it("reconhece a mensagem da OpenAI, e não outro 400", () => {
-    expect(isReasoningWithToolsRejection(RECUSA("gpt-5.4"))).toBe(true);
+  it("recognizes the OpenAI rejection message and no other 400", () => {
+    expect(isReasoningWithToolsRejection(REJECTION("gpt-5.4"))).toBe(true);
     expect(isReasoningWithToolsRejection("Unsupported parameter: 'temperature'")).toBe(false);
   });
 });
 
-describe("o corpo do pedido", () => {
-  const corpo = (model: string, comFerramentas = true) =>
-    buildChatBody(pedido(model, comFerramentas), {
+describe("request body", () => {
+  const body = (model: string, withTools = true) =>
+    buildChatBody(request(model, withTools), {
       provider: "openai",
       maxTokensField: "max_completion_tokens",
     });
 
-  it("gpt-5.4 com ferramentas vai sem raciocínio; sem ferramentas, com", () => {
-    expect(corpo("gpt-5.4").reasoning_effort).toBe("none");
-    expect(corpo("gpt-5.4", false).reasoning_effort).toBe("medium");
+  it("sends gpt-5.4 without reasoning when tools are present and with reasoning otherwise", () => {
+    expect(body("gpt-5.4").reasoning_effort).toBe("none");
+    expect(body("gpt-5.4", false).reasoning_effort).toBe("medium");
   });
 
-  it("gpt-5 (que aceita) continua com raciocínio mesmo com ferramentas", () => {
-    expect(corpo("gpt-5").reasoning_effort).toBe("medium");
+  it("keeps reasoning for gpt-5 even with tools", () => {
+    expect(body("gpt-5").reasoning_effort).toBe("medium");
   });
 });
 
-describe("modelo novo que recusa: aprende e tenta de novo", () => {
-  it("o primeiro 400 vira um segundo pedido sem raciocínio, e o modelo fica lembrado", async () => {
-    const corpos: Array<Record<string, unknown>> = [];
+describe("new model that rejects: learns and retries", () => {
+  it("retries the first 400 without reasoning and remembers the model", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
     __setRequestUrl(async (opts) => {
       const o = opts as { body: string };
       const b = JSON.parse(o.body) as Record<string, unknown>;
-      corpos.push(b);
+      bodies.push(b);
       if (b.reasoning_effort !== "none") {
-        return { status: 400, json: { error: { message: RECUSA("o5") } } };
+        return { status: 400, json: { error: { message: REJECTION("o5") } } };
       }
       return {
         status: 200,
-        json: { choices: [{ message: { role: "assistant", content: "Pronto." } }] },
+        json: { choices: [{ message: { role: "assistant", content: "Done." } }] },
       };
     });
-    const r = await new OpenAIProvider().chat(pedido("o5"), "sk-teste");
-    expect(r.content).toBe("Pronto.");
-    expect(corpos.map((b) => b.reasoning_effort)).toEqual(["medium", "none"]);
+    const r = await new OpenAIProvider().chat(request("o5"), "sk-test");
+    expect(r.content).toBe("Done.");
+    expect(bodies.map((b) => b.reasoning_effort)).toEqual(["medium", "none"]);
     expect(noReasoningWithTools("openai", "o5")).toBe(true);
   });
 
-  it("outro 400 não é tentado de novo", async () => {
+  it("does not retry other 400 errors", async () => {
     let n = 0;
     __setRequestUrl(async () => {
       n++;
       return { status: 400, json: { error: { message: "Unsupported parameter: 'temperature'" } } };
     });
-    await expect(new OpenAIProvider().chat(pedido("o4-mini"), "sk-teste")).rejects.toThrow(/temperature/);
+    await expect(new OpenAIProvider().chat(request("o4-mini"), "sk-test")).rejects.toThrow(/temperature/);
     expect(n).toBe(1);
   });
 });

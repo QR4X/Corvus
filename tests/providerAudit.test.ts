@@ -8,10 +8,10 @@ import { isRelevantOpenAIModel } from "../src/providers/openai";
 import { resolveMaxTokens } from "../src/providers/paramPolicy";
 import { parseOpenAIChatMessage } from "../src/providers/_shared";
 
-afterEach(() => hydrateModelInfoCache({})); 
+afterEach(() => hydrateModelInfoCache({}));
 
-describe("capabilities — multi-vendor (OpenRouter)", () => {
-  it("vendor desconhecido no OpenRouter ganha tools (fallback otimista)", () => {
+describe("OpenRouter multi-vendor capabilities", () => {
+  it("gives tools to unknown OpenRouter vendors", () => {
     for (const m of [
       "x-ai/grok-4",
       "cohere/command-a",
@@ -24,17 +24,17 @@ describe("capabilities — multi-vendor (OpenRouter)", () => {
     }
   });
 
-  it("google/gemini-3 via OpenRouter tem tools (era tools:false)", () => {
+  it("gives google/gemini-3 tools and vision on OpenRouter", () => {
     const caps = getModelCapabilities("openrouter", "google/gemini-3-pro");
     expect(caps.tools).toBe(true);
     expect(caps.vision).toBe(true);
   });
 
-  it("perplexity/sonar NÃO tem tools (curado)", () => {
+  it("keeps tools off for curated perplexity/sonar", () => {
     expect(getModelCapabilities("openrouter", "perplexity/sonar-pro").tools).toBe(false);
   });
 
-  it(":free mark free sem perder caps do upstream", () => {
+  it("marks :free models free without losing upstream capabilities", () => {
     const caps = getModelCapabilities(
       "openrouter",
       "meta-llama/llama-3.2-vision:free"
@@ -45,8 +45,8 @@ describe("capabilities — multi-vendor (OpenRouter)", () => {
   });
 });
 
-describe("capabilities — NIM (stream por plataforma)", () => {
-  it("DESKTOP: publisher desconhecido tem tools E streaming REAL (Node https)", () => {
+describe("NIM streaming per platform", () => {
+  it("gives unknown publishers tools and real streaming on desktop", () => {
     Platform.isMobile = false;
     for (const m of ["openai/gpt-oss-120b", "ibm/granite-4.0-h-small"]) {
       const caps = getModelCapabilities("nim", m);
@@ -55,7 +55,7 @@ describe("capabilities — NIM (stream por plataforma)", () => {
     }
   });
 
-  it("MOBILE: streaming continua pseudo (false)", () => {
+  it("keeps streaming off on mobile", () => {
     Platform.isMobile = true;
     try {
       expect(getModelCapabilities("nim", "openai/gpt-oss-120b").streaming).toBe(false);
@@ -65,7 +65,7 @@ describe("capabilities — NIM (stream por plataforma)", () => {
     }
   });
 
-  it("image-gen do NIM nunca vira 'stream' (não é chat)", () => {
+  it("never streams NIM image generation models", () => {
     Platform.isMobile = false;
     const caps = getModelCapabilities("nim", "stabilityai/stable-diffusion-3-medium");
     expect(caps.imageGen).toBe(true);
@@ -73,8 +73,8 @@ describe("capabilities — NIM (stream por plataforma)", () => {
   });
 });
 
-describe("NIM SSE real — conversor Node→Web stream", () => {
-  it("nodeBodyToWebStream entrega chunks e fecha no end", async () => {
+describe("NIM Node to Web stream conversion", () => {
+  it("delivers chunks and closes on end", async () => {
     type Handler = (...args: unknown[]) => void;
     const handlers: Record<string, Handler[]> = {};
     const fakeRes = {
@@ -100,8 +100,8 @@ describe("NIM SSE real — conversor Node→Web stream", () => {
   });
 });
 
-describe("capabilities — overlay do catálogo vivo (enriched)", () => {
-  it("openrouter: catálogo é a verdade (sobe E desce tools)", () => {
+describe("live catalog capability overlay", () => {
+  it("lets the OpenRouter catalog turn tools on and off", () => {
     hydrateModelInfoCache({
       "openrouter::vendor-x/no-tools-model": { supportsTools: false },
       "openrouter::perplexity/sonar-deep": { supportsTools: true },
@@ -114,16 +114,16 @@ describe("capabilities — overlay do catálogo vivo (enriched)", () => {
     ).toBe(true);
   });
 
-  it("provider direto: overlay só FAZ UPGRADE (nunca desliga o curado)", () => {
+  it("only upgrades curated capabilities for direct providers", () => {
     hydrateModelInfoCache({
-      "openai::gpt-4o": { supportsTools: false }, 
-      "ollama::mistral": { supportsTools: true }, 
+      "openai::gpt-4o": { supportsTools: false },
+      "ollama::mistral": { supportsTools: true },
     });
     expect(getModelCapabilities("openai", "gpt-4o").tools).toBe(true);
     expect(getModelCapabilities("ollama", "mistral").tools).toBe(true);
   });
 
-  it("modalities image → vision; tier free → free", () => {
+  it("maps image modality to vision and free tier to free", () => {
     hydrateModelInfoCache({
       "openrouter::new-lab/multi": { modalities: ["text", "image"], tier: "free" },
     });
@@ -132,7 +132,7 @@ describe("capabilities — overlay do catálogo vivo (enriched)", () => {
     expect(caps.free).toBe(true);
   });
 
-  it("overlay NUNCA mexe no streaming (transporte é nosso) — mobile pseudo", () => {
+  it("never changes streaming through the overlay", () => {
     Platform.isMobile = true;
     try {
       hydrateModelInfoCache({
@@ -148,7 +148,7 @@ describe("capabilities — overlay do catálogo vivo (enriched)", () => {
 });
 
 describe("listModels filters", () => {
-  it("OpenRouter: mantém :free, 'auto' no nome e openrouter/auto; corta outros pseudo-modelos", () => {
+  it("OpenRouter keeps :free, auto names and openrouter/auto but drops other pseudo models", () => {
     expect(isRelevantOpenRouterModel("meta-llama/llama-3.3-70b:free")).toBe(true);
     expect(isRelevantOpenRouterModel("vendor/automatic-writer")).toBe(true);
     expect(isRelevantOpenRouterModel("openrouter/auto")).toBe(true);
@@ -156,7 +156,7 @@ describe("listModels filters", () => {
     expect(isRelevantOpenRouterModel("openai/text-embedding-3-small")).toBe(false);
   });
 
-  it("NIM: aceita qualquer publisher/model; corta pipeline (embed/rerank/ASR)", () => {
+  it("NIM accepts any publisher/model but drops embed, rerank and ASR", () => {
     expect(isRelevantNimModel("openai/gpt-oss-120b")).toBe(true);
     expect(isRelevantNimModel("ibm/granite-4.0-h-small")).toBe(true);
     expect(isRelevantNimModel("stabilityai/stable-diffusion-3-medium")).toBe(true);
@@ -166,7 +166,7 @@ describe("listModels filters", () => {
     expect(isRelevantNimModel("not-a-model")).toBe(false);
   });
 
-  it("OpenAI: pega gpt-4.1, gpt-4-turbo, chatgpt, o-series futuras, 3.5", () => {
+  it("OpenAI keeps chat, o-series, image and voice models", () => {
     for (const m of [
       "gpt-4.1",
       "gpt-4.1-mini",
@@ -199,34 +199,34 @@ describe("listModels filters", () => {
   });
 });
 
-describe("paramPolicy — tetos de output", () => {
-  it("NIM desconhecido capa em 4096 (era 16384 → 400)", () => {
+describe("paramPolicy output caps", () => {
+  it("caps unknown NIM models at 4096", () => {
     expect(resolveMaxTokens("nim", "ibm/granite-4.0-h-small", 16000)).toBe(4096);
   });
-  it("DeepSeek capa em 8192 em qualquer host", () => {
+  it("caps DeepSeek at 8192 on any host", () => {
     expect(resolveMaxTokens("nim", "deepseek-ai/deepseek-v4-pro", 16000)).toBe(8192);
     expect(resolveMaxTokens("openrouter", "deepseek/deepseek-chat", 16000)).toBe(8192);
   });
-  it("famílias grandes não mudam (Claude 128k, GPT-5 128k, Gemini 64k)", () => {
+  it("keeps large-family caps for Claude, GPT-5 and Gemini", () => {
     expect(resolveMaxTokens("anthropic", "claude-opus-4-8", 200000)).toBe(128000);
     expect(resolveMaxTokens("openai", "gpt-5.4", 200000)).toBe(128000);
     expect(resolveMaxTokens("gemini", "gemini-2.5-pro", 200000)).toBe(65536);
   });
 });
 
-describe("reasoning em resposta não-stream (NIM pseudo-stream)", () => {
-  it("parseOpenAIChatMessage extrai reasoning_content", () => {
+describe("reasoning in non-streamed responses", () => {
+  it("extracts reasoning_content", () => {
     const r = parseOpenAIChatMessage({
-      content: "resposta",
-      reasoning_content: "pensando...",
+      content: "answer",
+      reasoning_content: "thinking...",
     });
-    expect(r.content).toBe("resposta");
-    expect(r.reasoning).toBe("pensando...");
+    expect(r.content).toBe("answer");
+    expect(r.reasoning).toBe("thinking...");
   });
-  it("aceita o campo alternativo 'reasoning'", () => {
+  it("accepts the alternative reasoning field", () => {
     expect(parseOpenAIChatMessage({ content: "x", reasoning: "y" }).reasoning).toBe("y");
   });
-  it("sem reasoning → undefined", () => {
+  it("returns undefined without reasoning", () => {
     expect(parseOpenAIChatMessage({ content: "x" }).reasoning).toBeUndefined();
   });
 });

@@ -6,31 +6,31 @@ import { getModelCard } from "../src/providers/modelDescriptions";
 import { openaiFreeTierForModel } from "../src/usage/freeTokens";
 import { isTrulyFree } from "../src/usage/freeTag";
 
-describe("painel de uso: custo zero só pro que é grátis de verdade", () => {
-  it("NIM sem a mark Free Endpoint: custo desconhecido, não US$ 0", () => {
+describe("usage panel: zero cost only for truly free models", () => {
+  it("treats NIM without the Free Endpoint mark as unknown cost, not $0", () => {
     const p = getPricing("nim", "meta/llama-3.1-70b-instruct");
     expect(p.tier).toBe("unknown");
     expect(p.inputPerMillion).toBeNull();
   });
 
-  it("NIM com a mark (vinda do fetch): grátis, inclusive com o _ da NVIDIA", () => {
+  it("treats NIM models marked free by the fetch as free, including NVIDIA underscore ids", () => {
     setKnownFree("nim", ["deepseek-ai/deepseek-v4.1-flash", "nvidia/llama-3_1-nemotron-safety-guard-8b-v3"]);
     expect(getPricing("nim", "deepseek-ai/deepseek-v4.1-flash")).toMatchObject({ tier: "free", inputPerMillion: 0 });
     expect(getPricing("nim", "nvidia/llama-3.1-nemotron-safety-guard-8b-v3").tier).toBe("free");
     expect(getPricing("nim", "meta/llama-3.1-70b-instruct").tier).toBe("unknown");
   });
 
-  it("OpenRouter: grátis sem :free (descoberto pelo preço) custa zero; o resto segue a tabela", () => {
+  it("treats OpenRouter models found free by price as free and leaves the rest to the table", () => {
     setKnownFree("openrouter", ["inclusionai/ling-3.1-flash"]);
     expect(getPricing("openrouter", "inclusionai/ling-3.1-flash").tier).toBe("free");
     expect(getPricing("openrouter", "google/lyria-3-clip-preview").tier).toBe("unknown");
   });
 });
 
-describe("cache do catálogo: o Lyria não volta como grátis pelo palpite", () => {
+describe("catalog cache does not guess Lyria as free", () => {
   afterEach(() => __setRequestUrl(null));
 
-  it("preço zero por token, mas música cobrada por clipe → unknown, não free", async () => {
+  it("marks zero per-token price with per-clip billing as unknown, not free", async () => {
     __setRequestUrl(async () => ({
       status: 200,
       json: {
@@ -58,21 +58,21 @@ describe("cache do catálogo: o Lyria não volta como grátis pelo palpite", () 
   });
 });
 
-describe("descrições que prometiam grátis", () => {
-  it("o Nano Banana diz que é pago, sem tier grátis", () => {
+describe("model descriptions that promised free use", () => {
+  it("describes Nano Banana as paid with no free tier", () => {
     const c = getModelCard("gemini", "gemini-2.5-flash-image");
     expect(c.description).not.toMatch(/free tier \d/i);
     expect(c.description).toMatch(/no free tier/i);
     expect(c.goodFor ?? "").not.toMatch(/free/i);
   });
 
-  it("o SD3 do NIM não promete tier grátis", () => {
+  it("does not promise a free tier for NIM SD3", () => {
     expect(getModelCard("nim", "stabilityai/stable-diffusion-3-medium").description).not.toMatch(/free/i);
   });
 });
 
-describe("cota grátis da OpenAI (data sharing): o balde certo", () => {
-  it("os -mini/-nano dos GPT-5.x vão pro balde pequeno (2,5M), não pro grande", () => {
+describe("OpenAI data sharing free quota buckets", () => {
+  it("puts GPT-5.x mini and nano models in the small 2.5M bucket", () => {
     expect(openaiFreeTierForModel("gpt-5.1-mini")).toBe("mini");
     expect(openaiFreeTierForModel("gpt-5.2-nano")).toBe("mini");
     expect(openaiFreeTierForModel("gpt-5-mini")).toBe("mini");
@@ -81,8 +81,8 @@ describe("cota grátis da OpenAI (data sharing): o balde certo", () => {
   });
 });
 
-describe("a variante :free é grátis mesmo fora da lista do fetch", () => {
-  it("o embedding Nemotron VL :free não depende da lista do chat", () => {
-    expect(isTrulyFree("nvidia/llama-nemotron-embed-vl-1b-v2:free", ["outro/modelo"], false)).toBe(true);
+describe("the :free variant is free even outside the fetched list", () => {
+  it("treats the Nemotron VL :free embedding as free regardless of the chat list", () => {
+    expect(isTrulyFree("nvidia/llama-nemotron-embed-vl-1b-v2:free", ["other/model"], false)).toBe(true);
   });
 });

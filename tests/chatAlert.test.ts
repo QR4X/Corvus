@@ -1,21 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { ALERT_LABEL, alertCount, chatAlert } from "../src/ui/chatAlert";
+import { alertCount, chatAlert } from "../src/ui/chatAlert";
 
 describe("chatAlert", () => {
-  const nada = { esperando: false, rodando: false, naoLida: false };
+  const idle = { waiting: false, running: false, unread: false };
 
-  it("conversa quieta não mostra nada", () => {
-    expect(chatAlert(nada)).toBeNull();
+  it("shows nothing for a quiet chat", () => {
+    expect(chatAlert(idle)).toBeNull();
   });
 
-  it("cada estado sozinho", () => {
-    expect(chatAlert({ ...nada, running: true })).toBe("running");
-    expect(chatAlert({ ...nada, unread: true })).toBe("unread");
-    expect(chatAlert({ ...nada, waiting: true })).toBe("waiting");
+  it("reports each state on its own", () => {
+    expect(chatAlert({ ...idle, running: true })).toBe("running");
+    expect(chatAlert({ ...idle, unread: true })).toBe("unread");
+    expect(chatAlert({ ...idle, waiting: true })).toBe("waiting");
   });
 
-  it("quem está esperando VOCÊ fala mais alto", () => {
-
+  it("gives priority to a chat waiting on you", () => {
     expect(chatAlert({ waiting: true, running: true, unread: true })).toBe(
       "waiting"
     );
@@ -24,17 +23,10 @@ describe("chatAlert", () => {
     );
   });
 
-  it("respondendo ganha de não lida", () => {
-
+  it("ranks responding above unread", () => {
     expect(chatAlert({ waiting: false, running: true, unread: true })).toBe(
       "running"
     );
-  });
-
-  it("todo estado tem uma frase", () => {
-    for (const k of ["waiting", "running", "unread"] as const) {
-      expect(ALERT_LABEL[k].length).toBeGreaterThan(0);
-    }
   });
 });
 
@@ -46,7 +38,7 @@ describe("alertCount", () => {
     { id: "d", mode: "agent" },
   ];
 
-  it("conta as não lidas daquele módulo, e só daquele", () => {
+  it("counts unread chats of that mode only", () => {
     const n = alertCount(chats, "agent", {
       waitingId: null,
       unread: new Set(["a", "d", "c"]),
@@ -57,26 +49,25 @@ describe("alertCount", () => {
     ).toBe(1);
   });
 
-  it("a que espera aprovação também conta", () => {
+  it("counts the chat waiting for approval", () => {
     expect(
       alertCount(chats, "agent", { waitingId: "b", unread: new Set() })
     ).toBe(1);
   });
 
-  it("não conta duas vezes a mesma conversa", () => {
+  it("does not count the same chat twice", () => {
     expect(
       alertCount(chats, "agent", { waitingId: "a", unread: new Set(["a"]) })
     ).toBe(1);
   });
 
-  it("quem está só RESPONDENDO não entra na conta", () => {
-
+  it("does not count chats that are only responding", () => {
     expect(
       alertCount(chats, "agent", { waitingId: null, unread: new Set() })
     ).toBe(0);
   });
 
-  it("módulo sem nada devolve zero, não undefined", () => {
+  it("returns zero, not undefined, for a mode with no chats", () => {
     expect(
       alertCount([], "agent", { waitingId: null, unread: new Set(["a"]) })
     ).toBe(0);

@@ -1,59 +1,152 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import fs from "fs";
+import { randomBytes } from "node:crypto";
+import { __notices } from "obsidian";
+import { ChatSession } from "../src/core/session";
+import { useChatStore } from "../src/store/chat";
+import type { ChatMessage } from "../src/store/chat";
+import { report } from "../scripts/size-report.mjs";
 
-const ler = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf8");
-const SESSION = ler("src/core/session.ts");
+const NOT_ON_DISK = /not on disk yet/;
 
-function corpo(fonte: string, assinatura: string): string {
-  const i = fonte.indexOf(assinatura);
-  expect(i, `sumiu: ${assinatura}`).toBeGreaterThan(-1);
-  const abre = fonte.indexOf("{", i);
+function setup() {
+  const disk = { failing: true };
+  const write = vi.fn(async () => {
+    if (disk.failing) throw new Error("disk full");
+  });
+  const plugin = {
+    settings: {
+      defaultProvider: "openai",
+      defaultModel: "gpt-4o",
+      defaultMode: "chat",
+      defaultEffort: "med",
+      chatsPath: "corvus/chats",
+      activeModels: {},
+      favoriteModels: {},
+    },
+    app: { vault: { adapter: { exists: async () => true, mkdir: async () => {}, write } } },
+    onSettingsChange: () => () => {},
+    saveSettings: async () => {},
+    chats: {
+      load: async () => [],
+      upsert: vi.fn(),
+      markUnread: vi.fn(),
+      unread: () => new Set<string>(),
+    },
+  };
+  const session = new ChatSession(plugin as never);
   let n = 0;
-  for (let k = abre; k < fonte.length; k++) {
-    if (fonte[k] === "{") n++;
-    else if (fonte[k] === "}" && --n === 0) return fonte.slice(abre, k + 1);
-  }
-  return fonte.slice(abre);
+  const saveCurrent = async () => {
+    n += 1;
+    const msg = { id: `m${n}`, type: "user", content: `message ${n}`, timestamp: n };
+    useChatStore.getState().setMessages([
+      ...useChatStore.getState().messages,
+      msg as unknown as ChatMessage,
+    ]);
+    session.flushSave();
+    await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(n));
+    await Promise.resolve();
+  };
+  return { session, disk, write, saveCurrent };
 }
 
-describe("gravar a conversa", () => {
-  const avisar = corpo(SESSION, "private reportSaveFailure(");
+const saveNotices = () => __notices.filter((m) => NOT_ON_DISK.test(m));
 
-  it("falhou, a pessoa é avisada — a conversa está na tela, não no disco", () => {
-    expect(avisar).toContain("new Notice(");
-    expect(avisar).toMatch(/not on disk yet|não está em disco/);
+describe("saving the chat", () => {
+  beforeEach(() => {
+    __notices.length = 0;
+    vi.stubGlobal("window", { setTimeout, clearTimeout });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    useChatStore.getState().newChat();
+    useChatStore.getState().setCurrentChatId("c1");
   });
 
-  it("uma vez por sequência, e rearma quando volta a gravar", () => {
-    expect(avisar).toContain("if (this.saveFailureNoticed) return;");
-    expect(SESSION).toContain("this.saveFailureNoticed = false;");
+  afterEach(() => {
+    useChatStore.getState().newChat();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it("os DOIS caminhos de gravação avisam, não só um", () => {
+  it("warns the user when the chat could not be written to disk", async () => {
+    const { session, saveCurrent } = setup();
+    await saveCurrent();
+    expect(saveNotices()).toHaveLength(1);
+    session.dispose();
+  });
 
-    const usos = [...SESSION.matchAll(/this\.reportSaveFailure\(err\)/g)];
-    expect(usos.length).toBe(2);
+  it("warns once per failure streak and re-arms after a successful save", async () => {
+    const { session, disk, saveCurrent } = setup();
+    await saveCurrent();
+    await saveCurrent();
+    expect(saveNotices()).toHaveLength(1);
 
-    expect(SESSION).not.toContain('console.error("[corvus] saveChat falhou:');
-    expect(SESSION).not.toContain('console.error("[corvus] gravarFundo falhou:');
+    disk.failing = false;
+    await saveCurrent();
+    expect(saveNotices()).toHaveLength(1);
+
+    disk.failing = true;
+    await saveCurrent();
+    expect(saveNotices()).toHaveLength(2);
+    session.dispose();
+  });
+
+  it("warns when saving a background run fails too", async () => {
+    const { session, write } = setup();
+    useChatStore.setState({
+      background: {
+        chatId: "bg1",
+        scrollTop: 0,
+        title: "Background",
+        mode: "chat",
+        provider: "openai",
+        model: "gpt-4o",
+        effort: "med",
+        tokensIn: 0,
+        tokensOut: 0,
+        messages: [{ id: "b1", type: "user", content: "hi", timestamp: 1 } as unknown as ChatMessage],
+      },
+    });
+    await session.flushBackground();
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(saveNotices()).toHaveLength(1);
+    session.dispose();
   });
 });
 
-describe("a régua de tamanho", () => {
-  const REGUA = ler("scripts/size-report.mjs");
+describe("the bundle size report", () => {
+  function withOutput(files: Record<string, Buffer>): boolean {
+    const realRead = fs.readFileSync;
+    vi.spyOn(fs, "existsSync").mockImplementation((p) =>
+      String(p).startsWith("output") ? String(p).replace(/\\/g, "/").slice(7) in files : false
+    );
+    vi.spyOn(fs, "readFileSync").mockImplementation(((p: fs.PathOrFileDescriptor, o?: unknown) => {
+      const key = String(p).replace(/\\/g, "/").slice(7);
+      if (String(p).startsWith("output") && key in files) return files[key];
+      return (realRead as (p: fs.PathOrFileDescriptor, o?: unknown) => unknown)(p, o);
+    }) as typeof fs.readFileSync);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      return report();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  }
 
-  it("cada teto sai grudado na MEDIDA dele", () => {
+  const KB = 1024;
 
-    expect(REGUA).toMatch(/"main\.js":\s*\{\s*raw:\s*512,\s*gz:\s*260\s*\}/);
-    expect(REGUA).toMatch(/"styles\.css":\s*\{\s*raw:\s*128,\s*gz:\s*45\s*\}/);
-    expect(REGUA).toContain("KB raw /");
-    expect(REGUA).toContain("KB gz /");
+  it("passes when every file is within both budgets", () => {
+    expect(withOutput({ "main.js": Buffer.alloc(100 * KB, "a"), "styles.css": Buffer.alloc(10 * KB, "a") })).toBe(true);
   });
 
-  it("estourar QUALQUER uma das duas medidas conta", () => {
-    expect(REGUA).toContain("overRaw");
-    expect(REGUA).toContain("overGz");
-    expect(REGUA).toMatch(/if \(overRaw \|\| overGz\) over = true;/);
+  it("fails when only the raw size of main.js is over budget", () => {
+    expect(withOutput({ "main.js": Buffer.alloc(600 * KB, "a") })).toBe(false);
+  });
+
+  it("fails when only the gzip size of main.js is over budget", () => {
+    expect(withOutput({ "main.js": randomBytes(300 * KB) })).toBe(false);
+  });
+
+  it("fails when styles.css is over budget", () => {
+    expect(withOutput({ "styles.css": randomBytes(60 * KB) })).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EN_US } from "../src/i18n/en-us";
 import { mark, tr, uiLocale } from "../src/i18n/tr";
 
-describe("i18n — English dictionary", () => {
+describe("English dictionary", () => {
   it("keeps main sections and typed functions", () => {
     expect(typeof EN_US.agent).toBe("object");
     expect(typeof EN_US.vault).toBe("object");

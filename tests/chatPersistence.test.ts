@@ -8,7 +8,7 @@ import {
 
 const baseChat: ChatData = {
   id: "abc123",
-  title: "Conversa de teste",
+  title: "Test chat",
   date: "2026-06-10T12:00:00.000Z",
   mode: "chat",
   provider: "anthropic",
@@ -16,12 +16,12 @@ const baseChat: ChatData = {
   effort: "high",
   tokensIn: 1234,
   tokensOut: 567,
-  persona: "Você é um pirata.",
+  persona: "You are a pirate.",
   messages: [
-    { type: "user", content: "Explica recursão", timestamp: 1_700_000_000_000 },
+    { type: "user", content: "Explain recursion", timestamp: 1_700_000_000_000 },
     {
       type: "ai-response",
-      content: "Recursão é quando...\n\n```js\nfunction f() { return f(); }\n```\n\n---\n\nfim",
+      content: "Recursion is when...\n\n```js\nfunction f() { return f(); }\n```\n\n---\n\nend",
       timestamp: 1_700_000_001_000,
       reaction: "like",
     },
@@ -36,77 +36,77 @@ describe("chat persistence round-trip", () => {
     }] };
     expect(parseChatMarkdown(renderChatMarkdown(chat))).toEqual(chat);
   });
-  it("preserva todos os campos do chat (com code block, --- e reação)", () => {
+  it("keeps every chat field, including code blocks, --- and reactions", () => {
     const restored = parseChatMarkdown(renderChatMarkdown(baseChat));
     expect(restored).toEqual(baseChat);
   });
 
-  it("preserva persona ausente como undefined (não vira string vazia)", () => {
+  it("keeps a missing persona undefined instead of an empty string", () => {
     const noPersona: ChatData = { ...baseChat, persona: undefined };
     const restored = parseChatMarkdown(renderChatMarkdown(noPersona));
     expect(restored.persona).toBeUndefined();
   });
 
-  it("mensagem sem reaction não ganha o campo no parse", () => {
+  it("does not add a reaction field to messages without one", () => {
     const restored = parseChatMarkdown(renderChatMarkdown(baseChat));
     expect("reaction" in restored.messages[0]).toBe(false);
     expect(restored.messages[1].reaction).toBe("like");
   });
 
-  it("title/date com caracteres especiais sobrevivem ao YAML", () => {
+  it("keeps titles with YAML special characters intact", () => {
     const tricky: ChatData = {
       ...baseChat,
-      title: 'Chat: "aspas", dois-pontos & vírgula',
-      messages: [{ type: "user", content: "oi", timestamp: 1 }],
+      title: 'Chat: "quotes", colons & commas',
+      messages: [{ type: "user", content: "hi", timestamp: 1 }],
     };
     const restored = parseChatMarkdown(renderChatMarkdown(tricky));
     expect(restored.title).toBe(tricky.title);
   });
 
-  it("tokens e timestamps voltam como número", () => {
+  it("restores tokens and timestamps as numbers", () => {
     const restored = parseChatMarkdown(renderChatMarkdown(baseChat));
     expect(restored.tokensIn).toBe(1234);
     expect(restored.tokensOut).toBe(567);
     expect(restored.messages[0].timestamp).toBe(1_700_000_000_000);
   });
 
-  it("chat sem mensagens não explode", () => {
+  it("handles a chat without messages", () => {
     const empty: ChatData = { ...baseChat, messages: [] };
     const restored = parseChatMarkdown(renderChatMarkdown(empty));
     expect(restored.messages).toEqual([]);
     expect(restored.id).toBe("abc123");
   });
 
-  it("frontmatter inválido lança erro claro", () => {
-    expect(() => parseChatMarkdown("sem frontmatter aqui")).toThrow();
+  it("throws on invalid frontmatter", () => {
+    expect(() => parseChatMarkdown("no frontmatter here")).toThrow();
   });
 
-  it("preserva agentSteps (result com '-->') + tools_used no frontmatter", () => {
+  it("keeps agentSteps whose result contains '-->' and lists tools_used in frontmatter", () => {
     const steps = [
       {
         id: "c1",
         name: "vault_create",
-        arguments: { path: "notes/projeto.md", content: "x" },
-        result: "criado <!-- nota --> ok",
+        arguments: { path: "notes/project.md", content: "x" },
+        result: "created <!-- note --> ok",
         ok: true,
       },
-      { id: "c2", name: "vault_search", arguments: { query: "arquitetura" }, result: "3 hits", ok: true },
+      { id: "c2", name: "vault_search", arguments: { query: "architecture" }, result: "3 hits", ok: true },
     ];
     const chat: ChatData = {
       ...baseChat,
       messages: [
-        { type: "user", content: "cria o projeto", timestamp: 1 },
-        { type: "ai-response", content: "Pronto", timestamp: 2, agentSteps: steps },
+        { type: "user", content: "create the project", timestamp: 1 },
+        { type: "ai-response", content: "Done", timestamp: 2, agentSteps: steps },
       ],
     };
     const md = renderChatMarkdown(chat);
 
     expect(md).toContain("tools_used:");
-    expect(md).toContain("vault_create notes/projeto.md");
+    expect(md).toContain("vault_create notes/project.md");
 
     const r = parseChatMarkdown(md);
     expect(r.messages[1].agentSteps).toEqual(steps);
-    expect(r.messages[1].content).toBe("Pronto"); 
+    expect(r.messages[1].content).toBe("Done");
   });
 
   it.each([
@@ -117,20 +117,20 @@ describe("chat persistence round-trip", () => {
     ["nim", "nvidia/llama-3.3-nemotron-super-49b-v1.5"],
     ["gemini", "gemini-2.5-flash-image"],
     ["ollama", "qwen2.5:14b"],
-  ])("preserva provider=%s model=%s no round-trip", (provider, model) => {
+  ])("keeps provider=%s model=%s through a round-trip", (provider, model) => {
     const chat: ChatData = { ...baseChat, provider, model };
     const r = parseChatMarkdown(renderChatMarkdown(chat));
     expect(r.provider).toBe(provider);
     expect(r.model).toBe(model);
   });
 
-  it("anexos persistem como descritores pequenos (round-trip exato)", () => {
+  it("persists attachments as small descriptors with an exact round-trip", () => {
     const chat: ChatData = {
       ...baseChat,
       messages: [
         {
           type: "user",
-          content: "olha o print",
+          content: "look at the screenshot",
           timestamp: 1,
           attachments: [
             {
@@ -140,9 +140,9 @@ describe("chat persistence round-trip", () => {
               mimeType: "image/png",
             },
             { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
-            { type: "pdf", name: "contrato.pdf" },
-            { type: "audio", path: "corvus-ai/generation/audio/1800-fala.webm", durationMs: 1200 },
-            { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
+            { type: "pdf", name: "contract.pdf" },
+            { type: "audio", path: "corvus-ai/generation/audio/1800-speech.webm", durationMs: 1200 },
+            { type: "image", path: "https://example.com/photo.png", name: "photo.png" },
           ],
         },
       ],
@@ -152,11 +152,11 @@ describe("chat persistence round-trip", () => {
     expect(md).not.toContain("data:image");
     const r = parseChatMarkdown(md);
 
-    expect(r.messages[0].content).toBe("olha o print");
+    expect(r.messages[0].content).toBe("look at the screenshot");
     expect(r.messages[0].attachments).toEqual(chat.messages[0].attachments);
   });
 
-  it("mensagem enviada sem anexo não ganha o campo no round-trip", () => {
+  it("does not add an attachments field to messages sent without one", () => {
     const md = renderChatMarkdown(baseChat);
     expect(md).not.toContain("corvus-att:");
     const r = parseChatMarkdown(md);
@@ -165,10 +165,10 @@ describe("chat persistence round-trip", () => {
 });
 
 describe("legacy axxa markers", () => {
-  it("parse de chats antigos com marcadores axxa: preserva ts, reaction e agentSteps", () => {
+  it("parses old chats with axxa markers, keeping timestamps and agentSteps", () => {
     const oldMd = `---
 id: "old1"
-title: "Alter Chat"
+title: "Old chat"
 date: "2026-10-01T10:00:00.000Z"
 mode: "agent"
 provider: "openrouter"
@@ -185,12 +185,12 @@ tags:
 ## You
 <!-- axxa: ts=1792000000000 -->
 
-Frage
+Question
 
 ## Assistant
 <!-- axxa: ts=1792000001000 -->
 
-Antwort
+Answer
 
 <!-- axxa-steps: ${Buffer.from(JSON.stringify([{ id: "s1", name: "vault_search", arguments: { query: "x" }, result: "ok", ok: true }])).toString("base64")} -->
 `;
@@ -198,10 +198,10 @@ Antwort
     expect(chat.messages[0].timestamp).toBe(1792000000000);
     expect(chat.messages[1].timestamp).toBe(1792000001000);
     expect(chat.messages[1].agentSteps?.[0].name).toBe("vault_search");
-    expect(chat.messages[1].content).toBe("Antwort");
+    expect(chat.messages[1].content).toBe("Answer");
   });
 
-  it("comentário axxa não vaza pro conteúdo", () => {
+  it("does not leak axxa comments into the content", () => {
     const md = renderChatMarkdown(baseChat);
     const oldMd = md.replaceAll("corvus:", "axxa:").replaceAll("corvus-steps:", "axxa-steps:").replaceAll("corvus-att:", "axxa-att:");
     const r = parseChatMarkdown(oldMd);
@@ -210,14 +210,14 @@ Antwort
 });
 
 describe("chat starred", () => {
-  it("sobrevive ao round-trip quando favoritado", () => {
+  it("survives a round-trip when starred", () => {
     const starred: ChatData = { ...baseChat, starred: true };
     const md = renderChatMarkdown(starred);
     expect(md).toContain("starred: true");
     expect(parseChatMarkdown(md).starred).toBe(true);
   });
 
-  it("ausente volta como undefined (não vira false) — round-trip exato", () => {
+  it("comes back undefined, not false, when absent", () => {
     const md = renderChatMarkdown(baseChat);
     expect(md).not.toContain("starred:");
     const r = parseChatMarkdown(md);
@@ -225,19 +225,19 @@ describe("chat starred", () => {
     expect(r).toEqual(baseChat);
   });
 
-  it("desfavoritar não deixa resíduo no frontmatter", () => {
+  it("leaves no residue in frontmatter when unstarred", () => {
     const off: ChatData = { ...baseChat, starred: false };
     const md = renderChatMarkdown(off);
     expect(md).not.toContain("starred:");
     expect(parseChatMarkdown(md).starred).toBeUndefined();
   });
 
-  it("summaryFromFrontmatter aceita boolean (metadataCache) e string (nosso parse)", () => {
+  it("summaryFromFrontmatter accepts a boolean from metadataCache and a string from our parser", () => {
     const base = { id: "x", date: "2026-01-01", title: "t" };
     expect(summaryFromFrontmatter({ ...base, starred: true }, "chat", "p.md").starred).toBe(true);
     expect(summaryFromFrontmatter({ ...base, starred: "true" }, "chat", "p.md").starred).toBe(true);
     expect(summaryFromFrontmatter(base, "chat", "p.md").starred).toBe(false);
 
-    expect(summaryFromFrontmatter({ ...base, starred: "sim" }, "chat", "p.md").starred).toBe(false);
+    expect(summaryFromFrontmatter({ ...base, starred: "yes" }, "chat", "p.md").starred).toBe(false);
   });
 });

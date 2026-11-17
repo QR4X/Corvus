@@ -9,8 +9,8 @@ import { DEFAULT_SETTINGS, type CorvusSettings } from "../src/settings";
 
 function fakeSettings(over: Partial<CorvusSettings> = {}): CorvusSettings {
   return {
-    openaiApiKey: "sk-segredo",
-    elevenApiKey: "el-segredo",
+    openaiApiKey: "sk-secret",
+    elevenApiKey: "el-secret",
     openaiTier: 1,
     chatsPath: "corvus/chats",
     skillsPath: "corvus-ai/skills",
@@ -34,24 +34,24 @@ function fakePlugin(over: Partial<CorvusSettings> = {}) {
 }
 
 describe("writeControl", () => {
-  it("grava pelo saveSettings, nunca pelo saveData", async () => {
+  it("saves through saveSettings, never saveData", async () => {
     const p = fakePlugin();
     expect(await writeControl(p, "voiceEnabled", false)).toBe(true);
     expect(p.settings.voiceEnabled).toBe(false);
     expect(p.calls).toEqual(["saveSettings"]);
   });
 
-  it("recusa chave de API (e qualquer chave fora da lista) sem tocar em nada", async () => {
-    for (const key of ["openaiApiKey", "elevenApiKey", "anthropicApiKey", "nada"]) {
+  it("rejects API keys and unknown keys without touching anything", async () => {
+    for (const key of ["openaiApiKey", "elevenApiKey", "anthropicApiKey", "nothing"]) {
       const p = fakePlugin();
-      const antes = JSON.stringify(p.settings);
-      expect(await writeControl(p, key, "vazou")).toBe(false);
-      expect(JSON.stringify(p.settings)).toBe(antes);
+      const before = JSON.stringify(p.settings);
+      expect(await writeControl(p, key, "leaked")).toBe(false);
+      expect(JSON.stringify(p.settings)).toBe(before);
       expect(p.calls).toEqual([]);
     }
   });
 
-  it("nenhuma chave de API é control", () => {
+  it("treats no API key as a control", () => {
     for (const key of [
       "openaiApiKey",
       "anthropicApiKey",
@@ -65,27 +65,27 @@ describe("writeControl", () => {
   });
 });
 
-describe("conversões", () => {
-  it("o tier chega como texto do menu e vira número", () => {
+describe("conversions", () => {
+  it("turns the tier menu text into a number", () => {
     const s = fakeSettings();
     applyControl(s, "openaiTier", "3");
     expect(s.openaiTier).toBe(3);
-    applyControl(s, "openaiTier", "lixo");
+    applyControl(s, "openaiTier", "garbage");
     expect(s.openaiTier).toBe(1);
     expect(readControl(fakeSettings({ openaiTier: 4 }), "openaiTier")).toBe("4");
   });
 
-  it("pasta vazia volta pro padrão em vez de gravar na raiz", () => {
+  it("resets an empty folder to the default instead of the vault root", () => {
     const s = fakeSettings();
     applyControl(s, "chatsPath", "   ");
     expect(s.chatsPath).toBe(DEFAULT_SETTINGS.chatsPath);
     applyControl(s, "skillsPath", "");
     expect(s.skillsPath).toBe(DEFAULT_SETTINGS.skillsPath);
-    applyControl(s, "chatsPath", "  Minhas/conversas ");
-    expect(s.chatsPath).toBe("Minhas/conversas");
+    applyControl(s, "chatsPath", "  My/chats ");
+    expect(s.chatsPath).toBe("My/chats");
   });
 
-  it("interruptor só liga com true de verdade", () => {
+  it("turns a toggle on only for a real true", () => {
     const s = fakeSettings();
     applyControl(s, "ttsEnabled", "true");
     expect(s.ttsEnabled).toBe(false);
@@ -93,7 +93,7 @@ describe("conversões", () => {
     expect(s.ttsEnabled).toBe(true);
   });
 
-  it("campos ausentes num data.json antigo leem como o padrão", () => {
+  it("reads fields missing from an old data.json as the default", () => {
     const s = fakeSettings();
     delete (s as Partial<CorvusSettings>).language;
     delete (s as Partial<CorvusSettings>).hapticsEnabled;

@@ -4,31 +4,31 @@ import {
   buildAgentSystemPrompt,
 } from "../src/agent/conversation";
 
-describe("instruções de projeto no chat", () => {
-  it("entram depois do head, sem apagar o base", () => {
+describe("project instructions in chat", () => {
+  it("come after the head without dropping the base", () => {
     expect(
-      buildChatSystemPrompt({ base: "BASE", instructions: "Em tópicos." })
-    ).toBe("BASE\n\nEm tópicos.");
+      buildChatSystemPrompt({ base: "BASE", instructions: "Use bullet points." })
+    ).toBe("BASE\n\nUse bullet points.");
   });
 
-  it("convivem com a persona — as duas aparecem", () => {
+  it("appear after the persona, which replaces the base", () => {
     expect(
       buildChatSystemPrompt({
-        persona: "PIRATA",
+        persona: "PIRATE",
         base: "BASE",
-        instructions: "Em tópicos.",
+        instructions: "Use bullet points.",
       })
-    ).toBe("PIRATA\n\nEm tópicos.");
+    ).toBe("PIRATE\n\nUse bullet points.");
   });
 
-  it("vazio ou só espaços não muda nada", () => {
+  it("change nothing when empty or blank", () => {
     expect(buildChatSystemPrompt({ base: "BASE", instructions: "   " })).toBe(
       "BASE"
     );
     expect(buildChatSystemPrompt({ base: "BASE" })).toBe("BASE");
   });
 
-  it("a ordem inteira: head · projeto · estilo · vault · notas", () => {
+  it("follow the full order: head, project, style, vault, notes", () => {
     const r = buildChatSystemPrompt({
       base: "BASE",
       instructions: "P",
@@ -41,29 +41,28 @@ describe("instruções de projeto no chat", () => {
   });
 });
 
-describe("instruções de projeto no agente", () => {
-  it("vêm depois do prompt do agente e antes das notas", () => {
-
+describe("project instructions in agent mode", () => {
+  it("come after the agent prompt and before the notes", () => {
     const r = buildAgentSystemPrompt(
       undefined,
-      "AGENTE",
-      { suffix: "\n\nNOTAS:\n", block: "ctx" },
-      "Nunca apague nada."
+      "AGENT",
+      { suffix: "\n\nNOTES:\n", block: "ctx" },
+      "Never delete anything."
     );
-    expect(r).toBe("AGENTE\n\nNunca apague nada.\n\nNOTAS:\nctx");
+    expect(r).toBe("AGENT\n\nNever delete anything.\n\nNOTES:\nctx");
   });
 
-  it("não atropela a persona, que continua na frente", () => {
-    const r = buildAgentSystemPrompt(undefined, "AGENTE", undefined, "REGRA");
-    expect(r).toBe("AGENTE\n\nREGRA");
-    expect(buildAgentSystemPrompt("P", "AGENTE", undefined, "REGRA")).toBe(
-      "P\n\nAGENTE\n\nREGRA"
+  it("keep the persona first", () => {
+    const r = buildAgentSystemPrompt(undefined, "AGENT", undefined, "RULE");
+    expect(r).toBe("AGENT\n\nRULE");
+    expect(buildAgentSystemPrompt("P", "AGENT", undefined, "RULE")).toBe(
+      "P\n\nAGENT\n\nRULE"
     );
   });
 
-  it("sem instrução, o prompt é o de sempre", () => {
-    expect(buildAgentSystemPrompt(undefined, "AGENTE", undefined, "  ")).toBe(
-      "AGENTE"
+  it("leave the prompt unchanged without instructions", () => {
+    expect(buildAgentSystemPrompt(undefined, "AGENT", undefined, "  ")).toBe(
+      "AGENT"
     );
   });
 });

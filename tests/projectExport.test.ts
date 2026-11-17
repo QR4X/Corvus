@@ -11,8 +11,8 @@ const proj = (over: Partial<Project> = {}): Project => ({
   name: "Thesis",
   icon: "graduation-cap",
   color: "#4361ee",
-  sources: ["Refs/Kuhn.md", "Diário/2026-09.md"],
-  instructions: "Sempre citar a fonte.",
+  sources: ["Refs/Kuhn.md", "Journal/2026-09.md"],
+  instructions: "Always cite the source.",
   chatIds: ["c1", "c2"],
   createdAt: "2026-09-01T10:00:00.000Z",
   ...over,
@@ -20,7 +20,7 @@ const proj = (over: Partial<Project> = {}): Project => ({
 
 const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   id: "c1",
-  title: "Capítulo 2",
+  title: "Chapter 2",
   date: "2026-09-20T10:00:00.000Z",
   mode: "chat",
   provider: "openai",
@@ -34,23 +34,21 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   ...over,
 });
 
-const quando = new Date("2026-09-27T12:00:00.000Z");
+const when = new Date("2026-09-27T12:00:00.000Z");
 
 describe("noteLink", () => {
-  it("vira wikilink sem o .md", () => {
-
+  it("becomes a wikilink without .md", () => {
     expect(noteLink("Refs/Kuhn.md")).toBe("[[Refs/Kuhn]]");
   });
 
-  it("guarda o caminho inteiro, não só o nome", () => {
-
+  it("keeps the full path, not just the name", () => {
     expect(noteLink("a/b/Index.md")).toBe("[[a/b/Index]]");
   });
 });
 
 describe("exportProjectMarkdown", () => {
-  it("abre com frontmatter que diz o que é e de onde veio", () => {
-    const md = exportProjectMarkdown(proj(), [chat()], quando);
+  it("starts with frontmatter describing kind and source", () => {
+    const md = exportProjectMarkdown(proj(), [chat()], when);
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain("kind: project");
     expect(md).toContain("source: Corvus");
@@ -58,48 +56,46 @@ describe("exportProjectMarkdown", () => {
     expect(md).toContain("notes: 2");
   });
 
-  it("leva as instruções por extenso", () => {
-
-    expect(exportProjectMarkdown(proj(), [], quando)).toContain(
-      "## Custom instructions\n\nSempre citar a fonte."
+  it("includes the instructions in full", () => {
+    expect(exportProjectMarkdown(proj(), [], when)).toContain(
+      "## Custom instructions\n\nAlways cite the source."
     );
   });
 
-  it("as fontes saem como link, e é isso que põe o projeto no grafo", () => {
-    const md = exportProjectMarkdown(proj(), [], quando);
+  it("links the sources so the project shows in the graph", () => {
+    const md = exportProjectMarkdown(proj(), [], when);
     expect(md).toContain("- [[Refs/Kuhn]]");
-    expect(md).toContain("- [[Diário/2026-09]]");
+    expect(md).toContain("- [[Journal/2026-09]]");
   });
 
-  it("lista as conversas do projeto, da mais nova pra mais velha", () => {
+  it("lists project chats from newest to oldest", () => {
     const md = exportProjectMarkdown(
       proj(),
       [
-        chat({ id: "c1", title: "Velha", date: "2026-09-10T10:00:00.000Z" }),
-        chat({ id: "c2", title: "Nova", date: "2026-09-25T10:00:00.000Z" }),
+        chat({ id: "c1", title: "Older", date: "2026-09-10T10:00:00.000Z" }),
+        chat({ id: "c2", title: "Newer", date: "2026-09-25T10:00:00.000Z" }),
       ],
-      quando
+      when
     );
-    expect(md.indexOf("Nova")).toBeLessThan(md.indexOf("Velha"));
-    expect(md).toContain("- Nova — 2026-09-25 · gpt-5");
+    expect(md.indexOf("Newer")).toBeLessThan(md.indexOf("Older"));
+    expect(md).toContain("- Newer — 2026-09-25 · gpt-5");
   });
 
-  it("conversa de outro projeto não entra", () => {
+  it("leaves out chats from other projects", () => {
     const md = exportProjectMarkdown(
       proj({ chatIds: ["c1"] }),
-      [chat({ id: "c1", title: "Minha" }), chat({ id: "zz", title: "Alheia" })],
-      quando
+      [chat({ id: "c1", title: "Mine" }), chat({ id: "zz", title: "Foreign" })],
+      when
     );
-    expect(md).toContain("Minha");
-    expect(md).not.toContain("Alheia");
+    expect(md).toContain("Mine");
+    expect(md).not.toContain("Foreign");
   });
 
-  it("seção vazia não aparece", () => {
-
+  it("omits empty sections", () => {
     const md = exportProjectMarkdown(
       proj({ sources: [], instructions: "", chatIds: [] }),
       [],
-      quando
+      when
     );
     expect(md).not.toContain("## Notes");
     expect(md).not.toContain("## Custom instructions");

@@ -21,7 +21,6 @@ const emptyIndexJson = JSON.stringify({
 function mockAdapter(size: number): { adapter: DataAdapter; read: ReturnType<typeof vi.fn> } {
   const read = vi.fn(async () => emptyIndexJson);
   const adapter = {
-
     exists: vi.fn(async (p: string) => p === FILE),
     stat: vi.fn(async () => ({ type: "file", ctime: 0, mtime: 0, size })),
     read,
@@ -29,9 +28,9 @@ function mockAdapter(size: number): { adapter: DataAdapter; read: ReturnType<typ
   return { adapter, read };
 }
 
-describe("loadIndex — guard de tamanho (mobile)", () => {
-  it("acima do teto → retorna null, chama onSkip, NÃO lê o arquivo", async () => {
-    const { adapter, read } = mockAdapter(40 * 1024 * 1024); 
+describe("loadIndex size guard", () => {
+  it("skips a file above the cap without reading it", async () => {
+    const { adapter, read } = mockAdapter(40 * 1024 * 1024);
     const onSkip = vi.fn();
     const idx = await loadIndex(adapter, INDEX_PATH, {
       maxBytes: 16 * 1024 * 1024,
@@ -39,12 +38,12 @@ describe("loadIndex — guard de tamanho (mobile)", () => {
     });
     expect(idx).toBeNull();
     expect(onSkip).toHaveBeenCalledTimes(1);
-    expect(onSkip.mock.calls[0][0]).toBeCloseTo(40, 0); 
-    expect(read).not.toHaveBeenCalled(); 
+    expect(onSkip.mock.calls[0][0]).toBeCloseTo(40, 0);
+    expect(read).not.toHaveBeenCalled();
   });
 
-  it("abaixo do teto → carrega normalmente (lê o arquivo)", async () => {
-    const { adapter, read } = mockAdapter(2 * 1024 * 1024); 
+  it("loads a file below the cap", async () => {
+    const { adapter, read } = mockAdapter(2 * 1024 * 1024);
     const onSkip = vi.fn();
     const idx = await loadIndex(adapter, INDEX_PATH, {
       maxBytes: 16 * 1024 * 1024,
@@ -56,14 +55,14 @@ describe("loadIndex — guard de tamanho (mobile)", () => {
     expect(idx!.size).toBe(0);
   });
 
-  it("sem maxBytes (desktop) → nunca gateia, carrega direto", async () => {
-    const { adapter, read } = mockAdapter(500 * 1024 * 1024); 
-    const idx = await loadIndex(adapter, INDEX_PATH); 
+  it("always loads without maxBytes", async () => {
+    const { adapter, read } = mockAdapter(500 * 1024 * 1024);
+    const idx = await loadIndex(adapter, INDEX_PATH);
     expect(read).toHaveBeenCalledTimes(1);
     expect(idx).not.toBeNull();
   });
 
-  it("arquivo ausente → null sem stat/read", async () => {
+  it("returns null for a missing file without reading", async () => {
     const read = vi.fn(async () => emptyIndexJson);
     const adapter = {
       exists: vi.fn(async () => false),
@@ -76,18 +75,18 @@ describe("loadIndex — guard de tamanho (mobile)", () => {
   });
 });
 
-describe("indexFilePath — separação desktop/mobile", () => {
+describe("indexFilePath per platform", () => {
   afterEach(() => {
     (Platform as { isMobile: boolean }).isMobile = false;
   });
 
-  it("desktop → embeddings.json (nome legado, sem reindex forçado)", () => {
+  it("uses embeddings.json on desktop", () => {
     (Platform as { isMobile: boolean }).isMobile = false;
     expect(indexFileName()).toBe("embeddings.json");
     expect(indexFilePath("corvus-ai/index")).toBe("corvus-ai/index/embeddings.json");
   });
 
-  it("mobile → embeddings.mobile.json (arquivo próprio)", () => {
+  it("uses embeddings.mobile.json on mobile", () => {
     (Platform as { isMobile: boolean }).isMobile = true;
     expect(indexFileName()).toBe("embeddings.mobile.json");
     expect(indexFilePath("corvus-ai/index")).toBe(
@@ -95,7 +94,7 @@ describe("indexFilePath — separação desktop/mobile", () => {
     );
   });
 
-  it("os dois caminhos são distintos (isolamento garantido)", () => {
+  it("keeps desktop and mobile paths apart", () => {
     (Platform as { isMobile: boolean }).isMobile = false;
     const desk = indexFilePath("p");
     (Platform as { isMobile: boolean }).isMobile = true;

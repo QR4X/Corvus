@@ -1,17 +1,15 @@
 export function normalizePath(path: string): string {
-
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
 
 export function parseYaml(_input: string): unknown {
-
   return {};
 }
 
-export const __avisos: string[] = [];
+export const __notices: string[] = [];
 export class Notice {
   constructor(public message?: string) {
-    __avisos.push(message ?? "");
+    __notices.push(message ?? "");
   }
   setMessage() {}
   hide() {}
@@ -25,7 +23,7 @@ export function __setRequestUrl(
 }
 export async function requestUrl(opts: unknown): Promise<unknown> {
   if (__requestUrlImpl) return __requestUrlImpl(opts);
-  throw new Error("requestUrl não mockado — use __setRequestUrl no teste.");
+  throw new Error("requestUrl is not mocked; call __setRequestUrl in the test.");
 }
 
 export class Plugin {}

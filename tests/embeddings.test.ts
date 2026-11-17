@@ -7,16 +7,16 @@ import {
   registerDiscoveredEmbeddings,
 } from "../src/rag/types";
 
-afterEach(() => registerDiscoveredEmbeddings([])); 
+afterEach(() => registerDiscoveredEmbeddings([]));
 
 describe("isEmbeddingModelId", () => {
-  it("reconhece ids de embedding", () => {
+  it("recognizes embedding ids", () => {
     expect(isEmbeddingModelId("text-embedding-3-small")).toBe(true);
     expect(isEmbeddingModelId("text-embedding-ada-002")).toBe(true);
     expect(isEmbeddingModelId("nvidia/nv-embedqa-e5-v5")).toBe(true);
     expect(isEmbeddingModelId("gemini-embedding-001")).toBe(true);
   });
-  it("ignora modelos de chat/gen", () => {
+  it("ignores chat and generation models", () => {
     expect(isEmbeddingModelId("gpt-4o")).toBe(false);
     expect(isEmbeddingModelId("claude-opus-4-8")).toBe(false);
     expect(isEmbeddingModelId("dall-e-3")).toBe(false);
@@ -24,21 +24,21 @@ describe("isEmbeddingModelId", () => {
 });
 
 describe("inferEmbeddingSpec", () => {
-  it("usa o spec CURADO quando o modelo é conhecido", () => {
+  it("uses the curated spec when the model is known", () => {
     const s = inferEmbeddingSpec("openai", "text-embedding-3-large");
     expect(s.dim).toBe(3072);
-    expect(s.discovered).toBeUndefined(); 
+    expect(s.discovered).toBeUndefined();
   });
 
-  it("infere dim por heurística de nome p/ modelo desconhecido", () => {
+  it("infers the dimension from the name for unknown models", () => {
     expect(inferEmbeddingSpec("openai", "text-embedding-3-large-2025").dim).toBe(3072);
     expect(inferEmbeddingSpec("gemini", "text-embedding-004").dim).toBe(768);
     expect(inferEmbeddingSpec("nim", "nvidia/nv-embedqa-e5-v5-next").dim).toBe(1024);
 
-    expect(inferEmbeddingSpec("openai", "embed-mistério").dim).toBe(1536);
+    expect(inferEmbeddingSpec("openai", "embed-mystery").dim).toBe(1536);
   });
 
-  it("mark discovered + infere flags (imagem/free)", () => {
+  it("marks the spec as discovered and infers image and free flags", () => {
     const vl = inferEmbeddingSpec("openrouter", "vendor/embed-vl-2b:free");
     expect(vl.discovered).toBe(true);
     expect(vl.supportsImage).toBe(true);
@@ -49,8 +49,8 @@ describe("inferEmbeddingSpec", () => {
   });
 });
 
-describe("registro de descobertos", () => {
-  it("getAllEmbeddingModels une curados + descobertos sem duplicar", () => {
+describe("discovered model registry", () => {
+  it("getAllEmbeddingModels merges curated and discovered models without duplicates", () => {
     const before = getAllEmbeddingModels().length;
     registerDiscoveredEmbeddings([
       inferEmbeddingSpec("openai", "text-embedding-9-ultra"),
@@ -62,17 +62,17 @@ describe("registro de descobertos", () => {
     expect(all.some((m) => m.model === "text-embedding-9-ultra")).toBe(true);
   });
 
-  it("getEmbeddingSpec acha um modelo descoberto (não cai no fallback)", () => {
+  it("getEmbeddingSpec finds a discovered model instead of falling back", () => {
     registerDiscoveredEmbeddings([
-      inferEmbeddingSpec("nim", "nvidia/nv-embedqa-mistery-v9"),
+      inferEmbeddingSpec("nim", "nvidia/nv-embedqa-mystery-v9"),
     ]);
-    const spec = getEmbeddingSpec("nvidia/nv-embedqa-mistery-v9");
-    expect(spec.model).toBe("nvidia/nv-embedqa-mistery-v9");
+    const spec = getEmbeddingSpec("nvidia/nv-embedqa-mystery-v9");
+    expect(spec.model).toBe("nvidia/nv-embedqa-mystery-v9");
     expect(spec.provider).toBe("nim");
   });
 
-  it("getEmbeddingSpec cai no 1º curado se o modelo não existe", () => {
-    expect(getEmbeddingSpec("inexistente-xyz").model).toBe(
+  it("getEmbeddingSpec falls back to the first curated model for an unknown id", () => {
+    expect(getEmbeddingSpec("missing-xyz").model).toBe(
       "text-embedding-3-small"
     );
   });

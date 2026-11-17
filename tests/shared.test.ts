@@ -12,30 +12,28 @@ const userReq = (extra: Record<string, unknown> = {}) => ({
 });
 
 describe("mapHttpError", () => {
-  it("status OK (2xx) → null", () => {
+  it("returns null for 2xx", () => {
     expect(mapHttpError(200, {}, { label: "X" })).toBeNull();
   });
-  it("401 → invalid-key", () => {
+  it("maps 401 to invalid-key", () => {
     expect(mapHttpError(401, {}, { label: "X" })?.code).toBe("invalid-key");
   });
-  it("403 vira invalid-key só quando declarado em authStatuses", () => {
+  it("maps 403 to invalid-key only when listed in authStatuses", () => {
     expect(mapHttpError(403, {}, { label: "X" })?.code).toBe("unknown");
     expect(
       mapHttpError(403, {}, { label: "X", authStatuses: [401, 403] })?.code
     ).toBe("invalid-key");
   });
-  it("429 → rate-limit", () => {
+  it("maps 429 to rate-limit", () => {
     expect(mapHttpError(429, {}, { label: "X" })?.code).toBe("rate-limit");
   });
-  it("5xx/408/409 → rate-limit (transiente/retryável, inclui 529 overloaded)", () => {
-
+  it("maps transient 5xx and 408 errors, including 529 overloaded, to rate-limit", () => {
     expect(mapHttpError(500, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(503, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(529, {}, { label: "X" })?.code).toBe("rate-limit");
     expect(mapHttpError(408, {}, { label: "X" })?.code).toBe("rate-limit");
   });
-  it("outro erro → unknown com o detalhe da API", () => {
-
+  it("maps other errors to unknown with the API detail", () => {
     const err = mapHttpError(422, { error: { message: "boom" } }, { label: "NIM" });
     expect(err?.code).toBe("unknown");
     expect(err?.message).toContain("boom");
@@ -43,16 +41,16 @@ describe("mapHttpError", () => {
 });
 
 describe("buildChatBody", () => {
-  it("usa o campo de max tokens pedido + clampa", () => {
+  it("uses the requested max tokens field and clamps it", () => {
     const b = buildChatBody(userReq({ maxTokens: 999999 }), {
       provider: "openai",
       maxTokensField: "max_completion_tokens",
     });
-    expect(b.max_completion_tokens).toBe(16384); 
+    expect(b.max_completion_tokens).toBe(16384);
     expect(b.max_tokens).toBeUndefined();
   });
 
-  it("aplica a paramPolicy na temperatura (gpt-4o passa, o3 omite)", () => {
+  it("applies the param policy to temperature, keeping it for gpt-4o and omitting it for o3", () => {
     expect(
       buildChatBody(userReq({ temperature: 0.3 }), { provider: "openai" }).temperature
     ).toBe(0.3);
@@ -64,7 +62,7 @@ describe("buildChatBody", () => {
     ).toBeUndefined();
   });
 
-  it("stream + includeUsage setam stream_options", () => {
+  it("sets stream_options for stream with includeUsage", () => {
     const b = buildChatBody(userReq(), {
       provider: "openai",
       stream: true,
@@ -74,7 +72,7 @@ describe("buildChatBody", () => {
     expect(b.stream_options).toEqual({ include_usage: true });
   });
 
-  it("tools viram formato function + tool_choice auto", () => {
+  it("converts tools to function format with tool_choice auto", () => {
     const b = buildChatBody(
       userReq({ tools: [{ name: "f", description: "d", parameters: {} }] }),
       { provider: "openai" }
@@ -84,42 +82,42 @@ describe("buildChatBody", () => {
   });
 });
 
-describe("parseOpenAIChatMessage — tool calls tortas", () => {
+describe("parseOpenAIChatMessage with malformed tool calls", () => {
   const msg = (tool_calls: unknown[]) =>
-    parseOpenAIChatMessage({ content: "oi", tool_calls } as never);
+    parseOpenAIChatMessage({ content: "hi", tool_calls } as never);
 
-  it("tool call sem `function` é descartada, não derruba a resposta", () => {
+  it("drops a tool call without function and keeps the reply", () => {
     const r = msg([{ type: "function", id: "a" }]);
-    expect(r.content).toBe("oi");
+    expect(r.content).toBe("hi");
     expect(r.toolCalls).toBeUndefined();
   });
 
-  it("tool call sem `name` é descartada — não há o que chamar", () => {
+  it("drops a tool call without a name", () => {
     const r = msg([{ type: "function", id: "a", function: { arguments: "{}" } }]);
     expect(r.toolCalls).toBeUndefined();
   });
 
-  it("sem `id` ganha um gerado, pra fechar o loop do agente", () => {
-    const r = msg([{ type: "function", function: { name: "ler", arguments: "{}" } }]);
+  it("generates an id when missing so the agent loop can close", () => {
+    const r = msg([{ type: "function", function: { name: "read", arguments: "{}" } }]);
     expect(r.toolCalls).toHaveLength(1);
-    expect(r.toolCalls?.[0].name).toBe("ler");
+    expect(r.toolCalls?.[0].name).toBe("read");
     expect(r.toolCalls?.[0].id).toMatch(/^call_/);
   });
 
-  it("arguments ausente vira {} em vez de quebrar o JSON.parse", () => {
-    const r = msg([{ type: "function", id: "x", function: { name: "ler" } }]);
+  it("treats missing arguments as {} instead of failing JSON.parse", () => {
+    const r = msg([{ type: "function", id: "x", function: { name: "read" } }]);
     expect(r.toolCalls?.[0].arguments).toEqual({});
   });
 
-  it("arguments inválido bloqueia o lote e sinaliza o erro", () => {
+  it("blocks the batch and flags invalid arguments", () => {
     const r = msg([
-      { type: "function", id: "x", function: { name: "ler", arguments: "{nao é json" } },
+      { type: "function", id: "x", function: { name: "read", arguments: "{not json" } },
     ]);
     expect(r.toolCalls).toBeUndefined();
     expect(r.invalidToolCalls).toBe(true);
   });
 
-  it("um lote misto não executa só parte das ações", () => {
+  it("does not run part of a mixed batch", () => {
     const r = msg([
       { type: "function", id: "a", function: {} },
       { type: "function", id: "b", function: { name: "ok", arguments: '{"n":1}' } },
@@ -128,8 +126,8 @@ describe("parseOpenAIChatMessage — tool calls tortas", () => {
     expect(r.invalidToolCalls).toBe(true);
   });
 
-  it("entrada que não é do tipo function é ignorada", () => {
-    const r = msg([{ type: "outro", function: { name: "ler", arguments: "{}" } }]);
+  it("ignores entries that are not of type function", () => {
+    const r = msg([{ type: "other", function: { name: "read", arguments: "{}" } }]);
     expect(r.toolCalls).toBeUndefined();
   });
 });

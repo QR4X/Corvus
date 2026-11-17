@@ -36,8 +36,8 @@ function memAdapter() {
 
 const PATH = "corvus-ai/index";
 
-describe("edge cases: empty + mode switching + backward compat", () => {
-  it("empty index (0 entries) sharded → manifesto with shards:[] → loads & searches OK", async () => {
+describe("sharded index edge cases", () => {
+  it("saves an empty index with no shards and still loads and searches it", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
 
@@ -65,7 +65,7 @@ describe("edge cases: empty + mode switching + backward compat", () => {
     expect(manifest.totalEntries).toBe(0);
   });
 
-  it("corrupted shard in middle → searchStreamed skips it, continues", async () => {
+  it("skips a corrupted middle shard and keeps searching", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
 

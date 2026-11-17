@@ -3,16 +3,16 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { putThumb, seedThumb, thumbOf } from "../src/ui/settings/thumb";
 
-function linha(ativo: { left: number; width: number } | null, vars: Record<string, string> = {}) {
+function makeRow(active: { left: number; width: number } | null, vars: Record<string, string> = {}) {
   const log: string[] = [];
-  const estilo = new Map(Object.entries(vars));
+  const style = new Map(Object.entries(vars));
   const classes = new Set<string>();
   const row = {
     style: {
-      getPropertyValue: (k: string) => estilo.get(k) ?? "",
+      getPropertyValue: (k: string) => style.get(k) ?? "",
       setProperty: (k: string, v: string) => {
-        estilo.set(k, v);
-        log.push(`${k}=${v}${classes.has("is-placing") ? " (sem transição)" : ""}`);
+        style.set(k, v);
+        log.push(`${k}=${v}${classes.has("is-placing") ? " (no transition)" : ""}`);
       },
     },
     addClass: (c: string) => {
@@ -24,76 +24,75 @@ function linha(ativo: { left: number; width: number } | null, vars: Record<strin
       log.push(`-${c}`);
     },
     get offsetWidth() {
-      log.push("mede");
+      log.push("measure");
       return 300;
     },
     querySelector: () =>
-      ativo && { offsetLeft: ativo.left, offsetWidth: ativo.width },
+      active && { offsetLeft: active.left, offsetWidth: active.width },
   };
-  return { row: row as unknown as HTMLElement, log, estilo };
+  return { row: row as unknown as HTMLElement, log, style };
 }
 
-describe("a primeira posição é instantânea", () => {
-  it("linha nova: transição desligada, posição escrita, medida lida, transição de volta", () => {
-    const { row, log } = linha({ left: 85, width: 77 });
+describe("the first placement is instant", () => {
+  it("a new row disables transitions, writes the position, forces a measure and restores transitions", () => {
+    const { row, log } = makeRow({ left: 85, width: 77 });
     putThumb(row);
     expect(log).toEqual([
       "+is-placing",
-      "--corvus-seg-x=85px (sem transição)",
-      "--corvus-seg-w=77px (sem transição)",
-      "mede",
+      "--corvus-seg-x=85px (no transition)",
+      "--corvus-seg-w=77px (no transition)",
+      "measure",
       "-is-placing",
     ]);
   });
 
-  it("linha que já tinha thumb: só escreve — e o CSS desliza", () => {
-    const { row, log } = linha({ left: 85, width: 77 }, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
+  it("a row that already has a thumb only writes, so CSS animates the slide", () => {
+    const { row, log } = makeRow({ left: 85, width: 77 }, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
     putThumb(row);
     expect(log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
   });
 
-  it("escondida (outra aba) mede zero e fica sem posição", () => {
-    const { row, log, estilo } = linha({ left: 0, width: 0 });
+  it("a hidden row measures zero and gets no position", () => {
+    const { row, log, style } = makeRow({ left: 0, width: 0 });
     putThumb(row);
     expect(log).toEqual([]);
-    expect(estilo.size).toBe(0);
+    expect(style.size).toBe(0);
   });
 
-  it("sem item ativo, não faz nada", () => {
-    const { row, log } = linha(null);
+  it("does nothing without an active item", () => {
+    const { row, log } = makeRow(null);
     putThumb(row);
     expect(log).toEqual([]);
   });
 });
 
-describe("a linha remontada nasce onde a velha estava", () => {
-  it("o thumb da velha passa pra nova, e aí desliza até o novo ativo", () => {
-    const velha = linha(null, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
-    const nova = linha({ left: 85, width: 77 });
-    seedThumb(nova.row, thumbOf(velha.row));
-    nova.log.length = 0;
-    putThumb(nova.row);
+describe("a remounted row starts where the old one was", () => {
+  it("the old thumb carries over and then slides to the new active item", () => {
+    const oldRow = makeRow(null, { "--corvus-seg-x": "161px", "--corvus-seg-w": "85px" });
+    const newRow = makeRow({ left: 85, width: 77 });
+    seedThumb(newRow.row, thumbOf(oldRow.row));
+    newRow.log.length = 0;
+    putThumb(newRow.row);
 
-    expect(nova.log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
+    expect(newRow.log).toEqual(["--corvus-seg-x=85px", "--corvus-seg-w=77px"]);
   });
 
-  it("sem thumb na velha (ou sem velha), a nova é primeira posição", () => {
-    const nova = linha({ left: 3, width: 67 });
-    seedThumb(nova.row, null);
-    seedThumb(nova.row, { x: "", w: "" });
-    expect(nova.estilo.size).toBe(0);
+  it("without an old thumb the new row stays unplaced", () => {
+    const newRow = makeRow({ left: 3, width: 67 });
+    seedThumb(newRow.row, null);
+    seedThumb(newRow.row, { x: "", w: "" });
+    expect(newRow.style.size).toBe(0);
   });
 });
 
-describe("o CSS tem o desligador", () => {
+describe("settings segment CSS", () => {
   const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  it("`.corvus-seg.is-placing::before` sem transição", () => {
+  it("disables the transition on .corvus-seg.is-placing::before", () => {
     expect(CSS).toMatch(/\.corvus-settings-root \.corvus-seg\.is-placing::before\s*\{\s*transition:\s*none;\s*\}/);
   });
 
-  it("a barra de abas zera a margem da direita que o app.css dá ao 1º filho", () => {
-
-    const corpo = CSS.match(/\.corvus-settings-root \.corvus-settings-nav\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(corpo).toMatch(/margin:\s*0 0 var\(--size-4-3\);/);
+  it("the tab bar resets the right margin app.css gives the first child", () => {
+    const body = CSS.match(/\.corvus-settings-root \.corvus-settings-nav\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(body).toMatch(/margin:\s*0 0 var\(--size-4-3\);/);
   });
 });

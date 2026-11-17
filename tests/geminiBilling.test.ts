@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { isGeminiBillingError } from "../src/providers/gemini";
 
 describe("isGeminiBillingError", () => {
-  it("frases fortes de billing → true em qualquer contexto/status", () => {
+  it("detects strong billing phrases in any context", () => {
     const cases = [
       "Imagen API is only accessible to billed users at this time.",
       "This model is only available on the paid tier.",
@@ -17,23 +17,23 @@ describe("isGeminiBillingError", () => {
     }
   });
 
-  it("image + 429 com quota/credit → true (free tier barra modelos de imagem)", () => {
+  it("treats a 429 quota or credit error on image as billing", () => {
     expect(isGeminiBillingError(429, "You exceeded your current quota", "image")).toBe(true);
     expect(isGeminiBillingError(429, "out of credits", "image")).toBe(true);
   });
 
-  it("chat + 429 quota genérico → false (pode ser rate-limit real numa conta paga)", () => {
+  it("does not treat a generic 429 quota error on chat as billing", () => {
     expect(isGeminiBillingError(429, "You exceeded your current quota", "chat")).toBe(false);
   });
 
-  it("erros não relacionados → false", () => {
+  it("ignores unrelated errors", () => {
     expect(isGeminiBillingError(400, "Invalid argument: contents is required", "image")).toBe(false);
     expect(isGeminiBillingError(404, "model not found", "chat")).toBe(false);
     expect(isGeminiBillingError(500, "internal error", "image")).toBe(false);
     expect(isGeminiBillingError(429, "", "chat")).toBe(false);
   });
 
-  it("é case-insensitive e tolera message vazio/garbage", () => {
+  it("is case-insensitive and tolerates empty or missing messages", () => {
     expect(isGeminiBillingError(400, "PAID TIER required", "chat")).toBe(true);
     expect(isGeminiBillingError(400, "", "chat")).toBe(false);
 

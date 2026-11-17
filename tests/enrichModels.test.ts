@@ -7,10 +7,10 @@ import {
 } from "../src/providers/modelInfoStore";
 import { enrichOllamaCapabilities } from "../src/providers/ollama";
 
-const CATALOGO = {
+const CATALOG = {
   data: [
     {
-      id: "lab/modelo-novo-vl",
+      id: "lab/new-model-vl",
       architecture: {
         input_modalities: ["text", "image"],
         output_modalities: ["text"],
@@ -19,7 +19,7 @@ const CATALOGO = {
       pricing: { prompt: "0.000001", completion: "0.000002" },
     },
     {
-      id: "lab/gerador-1",
+      id: "lab/generator-1",
       architecture: {
         input_modalities: ["text"],
         output_modalities: ["text", "image"],
@@ -30,62 +30,62 @@ const CATALOGO = {
   ],
 };
 
-describe("catálogo do OpenRouter → capacidades dos modelos", () => {
+describe("OpenRouter catalog fills model capabilities", () => {
   afterEach(() => {
     __setRequestUrl(null);
     hydrateModelInfoCache({});
   });
 
-  it("liga visão e imageGen de quem está fora das tabelas curadas", async () => {
+  it("enables vision and imageGen for models outside the curated tables", async () => {
     __setRequestUrl(async () => ({
       status: 200,
-      json: CATALOGO,
+      json: CATALOG,
       text: "",
       headers: {},
     }));
 
-    expect(getModelCapabilities("nim", "lab/modelo-novo-vl").vision).toBe(false);
+    expect(getModelCapabilities("nim", "lab/new-model-vl").vision).toBe(false);
 
-    const gravados = await enrichModelsFromCatalog("nim", [
-      "lab/modelo-novo-vl",
-      "lab/gerador-1",
-      "lab/nao-existe-no-catalogo",
+    const saved = await enrichModelsFromCatalog("nim", [
+      "lab/new-model-vl",
+      "lab/generator-1",
+      "lab/not-in-catalog",
     ]);
-    expect(gravados).toBe(2);
+    expect(saved).toBe(2);
 
-    expect(getModelCapabilities("nim", "lab/modelo-novo-vl")).toMatchObject({
+    expect(getModelCapabilities("nim", "lab/new-model-vl")).toMatchObject({
       vision: true,
       tools: true,
     });
-    expect(getModelCapabilities("nim", "lab/gerador-1").imageGen).toBe(true);
+    expect(getModelCapabilities("nim", "lab/generator-1").imageGen).toBe(true);
 
-    expect(getModelCapabilities("nim", "lab/nao-existe-no-catalogo").vision).toBe(
+    expect(getModelCapabilities("nim", "lab/not-in-catalog").vision).toBe(
       false
     );
   });
 
-  it("não sobrescreve o que já está no cache — a busca é uma vez por modelo", async () => {
+  it("does not overwrite cached entries, fetching once per model", async () => {
     __setRequestUrl(async () => ({
       status: 200,
-      json: CATALOGO,
+      json: CATALOG,
       text: "",
       headers: {},
     }));
 
     hydrateModelInfoCache({
-      "nim::lab/gerador-1": { modalities: ["text"], outputModalities: ["text"] },
+      "nim::lab/generator-1": { modalities: ["text"], outputModalities: ["text"] },
     });
 
-    expect(await enrichModelsFromCatalog("nim", ["lab/gerador-1"])).toBe(0);
-    expect(getModelCapabilities("nim", "lab/gerador-1").imageGen).toBeUndefined();
+    expect(await enrichModelsFromCatalog("nim", ["lab/generator-1"])).toBe(0);
+    expect(getModelCapabilities("nim", "lab/generator-1").imageGen).toBeUndefined();
   });
 
-  it("catálogo fora do ar não lança e não inventa capacidade", async () => {
+  it("an offline catalog neither throws nor invents capabilities", async () => {
     __setRequestUrl(async () => {
       throw new Error("offline");
     });
-    expect(await enrichModelsFromCatalog("openai", ["modelo-do-futuro-9000"])).toBe(0);
-    expect(getModelCapabilities("openai", "modelo-do-futuro-9000").vision).toBe(
+    expect(await enrichModelsFromCatalog("openai", ["future-model-9000"])).toBe(0);
+    expect(getModelCapabilities("openai", "future-model-9000").vision).toBe(
       false
     );
 
@@ -93,14 +93,13 @@ describe("catálogo do OpenRouter → capacidades dos modelos", () => {
   });
 });
 
-describe("Ollama: o servidor declara as capacidades dele", () => {
+describe("Ollama capabilities come from the server", () => {
   afterEach(() => {
     __setRequestUrl(null);
     hydrateModelInfoCache({});
   });
 
-  it("gemma3 lê imagem — antes o botão de anexar ficava apagado", async () => {
-
+  it("marks gemma3 as vision capable from the server response", async () => {
     expect(getModelCapabilities("ollama", "gemma3:4b").vision).toBe(false);
 
     __setRequestUrl(async () => ({
@@ -118,7 +117,7 @@ describe("Ollama: o servidor declara as capacidades dele", () => {
     });
   });
 
-  it("servidor antigo (sem `capabilities`) não grava nada: a tabela decide", async () => {
+  it("an old server without capabilities saves nothing and the table decides", async () => {
     __setRequestUrl(async () => ({
       status: 200,
       json: { model_info: {} },
@@ -131,7 +130,7 @@ describe("Ollama: o servidor declara as capacidades dele", () => {
     expect(getModelCapabilities("ollama", "llava").vision).toBe(true);
   });
 
-  it("servidor fora de alcance não lança e não grava", async () => {
+  it("an unreachable server neither throws nor saves", async () => {
     __setRequestUrl(async () => {
       throw new Error("offline");
     });

@@ -6,42 +6,42 @@ const { isSkillFilePath, skillsFolderPrefix } = await import(
   "../src/skills/skills"
 );
 
-describe("isSkillFilePath — gate do hot reload das skills", () => {
+describe("isSkillFilePath", () => {
   const FOLDER = "corvus-ai/skills";
 
-  it("aceita .md dentro da pasta (inclusive em subpasta)", () => {
-    expect(isSkillFilePath("corvus-ai/skills/Resumo.md", FOLDER)).toBe(true);
-    expect(isSkillFilePath("corvus-ai/skills/pt/Resumo.md", FOLDER)).toBe(true);
+  it("accepts .md files inside the folder, including subfolders", () => {
+    expect(isSkillFilePath("corvus-ai/skills/Summary.md", FOLDER)).toBe(true);
+    expect(isSkillFilePath("corvus-ai/skills/en/Summary.md", FOLDER)).toBe(true);
   });
 
-  it("recusa nota fora da pasta", () => {
-    expect(isSkillFilePath("Notas/Resumo.md", FOLDER)).toBe(false);
+  it("rejects notes outside the folder", () => {
+    expect(isSkillFilePath("Notes/Summary.md", FOLDER)).toBe(false);
     expect(isSkillFilePath("corvus-ai/chats/2026-08-03.md", FOLDER)).toBe(false);
   });
 
-  it("recusa arquivo que não é .md (anexo, índice, gravação)", () => {
+  it("rejects files that are not .md", () => {
     expect(isSkillFilePath("corvus-ai/skills/logo.png", FOLDER)).toBe(false);
     expect(isSkillFilePath("corvus-ai/skills/index.json", FOLDER)).toBe(false);
   });
 
-  it("recusa pasta vizinha com o mesmo prefixo de nome", () => {
-    expect(isSkillFilePath("corvus-ai/skills-old/Resumo.md", FOLDER)).toBe(false);
+  it("rejects a sibling folder sharing the name prefix", () => {
+    expect(isSkillFilePath("corvus-ai/skills-old/Summary.md", FOLDER)).toBe(false);
   });
 
-  it("extensão maiúscula ainda conta como skill", () => {
-    expect(isSkillFilePath("corvus-ai/skills/Resumo.MD", FOLDER)).toBe(true);
+  it("accepts an uppercase extension", () => {
+    expect(isSkillFilePath("corvus-ai/skills/Summary.MD", FOLDER)).toBe(true);
   });
 
-  it("path vazio nunca dispara reload", () => {
+  it("never matches an empty path", () => {
     expect(isSkillFilePath("", FOLDER)).toBe(false);
   });
 
-  it("pasta customizada (com barra sobrando) é normalizada", () => {
-    expect(isSkillFilePath("Minhas Skills/a.md", "Minhas Skills/")).toBe(true);
-    expect(skillsFolderPrefix("Minhas Skills/")).toBe("Minhas Skills/");
+  it("normalizes a custom folder with a trailing slash", () => {
+    expect(isSkillFilePath("My Skills/a.md", "My Skills/")).toBe(true);
+    expect(skillsFolderPrefix("My Skills/")).toBe("My Skills/");
   });
 
-  it("pasta vazia cai no default do produto", () => {
+  it("falls back to the default folder when empty", () => {
     expect(skillsFolderPrefix("")).toBe("corvus-ai/skills/");
     expect(isSkillFilePath("corvus-ai/skills/a.md", "")).toBe(true);
   });

@@ -17,81 +17,79 @@ const chat = (over: Partial<ChatData> = {}): ChatData => ({
   tokensIn: 10,
   tokensOut: 20,
   messages: [
-    { type: "user", content: "oi" },
-    { type: "ai-response", content: "olá" },
+    { type: "user", content: "hi" },
+    { type: "ai-response", content: "hello" },
   ],
   ...over,
 });
 
-describe("limparMarcas", () => {
-  it("tira o comentário de metadados e mantém o texto", () => {
-    const r = stripMarkers("<!-- corvus: ts=123 reaction=like -->\nbom dia");
-    expect(r).toBe("bom dia");
+describe("stripMarkers", () => {
+  it("removes the metadata comment and keeps the text", () => {
+    const r = stripMarkers("<!-- corvus: ts=123 reaction=like -->\ngood morning");
+    expect(r).toBe("good morning");
   });
 
-  it("tira o paredão de base64 dos passos do agente", () => {
-
-    const r = stripMarkers("fiz isso\n\n<!-- corvus-steps: QUJDREVGRw== -->");
-    expect(r).toBe("fiz isso");
+  it("removes the base64 blob of agent steps", () => {
+    const r = stripMarkers("did this\n\n<!-- corvus-steps: QUJDREVGRw== -->");
+    expect(r).toBe("did this");
     expect(r).not.toMatch(/corvus-steps/);
   });
 
-  it("não come o markdown de verdade", () => {
-    const md = "# Título\n\n- um\n- dois\n\n`code`";
+  it("leaves real markdown untouched", () => {
+    const md = "# Title\n\n- one\n- two\n\n`code`";
     expect(stripMarkers(md)).toBe(md);
   });
 });
 
 describe("exportFileName", () => {
-  const dia = new Date("2026-09-20T10:00:00.000Z");
+  const day = new Date("2026-09-20T10:00:00.000Z");
 
-  it("leva o título e a data", () => {
-    expect(exportFileName("Weekly review", dia)).toBe(
+  it("includes the title and the date", () => {
+    expect(exportFileName("Weekly review", day)).toBe(
       "Weekly review (2026-09-20).md"
     );
   });
 
-  it("troca o que o Obsidian não aceita em nome de arquivo", () => {
-    expect(exportFileName("Resumo: a/b", dia)).toBe("Resumo- a-b (2026-09-20).md");
+  it("replaces characters Obsidian rejects in file names", () => {
+    expect(exportFileName("Summary: a/b", day)).toBe("Summary- a-b (2026-09-20).md");
   });
 
-  it("título vazio ainda dá um arquivo", () => {
-    expect(exportFileName("   ", dia)).toBe("chat (2026-09-20).md");
+  it("an empty title still yields a file name", () => {
+    expect(exportFileName("   ", day)).toBe("chat (2026-09-20).md");
   });
 });
 
 describe("exportChatMarkdown", () => {
-  const quando = new Date("2026-09-27T12:00:00.000Z");
+  const when = new Date("2026-09-27T12:00:00.000Z");
 
-  it("abre com frontmatter que diz de onde veio", () => {
-
-    const md = exportChatMarkdown(chat(), quando);
+  it("starts with frontmatter stating where it came from", () => {
+    const md = exportChatMarkdown(chat(), when);
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain('model: "gpt-5"');
     expect(md).toContain("source: Corvus");
     expect(md).toContain('exported: "2026-09-27T12:00:00.000Z"');
   });
 
-  it("o corpo é a conversa em seções legíveis", () => {
-    const md = exportChatMarkdown(chat(), quando);
+  it("the body is the chat in readable sections", () => {
+    const md = exportChatMarkdown(chat(), when);
     expect(md).toContain("# Weekly review");
-    expect(md).toContain("## You\n\noi");
-    expect(md).toContain("## Assistant\n\nolá");
+    expect(md).toContain("## You\n\nhi");
+    expect(md).toContain("## Assistant\n\nhello");
   });
 
-  it("as marcas internas não vão junto", () => {
+  it("internal markers are left out", () => {
     const md = exportChatMarkdown(
       chat({
         messages: [
           {
             type: "ai-response",
-            content: "<!-- corvus: ts=1 -->\nfeito\n\n<!-- corvus-steps: eyJ4IjoxfQ== -->",
+            content: "<!-- corvus: ts=1 -->\ndone\n\n<!-- corvus-steps: eyJ4IjoxfQ== -->",
           },
         ],
       }),
-      quando
+      when
     );
-    expect(md).toContain("feito");
+    expect(md).toContain("done");
     expect(md).not.toMatch(/corvus-steps|corvus: ts=/);
   });
 });

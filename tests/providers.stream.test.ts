@@ -102,10 +102,10 @@ function mockFetch(chunks: string[], init?: { status?: number; ok?: boolean }) {
   stubFetch(vi.fn(async () => fakeStreamResponse(chunks, init)));
 }
 
-describe("openai streamChat — parser SSE real", () => {
+describe("openai streamChat SSE parser", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("acumula deltas de content em ordem + usage + encerra no [DONE]", async () => {
+  it("accumulates content deltas in order with usage and stops at [DONE]", async () => {
     mockFetch([
       sse({ choices: [{ delta: { content: "Hello" } }] }),
       sse({ choices: [{ delta: { content: ", world" } }] }),
@@ -126,7 +126,7 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.usage).toEqual({ input: 10, output: 5 });
   });
 
-  it("REGRESSÃO buffer: evento JSON partido entre dois reads é remontado", async () => {
+  it("reassembles a JSON event split across two reads", async () => {
     mockFetch([
       'data: {"choices":[{"delta":{"content":"Hel',
       'lo"}}]}\n\ndata: [DONE]\n\n',
@@ -139,7 +139,7 @@ describe("openai streamChat — parser SSE real", () => {
     expect(tokens).toEqual(["Hello"]);
   });
 
-  it("monta tool_calls de deltas indexados (args concatenados + JSON parseado)", async () => {
+  it("builds tool_calls from indexed deltas by concatenating and parsing arguments", async () => {
     mockFetch([
       sse({
         choices: [
@@ -168,11 +168,11 @@ describe("openai streamChat — parser SSE real", () => {
     });
   });
 
-  it("roteia reasoning/reasoning_content via onReasoning sem poluir o content — v0.1.193", async () => {
+  it("routes reasoning and reasoning_content to onReasoning without polluting content", async () => {
     mockFetch([
-      sse({ choices: [{ delta: { reasoning: "pensando" } }] }),
-      sse({ choices: [{ delta: { reasoning_content: " mais" } }] }),
-      sse({ choices: [{ delta: { content: "Resposta" } }] }),
+      sse({ choices: [{ delta: { reasoning: "thinking" } }] }),
+      sse({ choices: [{ delta: { reasoning_content: " more" } }] }),
+      sse({ choices: [{ delta: { content: "Answer" } }] }),
       "data: [DONE]\n\n",
     ]);
     const tokens: string[] = [];
@@ -185,14 +185,14 @@ describe("openai streamChat — parser SSE real", () => {
       undefined,
       (r) => reasoning.push(r)
     );
-    expect(reasoning).toEqual(["pensando", " mais"]);
-    expect(tokens).toEqual(["Resposta"]);
-    expect(res.content).toBe("Resposta");
+    expect(reasoning).toEqual(["thinking", " more"]);
+    expect(tokens).toEqual(["Answer"]);
+    expect(res.content).toBe("Answer");
   });
 
-  it("sem onReasoning: deltas de reasoning não quebram o stream nem entram no content", async () => {
+  it("without onReasoning, reasoning deltas neither break the stream nor enter content", async () => {
     mockFetch([
-      sse({ choices: [{ delta: { reasoning: "oculto" } }] }),
+      sse({ choices: [{ delta: { reasoning: "hidden" } }] }),
       sse({ choices: [{ delta: { content: "ok" } }] }),
       "data: [DONE]\n\n",
     ]);
@@ -200,7 +200,7 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.content).toBe("ok");
   });
 
-  it("reasoning INTERCALADO com content preserva ordem de cada canal", async () => {
+  it("keeps the order of each channel when reasoning and content interleave", async () => {
     mockFetch([
       sse({ choices: [{ delta: { reasoning: "r1" } }] }),
       sse({ choices: [{ delta: { content: "c1" } }] }),
@@ -219,7 +219,7 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.content).toBe("c1c2");
   });
 
-  it("delta com reasoning E reasoning_content → reasoning vence (uma chamada)", async () => {
+  it("prefers reasoning over reasoning_content in the same delta", async () => {
     mockFetch([
       sse({ choices: [{ delta: { reasoning: "A", reasoning_content: "B", content: "x" } }] }),
       "data: [DONE]\n\n",
@@ -232,7 +232,7 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.content).toBe("x");
   });
 
-  it("reasoning string vazia é ignorada", async () => {
+  it("ignores empty reasoning strings", async () => {
     mockFetch([
       sse({ choices: [{ delta: { reasoning: "" } }] }),
       sse({ choices: [{ delta: { content: "ok" } }] }),
@@ -245,9 +245,9 @@ describe("openai streamChat — parser SSE real", () => {
     expect(reasoning).toEqual([]);
   });
 
-  it("ignora chunk com JSON inválido sem abortar o stream", async () => {
+  it("skips a chunk with invalid JSON without aborting the stream", async () => {
     mockFetch([
-      "data: isso-nao-e-json\n\n",
+      "data: not-json\n\n",
       sse({ choices: [{ delta: { content: "ok" } }] }),
       "data: [DONE]\n\n",
     ]);
@@ -255,27 +255,27 @@ describe("openai streamChat — parser SSE real", () => {
     expect(res.content).toBe("ok");
   });
 
-  it("HTTP 401 → ProviderError code invalid-key", async () => {
+  it("maps HTTP 401 to a ProviderError with invalid-key", async () => {
     mockFetch([], { status: 401, ok: false });
     await expect(
       openaiProvider.streamChat(userReq("gpt-4o"), "key", () => {})
     ).rejects.toMatchObject({ code: "invalid-key" });
   });
 
-  it("sem API key → ProviderError code no-key (nem faz fetch)", async () => {
+  it("rejects with no-key before fetching when the API key is blank", async () => {
     await expect(
       openaiProvider.streamChat(userReq("gpt-4o"), "   ", () => {})
     ).rejects.toMatchObject({ code: "no-key" });
   });
 });
 
-describe("gemini streamChat — formato OpenAI-compat", () => {
+describe("gemini streamChat in OpenAI-compatible format", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("acumula content + usage + [DONE]", async () => {
+  it("accumulates content and usage until [DONE]", async () => {
     mockFetch([
-      sse({ choices: [{ delta: { content: "Oi" } }] }),
-      sse({ choices: [{ delta: { content: " mundo" } }], usage: { prompt_tokens: 3, completion_tokens: 2 } }),
+      sse({ choices: [{ delta: { content: "Hi" } }] }),
+      sse({ choices: [{ delta: { content: " world" } }], usage: { prompt_tokens: 3, completion_tokens: 2 } }),
       "data: [DONE]\n\n",
     ]);
     const tokens: string[] = [];
@@ -286,16 +286,16 @@ describe("gemini streamChat — formato OpenAI-compat", () => {
       (t) => tokens.push(t),
       (u) => (usage = u)
     );
-    expect(res.content).toBe("Oi mundo");
-    expect(tokens).toEqual(["Oi", " mundo"]);
+    expect(res.content).toBe("Hi world");
+    expect(tokens).toEqual(["Hi", " world"]);
     expect(usage).toEqual({ input: 3, output: 2 });
   });
 });
 
-describe("anthropic streamChat — eventos tipados", () => {
+describe("anthropic streamChat typed events", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("text_delta acumula + usage (message_start/delta) + message_stop finaliza", async () => {
+  it("accumulates text_delta with usage from message_start and message_delta until message_stop", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 12 } } }),
       sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hi" } }),
@@ -316,11 +316,11 @@ describe("anthropic streamChat — eventos tipados", () => {
     expect(usage).toEqual({ input: 12, output: 7 });
   });
 
-  it("thinking_delta roteia pro onReasoning sem entrar no content — v0.1.195", async () => {
+  it("routes thinking_delta to onReasoning without entering content", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 4 } } }),
       sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "hmm" } }),
-      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Oi" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hi" } }),
       sse({ type: "message_delta", usage: { output_tokens: 2 } }),
       sse({ type: "message_stop" }),
     ]);
@@ -335,11 +335,11 @@ describe("anthropic streamChat — eventos tipados", () => {
       (r) => reasoning.push(r)
     );
     expect(reasoning).toEqual(["hmm"]);
-    expect(tokens).toEqual(["Oi"]);
-    expect(res.content).toBe("Oi");
+    expect(tokens).toEqual(["Hi"]);
+    expect(res.content).toBe("Hi");
   });
 
-  it("tool_use: content_block_start + input_json_delta concatenado → toolCall parseado", async () => {
+  it("parses a tool_use from content_block_start and concatenated input_json_delta", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 5 } } }),
       sse({
@@ -365,23 +365,23 @@ describe("anthropic streamChat — eventos tipados", () => {
     });
   });
 
-  it("múltiplos thinking_delta antes do texto → reasoning concatenado, content limpo — v0.1.195", async () => {
+  it("concatenates several thinking_delta events before text and keeps content clean", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 4 } } }),
-      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "passo1 " } }),
-      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "passo2" } }),
-      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Resposta" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "step1 " } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "step2" } }),
+      sse({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Answer" } }),
       sse({ type: "message_stop" }),
     ]);
     const reasoning: string[] = [];
     const res = await anthropicProvider.streamChat(
       userReq("claude-opus-4-8"), "key", () => {}, undefined, undefined, (r) => reasoning.push(r)
     );
-    expect(reasoning.join("")).toBe("passo1 passo2");
-    expect(res.content).toBe("Resposta");
+    expect(reasoning.join("")).toBe("step1 step2");
+    expect(res.content).toBe("Answer");
   });
 
-  it("thinking_delta sem onReasoning não quebra (content intacto)", async () => {
+  it("handles thinking_delta without onReasoning and keeps content intact", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
       sse({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "x" } }),
@@ -392,7 +392,7 @@ describe("anthropic streamChat — eventos tipados", () => {
     expect(res.content).toBe("ok");
   });
 
-  it("evento type:error no stream → ProviderError", async () => {
+  it("throws a ProviderError on a type:error stream event", async () => {
     mockFetch([
       sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
       sse({ type: "error", error: { message: "overloaded" } }),
@@ -403,7 +403,7 @@ describe("anthropic streamChat — eventos tipados", () => {
   });
 });
 
-describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
+describe("openrouter streamChat in OpenAI-compatible format over fetch", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -509,7 +509,7 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
     expect(res.invalidToolCalls).toBe(true);
   });
 
-  it("acumula content + usage + [DONE]", async () => {
+  it("accumulates content and usage until [DONE]", async () => {
     mockFetch([
       sse({ choices: [{ delta: { content: "Hello" } }] }),
       sse({ choices: [{ delta: { content: " OR" } }], usage: { prompt_tokens: 4, completion_tokens: 2 } }),
@@ -528,14 +528,7 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
     expect(usage).toEqual({ input: 4, output: 2 });
   });
 
-  it("HTTP 401 → ProviderError invalid-key", async () => {
-    mockFetch([], { status: 401, ok: false });
-    await expect(
-      openrouterProvider.streamChat(userReq("x"), "key", () => {})
-    ).rejects.toMatchObject({ code: "invalid-key" });
-  });
-
-  it("reasoning do OpenRouter roteia pro onReasoning — v0.1.193", async () => {
+  it("routes OpenRouter reasoning to onReasoning", async () => {
     mockFetch([
       sse({ choices: [{ delta: { reasoning: "deep" } }] }),
       sse({ choices: [{ delta: { content: "ans" } }] }),
@@ -551,7 +544,7 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
     expect(res.reasoning).toBe("deep");
   });
 
-  it("evento error no stream SSE do OpenRouter → lança ProviderError", async () => {
+  it("throws a ProviderError on an OpenRouter SSE error event", async () => {
     mockFetch([
       sse({ error: { message: "Provider stream terminated unexpectedly" } }),
     ]);
@@ -563,11 +556,11 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
     });
   });
 
-  it("stream fecha sem conteúdo/tools/reasoning → fallback pro chat()", async () => {
+  it("falls back to chat() when the stream closes with no content, tools or reasoning", async () => {
     mockFetch([
       "data: [DONE]\n\n",
     ]);
-    const spyChat = vi.spyOn(openrouterProvider, "chat").mockResolvedValue({ content: "resposta via chat fallback" });
+    const spyChat = vi.spyOn(openrouterProvider, "chat").mockResolvedValue({ content: "answer via chat fallback" });
     const tokens: string[] = [];
     const res = await openrouterProvider.streamChat(
       userReq("openrouter/auto"),
@@ -575,21 +568,21 @@ describe("openrouter streamChat — formato OpenAI-compat via fetch", () => {
       (t) => tokens.push(t)
     );
     expect(spyChat).toHaveBeenCalled();
-    expect(res.content).toBe("resposta via chat fallback");
-    expect(tokens).toEqual(["resposta via chat fallback"]);
+    expect(res.content).toBe("answer via chat fallback");
+    expect(tokens).toEqual(["answer via chat fallback"]);
     spyChat.mockRestore();
   });
 });
 
-describe("ollama streamChat — NDJSON (uma linha JSON por chunk)", () => {
+describe("ollama streamChat NDJSON with one JSON line per chunk", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   const ndjson = (obj: unknown) => JSON.stringify(obj) + "\n";
 
-  it("acumula content + usage no done:true", async () => {
+  it("accumulates content and reads usage on done:true", async () => {
     mockFetch([
-      ndjson({ message: { content: "Oi" }, done: false }),
-      ndjson({ message: { content: " mundo" }, done: false }),
+      ndjson({ message: { content: "Hi" }, done: false }),
+      ndjson({ message: { content: " world" }, done: false }),
       ndjson({ message: { content: "" }, done: true, prompt_eval_count: 5, eval_count: 2 }),
     ]);
     const tokens: string[] = [];
@@ -600,25 +593,25 @@ describe("ollama streamChat — NDJSON (uma linha JSON por chunk)", () => {
       (t) => tokens.push(t),
       (u) => (usage = u)
     );
-    expect(res.content).toBe("Oi mundo");
-    expect(tokens).toEqual(["Oi", " mundo"]);
+    expect(res.content).toBe("Hi world");
+    expect(tokens).toEqual(["Hi", " world"]);
     expect(usage).toEqual({ input: 5, output: 2 });
   });
 
-  it("REGRESSÃO buffer: linha NDJSON partida entre dois reads é remontada", async () => {
+  it("reassembles an NDJSON line split across two reads", async () => {
     mockFetch([
       '{"message":{"content":"Re',
-      'cursão"},"done":false}\n{"message":{"content":""},"done":true,"prompt_eval_count":1,"eval_count":1}\n',
+      'cursion"},"done":false}\n{"message":{"content":""},"done":true,"prompt_eval_count":1,"eval_count":1}\n',
     ]);
     const res = await ollamaProvider.streamChat(
       userReq("llama3.2"),
       "http://localhost:11434",
       () => {}
     );
-    expect(res.content).toBe("Recursão");
+    expect(res.content).toBe("Recursion");
   });
 
-  it("tool_calls inteiros (args como objeto) viram toolCalls", async () => {
+  it("turns whole tool_calls with object arguments into toolCalls", async () => {
     mockFetch([
       ndjson({
         message: { content: "", tool_calls: [{ function: { name: "search", arguments: { q: "cats" } } }] },
@@ -636,14 +629,14 @@ describe("ollama streamChat — NDJSON (uma linha JSON por chunk)", () => {
   });
 });
 
-describe("nim streamChat — pseudo-stream via requestUrl", () => {
+describe("nim streamChat pseudo-stream over requestUrl", () => {
   afterEach(() => __setRequestUrl(null));
 
-  it("emite o content inteiro num token só + usage", async () => {
+  it("emits the whole content as a single token with usage", async () => {
     __setRequestUrl(async () => ({
       status: 200,
       json: {
-        choices: [{ message: { content: "resposta completa" } }],
+        choices: [{ message: { content: "full answer" } }],
         usage: { prompt_tokens: 8, completion_tokens: 3 },
       },
     }));
@@ -655,12 +648,12 @@ describe("nim streamChat — pseudo-stream via requestUrl", () => {
       (t) => tokens.push(t),
       (u) => (usage = u)
     );
-    expect(tokens).toEqual(["resposta completa"]);
-    expect(res.content).toBe("resposta completa");
+    expect(tokens).toEqual(["full answer"]);
+    expect(res.content).toBe("full answer");
     expect(usage).toEqual({ input: 8, output: 3 });
   });
 
-  it("signal já abortado → AbortError sem nem chamar requestUrl", async () => {
+  it("rejects with AbortError without calling requestUrl when the signal is already aborted", async () => {
     const spy = vi.fn(async () => ({ status: 200, json: {} }));
     __setRequestUrl(spy);
     const ctrl = new AbortController();
@@ -677,7 +670,7 @@ describe("nim streamChat — pseudo-stream via requestUrl", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("HTTP 401 → ProviderError invalid-key", async () => {
+  it("maps HTTP 401 to a ProviderError with invalid-key", async () => {
     __setRequestUrl(async () => ({ status: 401, json: {} }));
     await expect(
       nimProvider.streamChat(userReq("meta/llama-3.1-8b-instruct"), "key", () => {})
@@ -685,7 +678,7 @@ describe("nim streamChat — pseudo-stream via requestUrl", () => {
   });
 });
 
-describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobile)", () => {
+describe("streamChat falls back to chat() when the SSE fetch fails, as with mobile CORS", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     __setRequestUrl(null);
@@ -699,12 +692,12 @@ describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobil
     );
   }
 
-  it("openai: fetch falha → pseudo-stream via requestUrl (content + usage)", async () => {
+  it("openai pseudo-streams content and usage over requestUrl when fetch fails", async () => {
     mockFetchThrows();
     __setRequestUrl(async () => ({
       status: 200,
       json: {
-        choices: [{ message: { content: "resposta via fallback" } }],
+        choices: [{ message: { content: "answer via fallback" } }],
         usage: { prompt_tokens: 12, completion_tokens: 4 },
       },
     }));
@@ -716,12 +709,12 @@ describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobil
       (t) => tokens.push(t),
       (u) => (usage = u)
     );
-    expect(tokens).toEqual(["resposta via fallback"]);
-    expect(res.content).toBe("resposta via fallback");
+    expect(tokens).toEqual(["answer via fallback"]);
+    expect(res.content).toBe("answer via fallback");
     expect(usage).toEqual({ input: 12, output: 4 });
   });
 
-  it("anthropic: fetch falha → pseudo-stream via requestUrl (content blocks)", async () => {
+  it("anthropic pseudo-streams content blocks over requestUrl when fetch fails", async () => {
     mockFetchThrows();
     __setRequestUrl(async () => ({
       status: 200,
@@ -741,7 +734,7 @@ describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobil
     expect(res.usage).toEqual({ input: 9, output: 5 });
   });
 
-  it("openrouter: fetch falha → pseudo-stream via requestUrl", async () => {
+  it("openrouter pseudo-streams over requestUrl when fetch fails", async () => {
     mockFetchThrows();
     __setRequestUrl(async () => ({
       status: 200,
@@ -761,7 +754,7 @@ describe("streamChat — fallback p/ chat() quando o fetch SSE falha (CORS mobil
   });
 });
 
-describe("param policy aplicada no BODY real (regressão temperature)", () => {
+describe("param policy applied to the real request body", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   function captureBody(chunks: string[]) {
@@ -780,19 +773,19 @@ describe("param policy aplicada no BODY real (regressão temperature)", () => {
     temperature,
   });
 
-  it("gpt-4o → temperature VAI no body", async () => {
+  it("sends temperature for gpt-4o", async () => {
     const cap = captureBody(["data: [DONE]\n\n"]);
     await openaiProvider.streamChat(reqT("gpt-4o", 0.3), "key", () => {});
     expect(cap.body?.temperature).toBe(0.3);
   });
 
-  it("o3-mini (reasoning) → temperature OMITIDA do body (evita 400)", async () => {
+  it("omits temperature for reasoning model o3-mini to avoid a 400", async () => {
     const cap = captureBody(["data: [DONE]\n\n"]);
     await openaiProvider.streamChat(reqT("o3-mini", 0.3), "key", () => {});
     expect(cap.body?.temperature).toBeUndefined();
   });
 
-  it("Claude que aceita temperatura: > 1 é clampado pra 1 no body", async () => {
+  it("clamps temperature above 1 to 1 for Claude models that accept it", async () => {
     const cap = captureBody([
       sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
       sse({ type: "message_stop" }),
@@ -801,7 +794,7 @@ describe("param policy aplicada no BODY real (regressão temperature)", () => {
     expect(cap.body?.temperature).toBe(1);
   });
 
-  it("Claude atual (Opus 4.7+, Sonnet 5+, Fable): a temperatura nem vai — seria 400", async () => {
+  it("omits temperature for current Claude models that would reject it with a 400", async () => {
     const cap = captureBody([
       sse({ type: "message_start", message: { usage: { input_tokens: 1 } } }),
       sse({ type: "message_stop" }),

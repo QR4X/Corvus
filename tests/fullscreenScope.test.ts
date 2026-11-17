@@ -12,82 +12,82 @@ const rect = (left: number, width: number, height = 800) => ({
   right: left + width,
 });
 
-describe("isRightDrawer — fullscreen NÃO pode valer no drawer esquerdo", () => {
-  it("mod-right liga", () => {
+describe("isRightDrawer", () => {
+  it("accepts the right drawer", () => {
     expect(isRightDrawer(drawerEl("workspace-drawer", "mod-right"))).toBe(true);
   });
 
-  it("mod-left NUNCA liga", () => {
+  it("never accepts the left drawer", () => {
     expect(isRightDrawer(drawerEl("workspace-drawer", "mod-left"))).toBe(false);
   });
 
-  it("sem mark de lado, não trava o modo (a Corvus só monta no direito)", () => {
+  it("accepts a drawer without a side class, since Corvus only mounts on the right", () => {
     expect(isRightDrawer(drawerEl("workspace-drawer"))).toBe(true);
   });
 
-  it("sem drawer não há fullscreen", () => {
+  it("rejects a missing drawer", () => {
     expect(isRightDrawer(null)).toBe(false);
   });
 });
 
-describe("isDrawerOnScreen — quando a navbar global pode sumir", () => {
+describe("isDrawerOnScreen", () => {
   const VW = 400;
 
-  it("gaveta ocupando a tela inteira conta como aberta", () => {
+  it("counts a drawer covering the whole screen as open", () => {
     expect(isDrawerOnScreen(rect(0, 400), VW)).toBe(true);
   });
 
-  it("gaveta transladada pra fora (fechada no swipe) não conta", () => {
+  it("does not count a drawer translated off screen", () => {
     expect(isDrawerOnScreen(rect(400, 400), VW)).toBe(false);
     expect(isDrawerOnScreen(rect(-400, 400), VW)).toBe(false);
   });
 
-  it("no meio da animação de sair (só 40% visível) já não conta", () => {
+  it("stops counting a closing drawer once only 40% is visible", () => {
     expect(isDrawerOnScreen(rect(240, 400), VW)).toBe(false);
   });
 
-  it("60% visível ainda conta — evita piscar a navbar durante a abertura", () => {
+  it("still counts a drawer 60% visible so the navbar does not flicker while opening", () => {
     expect(isDrawerOnScreen(rect(160, 400), VW)).toBe(true);
   });
 
-  it("caixa zerada (display:none / sem layout) não conta", () => {
+  it("does not count an empty box", () => {
     expect(isDrawerOnScreen(rect(0, 0), VW)).toBe(false);
     expect(isDrawerOnScreen(rect(0, 400, 0), VW)).toBe(false);
   });
 
-  it("gaveta parcial do modo NÃO-fullscreen (85% da tela) conta como aberta", () => {
+  it("counts the partial non-fullscreen drawer at 85% width as open", () => {
     expect(isDrawerOnScreen(rect(60, 340), VW)).toBe(true);
   });
 });
 
-describe("fullscreenOn — a conversa liga o modo SEM tocar na setting", () => {
-  it("setting desligada + conversa aberta → LIGA", () => {
+describe("fullscreenOn", () => {
+  it("turns on in an open chat even with the setting off", () => {
     expect(fullscreenOn(false, true)).toBe(true);
   });
 
-  it("setting ligada → vale em qualquer tela", () => {
+  it("applies on every screen when the setting is on", () => {
     expect(fullscreenOn(true, false)).toBe(true);
     expect(fullscreenOn(true, true)).toBe(true);
   });
 
-  it("desligada e fora da conversa → DESLIGA (nada foi gravado)", () => {
+  it("stays off outside a chat with the setting off", () => {
     expect(fullscreenOn(false, false)).toBe(false);
   });
 });
 
-describe("isChatScreen — a mark da conversa vem do DOM", () => {
+describe("isChatScreen", () => {
   const rootEl = (...classes: string[]) =>
     ({ classList: { contains: (c: string) => classes.includes(c) } }) as Element;
 
-  it("com a mark `corvus-chat-open`, é conversa", () => {
+  it("is a chat when the root has corvus-chat-open", () => {
     expect(isChatScreen(rootEl("corvus-root", "corvus-chat-open"))).toBe(true);
   });
 
-  it("sem a mark (painel, histórico, uso) não é conversa", () => {
+  it("is not a chat without that class", () => {
     expect(isChatScreen(rootEl("corvus-root"))).toBe(false);
   });
 
-  it("sem root não é conversa", () => {
+  it("is not a chat without a root", () => {
     expect(isChatScreen(null)).toBe(false);
   });
 });

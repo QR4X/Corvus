@@ -17,57 +17,57 @@ const { supportsPdf, getModelCapabilities } = await import(
 const B64 = "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+Pgo=";
 const PDF_URL = `data:application/pdf;base64,${B64}`;
 
-const userWithPdf = (name = "contrato.pdf", dataUrl: string | null = PDF_URL) => [
+const userWithPdf = (name = "contract.pdf", dataUrl: string | null = PDF_URL) => [
   {
     role: "user" as const,
-    content: "resume esse pdf",
+    content: "summarize this pdf",
     attachments: [{ type: "pdf" as const, name, dataUrl: dataUrl ?? undefined }],
   },
 ];
 
 describe("parseDataUrl / pdfFileData", () => {
-  it("parseia mime + base64 de uma data URL", () => {
+  it("parses the mime type and base64 of a data URL", () => {
     expect(parseDataUrl(PDF_URL)).toEqual({
       mediaType: "application/pdf",
       base64: B64,
     });
   });
 
-  it("recusa URL externa, string vazia e data URL sem base64", () => {
+  it("rejects external URLs, empty strings and data URLs without base64", () => {
     expect(parseDataUrl("https://x.com/a.pdf")).toBeNull();
     expect(parseDataUrl("")).toBeNull();
     expect(parseDataUrl(undefined)).toBeNull();
-    expect(parseDataUrl("data:application/pdf,texto")).toBeNull();
+    expect(parseDataUrl("data:application/pdf,text")).toBeNull();
   });
 
-  it("pdfFileData normaliza o prefixo e aceita base64 cru", () => {
+  it("pdfFileData normalizes the prefix and accepts raw base64", () => {
     expect(pdfFileData(PDF_URL)).toBe(PDF_URL);
     expect(pdfFileData(B64)).toBe(PDF_URL);
   });
 
-  it("pdfFileData recusa data URL que não é PDF (imagem não vira arquivo)", () => {
+  it("pdfFileData rejects data URLs that are not PDFs", () => {
     expect(pdfFileData("data:image/png;base64,AAAA")).toBeNull();
     expect(pdfFileData("data:text/plain;base64,AAAA")).toBeNull();
   });
 
-  it("octet-stream (WebView Android no .pdf) é re-rotulado, não descartado", () => {
+  it("pdfFileData relabels octet-stream from the Android WebView instead of dropping it", () => {
     expect(pdfFileData(`data:application/octet-stream;base64,${B64}`)).toBe(PDF_URL);
   });
 
-  it("hasPdfAttachment ignora anexo com dataUrl inutilizável", () => {
+  it("hasPdfAttachment ignores attachments with an unusable dataUrl", () => {
     expect(hasPdfAttachment(userWithPdf())).toBe(true);
     expect(hasPdfAttachment(userWithPdf("a.pdf", null))).toBe(false);
     expect(
-      hasPdfAttachment([{ role: "user", content: "oi" }])
+      hasPdfAttachment([{ role: "user", content: "hi" }])
     ).toBe(false);
   });
 });
 
-describe("supportsPdf — quem realmente recebe o anexo", () => {
+describe("supportsPdf", () => {
   const vision = { vision: true };
   const noVision = { vision: false };
 
-  it("Claude 3.5+ aceita; Claude 3 original / 2 / instant não", () => {
+  it("accepts Claude 3.5 and later but not the original Claude 3, 2 or instant", () => {
     expect(supportsPdf("anthropic", "claude-opus-5", noVision)).toBe(true);
     expect(supportsPdf("anthropic", "claude-3-5-sonnet-20241022", noVision)).toBe(true);
     expect(supportsPdf("anthropic", "claude-3-7-sonnet", noVision)).toBe(true);
@@ -76,71 +76,71 @@ describe("supportsPdf — quem realmente recebe o anexo", () => {
     expect(supportsPdf("anthropic", "claude-2.1", noVision)).toBe(false);
   });
 
-  it("OpenAI segue a visão (gpt-4o em diante)", () => {
+  it("follows vision support for OpenAI", () => {
     expect(supportsPdf("openai", "gpt-4o", vision)).toBe(true);
     expect(supportsPdf("openai", "o1-mini", noVision)).toBe(false);
   });
 
-  it("OpenRouter aceita qualquer modelo de chat (file-parser cobre o resto)", () => {
+  it("accepts any OpenRouter chat model because file-parser covers the rest", () => {
     expect(supportsPdf("openrouter", "meta-llama/llama-3.1-8b", noVision)).toBe(true);
   });
 
-  it("providers cujo transporte não carrega arquivo ficam de fora", () => {
+  it("rejects providers whose transport cannot carry files", () => {
     expect(supportsPdf("gemini", "gemini-2.5-pro", vision)).toBe(false);
     expect(supportsPdf("nim", "meta/llama-3.1-70b", vision)).toBe(false);
     expect(supportsPdf("ollama", "llama3.2", vision)).toBe(false);
   });
 
-  it("modelo de geração nunca recebe PDF de entrada", () => {
+  it("never sends a PDF to an image generation model", () => {
     expect(supportsPdf("openai", "gpt-image-1", { vision: true, imageGen: true })).toBe(false);
   });
 
-  it("getModelCapabilities expõe o flag derivado", () => {
+  it("is exposed through getModelCapabilities", () => {
     expect(getModelCapabilities("anthropic", "claude-opus-5").pdf).toBe(true);
     expect(getModelCapabilities("gemini", "gemini-2.5-pro").pdf).toBe(false);
   });
 });
 
-describe("Anthropic — bloco document", () => {
-  it("PDF vira document base64 ANTES do texto", () => {
+describe("Anthropic document block", () => {
+  it("sends the PDF as a base64 document before the text", () => {
     const { messages } = toAnthropicPayload(userWithPdf());
     const blocks = messages[0].content as Array<Record<string, any>>;
     expect(Array.isArray(blocks)).toBe(true);
     expect(blocks[0]).toEqual({
       type: "document",
       source: { type: "base64", media_type: "application/pdf", data: B64 },
-      title: "contrato.pdf",
+      title: "contract.pdf",
     });
-    expect(blocks[1]).toEqual({ type: "text", text: "resume esse pdf" });
+    expect(blocks[1]).toEqual({ type: "text", text: "summarize this pdf" });
   });
 
-  it("anexo ilegível é pulado e a mensagem continua indo como texto", () => {
+  it("skips an unreadable attachment and still sends the text", () => {
     const { messages } = toAnthropicPayload(userWithPdf("a.pdf", "https://x/a.pdf"));
-    expect(messages[0].content).toBe("resume esse pdf");
+    expect(messages[0].content).toBe("summarize this pdf");
   });
 });
 
-describe("OpenAI-compat — content part file", () => {
-  it("PDF vira part file com data URL, depois do texto", () => {
+describe("OpenAI-compatible file content part", () => {
+  it("sends the PDF as a file part with a data URL after the text", () => {
     const [msg] = toOpenAIMessages(userWithPdf()) as Array<Record<string, any>>;
     expect(msg.content).toEqual([
-      { type: "text", text: "resume esse pdf" },
-      { type: "file", file: { filename: "contrato.pdf", file_data: PDF_URL } },
+      { type: "text", text: "summarize this pdf" },
+      { type: "file", file: { filename: "contract.pdf", file_data: PDF_URL } },
     ]);
   });
 
-  it("sem anexo utilizável a mensagem volta a ser string simples", () => {
+  it("falls back to a plain string without a usable attachment", () => {
     const [msg] = toOpenAIMessages(
       userWithPdf("a.pdf", null)
     ) as Array<Record<string, any>>;
-    expect(msg.content).toBe("resume esse pdf");
+    expect(msg.content).toBe("summarize this pdf");
   });
 
-  it("imagem + PDF na mesma mensagem: os dois vão", () => {
+  it("sends both an image and a PDF in the same message", () => {
     const [msg] = toOpenAIMessages([
       {
         role: "user",
-        content: "olha",
+        content: "look",
         attachments: [
           { type: "image", dataUrl: "data:image/png;base64,AAAA" },
           { type: "pdf", name: "a.pdf", dataUrl: PDF_URL },
@@ -152,25 +152,25 @@ describe("OpenAI-compat — content part file", () => {
   });
 });
 
-describe("OpenRouter — plugin file-parser", () => {
+describe("OpenRouter file-parser plugin", () => {
   const req = (model: string) => ({ model, messages: userWithPdf() });
 
-  it("não mexe no body quando não há PDF", () => {
+  it("leaves the body alone without a PDF", () => {
     const body = applyPdfPlugin({}, {
       model: "openai/gpt-4o",
-      messages: [{ role: "user", content: "oi" }],
+      messages: [{ role: "user", content: "hi" }],
     } as any);
     expect(body.plugins).toBeUndefined();
   });
 
-  it("modelo com visão usa engine native", () => {
+  it("uses the native engine for vision models", () => {
     const body = applyPdfPlugin({}, req("openai/gpt-4o") as any);
     expect(body.plugins).toEqual([
       { id: "file-parser", pdf: { engine: "native" } },
     ]);
   });
 
-  it("modelo sem visão usa o engine GRÁTIS — nunca o default pago", () => {
+  it("uses the free engine for non-vision models, never the paid default", () => {
     const body = applyPdfPlugin({}, req("meta-llama/llama-3.1-8b-instruct") as any);
     expect(body.plugins).toEqual([
       { id: "file-parser", pdf: { engine: "cloudflare-ai" } },

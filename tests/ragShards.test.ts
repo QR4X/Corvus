@@ -44,7 +44,7 @@ function entry(path: string, raw: number[]): VectorEntry {
     hash: "h-" + path,
     chunkIndex: 0,
     chunkCount: 1,
-    text: "texto de " + path,
+    text: "text of " + path,
     kind: "text",
     embedding: mk(raw),
   };
@@ -67,8 +67,8 @@ function buildIndex(): VectorIndex {
 
 const PATH = "corvus-ai/index";
 
-describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
-  it("saveIndex sharded escreve manifesto + N shards (shardSize=2 → 2 shards)", async () => {
+describe("sharded index save, load and streamed search", () => {
+  it("writes a manifest and one file per shard", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
@@ -77,7 +77,7 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
     expect(manifest.sharded).toBe(true);
     expect(manifest.totalEntries).toBe(3);
-    expect(manifest.shardCount).toBe(2); 
+    expect(manifest.shardCount).toBe(2);
     expect(manifest.shards).toHaveLength(2);
 
     for (const s of manifest.shards) {
@@ -87,7 +87,7 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     expect(adapter.files.has(`${PATH}/embeddings.json`)).toBe(false);
   });
 
-  it("loadIndex detecta o manifesto → índice streamed (metadados, sem entries na RAM)", async () => {
+  it("loads a manifest as a streamed index without entries in memory", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
@@ -95,13 +95,13 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
     expect(loaded).not.toBeNull();
     expect(loaded!.streamed).toBe(true);
-    expect(loaded!.size).toBe(3); 
-    expect(loaded!.entries).toHaveLength(0); 
+    expect(loaded!.size).toBe(3);
+    expect(loaded!.entries).toHaveLength(0);
     expect(loaded!.model).toBe("text-embedding-3-small");
     expect(loaded!.dim).toBe(4);
   });
 
-  it("searchStreamed = mesma ordem da busca in-memory (merge cross-shard correto)", async () => {
+  it("returns the same order as the in-memory search across shards", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     const inMem = buildIndex();
@@ -120,7 +120,7 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     expect(streamed[1].score).toBeCloseTo(0.8, 3);
   });
 
-  it("deleteIndex remove manifesto + todos os shards", async () => {
+  it("deletes the manifest and every shard", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
@@ -134,11 +134,11 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     expect(leftover).toEqual([]);
   });
 
-  it("reindexar (save 2×) NÃO deixa shards órfãos (cleanup pós-commit)", async () => {
+  it("leaves no orphan shards after saving twice", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
-    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); 
+    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
     const shardFiles = [...adapter.files.keys()].filter((k) =>
       k.includes(".shard")
@@ -150,17 +150,17 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     }
   });
 
-  it("shard ausente no load → null (não serve índice incompleto)", async () => {
+  it("returns null instead of an incomplete index when a shard is missing", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
     await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
     const manifest = JSON.parse(adapter.files.get(manifestFilePath(PATH))!);
-    adapter.files.delete(`${PATH}/${manifest.shards[0]}`); 
+    adapter.files.delete(`${PATH}/${manifest.shards[0]}`);
     const loaded = await loadIndex(adapter as unknown as DataAdapter, PATH);
-    expect(loaded).toBeNull(); 
+    expect(loaded).toBeNull();
   });
 
-  it("shard por ORÇAMENTO DE BYTES: trechos grandes forçam mais shards que a contagem", async () => {
+  it("splits shards by byte budget so large chunks force more shards than the count", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
 
@@ -187,11 +187,11 @@ describe("índice sharded — save/load/search streamed (v0.1.200)", () => {
     expect(manifest.shardCount).toBeGreaterThanOrEqual(3);
   });
 
-  it("trocar sharded→single limpa os shards (sem estado misto)", async () => {
+  it("switching from sharded to single file removes the shards", async () => {
     const adapter = memAdapter();
     const app = { vault: { adapter } } as unknown as App;
-    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 }); 
-    await saveIndex(app, PATH, buildIndex()); 
+    await saveIndex(app, PATH, buildIndex(), { shardSize: 2 });
+    await saveIndex(app, PATH, buildIndex());
 
     expect(adapter.files.has(manifestFilePath(PATH))).toBe(false);
     expect(adapter.files.has(`${PATH}/embeddings.json`)).toBe(true);

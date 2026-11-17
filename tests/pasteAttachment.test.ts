@@ -7,41 +7,41 @@ import {
 } from "../src/ui/pasteAttachment";
 
 describe("pasteIsBig", () => {
-  it("parágrafo normal continua texto", () => {
+  it("keeps a normal paragraph as text", () => {
     expect(pasteIsBig("a".repeat(300))).toBe(false);
   });
 
-  it("exatamente no limite ainda é texto", () => {
+  it("keeps text exactly at the limit as text", () => {
     expect(pasteIsBig("a".repeat(PASTE_LIMIT))).toBe(false);
   });
 
-  it("um caractere acima vira anexo", () => {
+  it("turns text one character over the limit into an attachment", () => {
     expect(pasteIsBig("a".repeat(PASTE_LIMIT + 1))).toBe(true);
   });
 
-  it("colar vazio nunca vira anexo", () => {
+  it("never turns an empty paste into an attachment", () => {
     expect(pasteIsBig("")).toBe(false);
   });
 });
 
 describe("humanSize", () => {
-  it("abaixo de mil mostra o número", () => {
+  it("shows the plain number below a thousand", () => {
     expect(humanSize(840)).toBe("840");
   });
-  it("milhares com uma casa", () => {
+  it("shows thousands with one decimal", () => {
     expect(humanSize(5200)).toBe("5.2k");
   });
-  it("dezenas de milhares sem casa decimal", () => {
+  it("shows tens of thousands without decimals", () => {
     expect(humanSize(42000)).toBe("42k");
   });
 });
 
 describe("pastedNote", () => {
-  it("guarda o texto inteiro e rotula com o tamanho", () => {
-    const texto = "x".repeat(5200);
-    const att = pastedNote(texto);
+  it("keeps the full text and labels it with its size", () => {
+    const text = "x".repeat(5200);
+    const att = pastedNote(text);
     expect(att.type).toBe("note");
-    expect(att.content).toBe(texto);
+    expect(att.content).toBe(text);
     expect(att.path).toBe("Pasted text (5.2k)");
   });
 });

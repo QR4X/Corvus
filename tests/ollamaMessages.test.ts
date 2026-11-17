@@ -3,7 +3,7 @@ import { ollamaProvider, toOllamaMessages } from "../src/providers/ollama";
 import type { ProviderMessage } from "../src/providers/base";
 import { fakeStreamResponse } from "./helpers/streamMock";
 
-const historico: ProviderMessage[] = [
+const history: ProviderMessage[] = [
   { role: "user", content: "Move my Lisbon trip note into a Personal folder." },
   {
     role: "assistant",
@@ -13,38 +13,37 @@ const historico: ProviderMessage[] = [
   { role: "tool", toolCallId: "call_1", content: "Folder does not exist: Personal" },
 ];
 
-describe("toOllamaMessages — o histórico no formato do Ollama", () => {
-  it("arguments vai como OBJETO, não string JSON", () => {
-    const [, assistente] = toOllamaMessages(historico) as Array<Record<string, unknown>>;
-    const chamadas = assistente.tool_calls as Array<{ function: { name: string; arguments: unknown } }>;
-    expect(chamadas[0].function).toEqual({ name: "vault_list", arguments: { folder: "Personal" } });
-    expect(typeof chamadas[0].function.arguments).toBe("object");
+describe("toOllamaMessages history format", () => {
+  it("sends arguments as an object, not a JSON string", () => {
+    const [, assistant] = toOllamaMessages(history) as Array<Record<string, unknown>>;
+    const calls = assistant.tool_calls as Array<{ function: { name: string; arguments: unknown } }>;
+    expect(calls[0].function).toEqual({ name: "vault_list", arguments: { folder: "Personal" } });
+    expect(typeof calls[0].function.arguments).toBe("object");
   });
 
-  it("content do assistente nunca vai null", () => {
-    const semTexto: ProviderMessage[] = [
+  it("never sends null assistant content", () => {
+    const noText: ProviderMessage[] = [
       { role: "assistant", content: "", toolCalls: [{ id: "c", name: "vault_read", arguments: { path: "a.md" } }] },
     ];
-    const [assistente] = toOllamaMessages(semTexto) as Array<Record<string, unknown>>;
-    expect(assistente.content).toBe("");
+    const [assistant] = toOllamaMessages(noText) as Array<Record<string, unknown>>;
+    expect(assistant.content).toBe("");
   });
 
-  it("a resposta da ferramenta leva o tool_name da chamada", () => {
-    const [, , ferramenta] = toOllamaMessages(historico) as Array<Record<string, unknown>>;
-    expect(ferramenta).toEqual({ role: "tool", content: "Folder does not exist: Personal", tool_name: "vault_list" });
+  it("gives the tool reply the tool_name of its call", () => {
+    const [, , toolReply] = toOllamaMessages(history) as Array<Record<string, unknown>>;
+    expect(toolReply).toEqual({ role: "tool", content: "Folder does not exist: Personal", tool_name: "vault_list" });
   });
 
-  it("mensagens comuns passam como estão", () => {
-    const [usuario] = toOllamaMessages(historico) as Array<Record<string, unknown>>;
-    expect(usuario).toEqual({ role: "user", content: "Move my Lisbon trip note into a Personal folder." });
+  it("passes plain messages through unchanged", () => {
+    const [user] = toOllamaMessages(history) as Array<Record<string, unknown>>;
+    expect(user).toEqual({ role: "user", content: "Move my Lisbon trip note into a Personal folder." });
   });
 });
 
-describe("toOllamaMessages — imagem anexada", () => {
-
+describe("toOllamaMessages image attachments", () => {
   const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/58BAwAI/AL+hc2rNAAAAABJRU5ErkJggg==";
 
-  it("o texto volta a ser string e a imagem vai em `images`, em base64 cru", () => {
+  it("keeps the text as a string and sends the image in `images` as raw base64", () => {
     const [msg] = toOllamaMessages([
       {
         role: "user",
@@ -55,7 +54,7 @@ describe("toOllamaMessages — imagem anexada", () => {
     expect(msg).toEqual({ role: "user", content: "What color is this?", images: [PNG] });
   });
 
-  it("várias imagens, todas em `images`; content nunca é lista", () => {
+  it("puts several images in `images` and never sends content as a list", () => {
     const [msg] = toOllamaMessages([
       {
         role: "user",
@@ -70,14 +69,14 @@ describe("toOllamaMessages — imagem anexada", () => {
     expect(msg.images).toEqual([PNG, PNG]);
   });
 
-  it("link http não é imagem que dê pra mandar: cai, o texto fica", () => {
+  it("drops an http image link and keeps the text", () => {
     const [msg] = toOllamaMessages([
       { role: "user", content: "Look.", attachments: [{ type: "image", dataUrl: "https://x.test/a.png" }] },
     ]) as Array<Record<string, unknown>>;
     expect(msg).toEqual({ role: "user", content: "Look." });
   });
 
-  it("PDF o Ollama não lê: a parte cai e o content continua string", () => {
+  it("drops PDFs, which Ollama cannot read, and keeps content a string", () => {
     const [msg] = toOllamaMessages([
       {
         role: "user",
@@ -89,13 +88,13 @@ describe("toOllamaMessages — imagem anexada", () => {
   });
 });
 
-describe("o corpo que sai pro /api/chat na segunda volta", () => {
+describe("the /api/chat body on the second turn", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("streamChat manda arguments como objeto", async () => {
-    let corpo = "";
+  it("streamChat sends arguments as an object", async () => {
+    let body = "";
     const fake = vi.fn(async (_url: string, init: { body: string }) => {
-      corpo = init.body;
+      body = init.body;
       return fakeStreamResponse([
         JSON.stringify({ message: { content: "Done." }, done: true, prompt_eval_count: 1, eval_count: 1 }) + "\n",
       ]);
@@ -103,10 +102,10 @@ describe("o corpo que sai pro /api/chat na segunda volta", () => {
     vi.stubGlobal("fetch", fake);
     vi.stubGlobal("window", { fetch: fake });
 
-    await ollamaProvider.streamChat({ model: "qwen3.5:9b", messages: historico }, "http://localhost:11434", () => {});
+    await ollamaProvider.streamChat({ model: "qwen3.5:9b", messages: history }, "http://localhost:11434", () => {});
 
-    const enviado = JSON.parse(corpo) as { messages: Array<{ tool_calls?: Array<{ function: { arguments: unknown } }> }> };
-    expect(enviado.messages[1].tool_calls?.[0].function.arguments).toEqual({ folder: "Personal" });
-    expect(corpo).not.toContain('"arguments":"');
+    const sent = JSON.parse(body) as { messages: Array<{ tool_calls?: Array<{ function: { arguments: unknown } }> }> };
+    expect(sent.messages[1].tool_calls?.[0].function.arguments).toEqual({ folder: "Personal" });
+    expect(body).not.toContain('"arguments":"');
   });
 });

@@ -8,21 +8,21 @@ function bytes(n: number): Uint8Array {
 }
 
 describe("arrayBufferToDataUrl", () => {
-  it("bate com o base64 do Node, atravessando vários pedaços", () => {
+  it("matches Node base64 across several chunks", () => {
     const b = bytes(100_000);
     expect(arrayBufferToDataUrl(b.buffer as ArrayBuffer, "image/png")).toBe(
       "data:image/png;base64," + Buffer.from(b).toString("base64")
     );
   });
 
-  it("cobre os 256 valores de byte", () => {
+  it("covers all 256 byte values", () => {
     const b = new Uint8Array(256).map((_, i) => i);
     expect(arrayBufferToDataUrl(b.buffer, "image/jpeg")).toBe(
       "data:image/jpeg;base64," + Buffer.from(b).toString("base64")
     );
   });
 
-  it("buffer vazio vira data URL vazia", () => {
+  it("turns an empty buffer into an empty data URL", () => {
     expect(arrayBufferToDataUrl(new ArrayBuffer(0), "image/png")).toBe(
       "data:image/png;base64,"
     );
