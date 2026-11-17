@@ -1,8 +1,6 @@
 import type { ModelCapabilities } from "./modelCapabilities";
 import { getModelCapabilities } from "./modelCapabilities";
-import { type ModelPricing } from "../usage/pricing";
 import { isEmbeddingModelId } from "../rag/types";
-import { type EnrichedModelInfo } from "./modelInfoStore";
 
 export type ModelCategory =
   | "chat-vision"      
@@ -15,7 +13,7 @@ export type ModelCategory =
   | "embedding"        
   | "other";
 
-export interface ModelCard {
+interface ModelCard {
 
   category: ModelCategory;
 
@@ -183,13 +181,6 @@ export function getModelCard(
   if (c.videoGen) return { category: "video-gen", description: "Video generation model." };
   if (c.vision) return { category: "chat-vision", description: "Multimodal chat (text + image)." };
   return { category: "chat-text", description: "Text chat." };
-}
-
-export interface ModelFullInfo {
-  card: ModelCard;
-  caps: ModelCapabilities;
-  pricing: ModelPricing;
-  enriched?: EnrichedModelInfo;
 }
 
 export function prettyModelName(id: string): string {

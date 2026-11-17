@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { __setRequestUrl } from "obsidian";
 import { definirGratisConhecidos, getPricing } from "../src/usage/pricing";
-import { fetchAndCacheModelInfo } from "../src/providers/modelInfoStore";
+import { enrichModelsFromCatalog, getEnrichedInfo } from "../src/providers/modelInfoStore";
 import { getModelCard } from "../src/providers/modelDescriptions";
 import { openaiFreeTierForModel } from "../src/usage/freeTokens";
 import { gratisDeVerdade } from "../src/usage/freeTag";
@@ -52,10 +52,9 @@ describe("cache do catálogo: o Lyria não volta como grátis pelo palpite", () 
       text: "",
       headers: {},
     }));
-    const lyria = await fetchAndCacheModelInfo("openrouter", "google/lyria-3-clip-preview");
-    expect(lyria?.tier).toBe("unknown");
-    const gemma = await fetchAndCacheModelInfo("openrouter", "google/gemma-4-31b-it:free");
-    expect(gemma?.tier).toBe("free");
+    await enrichModelsFromCatalog("openrouter", ["google/lyria-3-clip-preview", "google/gemma-4-31b-it:free"]);
+    expect(getEnrichedInfo("openrouter", "google/lyria-3-clip-preview")?.tier).toBe("unknown");
+    expect(getEnrichedInfo("openrouter", "google/gemma-4-31b-it:free")?.tier).toBe("free");
   });
 });
 

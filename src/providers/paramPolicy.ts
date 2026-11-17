@@ -1,6 +1,6 @@
 import type { EffortLevel } from "../core/effort";
 
-export interface ParamPolicy {
+interface ParamPolicy {
 
   supportsTemperature: boolean;
 
@@ -33,7 +33,7 @@ function isClaude(provider: string, model: string): boolean {
   return provider === "anthropic" || id.includes("claude") || id.includes("anthropic/");
 }
 
-export interface ClaudeVersao {
+interface ClaudeVersao {
   familia: "opus" | "sonnet" | "haiku" | "fable" | "mythos";
   maior: number;
   menor: number;
@@ -128,7 +128,7 @@ export function maxOutputTokens(provider: string, model: string): number {
   return 16384;
 }
 
-export function pensaAntes(_provider: string, model: string): boolean {
+export function pensaAntes(model: string): boolean {
   const id = (model || "").toLowerCase();
   if (/deepseek-v4(?:[.-]\d+)?-(flash|pro)(?:[-:]|$)/.test(id)) return true;
   if (id === "openrouter/auto" || id.endsWith("/auto") || id.includes("router")) return true;
@@ -153,7 +153,7 @@ export function resolveMaxTokens(
   requested: number,
   effort?: EffortLevel
 ): number {
-  const pedido = pensaAntes(provider, model) ? Math.max(requested, pisoPensando(effort)) : requested;
+  const pedido = pensaAntes(model) ? Math.max(requested, pisoPensando(effort)) : requested;
   return Math.min(pedido, maxOutputTokens(provider, model));
 }
 
@@ -177,7 +177,7 @@ function nivelClaude(c: ClaudeVersao, effort: EffortLevel): string | null {
   return degrauBasico(effort);
 }
 
-export type EsforcoNoCorpo =
+type EsforcoNoCorpo =
   | { campo: "reasoning_effort"; valor: "low" | "medium" | "high" }
   | { campo: "output_config"; valor: { effort: string } }
   | { campo: "reasoning"; valor: { effort: "low" | "medium" | "high" } };
@@ -193,7 +193,7 @@ export function esforcoDoProvider(
     const nivel = c ? nivelClaude(c, effort) : null;
     return nivel ? { campo: "output_config", valor: { effort: nivel } } : null;
   }
-  if (!pensaAntes(provider, model)) return null;
+  if (!pensaAntes(model)) return null;
   const tail = tailOf(model);
   const daOpenAI = /^o[1-9]([-.]|$)/.test(tail) || /(^|[-/])gpt-5/.test(tail);
   const semEscolha = /-pro\b/.test(tail) || /^o1-(mini|preview)/.test(tail);

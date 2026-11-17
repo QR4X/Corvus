@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { compararFabricantes, fabricante } from "../src/providers/vendors";
 import { buildModelCatalog, porFabricante, soltosPorFabricante } from "../src/ui/modelCatalog";
 import { gratisDoCatalogoNvidia } from "../src/providers/nim";
-import { cotaGratisDaChave, ehGratisNoOpenRouter } from "../src/providers/openrouter";
+import { cotaGratisDaChave } from "../src/providers/openrouter";
+import { ehGratisNoOpenRouter } from "../src/providers/openrouterFree";
 import { freeTag, geminiTemTierGratis, gratisDeVerdade } from "../src/usage/freeTag";
 
 describe("fabricante de um id vendor/modelo", () => {

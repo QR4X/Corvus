@@ -10,7 +10,7 @@ import {
 import { compararFabricantes, fabricante, type Fabricante } from "../providers/vendors";
 import { tr } from "../i18n/tr";
 
-export interface CatalogFamily {
+interface CatalogFamily {
   id: string;
   label: string;
   icon: string;
@@ -18,7 +18,7 @@ export interface CatalogFamily {
   models: string[];
 }
 
-export interface CatalogRole {
+interface CatalogRole {
   id: RoleId;
   label: string;
   icon: string;
@@ -69,14 +69,14 @@ export function buildModelCatalog(
   return out;
 }
 
-export interface SecaoDoFabricante {
+interface SecaoDoFabricante {
   roleId: RoleId;
   roleLabel: string;
   roleIcon: string;
   family: CatalogFamily;
 }
 
-export interface GrupoDoFabricante {
+interface GrupoDoFabricante {
   fabricante: Fabricante;
   total: number;
   secoes: SecaoDoFabricante[];

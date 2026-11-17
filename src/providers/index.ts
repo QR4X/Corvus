@@ -73,11 +73,3 @@ export function getProvider(id: string): Provider {
   return w;
 }
 
-export {
-  openaiProvider,
-  anthropicProvider,
-  geminiProvider,
-  openrouterProvider,
-  nimProvider,
-  ollamaProvider,
-};

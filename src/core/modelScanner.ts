@@ -19,7 +19,7 @@ import { definirGratisConhecidos } from "../usage/pricing";
 import { alinharAoInstalado, listaDeFabrica } from "./ollamaDefault";
 import { EMBEDDING_PROVIDERS, providerCredential } from "./providersMeta";
 
-export interface ModelScannerHost {
+interface ModelScannerHost {
   adapter: DataAdapter;
   cacheFile: string;
   settings(): CorvusSettings;

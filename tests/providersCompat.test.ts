@@ -119,7 +119,7 @@ describe("modelos que pensam antes de responder", () => {
       ["nim", "deepseek-ai/deepseek-r1"],
       ["ollama", "gpt-oss:20b"],
     ]) {
-      expect(pensaAntes(p, m), `${p} ${m}`).toBe(true);
+      expect(pensaAntes(m), `${p} ${m}`).toBe(true);
     }
   });
 
@@ -133,7 +133,7 @@ describe("modelos que pensam antes de responder", () => {
       ["gemini", "gemini-2.0-flash"],
       ["ollama", "llama3.2"],
     ]) {
-      expect(pensaAntes(p, m), `${p} ${m}`).toBe(false);
+      expect(pensaAntes(m), `${p} ${m}`).toBe(false);
     }
   });
 

@@ -20,7 +20,7 @@ export const EFFORT_ICONS: Record<EffortLevel, string> = {
   max: "flame",
 };
 
-export const EFFORT_TAGLINES: Record<EffortLevel, string> = {
+const EFFORT_TAGLINES: Record<EffortLevel, string> = {
   low: mark("Fast and economical"),
   med: mark("Balanced"),
   high: mark("Detailed"),
@@ -112,11 +112,6 @@ export function resolveEffortConfig(
   };
 }
 
-export function effortToMaxTokens(level: string): number {
-  const v = DEFAULT_EFFORT_CONFIGS[level as EffortLevel]?.maxTokens ?? 2048;
-  return v === 0 ? 16000 : v;
-}
-
 export function effortToMaxTokensSmart(
   level: string,
   contextWindow: number,
@@ -135,7 +130,7 @@ export function isEffortLevel(value: string): value is EffortLevel {
   return EFFORT_LEVELS.includes(value as EffortLevel);
 }
 
-export interface VaultLookupConfig {
+interface VaultLookupConfig {
   topK: number;
   excerptChars: number;
 }
@@ -169,20 +164,3 @@ export function describeEffort(
   return `${tr(EFFORT_TAGLINES[lvl])} (${effortNumbers(resolveEffortConfig(lvl, userConfigs))})`;
 }
 
-export const EFFORT_DESCRIPTIONS: Record<EffortLevel, string> = {
-  get low() {
-    return describeEffort("low");
-  },
-  get med() {
-    return describeEffort("med");
-  },
-  get high() {
-    return describeEffort("high");
-  },
-  get xhigh() {
-    return describeEffort("xhigh");
-  },
-  get max() {
-    return describeEffort("max");
-  },
-};

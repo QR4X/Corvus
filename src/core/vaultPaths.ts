@@ -14,7 +14,7 @@ export const REPORTS_FOLDER = "corvus-ai/reports";
 
 export const INDEX_FOLDER = `${CORVUS_HIDDEN}/index`;
 
-export interface HiddenMove {
+interface HiddenMove {
 
   legado: string;
 
@@ -28,10 +28,6 @@ export const HIDDEN_MOVES: HiddenMove[] = [
   { legado: `${CORVUS_HIDDEN}/chats`, novo: CHATS_FOLDER, campo: "chatsPath" },
   { legado: "corvus-ai/index", novo: INDEX_FOLDER, campo: "ragIndexPath" },
 ];
-
-export function isHiddenPath(path: string): boolean {
-  return path.split("/").some((parte) => parte.startsWith("."));
-}
 
 export function shouldMigrate(p: {
   caminhoAtual: string;

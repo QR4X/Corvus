@@ -2,7 +2,7 @@ import { TFile, normalizePath, type App } from "obsidian";
 
 export const DEFAULT_AGENT_MD_PATH = "AGENT.md";
 
-export const AGENT_MD_CANDIDATES: readonly string[] = [
+const AGENT_MD_CANDIDATES: readonly string[] = [
   "AGENT.md",
   "agent.md",
   "Agent.md",
@@ -12,7 +12,7 @@ export const AGENT_MD_CANDIDATES: readonly string[] = [
   ".corvus/AGENT.md",
 ];
 
-export const TEMPLATE_AGENT_MD = `# Agent Instructions
+const TEMPLATE_AGENT_MD = `# Agent Instructions
 
 <!-- Instructions in this note are loaded on every reply by Corvus / Corvus (like CLAUDE.md). -->
 
@@ -21,7 +21,7 @@ export const TEMPLATE_AGENT_MD = `# Agent Instructions
 - Use [[wikilinks]] to link relevant notes in this vault.
 `;
 
-export function isTFile(file: unknown): file is TFile {
+function isTFile(file: unknown): file is TFile {
   return (
     file instanceof TFile ||
     (typeof file === "object" &&
@@ -55,7 +55,7 @@ export function candidatePaths(customPath?: string): string[] {
   return list;
 }
 
-export async function resolveAgentMdPath(
+async function resolveAgentMdPath(
   app: App,
   customPath?: string
 ): Promise<string | null> {

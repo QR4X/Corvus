@@ -16,7 +16,7 @@ export interface WakeLockSentinel {
   addEventListener(type: "release", cb: () => void): void;
 }
 
-export interface WakeLockWatch {
+interface WakeLockWatch {
 
   recheck(): void;
 

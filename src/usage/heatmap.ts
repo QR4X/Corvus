@@ -11,7 +11,7 @@ export interface Celula {
   futuro?: boolean;
 }
 
-export interface Heatmap {
+interface Heatmap {
 
   celulas: Celula[];
 

@@ -1,5 +1,3 @@
-export function setUiLocale(_locale: "en-us"): void {}
-
 export function uiLocale(): "en-US" {
   return "en-US";
 }

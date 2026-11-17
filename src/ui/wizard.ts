@@ -1,4 +1,4 @@
-export interface PeDoWizard {
+interface PeDoWizard {
 
   ultimo: boolean;
 

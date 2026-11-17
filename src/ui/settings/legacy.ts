@@ -5,7 +5,7 @@ import type {
   SettingDefinitionItem,
 } from "obsidian";
 
-export interface LegacyIo {
+interface LegacyIo {
   get(key: string): unknown;
   set(key: string, value: unknown): Promise<void>;
 }

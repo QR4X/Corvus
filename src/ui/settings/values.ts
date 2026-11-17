@@ -20,7 +20,6 @@ const TEXT_KEYS = [
   "defaultMode",
   "startupChatMode",
   "defaultEffort",
-  "language",
   "voiceModel",
   "voiceLanguage",
   "ttsVoice",
@@ -37,7 +36,7 @@ const TEXT_KEYS = [
 
 export type BoolKey = (typeof BOOL_KEYS)[number];
 export type TextKey = (typeof TEXT_KEYS)[number];
-export type ControlKey = BoolKey | TextKey;
+type ControlKey = BoolKey | TextKey;
 
 const BOOLS: ReadonlySet<string> = new Set(BOOL_KEYS);
 const TEXTS: ReadonlySet<string> = new Set(TEXT_KEYS);
@@ -89,7 +88,7 @@ export function applyControl(
   }
 }
 
-export interface SettingsSaver {
+interface SettingsSaver {
   settings: CorvusSettings;
   saveSettings(): Promise<void>;
 }

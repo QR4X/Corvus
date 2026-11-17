@@ -1,6 +1,6 @@
 import type { Lancamento } from "./dailyLedger";
 
-export type Anotador = (provider: string, model: string, delta: Partial<Lancamento>) => void;
+type Anotador = (provider: string, model: string, delta: Partial<Lancamento>) => void;
 
 let atual: Anotador | null = null;
 
@@ -12,7 +12,7 @@ export function anotarUso(provider: string, model: string, delta: Partial<Lancam
   atual?.(provider, model, delta);
 }
 
-export type GuardaDeGasto = (provider: string, model: string) => void;
+type GuardaDeGasto = (provider: string, model: string) => void;
 
 let guarda: GuardaDeGasto | null = null;
 

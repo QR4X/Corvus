@@ -22,7 +22,7 @@ const LEVEL_SLOTS = 48;
 
 const MAX_SECONDS = 300;
 
-export type VoiceState =
+type VoiceState =
   | "idle"
 
   | "recording"
@@ -43,7 +43,7 @@ export interface Voice {
   finish: () => void;
 }
 
-export interface VoiceOptions {
+interface VoiceOptions {
 
   apiKey: () => string;
 
@@ -58,11 +58,6 @@ export interface VoiceOptions {
   onNotice: (message: string) => void;
 
   onCancel: () => void;
-}
-
-export function formatDuration(totalSeconds: number): string {
-  const s = Math.max(0, Math.floor(totalSeconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 export function extensionFor(mimeType: string): string {

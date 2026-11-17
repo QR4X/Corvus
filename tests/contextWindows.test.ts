@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   getContextWindow,
-  formatTokens,
 } from "../src/core/contextWindows";
 
 describe("getContextWindow", () => {
@@ -22,19 +21,3 @@ describe("getContextWindow", () => {
   });
 });
 
-describe("formatTokens", () => {
-  it("abaixo de mil mostra o número cru", () => {
-    expect(formatTokens(0)).toBe("0");
-    expect(formatTokens(999)).toBe("999");
-  });
-
-  it("milhares com 1 casa abaixo de 10k, sem casas acima", () => {
-    expect(formatTokens(1234)).toBe("1.2k");
-    expect(formatTokens(128_000)).toBe("128k");
-    expect(formatTokens(10_000)).toBe("10k");
-  });
-
-  it("milhões com 1 casa", () => {
-    expect(formatTokens(1_500_000)).toBe("1.5M");
-  });
-});

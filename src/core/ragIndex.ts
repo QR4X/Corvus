@@ -7,7 +7,7 @@ import { tr } from "../i18n/tr";
 const AUTO_REINDEX_DELAY_MS = 4000;
 const MOBILE_MAX_INDEX_BYTES = 16 * 1024 * 1024;
 
-export interface RagIndexHost {
+interface RagIndexHost {
   app: App;
   settings(): CorvusSettings;
   save(): Promise<void>;

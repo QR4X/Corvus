@@ -30,7 +30,7 @@ export function sequenciaDeDias(
   return n;
 }
 
-export interface DiasAtivos {
+interface DiasAtivos {
   ativos: number;
   total: number;
 }

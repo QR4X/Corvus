@@ -66,7 +66,6 @@ describe("promptNotas — o que vai pro modelo", () => {
     instructions: "",
     escolhidas: [] as string[],
     caminhos: VAULT,
-    idioma: "Brazilian Portuguese",
   };
 
   it("manda os caminhos, e pede de volta EXATAMENTE deles", () => {
@@ -89,7 +88,7 @@ describe("promptNotas — o que vai pro modelo", () => {
     expect(p).toContain("- Tese/Lakatos.md");
   });
 
-  it("no idioma do app", () => {
-    expect(promptNotas(base)).toContain("Brazilian Portuguese");
+  it("answers in English", () => {
+    expect(promptNotas(base)).toContain("Write EVERY field in English");
   });
 });

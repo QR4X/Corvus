@@ -153,7 +153,7 @@ const NIM_MODELS_ENDPOINT = "https://integrate.api.nvidia.com/v1/models";
 
 const NIM_INFER_BASE = "https://ai.api.nvidia.com/v1/genai";
 
-export class NimProvider implements Provider {
+class NimProvider implements Provider {
   id = "nim";
   name = "Nvidia NIM";
 
@@ -477,7 +477,7 @@ export class NimProvider implements Provider {
     }
   }
 
-  async listFreeModels(_apiKey: string): Promise<string[]> {
+  async listFreeModels(): Promise<string[]> {
     const ids = new Set<string>();
     try {
       for (let page = 0; page < 5; page++) {

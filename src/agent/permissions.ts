@@ -5,7 +5,7 @@ import type {
 } from "./types";
 import { mark } from "../i18n/tr";
 
-export function evaluatePermission(
+function evaluatePermission(
   tool: ToolDefinition,
   level: PermissionLevel
 ): PermissionDecision {
@@ -32,7 +32,7 @@ export function evaluatePermission(
   }
 }
 
-export type ToolGate = "auto" | "confirm";
+type ToolGate = "auto" | "confirm";
 
 export function decideToolGate(
   tool: ToolDefinition,

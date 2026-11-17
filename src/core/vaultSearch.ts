@@ -1,6 +1,6 @@
 import type { App } from "obsidian";
 
-export interface VaultMatch {
+interface VaultMatch {
   path: string;
   title: string;
   excerpt: string;
@@ -13,11 +13,11 @@ const STOPWORDS_EN = new Set([
   "but", "if", "this", "that", "these", "those", "it", "its", "they", "them",
 ]);
 
-export function foldText(s: string): string {
+function foldText(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-export function extractKeywords(query: string): string[] {
+function extractKeywords(query: string): string[] {
   return foldText(query)
     .split(/\s+/)
     .map((w) => w.replace(/[^\w]/g, ""))

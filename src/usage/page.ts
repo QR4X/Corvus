@@ -9,7 +9,7 @@ export function metricaDa(total: UsageBucket): Metrica {
   return total.cost > 0 ? "cost" : "tokens";
 }
 
-export function valorNa(
+function valorNa(
   b: { cost: number | null; tokensIn: number; tokensOut: number },
   m: Metrica
 ): number {
@@ -36,8 +36,6 @@ export interface Fatia {
 
   quase: boolean;
 }
-
-export type ModeloNaPagina = Fatia;
 
 export function modelosDaPagina(agg: UsageAggregate): Fatia[] {
   return fatiasDe(agg.byModel, agg.total);

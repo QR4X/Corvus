@@ -29,7 +29,7 @@ export const PASSOS_SKILL = [
   { id: "icon", label: mark("Icon") },
 ] as const;
 
-export type PassoSkill = (typeof PASSOS_SKILL)[number]["id"];
+type PassoSkill = (typeof PASSOS_SKILL)[number]["id"];
 
 export function SkillForm({
   draft,
@@ -52,7 +52,6 @@ export function SkillForm({
   onProcurar: (p: boolean) => void;
 }) {
   const set = (campo: Partial<SkillDraft>) => onDraft({ ...draft, ...campo });
-  const setProcurando = onProcurar;
 
   useSheetFit(!procurando);
 
@@ -89,7 +88,7 @@ export function SkillForm({
       <SheetIconCatalog
         value={draft.icon}
         tint={cor}
-        onBack={() => setProcurando(false)}
+        onBack={() => onProcurar(false)}
         onPick={(icon) => set({ icon })}
       >
         <SheetField label={tr("Color")}>
@@ -253,7 +252,7 @@ export function SkillForm({
             icons={SKILL_ICONS}
             value={draft.icon}
             tint={cor}
-            onBrowse={() => setProcurando(true)}
+            onBrowse={() => onProcurar(true)}
             onPick={(icon) => set({ icon })}
           />
         </SheetField>

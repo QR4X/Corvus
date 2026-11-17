@@ -131,7 +131,6 @@ describe("o que a busca acha", () => {
     "Mode",
     "Open on startup",
     "Effort",
-    "Language",
     "Assistant model",
     "Let it see your note names",
     "Talk instead of typing",
@@ -309,7 +308,6 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
         "defaultMode",
         "defaultProvider",
         "elevenModel",
-        "language",
         "startupChatMode",
         "ttsModel",
         "ttsVoice",
@@ -357,11 +355,6 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
     expect(modo.itens.map((i) => i.label)).toEqual(["Chat", "Vault Q&A", "Agent"]);
   });
 
-  it("languages use code glyph instead of icon (Auto uses languages icon)", () => {
-    const lang = pegos.find((p) => p.key === "language")!;
-    expect(lang.itens.map((i) => i.glyph)).toEqual([undefined, "EN"]);
-    expect(lang.itens[0].icon).toBe("languages");
-  });
 });
 
 describe("visibilidade (o que some junto do interruptor)", () => {

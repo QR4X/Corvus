@@ -1,7 +1,7 @@
 import { requestUrl } from "obsidian";
 import { ehGratisNoOpenRouter } from "./openrouterFree";
 
-export interface EnrichedModelInfo {
+interface EnrichedModelInfo {
 
   descriptionEn?: string;
   contextWindow?: number;
@@ -41,7 +41,7 @@ interface OpenRouterModel {
   supported_parameters?: string[];
 }
 
-export function cacheKey(provider: string, model: string): string {
+function cacheKey(provider: string, model: string): string {
   return provider + "::" + model;
 }
 
@@ -220,14 +220,6 @@ function gravarDoCatalogo(
   info.fetchedAt = new Date().toISOString();
   CACHE[cacheKey(provider, model)] = info;
   return info;
-}
-
-export async function fetchAndCacheModelInfo(
-  provider: string,
-  model: string
-): Promise<EnrichedModelInfo | null> {
-  const catalog = await loadOpenRouterCatalog();
-  return gravarDoCatalogo(catalog, provider, model);
 }
 
 export async function enrichModelsFromCatalog(

@@ -5,7 +5,7 @@ import { elevenSpeak } from "../providers/elevenlabs";
 import { mark, tr } from "../i18n/tr";
 import { providerCredential } from "../core/providersMeta";
 
-export const SPEAK_MAX_CHARS = 4000;
+const SPEAK_MAX_CHARS = 4000;
 
 const SILENCE =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
@@ -58,7 +58,7 @@ export function stopSpeaking(): void {
   solta?.();
 }
 
-export interface SpeakOptions {
+interface SpeakOptions {
 
   voice?: string;
 

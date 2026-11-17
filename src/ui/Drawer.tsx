@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type CorvusPlugin from "../main";
-import { isChatMode, type ChatSession } from "../core/session";
+import { isChatMode } from "../core/session";
 import { useChatStore } from "../store/chat";
 import { useChatSummaries, useUnreadChats } from "./chatHooks";
 import { Icon } from "./Icon";
@@ -27,7 +27,6 @@ const NAV: Array<{ id: ViewId; label: string; icon: string }> = [
 
 export function Drawer({
   plugin,
-  session,
   open,
   view,
   modulo,
@@ -36,7 +35,6 @@ export function Drawer({
   onClose,
 }: {
   plugin: CorvusPlugin;
-  session: ChatSession;
   open: boolean;
   view: ViewId;
 

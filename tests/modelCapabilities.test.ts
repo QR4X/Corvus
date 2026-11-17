@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
   getModelCapabilities,
-  isGenerationModel,
 } from "../src/providers/modelCapabilities";
 import { hydrateModelInfoCache } from "../src/providers/modelInfoStore";
 
@@ -97,20 +96,6 @@ describe("getModelCapabilities — fallbacks seguros", () => {
   it("modelo desconhecido num provider conhecido → default", () => {
     expect(getModelCapabilities("openai", "modelo-do-futuro-9000")).toMatchObject(
       { vision: false, tools: false, streaming: true }
-    );
-  });
-});
-
-describe("isGenerationModel", () => {
-  it("true pra qualquer flag de geração", () => {
-    expect(isGenerationModel(getModelCapabilities("openai", "dall-e-3"))).toBe(
-      true
-    );
-    expect(isGenerationModel(getModelCapabilities("openai", "tts-1"))).toBe(true);
-  });
-  it("false pra modelo de chat", () => {
-    expect(isGenerationModel(getModelCapabilities("openai", "gpt-4o"))).toBe(
-      false
     );
   });
 });

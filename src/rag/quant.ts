@@ -1,6 +1,6 @@
 export type QuantPrecision = "float32" | "int8";
 
-export interface QuantProfile {
+interface QuantProfile {
   id: string;
 
   precision: QuantPrecision;
@@ -21,7 +21,7 @@ export function getQuantProfile(id: string): QuantProfile {
   return QUANT_PROFILES[id] ?? QUANT_PROFILES.balanced;
 }
 
-export function unitNormalize(v: number[] | Float32Array): Float32Array {
+function unitNormalize(v: number[] | Float32Array): Float32Array {
   let norm = 0;
   for (let i = 0; i < v.length; i++) norm += v[i] * v[i];
   norm = Math.sqrt(norm) || 1;

@@ -3,7 +3,7 @@ import { tr } from "../i18n/tr";
 
 export class ConflitoAoDesfazer extends Error {}
 
-export interface Desfazer {
+interface Desfazer {
 
   executar(forcar?: boolean): Promise<string>;
 }
@@ -34,7 +34,7 @@ async function garantirPasta(app: App, pasta: string): Promise<void> {
   await app.vault.createFolder(pasta);
 }
 
-export function lixeiraDoVault(app: App): "system" | "local" | "none" | null {
+function lixeiraDoVault(app: App): "system" | "local" | "none" | null {
   const vault = app.vault as unknown as { getConfig?: (k: string) => unknown };
   try {
     const v = vault.getConfig?.("trashOption");

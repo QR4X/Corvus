@@ -1,20 +1,21 @@
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_EFFORT_CONFIGS,
-  EFFORT_DESCRIPTIONS,
   EFFORT_LEVELS,
   describeEffort,
 } from "../src/core/effort";
 import {
   CAMPOS_DE_ESFORCO,
   comCampo,
-  limitar,
   nivelEditado,
   paradasCom,
   resumoDoNivel,
 } from "../src/ui/settings/effortEditor";
 
 const campo = (key: string) => CAMPOS_DE_ESFORCO.find((c) => c.key === key)!;
+
+const inRange = (v: number, c: (typeof CAMPOS_DE_ESFORCO)[number]) =>
+  v >= (c.min ?? -Infinity) && v <= (c.max ?? Infinity);
 
 describe("os sliders do editor de nível", () => {
   it("todo padrão de fábrica é uma parada do slider — cai exato, sem arredondar", () => {
@@ -27,7 +28,7 @@ describe("os sliders do editor de nível", () => {
 
   it("toda parada cabe no intervalo do campo, e nenhuma se repete", () => {
     for (const c of CAMPOS_DE_ESFORCO.filter((x) => x.tipo === "numero")) {
-      for (const p of c.paradas!) expect(limitar(p, c), `${c.key} ${p}`).toBe(p);
+      for (const p of c.paradas!) expect(inRange(p, c), `${c.key} ${p}`).toBe(true);
       expect(new Set(c.paradas).size, c.key).toBe(c.paradas!.length);
     }
   });
@@ -93,13 +94,13 @@ describe("esforço por nível", () => {
     expect(describeEffort("low", old)).toBe("Fast and economical (≤900 tok)");
   });
   it("de fábrica, as descrições são as de antes, letra por letra", () => {
-    expect(EFFORT_DESCRIPTIONS).toEqual({
-      low: "Fast and economical (≤512 tok)",
-      med: "Balanced (≤2k tok)",
-      high: "Detailed (≤6k tok)",
-      xhigh: "Deep (≤16k tok)",
-      max: "Relentless (up to 80% of context)",
-    });
+    expect(EFFORT_LEVELS.map((l) => describeEffort(l))).toEqual([
+      "Fast and economical (≤512 tok)",
+      "Balanced (≤2k tok)",
+      "Detailed (≤6k tok)",
+      "Deep (≤16k tok)",
+      "Relentless (up to 80% of context)",
+    ]);
   });
 
   it("editado, a descrição do composer mostra o número que vale", () => {
@@ -118,7 +119,7 @@ describe("esforço por nível", () => {
     for (const l of EFFORT_LEVELS) {
       for (const c of CAMPOS_DE_ESFORCO.filter((x) => x.tipo === "numero")) {
         const v = DEFAULT_EFFORT_CONFIGS[l][c.key] as number;
-        expect(limitar(v, c), `${l}.${c.key}`).toBe(v);
+        expect(inRange(v, c), `${l}.${c.key}`).toBe(true);
       }
     }
   });
@@ -146,9 +147,4 @@ describe("esforço por nível", () => {
     expect(resumoDoNivel({ med: { temperature: -1 } }, "med")).toContain("provider temperature");
   });
 
-  it("limitar prende no intervalo do campo", () => {
-    const temp = CAMPOS_DE_ESFORCO.find((c) => c.key === "temperature")!;
-    expect(limitar(5, temp)).toBe(2);
-    expect(limitar(-3, temp)).toBe(-1);
-  });
 });

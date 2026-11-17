@@ -1,6 +1,6 @@
 import { mark } from "../i18n/tr";
 
-export type ChatAlert = "waiting" | "running" | "unread" | null;
+type ChatAlert = "waiting" | "running" | "unread" | null;
 
 export function chatAlert(p: {
 

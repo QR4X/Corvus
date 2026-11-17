@@ -4,7 +4,6 @@ import {
   alternar,
   aplicar,
   opcoes,
-  temFiltro,
 } from "../src/usage/filters";
 import type { ChatSummary } from "../src/core/chatPersistence";
 
@@ -135,10 +134,3 @@ describe("aplicar", () => {
   });
 });
 
-describe("temFiltro", () => {
-  it("sabe quando há recorte", () => {
-    expect(temFiltro(FILTRO_VAZIO)).toBe(false);
-    expect(temFiltro({ ...FILTRO_VAZIO, days: 7 })).toBe(true);
-    expect(temFiltro({ ...FILTRO_VAZIO, models: ["gpt-5"] })).toBe(true);
-  });
-});

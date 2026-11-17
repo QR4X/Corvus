@@ -1,6 +1,6 @@
 import { App, Component, MarkdownRenderer, Modal, Setting } from "obsidian";
 import type { ToolCall, ToolDefinition } from "./types";
-import type { Translations } from "../i18n";
+import type { Translations } from "../i18n/en-us";
 import { texto } from "../core/text";
 
 interface ConfirmOpts {
@@ -12,7 +12,7 @@ interface ConfirmOpts {
   strings: Translations["agent"];
 }
 
-export interface ConfirmResult {
+interface ConfirmResult {
   approved: boolean;
 
   approveAll: boolean;

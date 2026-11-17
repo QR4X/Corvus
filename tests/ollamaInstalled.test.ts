@@ -7,7 +7,7 @@ import {
   type ListasDoOllama,
 } from "../src/core/ollamaDefault";
 import { pareceEmbeddingDoOllama } from "../src/rag/types";
-import { getTranslations } from "../src/i18n";
+import { EN_US } from "../src/i18n/en-us";
 
 const listas = (p: Partial<ListasDoOllama> = {}): ListasDoOllama => ({
   ativos: [],
@@ -153,6 +153,6 @@ describe("a lista que ninguém escolheu", () => {
 
 describe("warns when no model is selected", () => {
   it("notice exists in the engine dictionary", () => {
-    expect(getTranslations("en-us").ai.err.noModel("Ollama")).toMatch(/Fetch models/);
+    expect(EN_US.ai.err.noModel("Ollama")).toMatch(/Fetch models/);
   });
 });

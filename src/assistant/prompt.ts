@@ -1,17 +1,13 @@
-export function appLanguage(_locale: string): string {
-  return "English";
-}
-
-function base(idioma: string): string {
+function base(): string {
   return `You help someone set up their Corvus workspace inside Obsidian.
 You know Obsidian well: wikilinks ([[Note]]), frontmatter, daily notes, tags,
 folders, and that a vault is someone's own writing — not a database.
 
 Rules for every answer:
 - Answer with ONE JSON object and nothing else. No prose, no code fences.
-- Write EVERY field in ${idioma}. This is not negotiable: the app only speaks
-  ${idioma} here, and your text sits next to text the app wrote. Even if the
-  person writes to you in another language, answer in ${idioma}.
+- Write EVERY field in English. This is not negotiable: the app only speaks
+  English here, and your text sits next to text the app wrote. Even if the
+  person writes to you in another language, answer in English.
 - Be concrete. Never invent a file, folder or note that was not given to you.`;
 }
 
@@ -81,11 +77,10 @@ function listas(rotulo: string, itens: readonly string[]): string {
 export function promptSkill(
   modo: ModoAssistente,
   icones: readonly string[],
-  cores: readonly string[],
-  idioma: string
+  cores: readonly string[]
 ): string {
   return [
-    base(idioma),
+    base(),
     SOBRE_SKILL,
     listas("icon names", icones),
     listas("color values", cores),
@@ -98,11 +93,10 @@ export function promptProjeto(
   icones: readonly string[],
   cores: readonly string[],
 
-  notas: readonly string[],
-  idioma: string
+  notas: readonly string[]
 ): string {
   const partes = [
-    base(idioma),
+    base(),
     SOBRE_PROJETO,
     listas("icon names", icones),
     listas("color values", cores),
@@ -131,10 +125,9 @@ clarifying first — but only if the answer would really change what you write.`
 export function promptDescricao(ctx: {
   name: string;
   body: string;
-  idioma: string;
 }): string {
   return [
-    base(ctx.idioma),
+    base(),
     `Write the one-line DESCRIPTION of a skill — the line shown under its name
 in the list. It says what the skill gives you, in the fewest words that still
 mean something. Under 80 characters. Do not repeat the name. Do not start with
@@ -149,10 +142,9 @@ export function promptInstrucoes(ctx: {
   name: string;
   notes: readonly string[];
   atual: string;
-  idioma: string;
 }): string {
   const partes = [
-    base(ctx.idioma),
+    base(),
     `Write the CUSTOM INSTRUCTIONS of a project: what the model should know in
 every chat started inside it.
 
@@ -183,10 +175,9 @@ export function promptNotas(ctx: {
   instructions: string;
   escolhidas: readonly string[];
   caminhos: readonly string[];
-  idioma: string;
 }): string {
   const partes = [
-    base(ctx.idioma),
+    base(),
     SOBRE_PROJETO,
     `Pick the notes from this vault that this project should KNOW — they are
 attached as its sources and go in as context on every chat started inside it.

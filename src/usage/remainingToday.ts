@@ -13,15 +13,15 @@ import { gastoDesde } from "./dailySpend";
 
 export const CHAVE_LIMITE_GASTO = "__gasto";
 
-export const AI_STUDIO_LIMITES = "https://aistudio.google.com/rate-limit";
+const AI_STUDIO_LIMITES = "https://aistudio.google.com/rate-limit";
 
 const PACIFICO = "America/Los_Angeles";
 
-export function chaveDoLimite(provider: string, model: string): string {
+function chaveDoLimite(provider: string, model: string): string {
   return `${provider}\u0001${model}`;
 }
 
-export type Unidade = "tokens" | "requests" | "usd";
+type Unidade = "tokens" | "requests" | "usd";
 
 export interface Medidor {
   id: string;

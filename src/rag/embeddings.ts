@@ -150,7 +150,7 @@ async function embedOpenAICompat(
   return out;
 }
 
-export async function embedBatch(
+async function embedBatch(
   texts: string[],
   apiKey: string,
   model = "text-embedding-3-small",
@@ -183,7 +183,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => window.setTimeout(r, ms));
 }
 
-export async function embedBatchOpenRouter(
+async function embedBatchOpenRouter(
   items: EmbedInput[],
   apiKey: string,
   model: string
@@ -434,7 +434,7 @@ export async function embedQuery(
   return vec;
 }
 
-export function chunkText(
+function chunkText(
   text: string,
   maxSize = 1500,
   overlap = 200
@@ -470,7 +470,7 @@ export function chunkText(
   return chunks;
 }
 
-export interface MarkdownChunk {
+interface MarkdownChunk {
   text: string;
 
   breadcrumb: string;

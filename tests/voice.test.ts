@@ -1,25 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extensionFor, formatDuration } from "../src/ui/useVoice";
-
-describe("formatDuration", () => {
-  it("mm:ss com o segundo sempre em dois dígitos", () => {
-    expect(formatDuration(0)).toBe("0:00");
-    expect(formatDuration(3)).toBe("0:03");
-    expect(formatDuration(59)).toBe("0:59");
-    expect(formatDuration(60)).toBe("1:00");
-    expect(formatDuration(75)).toBe("1:15");
-    expect(formatDuration(620)).toBe("10:20");
-  });
-
-  it("trunca a fração — o relógio da gravação chega quebrado", () => {
-    expect(formatDuration(3.99)).toBe("0:03");
-    expect(formatDuration(59.5)).toBe("0:59");
-  });
-
-  it("nunca mostra tempo negativo", () => {
-    expect(formatDuration(-5)).toBe("0:00");
-  });
-});
+import { extensionFor } from "../src/ui/useVoice";
 
 describe("extensionFor", () => {
   it("acompanha o contêiner que o aparelho escolheu", () => {

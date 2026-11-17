@@ -31,7 +31,7 @@ export const PASSOS_PROJETO = [
   { id: "icon", label: mark("Icon") },
 ] as const;
 
-export type PassoProjeto = (typeof PASSOS_PROJETO)[number]["id"];
+type PassoProjeto = (typeof PASSOS_PROJETO)[number]["id"];
 
 export interface ExtrasProjeto {
   notes: string[];

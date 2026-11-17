@@ -90,7 +90,7 @@ interface ListArgs {
   folder?: string;
 }
 
-export async function toolVaultList(ctx: ToolContext, args: ListArgs): Promise<string> {
+async function toolVaultList(ctx: ToolContext, args: ListArgs): Promise<string> {
   const folder = args.folder ? normalizePath(args.folder, ctx.appDataPaths) : "";
 
   const alvo = folder ? achar(ctx.app, folder) : ctx.app.vault.getRoot();
@@ -257,7 +257,7 @@ interface SearchArgs {
   topK?: number;
 }
 
-export async function toolVaultSearch(
+async function toolVaultSearch(
   ctx: ToolContext,
   args: SearchArgs
 ): Promise<string> {
@@ -282,7 +282,7 @@ export async function toolVaultSearch(
   );
 }
 
-export type ToolExecutor = (
+type ToolExecutor = (
   ctx: ToolContext,
   args: Record<string, unknown>
 ) => Promise<string>;

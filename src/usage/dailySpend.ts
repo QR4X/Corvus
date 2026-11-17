@@ -23,7 +23,7 @@ export function ehPago(provider: string, model: string): boolean {
   return !!p && (p.entrada > 0 || p.saida > 0);
 }
 
-export interface Gasto {
+interface Gasto {
 
   total: number;
 

@@ -1,14 +1,14 @@
 import type { CorvusSettings } from "../settings";
 import { tr } from "../i18n/tr";
 
-export type KeyField =
+type KeyField =
   | "openaiApiKey"
   | "anthropicApiKey"
   | "geminiApiKey"
   | "openrouterApiKey"
   | "nimApiKey";
 
-export type ModelField =
+type ModelField =
   | "defaultModel"
   | "anthropicModel"
   | "geminiModel"
@@ -16,7 +16,7 @@ export type ModelField =
   | "nimModel"
   | "ollamaModel";
 
-export interface ProviderMeta {
+interface ProviderMeta {
   id: string;
   name: string;
   icon: string;
@@ -44,7 +44,7 @@ export function providerMeta(id: string): ProviderMeta {
   return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
 }
 
-export type CredentialField = ProviderMeta["credential"];
+type CredentialField = ProviderMeta["credential"];
 
 export type Credentials = Partial<Pick<CorvusSettings, CredentialField>>;
 

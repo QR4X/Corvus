@@ -2,7 +2,7 @@ import { CHAT_MODES, isChatMode, type ChatMode } from "../core/session";
 import type { ChatSummary } from "../core/chatPersistence";
 import { mark, tr } from "../i18n/tr";
 
-export interface ModuleMeta {
+interface ModuleMeta {
 
   id: string;
 
@@ -86,7 +86,7 @@ export function modulePlaceholder(id: string | undefined | null): string {
   return tr(isChatMode(id) ? MODULES[id].placeholder : MODULES.chat.placeholder);
 }
 
-export interface Busca {
+interface Busca {
   hits: ChatSummary[];
 
   regex: boolean;
@@ -152,7 +152,7 @@ export function chatsOfModule(
   return chats.filter((c) => c.mode === mode);
 }
 
-export interface ModuleStats {
+interface ModuleStats {
   count: number;
 
   last?: string;
@@ -184,7 +184,7 @@ export function relativeDay(iso: string, agora: number = Date.now()): string {
 
 export const SEGMENT_ALL = "all";
 
-export interface ModuleSegment {
+interface ModuleSegment {
   id: string;
   label: string;
   count: number;

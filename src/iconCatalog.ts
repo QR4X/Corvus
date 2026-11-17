@@ -1,6 +1,6 @@
 import { mark } from "./i18n/tr";
 
-export interface IconCategory {
+interface IconCategory {
   id: string;
 
   label: string;

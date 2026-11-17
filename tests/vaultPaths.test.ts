@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
+
+const isHidden = (path: string) => path.split("/").some((part) => part.startsWith("."));
 import {
   CORVUS_HIDDEN,
   CHATS_FOLDER,
   HIDDEN_MOVES,
-  isHiddenPath,
   legacyModeMoves,
   shouldMigrate,
 } from "../src/core/vaultPaths";
@@ -16,11 +17,11 @@ describe("para onde o app leva o que migra", () => {
     expect(index.length).toBeGreaterThan(0);
     for (const m of chats) {
       expect(m.novo).toBe(CHATS_FOLDER);
-      expect(isHiddenPath(m.novo)).toBe(false);
+      expect(isHidden(m.novo)).toBe(false);
     }
     for (const m of index) {
       expect(m.novo.startsWith(`${CORVUS_HIDDEN}/`)).toBe(true);
-      expect(isHiddenPath(m.novo)).toBe(true);
+      expect(isHidden(m.novo)).toBe(true);
     }
   });
 
@@ -33,16 +34,6 @@ describe("para onde o app leva o que migra", () => {
     expect(legados).not.toContain("corvus-ai/skills");
     expect(legados).not.toContain("corvus-ai/generation");
     expect(legados).not.toContain("corvus-ai/reports");
-  });
-});
-
-describe("isHiddenPath", () => {
-  it("qualquer trecho com ponto na frente esconde o caminho inteiro", () => {
-    expect(isHiddenPath(".corvus/chats/agent/x.md")).toBe(true);
-    expect(isHiddenPath("notas/.rascunho/x.md")).toBe(true);
-    expect(isHiddenPath("corvus-ai/chats/x.md")).toBe(false);
-
-    expect(isHiddenPath("notas/plano.v2/x.md")).toBe(false);
   });
 });
 

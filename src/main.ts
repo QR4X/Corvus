@@ -4,7 +4,6 @@ import { FONTE_DO_HOVER } from "./ui/responseLinks";
 import { registerBrandLogos } from "./ui/brandLogos";
 import { CorvusSettingsTab } from "./ui/SettingsTab";
 import { startupOpensPanel } from "./ui/modules";
-import { registerLocalUsage } from "./providers/dataCollect";
 import { loadSkills, seedExampleSkills, isSkillFilePath, type Skill } from "./skills/skills";
 import { esquecerDesfazeres } from "./agent/undo";
 import { registrarComandosDoEditor } from "./editor/commands";
@@ -141,17 +140,8 @@ export default class CorvusPlugin extends Plugin {
 
   private async loadInBackground(): Promise<void> {
     await this.models.start();
-    void this.registerLocalModelUsage();
     await this.reloadSkills();
     await this.rag.load();
-  }
-
-  private async registerLocalModelUsage(): Promise<void> {
-    const byModel: Record<string, number> = {};
-    for (const c of await this.chats.load()) {
-      if (c.model) byModel[c.model] = (byModel[c.model] ?? 0) + 1;
-    }
-    registerLocalUsage(byModel);
   }
 
   private watchVault(): void {

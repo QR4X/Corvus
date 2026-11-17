@@ -293,7 +293,7 @@ function authHeaders(apiKey: string): Record<string, string> {
   };
 }
 
-export class AnthropicProvider implements Provider {
+class AnthropicProvider implements Provider {
   id = "anthropic";
   name = "Anthropic";
   supportsTools = true;

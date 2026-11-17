@@ -7,7 +7,7 @@ export interface TurnoAssistente {
   texto: string;
 }
 
-export interface PedidoAssistente {
+interface PedidoAssistente {
   provider: Provider;
   apiKey: string;
   model: string;
@@ -17,7 +17,7 @@ export interface PedidoAssistente {
   turnos: TurnoAssistente[];
 }
 
-export interface RetornoAssistente {
+interface RetornoAssistente {
   pergunta?: string;
 
   opcoes?: string[];

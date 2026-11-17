@@ -3,7 +3,7 @@ import { mark, tr } from "../i18n/tr";
 
 const DIA_MS = 86_400_000;
 
-export const MESES = [
+const MESES = [
   mark("Jan"), mark("Feb"), mark("Mar"), mark("Apr"), mark("May"), mark("Jun"),
   mark("Jul"), mark("Aug"), mark("Sep"), mark("Oct"), mark("Nov"), mark("Dec"),
 ];
