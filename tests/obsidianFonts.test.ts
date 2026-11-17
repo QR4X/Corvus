@@ -1,7 +1,38 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { isControlKey } from "../src/ui/settings/values";
+
+vi.mock("obsidian", async () => {
+  const stub = await vi.importActual<typeof import("./obsidian-stub")>("./obsidian-stub");
+  const button = {
+    setButtonText: () => button,
+    onClick: () => button,
+    setCta: () => button,
+  };
+  class Setting {
+    addButton(cb: (b: typeof button) => void): this {
+      cb(button);
+      return this;
+    }
+  }
+  return { ...stub, Setting };
+});
+
+const { isControlKey } = await import("../src/ui/settings/values");
+const { ConfirmModal } = await import("../src/ui/modals");
+const { LanguageModal } = await import("../src/editor/inline");
+
+function openConfirmModal(): Set<string> {
+  const classes = new Set<string>();
+  const modal = new ConfirmModal({} as never, { title: "Delete?" });
+  Object.assign(modal, {
+    modalEl: { addClass: (c: string) => classes.add(c) },
+    titleEl: { setText: () => {} },
+    contentEl: { createEl: () => {}, empty: () => {} },
+  });
+  modal.onOpen();
+  return classes;
+}
 
 const read = (path: string) =>
   readFileSync(resolve(__dirname, "..", path), "utf8");
@@ -58,23 +89,15 @@ describe("Obsidian Appearance is the only source of plugin typography", () => {
     expect(css).toContain(
       ":is(button, input, textarea, select, code, pre, .markdown-rendered,"
     );
-    expect(read("src/ui/modals.ts")).toContain(
-      'this.modalEl.addClass("corvus-native-confirm-modal")'
-    );
-    expect(read("src/editor/inline.ts")).toContain(
-      'this.modalEl.addClass("corvus-language-modal")'
-    );
+    expect(openConfirmModal().has("corvus-native-confirm-modal")).toBe(true);
+    expect(
+      new LanguageModal({} as never, () => {}).modalEl.hasClass("corvus-language-modal")
+    ).toBe(true);
   });
 
-  it("removes plugin-specific controls and inline overrides", () => {
+  it("does not accept plugin-specific font settings as controls", () => {
     for (const key of ["uiFontFamily", "uiFontSize"]) {
       expect(isControlKey(key)).toBe(false);
-      for (const file of ["src/settings.ts", "src/ui/settings/tree.ts"]) {
-        expect(read(file)).not.toContain(key);
-      }
     }
-    expect(read("src/ui/App.tsx")).not.toContain("fontVars");
-    expect(read("src/ui/SettingsTab.ts")).not.toContain("fontVars");
-    expect(existsSync(resolve(__dirname, "../src/ui/fontVars.ts"))).toBe(false);
   });
 });

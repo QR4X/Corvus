@@ -21,215 +21,213 @@ import {
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-function vaultFalso(trashOption: string | null = "local") {
+function fakeVault(trashOption: string | null = "local") {
   const bytes = new Map<string, Uint8Array>();
-  const nos = new Map<string, TFile | TFolder>();
-  const lixeira: string[] = [];
-  const raiz = Object.assign(new TFolder(), { path: "", name: "", children: [] as unknown[] });
-  nos.set("", raiz);
-  const paiDe = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
-  const nomeDe = (p: string) => p.slice(p.lastIndexOf("/") + 1);
-  const registrar = (no: TFile | TFolder, p: string) => {
-    nos.set(p, no);
-    const pai = nos.get(paiDe(p)) as TFolder | undefined;
-    if (pai) (pai.children as unknown[]).push(no);
+  const nodes = new Map<string, TFile | TFolder>();
+  const trash: string[] = [];
+  const root = Object.assign(new TFolder(), { path: "", name: "", children: [] as unknown[] });
+  nodes.set("", root);
+  const parentOf = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+  const nameOf = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+  const register = (node: TFile | TFolder, p: string) => {
+    nodes.set(p, node);
+    const parent = nodes.get(parentOf(p)) as TFolder | undefined;
+    if (parent) (parent.children as unknown[]).push(node);
   };
-  const esquecer = (p: string) => {
-    const no = nos.get(p);
-    const pai = nos.get(paiDe(p)) as TFolder | undefined;
-    if (pai && no) {
-      const c = pai.children as unknown[];
-      c.splice(c.indexOf(no), 1);
+  const forget = (p: string) => {
+    const node = nodes.get(p);
+    const parent = nodes.get(parentOf(p)) as TFolder | undefined;
+    if (parent && node) {
+      const c = parent.children as unknown[];
+      c.splice(c.indexOf(node), 1);
     }
-    nos.delete(p);
+    nodes.delete(p);
   };
-  const novoArquivo = (p: string) =>
+  const newFile = (p: string) =>
     Object.assign(new TFile(), {
       path: p,
-      name: nomeDe(p),
+      name: nameOf(p),
       extension: p.split(".").pop(),
       stat: { size: 0 },
     });
-  const caminho = (f: TFile | TFolder) => (f as unknown as { path: string }).path;
+  const pathOf = (f: TFile | TFolder) => (f as unknown as { path: string }).path;
 
   const vault = {
     getConfig: (k: string) => (k === "trashOption" ? trashOption : undefined),
-    getRoot: () => raiz,
-    getAbstractFileByPath: (p: string) => nos.get(p) ?? null,
+    getRoot: () => root,
+    getAbstractFileByPath: (p: string) => nodes.get(p) ?? null,
     async read(f: TFile) {
-      return dec.decode(bytes.get(caminho(f)) ?? new Uint8Array());
+      return dec.decode(bytes.get(pathOf(f)) ?? new Uint8Array());
     },
     async readBinary(f: TFile) {
-      const b = bytes.get(caminho(f)) ?? new Uint8Array();
+      const b = bytes.get(pathOf(f)) ?? new Uint8Array();
       return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
     },
     async create(p: string, c: string) {
-      const f = novoArquivo(p);
+      const f = newFile(p);
       bytes.set(p, enc.encode(c));
-      registrar(f, p);
+      register(f, p);
       return f;
     },
     async createBinary(p: string, b: ArrayBuffer) {
-      const f = novoArquivo(p);
+      const f = newFile(p);
       bytes.set(p, new Uint8Array(b));
-      registrar(f, p);
+      register(f, p);
       return f;
     },
     async createFolder(p: string) {
-      const d = Object.assign(new TFolder(), { path: p, name: nomeDe(p), children: [] as unknown[] });
-      registrar(d, p);
+      const d = Object.assign(new TFolder(), { path: p, name: nameOf(p), children: [] as unknown[] });
+      register(d, p);
       return d;
     },
     async process(f: TFile, fn: (s: string) => string) {
-      const p = caminho(f);
-      const novo = fn(dec.decode(bytes.get(p) ?? new Uint8Array()));
-      bytes.set(p, enc.encode(novo));
-      return novo;
+      const p = pathOf(f);
+      const next = fn(dec.decode(bytes.get(p) ?? new Uint8Array()));
+      bytes.set(p, enc.encode(next));
+      return next;
     },
   };
   const fileManager = {
-    async renameFile(no: TFile | TFolder, destino: string) {
-      const de = caminho(no);
-      const b = bytes.get(de);
-      esquecer(de);
-      (no as unknown as { path: string }).path = destino;
+    async renameFile(node: TFile | TFolder, target: string) {
+      const from = pathOf(node);
+      const b = bytes.get(from);
+      forget(from);
+      (node as unknown as { path: string }).path = target;
       if (b) {
-        bytes.delete(de);
-        bytes.set(destino, b);
+        bytes.delete(from);
+        bytes.set(target, b);
       }
-      registrar(no, destino);
+      register(node, target);
     },
-    async trashFile(no: TFile | TFolder) {
-      const p = caminho(no);
-      lixeira.push(p);
+    async trashFile(node: TFile | TFolder) {
+      const p = pathOf(node);
+      trash.push(p);
       bytes.delete(p);
-      esquecer(p);
+      forget(p);
     },
   };
   const app = { vault, fileManager } as unknown as App;
-  const texto = async (p: string) => {
-    const f = nos.get(p);
+  const text = async (p: string) => {
+    const f = nodes.get(p);
     return f instanceof TFile ? vault.read(f) : null;
   };
-  return { app, vault, lixeira, texto, existe: (p: string) => nos.has(p) };
+  return { app, vault, trash, text, exists: (p: string) => nodes.has(p) };
 }
-const ctxDe = (app: App) => ({ app, vectorIndex: null, appDataPaths: [] }) as any;
+const ctxOf = (app: App) => ({ app, vectorIndex: null, appDataPaths: [] }) as any;
 
-async function comoOAgente(
+async function runAsAgent(
   app: App,
   id: string,
   name: string,
   args: Record<string, unknown>,
   tool: () => Promise<string>
 ) {
-  const antes = await snapshotBefore(app, name, args);
+  const before = await snapshotBefore(app, name, args);
   await tool();
-  const volta = antes ? await buildUndo(app, antes) : null;
-  if (volta) registerUndo(id, volta);
+  const revert = before ? await buildUndo(app, before) : null;
+  if (revert) registerUndo(id, revert);
 }
 
 beforeEach(() => clearUndos());
 
-describe("a lixeira do Obsidian decide se o YOLO apaga sozinho", () => {
-  it("system e local são lixeira; none (apagar de vez) e desconhecido não", () => {
-    expect(deleteGoesToTrash(vaultFalso("system").app)).toBe(true);
-    expect(deleteGoesToTrash(vaultFalso("local").app)).toBe(true);
-    expect(deleteGoesToTrash(vaultFalso("none").app)).toBe(false);
-    expect(deleteGoesToTrash(vaultFalso(null).app)).toBe(false);
+describe("the Obsidian trash setting decides whether YOLO deletes on its own", () => {
+  it("treats system and local as trash but not none or unknown", () => {
+    expect(deleteGoesToTrash(fakeVault("system").app)).toBe(true);
+    expect(deleteGoesToTrash(fakeVault("local").app)).toBe(true);
+    expect(deleteGoesToTrash(fakeVault("none").app)).toBe(false);
+    expect(deleteGoesToTrash(fakeVault(null).app)).toBe(false);
   });
 });
 
-describe("desfazer cada mudança do agente", () => {
-  it("editar: a nota volta ao que era", async () => {
-    const v = vaultFalso();
-    await v.vault.create("a.md", "um dois três");
-    const args = { path: "a.md", oldStr: "dois", newStr: "DOIS" };
-    await comoOAgente(v.app, "e1", "vault_edit", args, () => toolVaultEdit(ctxDe(v.app), args));
-    expect(await v.texto("a.md")).toBe("um DOIS três");
+describe("undoing each agent change", () => {
+  it("edit: restores the note to its previous text", async () => {
+    const v = fakeVault();
+    await v.vault.create("a.md", "one two three");
+    const args = { path: "a.md", oldStr: "two", newStr: "TWO" };
+    await runAsAgent(v.app, "e1", "vault_edit", args, () => toolVaultEdit(ctxOf(v.app), args));
+    expect(await v.text("a.md")).toBe("one TWO three");
     expect(canUndo("e1")).toBe(true);
     expect(await undo("e1")).toBe("Restored a.md");
-    expect(await v.texto("a.md")).toBe("um dois três");
-
+    expect(await v.text("a.md")).toBe("one two three");
     expect(canUndo("e1")).toBe(false);
   });
 
-  it("editar e a pessoa mexer depois: para e pergunta — e forçar passa por cima", async () => {
-    const v = vaultFalso();
+  it("edit changed later by the user: stops with a conflict and force overrides it", async () => {
+    const v = fakeVault();
     await v.vault.create("a.md", "x");
     const args = { path: "a.md", oldStr: "x", newStr: "y" };
-    await comoOAgente(v.app, "e2", "vault_edit", args, () => toolVaultEdit(ctxDe(v.app), args));
-    await v.vault.process(v.vault.getAbstractFileByPath("a.md") as TFile, () => "y + mão da pessoa");
+    await runAsAgent(v.app, "e2", "vault_edit", args, () => toolVaultEdit(ctxOf(v.app), args));
+    await v.vault.process(v.vault.getAbstractFileByPath("a.md") as TFile, () => "y + user change");
     await expect(undo("e2")).rejects.toBeInstanceOf(UndoConflict);
-    expect(await v.texto("a.md")).toBe("y + mão da pessoa");
-    expect(canUndo("e2")).toBe(true); 
+    expect(await v.text("a.md")).toBe("y + user change");
+    expect(canUndo("e2")).toBe(true);
     expect(await undo("e2", true)).toBe("Restored a.md");
-    expect(await v.texto("a.md")).toBe("x");
+    expect(await v.text("a.md")).toBe("x");
   });
 
-  it("criar: o arquivo vai pra lixeira", async () => {
-    const v = vaultFalso();
-    const args = { path: "novas/b.md", content: "oi" };
-    await comoOAgente(v.app, "c1", "vault_create", args, () => toolVaultCreate(ctxDe(v.app), args as never));
-    expect(v.existe("novas/b.md")).toBe(true);
-    expect(await undo("c1")).toBe("Removed novas/b.md");
-    expect(v.existe("novas/b.md")).toBe(false);
-    expect(v.lixeira).toEqual(["novas/b.md"]);
+  it("create: moves the file to the trash", async () => {
+    const v = fakeVault();
+    const args = { path: "new/b.md", content: "hi" };
+    await runAsAgent(v.app, "c1", "vault_create", args, () => toolVaultCreate(ctxOf(v.app), args as never));
+    expect(v.exists("new/b.md")).toBe(true);
+    expect(await undo("c1")).toBe("Removed new/b.md");
+    expect(v.exists("new/b.md")).toBe(false);
+    expect(v.trash).toEqual(["new/b.md"]);
   });
 
-  it("mover: volta pro lugar (pelo renameFile, que reescreve os links)", async () => {
-    const v = vaultFalso();
-    await v.vault.create("c.md", "conteúdo");
-    const args = { from: "c.md", to: "arquivo/c.md" };
-    await comoOAgente(v.app, "m1", "vault_move", args, () => toolVaultMove(ctxDe(v.app), args));
-    expect(v.existe("arquivo/c.md")).toBe(true);
+  it("move: moves back through renameFile so links are rewritten", async () => {
+    const v = fakeVault();
+    await v.vault.create("c.md", "content");
+    const args = { from: "c.md", to: "archive/c.md" };
+    await runAsAgent(v.app, "m1", "vault_move", args, () => toolVaultMove(ctxOf(v.app), args));
+    expect(v.exists("archive/c.md")).toBe(true);
     expect(await undo("m1")).toBe("Moved back to c.md");
-    expect(v.existe("c.md")).toBe(true);
-    expect(await v.texto("c.md")).toBe("conteúdo");
+    expect(v.exists("c.md")).toBe(true);
+    expect(await v.text("c.md")).toBe("content");
   });
 
-  it("apagar: a nota volta com os mesmos bytes, mesmo com apagar de vez", async () => {
-    const v = vaultFalso("none");
-    await v.vault.create("d.md", "não me perca ✓");
+  it("delete: restores the same bytes even when deletion is permanent", async () => {
+    const v = fakeVault("none");
+    await v.vault.create("d.md", "keep me ✓");
     const args = { path: "d.md" };
-    await comoOAgente(v.app, "d1", "vault_delete", args, () => toolVaultDelete(ctxDe(v.app), args));
-    expect(v.existe("d.md")).toBe(false);
+    await runAsAgent(v.app, "d1", "vault_delete", args, () => toolVaultDelete(ctxOf(v.app), args));
+    expect(v.exists("d.md")).toBe(false);
     expect(await undo("d1")).toBe("Restored d.md");
-    expect(await v.texto("d.md")).toBe("não me perca ✓");
+    expect(await v.text("d.md")).toBe("keep me ✓");
   });
 
-  it("apagar e o caminho ser ocupado de novo: não restaura por cima", async () => {
-    const v = vaultFalso();
-    await v.vault.create("e.md", "velho");
+  it("delete then path reused: does not restore over the new file", async () => {
+    const v = fakeVault();
+    await v.vault.create("e.md", "old");
     const args = { path: "e.md" };
-    await comoOAgente(v.app, "d2", "vault_delete", args, () => toolVaultDelete(ctxDe(v.app), args));
-    await v.vault.create("e.md", "novo");
+    await runAsAgent(v.app, "d2", "vault_delete", args, () => toolVaultDelete(ctxOf(v.app), args));
+    await v.vault.create("e.md", "new");
     await expect(undo("d2")).rejects.toThrow(/exists again/);
-    expect(await v.texto("e.md")).toBe("novo");
+    expect(await v.text("e.md")).toBe("new");
   });
 
-  it("criar pasta: sai se ainda estiver vazia; com coisa dentro, fica", async () => {
-    const v = vaultFalso();
-    const args = { path: "projetos" };
-    await comoOAgente(v.app, "f1", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
-    expect(await undo("f1")).toBe("Removed folder projetos");
-    expect(v.existe("projetos")).toBe(false);
-
-    await comoOAgente(v.app, "f2", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
-    await v.vault.create("projetos/x.md", "");
+  it("create folder: removes it while empty and keeps it once it has files", async () => {
+    const v = fakeVault();
+    const args = { path: "projects" };
+    await runAsAgent(v.app, "f1", "vault_create_folder", args, () => toolVaultCreateFolder(ctxOf(v.app), args));
+    expect(await undo("f1")).toBe("Removed folder projects");
+    expect(v.exists("projects")).toBe(false);
+    await runAsAgent(v.app, "f2", "vault_create_folder", args, () => toolVaultCreateFolder(ctxOf(v.app), args));
+    await v.vault.create("projects/x.md", "");
     await expect(undo("f2", true)).rejects.toThrow(/has files/);
-    expect(v.existe("projetos")).toBe(true);
+    expect(v.exists("projects")).toBe(true);
   });
 
-  it("pasta que já existia: a tool não fez nada, e não há Undo", async () => {
-    const v = vaultFalso();
-    await v.vault.createFolder("ja");
-    const args = { path: "ja" };
-    await comoOAgente(v.app, "f3", "vault_create_folder", args, () => toolVaultCreateFolder(ctxDe(v.app), args));
+  it("existing folder: the tool did nothing so there is no undo", async () => {
+    const v = fakeVault();
+    await v.vault.createFolder("existing");
+    const args = { path: "existing" };
+    await runAsAgent(v.app, "f3", "vault_create_folder", args, () => toolVaultCreateFolder(ctxOf(v.app), args));
     expect(canUndo("f3")).toBe(false);
   });
 
-  it("ler, listar e buscar não guardam nada", async () => {
-    const v = vaultFalso();
+  it("read, list and search take no snapshot", async () => {
+    const v = fakeVault();
     expect(await snapshotBefore(v.app, "vault_read", { path: "x.md" })).toBeNull();
     expect(await snapshotBefore(v.app, "vault_search", { query: "x" })).toBeNull();
   });

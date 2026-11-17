@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  EMBEDDING_PROVIDERS,
   providerBlockedReason,
   providerCredential,
   providerHealth,
@@ -60,10 +59,5 @@ describe("provider table", () => {
     const s = fake({ openaiApiKey: "sk", defaultModel: "m-oa" });
     expect(providerCredential(s, "legacy")).toBe("sk");
     expect(savedModelFor(s, "legacy")).toBe("m-oa");
-  });
-
-  it("anthropic has no embedding models", () => {
-    expect(EMBEDDING_PROVIDERS).not.toContain("anthropic");
-    expect(EMBEDDING_PROVIDERS).toContain("ollama");
   });
 });

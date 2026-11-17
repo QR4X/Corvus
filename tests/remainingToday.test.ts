@@ -26,17 +26,16 @@ import { isPaid, spendSince, crossedMarks, knownPrice } from "../src/usage/daily
 
 const H = 3_600_000;
 
-describe("o dia de cada provider", () => {
-  it("UTC: meia-noite UTC", () => {
+describe("each provider's day", () => {
+  it("UTC resets at UTC midnight", () => {
     expect(startOfDay(new Date("2026-10-02T15:30:00Z"), "UTC").toISOString()).toBe("2026-10-02T00:00:00.000Z");
     expect(msUntilRollover(new Date("2026-10-02T15:30:00Z"), "UTC")).toBe(8.5 * H);
   });
 
-  it("Gemini: meia-noite do Pacífico (PDT −7 em outubro, PST −8 em dezembro)", () => {
+  it("Gemini resets at Pacific midnight (PDT -7 in October, PST -8 in December)", () => {
     expect(startOfDay(new Date("2026-10-02T15:30:00Z"), "America/Los_Angeles").toISOString()).toBe(
       "2026-10-02T07:00:00.000Z"
     );
-
     expect(startOfDay(new Date("2026-10-02T05:00:00Z"), "America/Los_Angeles").toISOString()).toBe(
       "2026-10-01T07:00:00.000Z"
     );
@@ -45,27 +44,25 @@ describe("o dia de cada provider", () => {
     );
   });
 
-  it("no dia em que o horário de verão acaba, o dia começou em PDT e o próximo começa em PST", () => {
-
-    const agora = new Date("2026-11-01T20:00:00Z");
-    expect(startOfDay(agora, "America/Los_Angeles").toISOString()).toBe("2026-11-01T07:00:00.000Z");
-
-    expect(msUntilRollover(agora, "America/Los_Angeles")).toBe(12 * H);
+  it("on the day daylight saving ends, the day starts in PDT and the next one in PST", () => {
+    const now = new Date("2026-11-01T20:00:00Z");
+    expect(startOfDay(now, "America/Los_Angeles").toISOString()).toBe("2026-11-01T07:00:00.000Z");
+    expect(msUntilRollover(now, "America/Los_Angeles")).toBe(12 * H);
   });
 
-  it("no dia em que o horário de verão começa, o dia começou em PST e tem 23 horas", () => {
-    const agora = new Date("2026-03-08T19:00:00Z"); 
-    expect(startOfDay(agora, "America/Los_Angeles").toISOString()).toBe("2026-03-08T08:00:00.000Z");
-    expect(msUntilRollover(agora, "America/Los_Angeles")).toBe(12 * H);
+  it("on the day daylight saving starts, the day starts in PST and lasts 23 hours", () => {
+    const now = new Date("2026-03-08T19:00:00Z");
+    expect(startOfDay(now, "America/Los_Angeles").toISOString()).toBe("2026-03-08T08:00:00.000Z");
+    expect(msUntilRollover(now, "America/Los_Angeles")).toBe(12 * H);
   });
 
-  it("o fuso de quem usa (São Paulo, −3)", () => {
+  it("uses the user's time zone (Sao Paulo, UTC-3)", () => {
     expect(startOfDay(new Date("2026-10-02T02:00:00Z"), "America/Sao_Paulo").toISOString()).toBe(
       "2026-10-01T03:00:00.000Z"
     );
   });
 
-  it("emQuanto: horas e minutos, sem segundos", () => {
+  it("shortDuration shows hours and minutes without seconds", () => {
     expect(shortDuration(8.5 * H)).toBe("8h 30m");
     expect(shortDuration(H)).toBe("1h");
     expect(shortDuration(42 * 60_000)).toBe("42m");
@@ -73,65 +70,65 @@ describe("o dia de cada provider", () => {
   });
 });
 
-describe("o livro do dia", () => {
-  it("soma por hora, por modelo, e corta no começo do dia", () => {
-    const livro: DailyLedger = {};
-    addEntry(livro, new Date("2026-10-02T10:15:00Z"), "gemini", "gemini-2.5-flash", { r: 1, i: 100, o: 10 });
-    addEntry(livro, new Date("2026-10-02T10:45:00Z"), "gemini", "gemini-2.5-flash", { r: 1, i: 50, o: 5 });
-    addEntry(livro, new Date("2026-10-02T11:00:00Z"), "gemini", "gemini-2.5-pro", { r: 3 });
-    addEntry(livro, new Date("2026-10-02T06:00:00Z"), "gemini", "gemini-2.5-pro", { r: 9 });
-    expect(livro["2026-10-02T10"]["gemini\u0001gemini-2.5-flash"]).toEqual({ r: 2, i: 150, o: 15 });
+describe("the daily ledger", () => {
+  it("sums per hour and per model and cuts at the start of the day", () => {
+    const ledger: DailyLedger = {};
+    addEntry(ledger, new Date("2026-10-02T10:15:00Z"), "gemini", "gemini-2.5-flash", { r: 1, i: 100, o: 10 });
+    addEntry(ledger, new Date("2026-10-02T10:45:00Z"), "gemini", "gemini-2.5-flash", { r: 1, i: 50, o: 5 });
+    addEntry(ledger, new Date("2026-10-02T11:00:00Z"), "gemini", "gemini-2.5-pro", { r: 3 });
+    addEntry(ledger, new Date("2026-10-02T06:00:00Z"), "gemini", "gemini-2.5-pro", { r: 9 });
+    expect(ledger["2026-10-02T10"]["gemini\u0001gemini-2.5-flash"]).toEqual({ r: 2, i: 150, o: 15 });
 
-    const desde = new Date("2026-10-02T07:00:00Z");
-    expect(sumSince(livro, desde, (p) => p === "gemini")).toEqual({ r: 5, i: 150, o: 15 });
-    expect(modelsSince(livro, desde, "gemini").map((x) => [x.model, x.r])).toEqual([
+    const since = new Date("2026-10-02T07:00:00Z");
+    expect(sumSince(ledger, since, (p) => p === "gemini")).toEqual({ r: 5, i: 150, o: 15 });
+    expect(modelsSince(ledger, since, "gemini").map((x) => [x.model, x.r])).toEqual([
       ["gemini-2.5-pro", 3],
       ["gemini-2.5-flash", 2],
     ]);
   });
 
-  it("o id do modelo pode ter barra e dois-pontos (OpenRouter)", () => {
-    const livro: DailyLedger = {};
-    addEntry(livro, new Date("2026-10-02T10:00:00Z"), "openrouter", "meta-llama/llama-3.3-70b-instruct:free", { r: 1 });
-    expect(modelsSince(livro, new Date("2026-10-02T00:00:00Z"), "openrouter")[0].model).toBe(
+  it("a model id may contain slashes and colons (OpenRouter)", () => {
+    const ledger: DailyLedger = {};
+    addEntry(ledger, new Date("2026-10-02T10:00:00Z"), "openrouter", "meta-llama/llama-3.3-70b-instruct:free", { r: 1 });
+    expect(modelsSince(ledger, new Date("2026-10-02T00:00:00Z"), "openrouter")[0].model).toBe(
       "meta-llama/llama-3.3-70b-instruct:free"
     );
   });
 
-  it("podar joga fora o que passou de 50 horas — o livro não cresce", () => {
-    const livro: DailyLedger = {};
-    addEntry(livro, new Date("2026-09-29T00:00:00Z"), "nim", "x", { r: 1 });
-    addEntry(livro, new Date("2026-10-01T00:00:00Z"), "nim", "x", { r: 1 });
-    prune(livro, new Date("2026-10-02T12:00:00Z"));
-    expect(Object.keys(livro)).toEqual(["2026-10-01T00"]);
+  it("pruning drops entries older than 50 hours so the ledger does not grow", () => {
+    const ledger: DailyLedger = {};
+    addEntry(ledger, new Date("2026-09-29T00:00:00Z"), "nim", "x", { r: 1 });
+    addEntry(ledger, new Date("2026-10-01T00:00:00Z"), "nim", "x", { r: 1 });
+    prune(ledger, new Date("2026-10-02T12:00:00Z"));
+    expect(Object.keys(ledger)).toEqual(["2026-10-01T00"]);
   });
 });
 
-describe("o registro: o que o provider gasta vai pro livro", () => {
-  const anotados: Array<[string, string, unknown]> = [];
+describe("the recorder logs provider usage into the ledger", () => {
+  const recorded: Array<[string, string, unknown]> = [];
   beforeEach(() => {
-    anotados.length = 0;
-    setUsageRecorder((p, m, d) => anotados.push([p, m, d]));
+    recorded.length = 0;
+    setUsageRecorder((p, m, d) => recorded.push([p, m, d]));
   });
   afterEach(() => {
     setUsageRecorder(null);
-    delete providers.falso;
+    delete providers.fake;
   });
 
   const req = { model: "m-1", messages: [] } as unknown as Parameters<Provider["chat"]>[0];
 
-  const falso = (over: Partial<Provider>): Provider =>
+  const fake = (over: Partial<Provider>): Provider =>
     ({
-      id: "falso",
-      name: "Falso",
+      id: "fake",
+      name: "Fake",
       listModels: async () => ["m-1"],
       chat: async () => ({ content: "ok", usage: { input: 10, output: 5 } }),
       streamChat: async () => ({ content: "" }),
       ...over,
     }) as unknown as Provider;
 
-  it("stream: um pedido, e o ÚLTIMO uso — o acumulado que vem duas vezes não soma em dobro", async () => {
-    providers.falso = falso({
+  it("a stream counts one request with the last usage, so cumulative reports are not doubled", async () => {
+    providers.fake = fake({
       streamChat: async (_r, _k, onToken, onUsage) => {
         onToken("a");
         onUsage?.({ input: 100, output: 1 });
@@ -139,34 +136,34 @@ describe("o registro: o que o provider gasta vai pro livro", () => {
         return { content: "a" };
       },
     });
-    await getProvider("falso").streamChat(req, "k", () => {});
-    expect(anotados).toEqual([["falso", "m-1", { r: 1, i: 100, o: 20 }]]);
+    await getProvider("fake").streamChat(req, "k", () => {});
+    expect(recorded).toEqual([["fake", "m-1", { r: 1, i: 100, o: 20 }]]);
   });
 
-  it("stream sem aviso de uso: vale o uso da resposta", async () => {
-    providers.falso = falso({
+  it("a stream without usage callbacks uses the response usage", async () => {
+    providers.fake = fake({
       streamChat: async (_r, _k, onToken) => {
         onToken("a");
         return { content: "a", usage: { input: 7, output: 3 } };
       },
     });
-    await getProvider("falso").streamChat(req, "k", () => {});
-    expect(anotados).toEqual([["falso", "m-1", { r: 1, i: 7, o: 3 }]]);
+    await getProvider("fake").streamChat(req, "k", () => {});
+    expect(recorded).toEqual([["fake", "m-1", { r: 1, i: 7, o: 3 }]]);
   });
 
-  it("parado no meio (Stop, queda) conta: o servidor já tinha aceitado", async () => {
-    providers.falso = falso({
+  it("a stream stopped midway still counts because the server accepted it", async () => {
+    providers.fake = fake({
       streamChat: async (_r, _k, onToken) => {
         onToken("a");
         throw new Error("aborted");
       },
     });
-    await expect(getProvider("falso").streamChat(req, "k", () => {})).rejects.toThrow("aborted");
-    expect(anotados).toEqual([["falso", "m-1", { r: 1, i: 0, o: 0 }]]);
+    await expect(getProvider("fake").streamChat(req, "k", () => {})).rejects.toThrow("aborted");
+    expect(recorded).toEqual([["fake", "m-1", { r: 1, i: 0, o: 0 }]]);
   });
 
-  it("recusado antes de começar (429, chave errada) NÃO conta — a cota também não andou", async () => {
-    providers.falso = falso({
+  it("a request rejected before starting (429, bad key) does not count", async () => {
+    providers.fake = fake({
       streamChat: async () => {
         throw new Error("429");
       },
@@ -174,53 +171,53 @@ describe("o registro: o que o provider gasta vai pro livro", () => {
         throw new Error("401");
       },
     });
-    await expect(getProvider("falso").streamChat(req, "k", () => {})).rejects.toThrow();
-    await expect(getProvider("falso").chat(req, "k")).rejects.toThrow();
-    expect(anotados).toEqual([]);
+    await expect(getProvider("fake").streamChat(req, "k", () => {})).rejects.toThrow();
+    await expect(getProvider("fake").chat(req, "k")).rejects.toThrow();
+    expect(recorded).toEqual([]);
   });
 
-  it("a guarda do limite de gasto barra ANTES de sair — e nada é anotado", async () => {
-    let saiu = false;
-    providers.falso = falso({
+  it("the spend guard blocks before sending and nothing is recorded", async () => {
+    let sent = false;
+    providers.fake = fake({
       chat: async () => {
-        saiu = true;
+        sent = true;
         return { content: "x" };
       },
     });
     setSpendGuard(() => {
-      throw new Error("limite batido");
+      throw new Error("limit reached");
     });
     try {
-      await expect(getProvider("falso").chat(req, "k")).rejects.toThrow("limite batido");
-      await expect(getProvider("falso").streamChat(req, "k", () => {})).rejects.toThrow("limite batido");
+      await expect(getProvider("fake").chat(req, "k")).rejects.toThrow("limit reached");
+      await expect(getProvider("fake").streamChat(req, "k", () => {})).rejects.toThrow("limit reached");
     } finally {
       setSpendGuard(null);
     }
-    expect(saiu).toBe(false);
-    expect(anotados).toEqual([]);
+    expect(sent).toBe(false);
+    expect(recorded).toEqual([]);
   });
 
-  it("chat: um pedido com os tokens da resposta", async () => {
-    providers.falso = falso({});
-    await getProvider("falso").chat(req, "k");
-    expect(anotados).toEqual([["falso", "m-1", { r: 1, i: 10, o: 5 }]]);
+  it("chat counts one request with the response tokens", async () => {
+    providers.fake = fake({});
+    await getProvider("fake").chat(req, "k");
+    expect(recorded).toEqual([["fake", "m-1", { r: 1, i: 10, o: 5 }]]);
   });
 
-  it("o resto passa direto, e trocar o objeto troca o embrulho", async () => {
-    providers.falso = falso({});
-    const w = getProvider("falso");
-    expect(w).toBe(getProvider("falso"));
+  it("other methods pass through and replacing the provider replaces the wrapper", async () => {
+    providers.fake = fake({});
+    const w = getProvider("fake");
+    expect(w).toBe(getProvider("fake"));
     expect(await w.listModels("k")).toEqual(["m-1"]);
-    providers.falso = falso({ chat: async () => ({ content: "novo", usage: { input: 1, output: 1 } }) });
-    expect((await getProvider("falso").chat(req, "k")).content).toBe("novo");
+    providers.fake = fake({ chat: async () => ({ content: "new", usage: { input: 1, output: 1 } }) });
+    expect((await getProvider("fake").chat(req, "k")).content).toBe("new");
   });
 });
 
-describe("os embeddings também gastam a cota do dia", () => {
-  const anotados: Array<[string, string, unknown]> = [];
+describe("embeddings also use the daily quota", () => {
+  const recorded: Array<[string, string, unknown]> = [];
   beforeEach(() => {
-    anotados.length = 0;
-    setUsageRecorder((p, m, d) => anotados.push([p, m, d]));
+    recorded.length = 0;
+    setUsageRecorder((p, m, d) => recorded.push([p, m, d]));
     vi.stubGlobal("window", { setTimeout, clearTimeout });
   });
   afterEach(() => {
@@ -230,24 +227,24 @@ describe("os embeddings também gastam a cota do dia", () => {
   });
   const creds = { openaiApiKey: "", openrouterApiKey: "", geminiApiKey: "g", nimApiKey: "" };
 
-  it("um pedido por chamada que deu certo (Gemini)", async () => {
+  it("counts one request per successful call (Gemini)", async () => {
     __setRequestUrl(async () => ({
       status: 200,
       json: { data: [{ embedding: [0.1, 0.2], index: 0 }], usage: { prompt_tokens: 7, total_tokens: 7 } },
     }));
-    await embedItems([{ kind: "text", text: "oi" }], creds, "gemini-embedding-001");
-    expect(anotados).toEqual([["gemini", "gemini-embedding-001", { r: 1, i: 7 }]]);
+    await embedItems([{ kind: "text", text: "hi" }], creds, "gemini-embedding-001");
+    expect(recorded).toEqual([["gemini", "gemini-embedding-001", { r: 1, i: 7 }]]);
   });
 
-  it("recusado (429) não conta", async () => {
+  it("a rejected request (429) does not count", async () => {
     __setRequestUrl(async () => ({ status: 429, json: {}, text: "" }));
-    await expect(embedItems([{ kind: "text", text: "oi" }], creds, "gemini-embedding-001")).rejects.toThrow();
-    expect(anotados).toEqual([]);
+    await expect(embedItems([{ kind: "text", text: "hi" }], creds, "gemini-embedding-001")).rejects.toThrow();
+    expect(recorded).toEqual([]);
   });
 });
 
-describe("a chave do OpenRouter (/api/v1/key)", () => {
-  it("os grátis do dia, o crédito, o gasto de hoje e quando o teto volta", () => {
+describe("the OpenRouter key status (/api/v1/key)", () => {
+  it("reads daily free requests, credit, spend today and the reset period", () => {
     expect(
       keyStatusFrom({
         data: {
@@ -265,7 +262,7 @@ describe("a chave do OpenRouter (/api/v1/key)", () => {
     });
   });
 
-  it("chave sem teto: crédito null; sem os campos, nada inventado", () => {
+  it("a key without a cap has null credit and missing fields are not invented", () => {
     expect(keyStatusFrom({ data: { limit_remaining: null } })).toEqual({ creditRemaining: null });
     expect(keyStatusFrom({ data: {} })).toEqual({});
     expect(keyStatusFrom({ data: { is_free_tier: true } })).toEqual({ free: { limit: 50 } });
@@ -273,31 +270,27 @@ describe("a chave do OpenRouter (/api/v1/key)", () => {
   });
 });
 
-describe("os cartões do Left today", () => {
-
-  const agora = new Date("2026-10-02T15:30:00Z");
-  const livro = (): DailyLedger => {
+describe("the Left today cards", () => {
+  const now = new Date("2026-10-02T15:30:00Z");
+  const makeLedger = (): DailyLedger => {
     const l: DailyLedger = {};
 
     addEntry(l, new Date("2026-10-02T01:00:00Z"), "openai", "gpt-5", { r: 1, i: 1000, o: 500 });
-    addEntry(l, new Date("2026-10-01T23:00:00Z"), "openai", "gpt-5", { r: 1, i: 9999, o: 1 }); 
+    addEntry(l, new Date("2026-10-01T23:00:00Z"), "openai", "gpt-5", { r: 1, i: 9999, o: 1 });
     addEntry(l, new Date("2026-10-02T10:00:00Z"), "openai", "gpt-5-mini", { r: 1, i: 2000, o: 0 });
-    addEntry(l, new Date("2026-10-02T10:00:00Z"), "openai", "gpt-image-1", { r: 1, i: 50, o: 50 }); 
-
-    addEntry(l, new Date("2026-10-02T06:00:00Z"), "gemini", "gemini-2.5-flash", { r: 5 }); 
+    addEntry(l, new Date("2026-10-02T10:00:00Z"), "openai", "gpt-image-1", { r: 1, i: 50, o: 50 });
+    addEntry(l, new Date("2026-10-02T06:00:00Z"), "gemini", "gemini-2.5-flash", { r: 5 });
     addEntry(l, new Date("2026-10-02T08:00:00Z"), "gemini", "gemini-2.5-flash", { r: 12 });
     addEntry(l, new Date("2026-10-02T09:00:00Z"), "gemini", "gemini-2.5-flash-image", { r: 2 });
-
     addEntry(l, new Date("2026-10-02T03:00:00Z"), "openrouter", "meta-llama/llama-3.3-70b-instruct:free", { r: 13 });
     addEntry(l, new Date("2026-10-02T03:00:00Z"), "openrouter", "inclusionai/ling-3.1-flash", { r: 4 });
-
     addEntry(l, new Date("2026-10-02T14:00:00Z"), "nim", "meta/llama-3.1-70b-instruct", { r: 23 });
-    addEntry(l, new Date("2026-10-02T02:00:00Z"), "nim", "meta/llama-3.1-70b-instruct", { r: 6 }); 
+    addEntry(l, new Date("2026-10-02T02:00:00Z"), "nim", "meta/llama-3.1-70b-instruct", { r: 6 });
     return l;
   };
   const base = (over: Partial<TodayInput> = {}): TodayInput => ({
-    ledger: livro(),
-    now: agora,
+    ledger: makeLedger(),
+    now: now,
     hasKey: () => true,
     openai: { dataSharing: true, tier: 1 },
     limits: {},
@@ -305,15 +298,13 @@ describe("os cartões do Left today", () => {
     localTimeZone: "America/Sao_Paulo",
     ...over,
   });
-  const medidor = (cartoes: ReturnType<typeof remainingToday>, provider: string, id: string): Gauge =>
-    cartoes.find((c) => c.provider === provider)!.gauges.find((m) => m.id === id)!;
+  const gauge = (cards: ReturnType<typeof remainingToday>, provider: string, id: string): Gauge =>
+    cards.find((c) => c.provider === provider)!.gauges.find((m) => m.id === id)!;
 
-  it("ordem fixa, e só quem tem chave ou usou hoje", () => {
-
+  it("keeps a fixed order and only shows providers with a key or usage today", () => {
     expect(remainingToday(base()).map((c) => c.provider)).toEqual(["spend", "openai", "gemini", "openrouter", "nim"]);
     expect(remainingToday(base({ ledger: {}, hasKey: () => false }))).toEqual([]);
     expect(remainingToday(base({ ledger: {}, hasKey: (p) => p === "gemini" })).map((c) => c.provider)).toEqual(["gemini"]);
-
     expect(remainingToday(base({ hasKey: () => false })).map((c) => c.provider)).toEqual([
       "spend",
       "openai",
@@ -323,16 +314,16 @@ describe("os cartões do Left today", () => {
     ]);
   });
 
-  it("OpenAI: os dois baldes do dia UTC; imagem não entra", () => {
+  it("OpenAI shows both UTC daily buckets and excludes image models", () => {
     const c = remainingToday(base());
-    expect(medidor(c, "openai", "openai-big")).toMatchObject({ used: 1500, limit: 250_000, remaining: 248_500 });
-    expect(medidor(c, "openai", "openai-mini")).toMatchObject({ used: 2000, limit: 2_500_000, remaining: 2_498_000 });
+    expect(gauge(c, "openai", "openai-big")).toMatchObject({ used: 1500, limit: 250_000, remaining: 248_500 });
+    expect(gauge(c, "openai", "openai-mini")).toMatchObject({ used: 2000, limit: 2_500_000, remaining: 2_498_000 });
     expect(c.find((x) => x.provider === "openai")!.resetsIn).toBe(8.5 * H);
     const t3 = remainingToday(base({ openai: { dataSharing: true, tier: 3 } }));
-    expect(medidor(t3, "openai", "openai-big").limit).toBe(1_000_000);
+    expect(gauge(t3, "openai", "openai-big").limit).toBe(1_000_000);
   });
 
-  it("OpenAI sem data-sharing: diz o porquê, sem medidor e sem relógio", () => {
+  it("OpenAI without data sharing explains why, with no gauge and no reset timer", () => {
     const o = remainingToday(base({ openai: { dataSharing: false, tier: 1 } })).find((x) => x.provider === "openai")!;
     expect(o.gauges).toEqual([]);
     expect(o.empty).toMatch(/shares API data/);
@@ -342,7 +333,7 @@ describe("os cartões do Left today", () => {
     ).toMatch(/tier 1/);
   });
 
-  it("Gemini: por modelo, no dia do Pacífico; o pago diz que é pago", () => {
+  it("Gemini shows gauges per model on the Pacific day and flags paid-only models", () => {
     const c = remainingToday(base());
     const g = c.find((x) => x.provider === "gemini")!;
     expect(g.gauges.map((m) => [m.model, m.used])).toEqual([
@@ -351,17 +342,17 @@ describe("os cartões do Left today", () => {
     ]);
     expect(g.gauges[0]).toMatchObject({ limit: undefined, remaining: undefined, limitKey: "gemini\u0001gemini-2.5-flash" });
     expect(g.gauges[1].note).toMatch(/Paid only/);
-    expect(g.resetsIn).toBe(15.5 * H); 
+    expect(g.resetsIn).toBe(15.5 * H);
     expect(g.link?.url).toBe("https://aistudio.google.com/rate-limit");
   });
 
-  it("Gemini: o teto informado vira 'quanto sobra' — e modelo com teto aparece mesmo sem uso", () => {
+  it("Gemini turns a user-set cap into remaining requests and shows capped models without usage", () => {
     const c = remainingToday(
       base({
         limits: {
           "gemini\u0001gemini-2.5-flash": 250,
           "gemini\u0001gemini-2.5-pro": 100,
-          "gemini\u0001lixo": 0, 
+          "gemini\u0001junk": 0,
         },
       })
     );
@@ -373,15 +364,14 @@ describe("os cartões do Left today", () => {
     ]);
   });
 
-  it("OpenRouter sem resposta da chave: a conta deste aparelho, só dos :free", () => {
-    const m = medidor(remainingToday(base()), "openrouter", "openrouter-free");
+  it("OpenRouter without key status counts :free requests on this device", () => {
+    const m = gauge(remainingToday(base()), "openrouter", "openrouter-free");
     expect(m).toMatchObject({ used: 13, limit: 50, remaining: 37, source: "local" });
-
     expect(remainingToday(base()).find((x) => x.provider === "openrouter")!.note).toMatch(/^Counted on this device/);
   });
 
-  it("OpenRouter com a chave respondendo: vale o número dela, e o crédito vem junto", () => {
-    const viva = keyStatusFrom({
+  it("OpenRouter with key status uses its numbers and includes the credit", () => {
+    const live = keyStatusFrom({
       data: {
         free_model_daily_requests: { used: 20, limit: 50, remaining: 30 },
         limit_remaining: 4.2,
@@ -389,18 +379,18 @@ describe("os cartões do Left today", () => {
         limit_reset: "monthly",
       },
     });
-    const c = remainingToday(base({ openRouterKeyStatus: viva }));
-    expect(medidor(c, "openrouter", "openrouter-free")).toMatchObject({ used: 20, limit: 50, remaining: 30, source: "live" });
+    const c = remainingToday(base({ openRouterKeyStatus: live }));
+    expect(gauge(c, "openrouter", "openrouter-free")).toMatchObject({ used: 20, limit: 50, remaining: 30, source: "live" });
     expect(c.find((x) => x.provider === "openrouter")!.credit).toEqual({ remaining: 4.2, spentToday: 0.31, resets: "monthly" });
     expect(c.find((x) => x.provider === "openrouter")!.note).toMatch(/^Counted by OpenRouter for this key/);
   });
 
-  it("OpenRouter: a chave só diz o tier (sem used/remaining) — o teto é dela, a conta é daqui", () => {
+  it("OpenRouter key status with only the tier uses its cap and the local count", () => {
     const c = remainingToday(base({ openRouterKeyStatus: keyStatusFrom({ data: { is_free_tier: false } }) }));
-    expect(medidor(c, "openrouter", "openrouter-free")).toMatchObject({ used: 13, limit: 1000, remaining: 987, source: "local" });
+    expect(gauge(c, "openrouter", "openrouter-free")).toMatchObject({ used: 13, limit: 1000, remaining: 987, source: "local" });
   });
 
-  it("NIM: o dia de quem usa, sem teto diário", () => {
+  it("NIM uses the user's day with no daily cap", () => {
     const n = remainingToday(base()).find((x) => x.provider === "nim")!;
     expect(n.gauges[0].used).toBe(23);
     expect(n.gauges[0].limit).toBeUndefined();
@@ -409,13 +399,13 @@ describe("os cartões do Left today", () => {
     expect(n.note).toMatch(/40 requests a minute/);
   });
 
-  it("o nível do medidor: acabou, quase, ok", () => {
-    const m = (restante: number, limite = 100): Gauge => ({
+  it("the gauge level is depleted, low or ok", () => {
+    const m = (remaining: number, limit = 100): Gauge => ({
       id: "x",
       label: "x",
-      used: limite - restante,
-      limit: limite,
-      remaining: restante,
+      used: limit - remaining,
+      limit,
+      remaining: remaining,
       unit: "requests",
       source: "local",
     });
@@ -426,34 +416,31 @@ describe("os cartões do Left today", () => {
   });
 });
 
-describe("o gasto do dia e o limite", () => {
-  const agora = new Date("2026-10-02T15:30:00Z");
-  const livro = (): DailyLedger => {
+describe("daily spend and the spend limit", () => {
+  const now = new Date("2026-10-02T15:30:00Z");
+  const makeLedger = (): DailyLedger => {
     const l: DailyLedger = {};
 
     addEntry(l, new Date("2026-10-02T12:00:00Z"), "openai", "gpt-5-nano", { r: 2, i: 1_000_000, o: 1_000_000 });
-
     addEntry(l, new Date("2026-10-02T02:00:00Z"), "openai", "gpt-5-nano", { r: 1, i: 9_000_000, o: 0 });
-
     addEntry(l, new Date("2026-10-02T12:00:00Z"), "openrouter", "x/y:free", { r: 4, i: 500_000, o: 500_000 });
     addEntry(l, new Date("2026-10-02T12:00:00Z"), "ollama", "llama3.2", { r: 3, i: 900_000, o: 900_000 });
-
-    addEntry(l, new Date("2026-10-02T12:00:00Z"), "nim", "algum/modelo-sem-preco", { r: 5, i: 10, o: 10 });
+    addEntry(l, new Date("2026-10-02T12:00:00Z"), "nim", "some/unpriced-model", { r: 5, i: 10, o: 10 });
     return l;
   };
 
-  it("soma pelo preço público, no dia de quem usa; sem preço fica de fora (e contado)", () => {
-    const g = spendSince(livro(), startOfDay(agora, "America/Sao_Paulo"));
+  it("sums public prices on the user's day and counts unpriced requests separately", () => {
+    const g = spendSince(makeLedger(), startOfDay(now, "America/Sao_Paulo"));
     const p = knownPrice("openai", "gpt-5-nano")!;
     expect(g.total).toBeCloseTo(p.input + p.output, 6);
     expect(g.unpriced).toBe(5);
-    expect(knownPrice("ollama", "qualquer")).toEqual({ input: 0, output: 0 });
+    expect(knownPrice("ollama", "any")).toEqual({ input: 0, output: 0 });
     expect(isPaid("openrouter", "x/y:free")).toBe(false);
     expect(isPaid("openai", "gpt-5-nano")).toBe(true);
-    expect(isPaid("nim", "algum/modelo-sem-preco")).toBe(false);
+    expect(isPaid("nim", "some/unpriced-model")).toBe(false);
   });
 
-  it("os marcos: 80% e 100%, uma vez cada, só ao cruzar", () => {
+  it("the 80% and 100% marks fire once each, only when crossed", () => {
     expect(crossedMarks(0.5, 0.85, 1)).toEqual([80]);
     expect(crossedMarks(0.85, 1.2, 1)).toEqual([100]);
     expect(crossedMarks(0.1, 1.5, 1)).toEqual([80, 100]);
@@ -461,10 +448,10 @@ describe("o gasto do dia e o limite", () => {
     expect(crossedMarks(0, 5, 0)).toEqual([]);
   });
 
-  it("o cartão Paid models: bateria contra o limite, limite editável, a nota diz o que fica de fora", () => {
+  it("the Paid models card gauges spend against an editable limit and notes what is excluded", () => {
     const base = {
-      ledger: livro(),
-      now: agora,
+      ledger: makeLedger(),
+      now: now,
       hasKey: () => false,
       openai: { dataSharing: false, tier: 1 },
       limits: {},
@@ -472,17 +459,16 @@ describe("o gasto do dia e o limite", () => {
     };
     const p = knownPrice("openai", "gpt-5-nano")!;
     const total = p.input + p.output;
-    const com = remainingToday({ ...base, spendLimit: 2, blockAtLimit: true })[0];
-    expect(com.provider).toBe("spend");
-    expect(com.gauges[0]).toMatchObject({ unit: "usd", limit: 2, limitKey: SPEND_LIMIT_KEY });
-    expect(com.gauges[0].remaining).toBeCloseTo(2 - total, 6);
-    expect(com.note).toMatch(/5 requests on models without a public price aren't included/);
-    expect(com.note).toMatch(/paid models pause until midnight/);
-
+    const withLimit = remainingToday({ ...base, spendLimit: 2, blockAtLimit: true })[0];
+    expect(withLimit.provider).toBe("spend");
+    expect(withLimit.gauges[0]).toMatchObject({ unit: "usd", limit: 2, limitKey: SPEND_LIMIT_KEY });
+    expect(withLimit.gauges[0].remaining).toBeCloseTo(2 - total, 6);
+    expect(withLimit.note).toMatch(/5 requests on models without a public price aren't included/);
+    expect(withLimit.note).toMatch(/paid models pause until midnight/);
     expect(remainingToday({ ...base, ledger: {}, spendLimit: 0 }).map((c) => c.provider)).not.toContain("spend");
 
-    const sem = remainingToday({ ...base, spendLimit: 0 })[0];
-    expect(sem.gauges[0].limit).toBeUndefined();
-    expect(sem.note).toMatch(/Set a limit/);
+    const noLimit = remainingToday({ ...base, spendLimit: 0 })[0];
+    expect(noLimit.gauges[0].limit).toBeUndefined();
+    expect(noLimit.note).toMatch(/Set a limit/);
   });
 });

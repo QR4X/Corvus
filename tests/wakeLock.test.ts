@@ -7,23 +7,23 @@ import {
 import { useChatStore } from "../src/store/chat";
 
 function fakeEnv(over: Partial<WakeLockEnv> = {}): WakeLockEnv & {
-  pedidos: string[];
-  soltos: string[];
-  setVisivel: (v: string) => void;
-  dispararVisibilidade: () => void;
+  requests: string[];
+  releases: string[];
+  setVisibility: (v: string) => void;
+  fireVisibilityChange: () => void;
 } {
-  const pedidos: string[] = [];
-  const soltos: string[] = [];
-  const ouvintes = new Set<() => void>();
-  let visivel = "visible";
+  const requests: string[] = [];
+  const releases: string[] = [];
+  const listeners = new Set<() => void>();
+  let visibility = "visible";
   const env: WakeLockEnv = {
     ...over,
     wakeLock: "wakeLock" in over ? over.wakeLock : {
       async request(type: "screen") {
-        pedidos.push(type);
+        requests.push(type);
         return {
           release: async () => {
-            soltos.push(type);
+            releases.push(type);
           },
           addEventListener: () => {},
         };
@@ -31,20 +31,20 @@ function fakeEnv(over: Partial<WakeLockEnv> = {}): WakeLockEnv & {
     },
     document: {
       get visibilityState() {
-        return visivel;
+        return visibility;
       },
-      addEventListener: (_t, cb) => ouvintes.add(cb),
-      removeEventListener: (_t, cb) => ouvintes.delete(cb),
+      addEventListener: (_t, cb) => listeners.add(cb),
+      removeEventListener: (_t, cb) => listeners.delete(cb),
     },
   };
   return {
     ...env,
-    pedidos,
-    soltos,
-    setVisivel: (v) => {
-      visivel = v;
+    requests,
+    releases,
+    setVisibility: (v) => {
+      visibility = v;
     },
-    dispararVisibilidade: () => ouvintes.forEach((cb) => cb()),
+    fireVisibilityChange: () => listeners.forEach((cb) => cb()),
   };
 }
 
@@ -52,57 +52,57 @@ afterEach(() => {
   useChatStore.setState({ isLoading: false });
 });
 
-describe("acompanharEscrita", () => {
-  it("pede o lock quando o turno começa e solta quando termina", async () => {
+describe("watchWakeLock", () => {
+  it("requests the lock when a turn starts and releases it when it ends", async () => {
     const env = fakeEnv();
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toEqual(["screen"]));
+    await vi.waitFor(() => expect(env.requests).toEqual(["screen"]));
     useChatStore.setState({ isLoading: false });
-    await vi.waitFor(() => expect(env.soltos).toEqual(["screen"]));
-    vigia.dispose();
+    await vi.waitFor(() => expect(env.releases).toEqual(["screen"]));
+    watcher.dispose();
   });
 
-  it("o toggle desligado no meio do turno solta o lock", async () => {
+  it("releases the lock when the toggle is turned off mid-turn", async () => {
     const env = fakeEnv();
-    let ligado = true;
-    const vigia = watchWakeLock(() => ligado, env);
+    let enabled = true;
+    const watcher = watchWakeLock(() => enabled, env);
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
-    ligado = false;
-    vigia.recheck();
-    await vi.waitFor(() => expect(env.soltos).toEqual(["screen"]));
-    vigia.dispose();
+    await vi.waitFor(() => expect(env.requests).toHaveLength(1));
+    enabled = false;
+    watcher.recheck();
+    await vi.waitFor(() => expect(env.releases).toEqual(["screen"]));
+    watcher.dispose();
   });
 
-  it("não segura com o app fora da tela, e re-segura ao voltar", async () => {
+  it("releases while the app is hidden and reacquires when it is visible again", async () => {
     const env = fakeEnv();
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
+    await vi.waitFor(() => expect(env.requests).toHaveLength(1));
 
-    env.setVisivel("hidden");
-    env.dispararVisibilidade();
-    await vi.waitFor(() => expect(env.soltos).toHaveLength(1));
+    env.setVisibility("hidden");
+    env.fireVisibilityChange();
+    await vi.waitFor(() => expect(env.releases).toHaveLength(1));
 
-    env.setVisivel("visible");
-    env.dispararVisibilidade();
-    await vi.waitFor(() => expect(env.pedidos).toHaveLength(2));
-    vigia.dispose();
+    env.setVisibility("visible");
+    env.fireVisibilityChange();
+    await vi.waitFor(() => expect(env.requests).toHaveLength(2));
+    watcher.dispose();
   });
 
-  it("sem suporte da API nunca lança", async () => {
+  it("never throws when the API is unsupported", async () => {
     const env = fakeEnv({ wakeLock: undefined });
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => {
-      expect(env.pedidos).toEqual([]);
+      expect(env.requests).toEqual([]);
       expect(useChatStore.getState().isLoading).toBe(true);
     });
-    vigia.dispose();
+    watcher.dispose();
   });
 
-  it("o SO recusar o lock é silencioso", async () => {
+  it("stays silent when the OS refuses the lock", async () => {
     const env = fakeEnv({
       wakeLock: {
         async request() {
@@ -110,44 +110,44 @@ describe("acompanharEscrita", () => {
         },
       },
     });
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toEqual([]));
-    vigia.dispose();
+    await vi.waitFor(() => expect(env.requests).toEqual([]));
+    watcher.dispose();
   });
 
-  it("dispose solta o lock e para de escutar", async () => {
+  it("releases the lock and stops listening on dispose", async () => {
     const env = fakeEnv();
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
-    vigia.dispose();
-    await vi.waitFor(() => expect(env.soltos).toEqual(["screen"]));
+    await vi.waitFor(() => expect(env.requests).toHaveLength(1));
+    watcher.dispose();
+    await vi.waitFor(() => expect(env.releases).toEqual(["screen"]));
     useChatStore.setState({ isLoading: false });
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(env.pedidos).toHaveLength(1));
+    await vi.waitFor(() => expect(env.requests).toHaveLength(1));
   });
 
-  it("o turno acabar antes de o lock chegar descarta o pedido velho", async () => {
-    const pedidos: string[] = [];
-    let liberar!: (s: WakeLockSentinel) => void;
+  it("discards a stale request when the turn ends before the lock arrives", async () => {
+    const requests: string[] = [];
+    let resolveLock!: (s: WakeLockSentinel) => void;
     const env = fakeEnv({
       wakeLock: {
         request: () => {
-          pedidos.push("screen");
-          return new Promise<WakeLockSentinel>((resolver) => {
-            liberar = resolver;
+          requests.push("screen");
+          return new Promise<WakeLockSentinel>((resolve) => {
+            resolveLock = resolve;
           });
         },
       },
     });
-    const vigia = watchWakeLock(() => true, env);
+    const watcher = watchWakeLock(() => true, env);
     useChatStore.setState({ isLoading: true });
-    useChatStore.setState({ isLoading: false }); 
-    liberar({ release: async () => {}, addEventListener: () => {} });
+    useChatStore.setState({ isLoading: false });
+    resolveLock({ release: async () => {}, addEventListener: () => {} });
 
     useChatStore.setState({ isLoading: true });
-    await vi.waitFor(() => expect(pedidos).toEqual(["screen", "screen"]));
-    vigia.dispose();
+    await vi.waitFor(() => expect(requests).toEqual(["screen", "screen"]));
+    watcher.dispose();
   });
 });

@@ -4,13 +4,13 @@ import {
 } from "../src/providers/modelCapabilities";
 import { hydrateModelInfoCache } from "../src/providers/modelInfoStore";
 
-describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () => {
-  it("gpt-4o-mini casa antes de gpt-4o", () => {
+describe("getModelCapabilities prefix order", () => {
+  it("gpt-4o-mini matches before gpt-4o", () => {
     const caps = getModelCapabilities("openai", "gpt-4o-mini-2024-07-18");
     expect(caps).toMatchObject({ vision: true, tools: true, streaming: true });
   });
 
-  it("o1-mini (sem tools/vision) casa antes de o1", () => {
+  it("o1-mini without tools or vision matches before o1", () => {
     expect(getModelCapabilities("openai", "o1-mini")).toMatchObject({
       vision: false,
       tools: false,
@@ -21,17 +21,17 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
     });
   });
 
-  it("tts casa como audioGen, não como chat", () => {
+  it("tts matches as audioGen, not as chat", () => {
     const caps = getModelCapabilities("openai", "gpt-4o-mini-tts");
     expect(caps.audioGen).toBe(true);
     expect(caps.tools).toBe(false);
   });
 
-  it("dall-e-3 é image gen", () => {
+  it("dall-e-3 is image generation", () => {
     expect(getModelCapabilities("openai", "dall-e-3").imageGen).toBe(true);
   });
 
-  it("claude-fable-5 (modelo novo) tem vision + tools + streaming", () => {
+  it("claude-fable-5 has vision, tools and streaming", () => {
     expect(getModelCapabilities("anthropic", "claude-fable-5")).toMatchObject({
       vision: true,
       tools: true,
@@ -39,7 +39,7 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
     });
   });
 
-  it("llama-3.2-vision casa vision antes do llama-3.2 base texto-only", () => {
+  it("llama-3.2-vision gets vision before the text-only llama-3.2 base", () => {
     expect(
       getModelCapabilities("openrouter", "meta-llama/llama-3.2-vision-instruct")
         .vision
@@ -50,7 +50,7 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
     ).toBe(false);
   });
 
-  it("openrouter/auto tem vision + tools + streaming", () => {
+  it("openrouter/auto has vision, tools and streaming", () => {
     const caps = getModelCapabilities("openrouter", "openrouter/auto");
     expect(caps).toMatchObject({
       vision: true,
@@ -60,23 +60,22 @@ describe("getModelCapabilities — ordem de prefixo (o que quebra calado)", () =
   });
 });
 
-describe("getModelCapabilities — overlay :free do OpenRouter", () => {
-  it("sufixo :free mark free=true sem perder as caps do upstream", () => {
+describe("getModelCapabilities OpenRouter :free overlay", () => {
+  it("the :free suffix marks the model free without losing upstream capabilities", () => {
     const caps = getModelCapabilities("openrouter", "mistralai/mistral-7b:free");
     expect(caps.free).toBe(true);
-    expect(caps.tools).toBe(true); 
+    expect(caps.tools).toBe(true);
   });
 
-  it(":free sem match de prefixo ainda mark free no default", () => {
-    const caps = getModelCapabilities("openrouter", "lab-desconhecido/x:free");
+  it(":free without a prefix match still marks the default as free", () => {
+    const caps = getModelCapabilities("openrouter", "unknown-lab/x:free");
     expect(caps.free).toBe(true);
     expect(caps.streaming).toBe(true);
   });
 });
 
-describe("getModelCapabilities — fallbacks seguros", () => {
-  it("provider desconhecido → default conservador (só streaming)", () => {
-
+describe("getModelCapabilities safe fallbacks", () => {
+  it("an unknown provider gets the conservative default with only streaming", () => {
     expect(getModelCapabilities("provider-fake", "x")).toEqual({
       vision: false,
       tools: false,
@@ -85,7 +84,7 @@ describe("getModelCapabilities — fallbacks seguros", () => {
     });
   });
 
-  it("modelo vazio → default", () => {
+  it("an empty model gets the default", () => {
     expect(getModelCapabilities("openai", "")).toMatchObject({
       vision: false,
       tools: false,
@@ -93,35 +92,35 @@ describe("getModelCapabilities — fallbacks seguros", () => {
     });
   });
 
-  it("modelo desconhecido num provider conhecido → default", () => {
-    expect(getModelCapabilities("openai", "modelo-do-futuro-9000")).toMatchObject(
+  it("an unknown model on a known provider gets the default", () => {
+    expect(getModelCapabilities("openai", "future-model-9000")).toMatchObject(
       { vision: false, tools: false, streaming: true }
     );
   });
 });
 
-describe("getModelCapabilities — overlay do catálogo vivo", () => {
+describe("getModelCapabilities live catalog overlay", () => {
   afterEach(() => hydrateModelInfoCache({}));
 
-  it("um modelo fora das tabelas ganha visão pelo dado REAL", () => {
+  it("a model outside the tables gets vision from live data", () => {
     hydrateModelInfoCache({
-      "openrouter::lab/modelo-novo": {
+      "openrouter::lab/new-model": {
         modalities: ["text", "image"],
         supportsTools: true,
       },
     });
-    expect(getModelCapabilities("openrouter", "lab/modelo-novo")).toMatchObject({
+    expect(getModelCapabilities("openrouter", "lab/new-model")).toMatchObject({
       vision: true,
       tools: true,
     });
   });
 
-  it("output de imagem vira imageGen (é o que põe o modelo na aba Image)", () => {
-    hydrateModelInfoCache({ "openrouter::lab/foto-1": { outputModalities: ["image"] } });
-    expect(getModelCapabilities("openrouter", "lab/foto-1").imageGen).toBe(true);
+  it("image output becomes imageGen, which puts the model on the Image tab", () => {
+    hydrateModelInfoCache({ "openrouter::lab/photo-1": { outputModalities: ["image"] } });
+    expect(getModelCapabilities("openrouter", "lab/photo-1").imageGen).toBe(true);
   });
 
-  it("fora do OpenRouter o catálogo só LIGA — nunca desliga a tabela curada", () => {
+  it("outside OpenRouter the catalog only turns capabilities on, never off", () => {
     hydrateModelInfoCache({
       "nim::meta/llama-3.3-70b-instruct": {
         supportsTools: false,

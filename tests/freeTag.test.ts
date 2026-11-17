@@ -9,7 +9,7 @@ const cfg = (over: Partial<{ free: boolean; dataSharing: boolean; tier: number }
 });
 
 describe("compactTokens", () => {
-  it("encurta sem inventar casas", () => {
+  it("shortens without inventing decimals", () => {
     expect(compactTokens(250_000)).toBe("250k");
     expect(compactTokens(2_500_000)).toBe("2.5M");
     expect(compactTokens(1_000_000)).toBe("1M");
@@ -18,19 +18,18 @@ describe("compactTokens", () => {
 });
 
 describe("freeTag", () => {
-  it("modelo sem nada não ganha etiqueta", () => {
+  it("gives no tag to a model with no free offer", () => {
     expect(freeTag("anthropic", "claude-sonnet-5", cfg())).toBeNull();
   });
 
-  it("grátis de fábrica é 'free', sem número", () => {
+  it("labels built-in free models as 'free' without a number", () => {
     const t = freeTag("openrouter", "meta/llama-3.3-70b:free", cfg({ free: true }));
     expect(t?.kind).toBe("always");
     expect(t?.label).toBe("free");
     expect(t?.perDay).toBeUndefined();
   });
 
-  it("com data-sharing ligado, a etiqueta carrega a COTA do dia", () => {
-
+  it("shows the daily quota when data sharing is on", () => {
     expect(freeTag("openai", "gpt-5", cfg({ dataSharing: true })).label).toBe(
       "250k/day"
     );
@@ -39,33 +38,29 @@ describe("freeTag", () => {
     ).toBe("2.5M/day");
   });
 
-  it("tier 3+ tem cota maior", () => {
+  it("gives tier 3+ a larger quota", () => {
     const t = freeTag("openai", "gpt-5", cfg({ dataSharing: true, tier: 4 }));
     expect(t?.perDay).toBe(1_000_000);
     expect(t?.label).toBe("1M/day");
   });
 
-  it("sem data-sharing a cota vira OFERTA, não fato", () => {
-
+  it("shows the quota as an offer when data sharing is off", () => {
     const t = freeTag("openai", "gpt-4o", cfg({ dataSharing: false }));
     expect(t?.kind).toBe("offer");
-
     expect(t?.label).toBe("+250k/day");
     expect(t?.detail).toMatch(/data sharing/i);
   });
 
-  it("modelo OpenAI fora da lista elegível não vira cota", () => {
-
+  it("gives no quota to OpenAI models outside the eligible list", () => {
     expect(freeTag("openai", "gpt-image-1", cfg({ dataSharing: true }))).toBeNull();
   });
 
-  it("a cota vence o 'free' de fábrica quando os dois valem", () => {
-
+  it("prefers the daily quota over built-in free when both apply", () => {
     const t = freeTag("openai", "gpt-4o-mini", cfg({ free: true, dataSharing: true }));
     expect(t?.kind).toBe("daily");
   });
 
-  it("outro provider não herda o programa da OpenAI", () => {
+  it("does not apply the OpenAI program to other providers", () => {
     expect(freeTag("openrouter", "gpt-4o", cfg({ dataSharing: true }))).toBeNull();
   });
 });

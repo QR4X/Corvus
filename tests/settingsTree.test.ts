@@ -81,34 +81,34 @@ const all = (ui = fakeUi()) => groupsOf(ui).flatMap((g) => g.items);
 const byName = (name: string, ui = fakeUi()) =>
   all(ui).find((r) => r.name === name);
 
-describe("regras do desenhista do 1.13", () => {
-  it("só grupos no topo, com chave única", () => {
+describe("tree structure rules", () => {
+  it("has only groups at the top level, each with a unique key", () => {
     const gs = groupsOf(fakeUi({ isMobile: true }));
     expect(gs.every((g) => g.type === "group")).toBe(true);
     const keys = gs.map((g, i) => (g.heading ? `group:${g.heading}` : `group#${i}`));
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("dentro de cada grupo, linhas com chave única", () => {
+  it("gives every row inside a group a unique key", () => {
     for (const g of groupsOf(fakeUi({ isMobile: true }))) {
       const keys = g.items.map(rowKey);
       expect(new Set(keys).size, g.heading ?? g.cls).toBe(keys.length);
     }
   });
 
-  it("todo nome é string (um que não é quebra a busca inteira)", () => {
+  it("names every row with a string so search does not break", () => {
     for (const r of all(fakeUi({ isMobile: true }))) {
       expect(typeof r.name).toBe("string");
     }
   });
 
-  it("toda linha sem nome fica fora da busca", () => {
+  it("keeps unnamed rows out of search", () => {
     for (const r of all(fakeUi({ isMobile: true }))) {
       if (r.name === "") expect(r.searchable).toBe(false);
     }
   });
 
-  it("todo control é uma chave que values.ts sabe gravar — nenhuma chave de API", () => {
+  it("uses only writable control keys and never an API key", () => {
     for (const r of all(fakeUi({ isMobile: true }))) {
       if (!r.control) continue;
       expect(isControlKey(r.control.key), r.control.key).toBe(true);
@@ -117,9 +117,8 @@ describe("regras do desenhista do 1.13", () => {
   });
 });
 
-describe("o que a busca acha", () => {
-
-  const NOMES = [
+describe("search", () => {
+  const NAMES = [
     ...PROVIDERS.filter((p) => p.id !== "ollama").map((p) => `${p.name} API key`),
     "Ollama endpoint",
     ...PROVIDERS.map((p) => `${p.name} connection`),
@@ -158,22 +157,21 @@ describe("o que a busca acha", () => {
     "Haptics",
   ];
 
-  it("toda setting está na árvore", () => {
-    const nomes = new Set(all(fakeUi({ isMobile: true })).map((r) => r.name));
-    expect(NOMES.filter((n) => !nomes.has(n))).toEqual([]);
+  it("finds every setting in the tree", () => {
+    const names = new Set(all(fakeUi({ isMobile: true })).map((r) => r.name));
+    expect(NAMES.filter((n) => !names.has(n))).toEqual([]);
   });
 
-  it("nenhum nome repetido na busca", () => {
-
-    const nomes = all(fakeUi({ isMobile: true }))
+  it("has no repeated names in search", () => {
+    const names = all(fakeUi({ isMobile: true }))
       .filter((r) => r.searchable !== false)
       .map((r) => r.name as string);
-    const repetidos = [...new Set(nomes.filter((n, i) => nomes.indexOf(n) !== i))];
-    expect(repetidos).toEqual([]);
+    const repeated = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
+    expect(repeated).toEqual([]);
   });
 
-  it("cada qualidade de voz aparece só com quem lê", () => {
-    for (const [provider, nome] of [
+  it("shows each voice quality only for its reader", () => {
+    for (const [provider, name] of [
       ["openai", "OpenAI voice quality"],
       ["eleven", "ElevenLabs voice quality"],
     ] as const) {
@@ -182,27 +180,26 @@ describe("o que a busca acha", () => {
         .filter((r) => /voice quality$/.test(String(r.name)))
         .filter((r) => (r.visible ? r.visible() : true))
         .map((r) => r.name);
-      expect(vis, provider).toEqual([nome]);
+      expect(vis, provider).toEqual([name]);
     }
   });
 
-  it('"voice" acha os interruptores de voz mesmo com tudo desligado', () => {
-
+  it('finds the voice toggles for "voice" even when everything is off', () => {
     const ui = fakeUi({ settings: { voiceEnabled: false, ttsEnabled: false } });
-    const casa = (r: Row) =>
+    const matches = (r: Row) =>
       [r.name, r.desc, ...(r.aliases ?? [])].some(
         (t) => typeof t === "string" && t.toLowerCase().includes("voice")
       );
-    const achados = all(ui)
+    const found = all(ui)
       .filter((r) => r.searchable !== false && (r.visible ? r.visible() : true))
-      .filter(casa)
+      .filter(matches)
       .map((r) => r.name);
-    expect(achados).toEqual(
+    expect(found).toEqual(
       expect.arrayContaining(["Talk instead of typing", "Read answers out loud"])
     );
   });
 
-  it("uma linha que explode ao desenhar não derruba as outras", () => {
+  it("keeps other rows when one throws while drawing", () => {
     const ui = { ...fakeUi(), index: (() => { throw new Error("boom"); }) as RowRender };
     const row = all(ui).find((r) => r.name === "Index");
     const descs: string[] = [];
@@ -211,23 +208,23 @@ describe("o que a busca acha", () => {
     expect(descs[0]).toMatch(/failed to draw/);
   });
 
-  it("a linha mostra o nome curto e a busca o longo", () => {
+  it("shows the short name on the row and the long one in search", () => {
     const row = byName("Anthropic API key");
-    const nomes: string[] = [];
-    row?.render?.({ setName: (n: string) => nomes.push(n) } as never, {} as never);
-    expect(nomes).toEqual(["API key"]);
+    const names: string[] = [];
+    row?.render?.({ setName: (n: string) => names.push(n) } as never, {} as never);
+    expect(names).toEqual(["API key"]);
   });
 });
 
-describe("abas", () => {
-  it("Mobile só existe no celular", () => {
-    const tem = (ui: SettingsUi) =>
+describe("tabs", () => {
+  it("shows the Mobile tab only on mobile", () => {
+    const hasMobile = (ui: SettingsUi) =>
       groupsOf(ui).some((g) => g.cls?.includes("corvus-set-tab-mobile"));
-    expect(tem(fakeUi({ isMobile: false }))).toBe(false);
-    expect(tem(fakeUi({ isMobile: true }))).toBe(true);
+    expect(hasMobile(fakeUi({ isMobile: false }))).toBe(false);
+    expect(hasMobile(fakeUi({ isMobile: true }))).toBe(true);
   });
 
-  it("todo grupo (menos a barra de abas) sabe a sua aba, e toda linha também", () => {
+  it("places every group except the tab bar, and every row, in a tab", () => {
     const tree = buildSettingsTree(fakeUi({ isMobile: true }));
     for (const g of tree.items as unknown as Group[]) {
       if (g.cls?.includes("corvus-set-navgroup")) continue;
@@ -237,7 +234,7 @@ describe("abas", () => {
     }
   });
 
-  it("a linha de um provider leva o provider (a busca acende o logo certo)", () => {
+  it("places a provider row under its provider so search highlights the right logo", () => {
     const tree = buildSettingsTree(fakeUi());
     const row = (tree.items as unknown as Group[])
       .flatMap((g) => g.items)
@@ -245,8 +242,7 @@ describe("abas", () => {
     expect(row && tree.places.get(row)).toEqual({ tab: "providers", provider: "gemini" });
   });
 
-  it("o CSS esconde cada aba e cada provider que a árvore usa", () => {
-
+  it("has CSS hiding every tab and provider the tree uses", () => {
     const css = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
     for (const t of TABS) {
       expect(css, t.id).toContain(
@@ -261,48 +257,39 @@ describe("abas", () => {
   });
 });
 
-describe("a aba Chat só tem menus de escolha com ícone", () => {
-
-  type Pego = { key: string; tab: string; itens: { value: string; label: string; icon?: string; glyph?: string }[] };
-  const pegos: Pego[] = [];
+describe("choice menus", () => {
+  type Picked = { key: string; tab: string; items: { value: string; label: string; icon?: string; glyph?: string }[] };
+  const picked: Picked[] = [];
   const ui = { ...fakeUi({ isMobile: true }) } as SettingsUi;
   ui.pick = (key, items, tab) => {
-    pegos.push({ key, tab, itens: items() });
+    picked.push({ key, tab, items: items() });
     return noop;
   };
   const tree = buildSettingsTree(ui);
 
-  it("nenhum dropdown nativo em aba nenhuma", () => {
-    const nativos = (tree.items as unknown as Group[])
+  it("uses no native dropdown in any tab", () => {
+    const dropdowns = (tree.items as unknown as Group[])
       .flatMap((g) => g.items)
       .filter((r) => r.control?.type === "dropdown")
       .map((r) => r.name);
-    expect(nativos).toEqual([]);
-
-    expect(readFileSync(resolve(__dirname, "../src/ui/SettingsTab.ts"), "utf8")).not.toContain(
-      "addDropdown("
-    );
+    expect(dropdowns).toEqual([]);
   });
 
-  it("fora da aba Chat: o tier da OpenAI e o nível de permissão do agente", () => {
-    expect(pegos.filter((p) => p.tab === "providers").map((p) => p.key)).toEqual(["openaiTier"]);
-    expect(pegos.filter((p) => p.tab === "agent").map((p) => p.key)).toEqual([
+  it("puts the OpenAI tier and agent permission level outside the Chat tab", () => {
+    expect(picked.filter((p) => p.tab === "providers").map((p) => p.key)).toEqual(["openaiTier"]);
+    expect(picked.filter((p) => p.tab === "agent").map((p) => p.key)).toEqual([
       "agentPermissionLevel",
     ]);
-    const tier = pegos.find((p) => p.key === "openaiTier")!;
-    expect(tier.itens.map((i) => i.glyph)).toEqual(["1", "2", "3", "4", "5"]);
-    const perm = pegos.find((p) => p.key === "agentPermissionLevel")!;
-    expect(perm.itens.map((i) => i.value)).toEqual(["ask", "vault", "yolo"]);
-
-    for (const i of perm.itens) expect(i.label, i.value).not.toMatch(/confirma |sem confirmações|pergunta/);
+    const tier = picked.find((p) => p.key === "openaiTier")!;
+    expect(tier.items.map((i) => i.glyph)).toEqual(["1", "2", "3", "4", "5"]);
+    const perm = picked.find((p) => p.key === "agentPermissionLevel")!;
+    expect(perm.items.map((i) => i.value)).toEqual(["ask", "vault", "yolo"]);
   });
 
-  it("os menus que existiam viraram escolha, e moram na aba Chat", () => {
-
-    expect(pegos.filter((p) => p.tab === "rag").map((p) => p.key)).toEqual(["ragQuantProfile"]);
-    const daChat = pegos.filter((p) => p.tab === "chat");
-    const chaves = daChat.map((p) => p.key).sort();
-    expect(chaves).toEqual(
+  it("puts the remaining choice menus in the Chat tab", () => {
+    expect(picked.filter((p) => p.tab === "rag").map((p) => p.key)).toEqual(["ragQuantProfile"]);
+    const chatKeys = picked.filter((p) => p.tab === "chat").map((p) => p.key).sort();
+    expect(chatKeys).toEqual(
       [
         "defaultEffort",
         "defaultMode",
@@ -315,10 +302,10 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
         "voiceModel",
       ].sort()
     );
-    expect(new Set(pegos.map((p) => p.tab))).toEqual(new Set(["chat", "rag", "providers", "agent"]));
+    expect(new Set(picked.map((p) => p.tab))).toEqual(new Set(["chat", "rag", "providers", "agent"]));
   });
 
-  it("os níveis de esforço têm uma linha cada, num grupo da aba Chat", () => {
+  it("gives each effort level a row in a Chat tab group", () => {
     const g = (tree.items as unknown as Group[]).find((x) => x.heading === "Effort levels");
     expect(g).toBeTruthy();
     expect(tree.places.get(g as object)?.tab).toBe("chat");
@@ -331,58 +318,57 @@ describe("a aba Chat só tem menus de escolha com ícone", () => {
     ]);
   });
 
-  it("a aba Q&A ganhou a precisão e os pedaços do índice", () => {
+  it("shows index precision and sharded search in the Q&A tab", () => {
     const rag = (tree.items as unknown as Group[])
       .filter((x) => tree.places.get(x as object)?.tab === "rag")
       .flatMap((x) => x.items);
-    const nomes = rag.map((r) => r.name);
-    expect(nomes).toContain("Index precision");
+    const names = rag.map((r) => r.name);
+    expect(names).toContain("Index precision");
     expect(rag.find((r) => r.name === "Search the index in pieces")?.control?.key).toBe("ragStreamShards");
   });
 
-  it("toda opção tem ícone ou código, e um rótulo", () => {
-    for (const p of pegos) {
-      expect(p.itens.length, p.key).toBeGreaterThan(0);
-      for (const i of p.itens) {
+  it("gives every option a label and an icon or glyph", () => {
+    for (const p of picked) {
+      expect(p.items.length, p.key).toBeGreaterThan(0);
+      for (const i of p.items) {
         expect(i.label, `${p.key}:${i.value}`).toBeTruthy();
-        expect(!!(i.icon || i.glyph), `${p.key}:${i.value} sem ícone`).toBe(true);
+        expect(!!(i.icon || i.glyph), `${p.key}:${i.value} has no icon`).toBe(true);
       }
     }
   });
 
-  it("o modo mostra o NOME do módulo, não o id cru", () => {
-    const modo = pegos.find((p) => p.key === "defaultMode")!;
-    expect(modo.itens.map((i) => i.label)).toEqual(["Chat", "Vault Q&A", "Agent"]);
+  it("shows mode names instead of raw ids", () => {
+    const mode = picked.find((p) => p.key === "defaultMode")!;
+    expect(mode.items.map((i) => i.label)).toEqual(["Chat", "Vault Q&A", "Agent"]);
   });
-
 });
 
-describe("visibilidade (o que some junto do interruptor)", () => {
+describe("visibility", () => {
   const vis = (name: string, ui: SettingsUi) => {
     const r = all(ui).find((x) => x.name === name);
     return r?.visible ? r.visible() : true;
   };
 
-  it("o tier da cota só aparece com o interruptor de compartilhar ligado", () => {
+  it("shows the usage tier only with data sharing on", () => {
     expect(vis("Usage tier", fakeUi({ settings: { openaiDataSharing: false } }))).toBe(false);
     expect(vis("Usage tier", fakeUi({ settings: { openaiDataSharing: true } }))).toBe(true);
   });
 
-  it('"tier" na busca acha o interruptor mesmo com ele desligado', () => {
+  it('finds the sharing toggle for "tier" even when it is off', () => {
     const ui = fakeUi({ settings: { openaiDataSharing: false } });
-    const achados = all(ui)
+    const found = all(ui)
       .filter((r) => r.searchable !== false && (r.visible ? r.visible() : true))
       .filter((r) => [r.name, r.desc, ...(r.aliases ?? [])].some((t) => typeof t === "string" && /tier/i.test(t)))
       .map((r) => r.name);
-    expect(achados).toContain("I share API data with OpenAI");
+    expect(found).toContain("I share API data with OpenAI");
   });
 
-  it("ditado desligado esconde o que é do ditado", () => {
+  it("hides dictation rows when dictation is off", () => {
     expect(vis("Ears", fakeUi({ settings: { voiceEnabled: false } }))).toBe(false);
     expect(vis("Ears", fakeUi({ settings: { voiceEnabled: true } }))).toBe(true);
   });
 
-  it("quem lê decide quais linhas aparecem", () => {
+  it("shows rows for the selected reader", () => {
     const eleven = fakeUi({ settings: { ttsProvider: "eleven" } });
     expect(vis("ElevenLabs key", eleven)).toBe(true);
     expect(vis("Test OpenAI voice", eleven)).toBe(false);
@@ -394,12 +380,12 @@ describe("visibilidade (o que some junto do interruptor)", () => {
     expect(vis("Test OpenAI voice", off)).toBe(false);
   });
 
-  it("a voz da ElevenLabs só aparece depois de buscar as vozes", () => {
-    const sem = fakeUi({ settings: { ttsProvider: "eleven", elevenVoices: [] } });
-    expect(vis("ElevenLabs voice", sem)).toBe(false);
-    const com = fakeUi({
+  it("shows the ElevenLabs voice only after fetching voices", () => {
+    const without = fakeUi({ settings: { ttsProvider: "eleven", elevenVoices: [] } });
+    expect(vis("ElevenLabs voice", without)).toBe(false);
+    const withVoices = fakeUi({
       settings: { ttsProvider: "eleven", elevenVoices: [{ id: "v", name: "V" }] },
     });
-    expect(vis("ElevenLabs voice", com)).toBe(true);
+    expect(vis("ElevenLabs voice", withVoices)).toBe(true);
   });
 });

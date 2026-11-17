@@ -18,8 +18,8 @@ const bytes = (s: string) => new TextEncoder().encode(s);
 
 afterEach(() => __setRequestUrl(null));
 
-describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
-  it("campo de texto sai com o boundary e o content-disposition certos", () => {
+describe("buildMultipartBody builds the body requestUrl sends", () => {
+  it("a text field gets the right boundary and content disposition", () => {
     const { body, contentType } = buildMultipartBody(
       [{ name: "model", value: "whisper-1" }],
       "BOUND"
@@ -30,14 +30,14 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
     );
   });
 
-  it("arquivo carrega filename + content-type e os bytes intactos", () => {
+  it("a file part carries filename, content type and intact bytes", () => {
     const { body } = buildMultipartBody(
       [
         {
           name: "file",
           filename: "a.webm",
           contentType: "audio/webm",
-          data: bytes("BINÁRIO"),
+          data: bytes("binary-ü"),
         },
       ],
       "B"
@@ -45,11 +45,11 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
     const out = dec.decode(body);
     expect(out).toContain('name="file"; filename="a.webm"');
     expect(out).toContain("Content-Type: audio/webm");
-    expect(out).toContain("BINÁRIO");
+    expect(out).toContain("binary-ü");
     expect(out.endsWith("--B--\r\n")).toBe(true);
   });
 
-  it("bytes binários crus (não-UTF8) atravessam sem corromper", () => {
+  it("raw non-UTF-8 bytes pass through uncorrupted", () => {
     const raw = new Uint8Array([0x00, 0xff, 0x1a, 0x45, 0xdf, 0xa3]);
     const { body } = buildMultipartBody(
       [{ name: "file", filename: "a.webm", contentType: "audio/webm", data: raw }],
@@ -63,7 +63,7 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
     expect(idx).toBeGreaterThan(0);
   });
 
-  it("boundary default é único entre chamadas", () => {
+  it("the default boundary is unique per call", () => {
     const a = buildMultipartBody([{ name: "x", value: "1" }]).contentType;
     const b = buildMultipartBody([{ name: "x", value: "1" }]).contentType;
     expect(a).not.toBe(b);
@@ -71,7 +71,7 @@ describe("buildMultipartBody — o corpo que o requestUrl envia", () => {
 });
 
 describe("audioMimeFor", () => {
-  it("mapeia as extensões que o gravador produz", () => {
+  it("maps the extensions the recorder produces", () => {
     expect(audioMimeFor("corvus-ai/recordings/x.webm")).toBe("audio/webm");
     expect(audioMimeFor("x.m4a")).toBe("audio/mp4");
     expect(audioMimeFor("x.ogg")).toBe("audio/ogg");
@@ -79,30 +79,30 @@ describe("audioMimeFor", () => {
     expect(audioMimeFor("x.wav")).toBe("audio/wav");
   });
 
-  it("extensão desconhecida cai no webm (o default do MediaRecorder)", () => {
-    expect(audioMimeFor("sem-extensao")).toBe("audio/webm");
+  it("an unknown extension falls back to webm, the MediaRecorder default", () => {
+    expect(audioMimeFor("no-extension")).toBe("audio/webm");
   });
 });
 
 describe("extractTranscript", () => {
-  it("lê o campo text do JSON", () => {
-    expect(extractTranscript({ text: " oi mundo " })).toBe("oi mundo");
+  it("reads the text field from JSON", () => {
+    expect(extractTranscript({ text: " hello world " })).toBe("hello world");
   });
 
-  it("aceita resposta em texto puro (response_format=text)", () => {
-    expect(extractTranscript(undefined, "oi mundo")).toBe("oi mundo");
+  it("accepts a plain text response (response_format=text)", () => {
+    expect(extractTranscript(undefined, "hello world")).toBe("hello world");
   });
 
-  it("não confunde um JSON cru com transcript", () => {
+  it("does not mistake raw JSON for a transcript", () => {
     expect(extractTranscript(undefined, '{"error":"x"}')).toBe("");
   });
 
-  it("vazio é vazio", () => {
+  it("empty stays empty", () => {
     expect(extractTranscript({ text: "   " }, "")).toBe("");
   });
 });
 
-describe("transcribeAudio — contrato de erro", () => {
+describe("transcribeAudio error contract", () => {
   const base = {
     apiKey: "sk-test",
     model: "gpt-4o-mini-transcribe",
@@ -110,18 +110,18 @@ describe("transcribeAudio — contrato de erro", () => {
     filename: "a.webm",
   };
 
-  it("sem key → no-key, sem tocar na rede", async () => {
+  it("a missing key fails with no-key without touching the network", async () => {
     __setRequestUrl(async () => {
-      throw new Error("não devia chamar");
+      throw new Error("should not be called");
     });
     await expect(transcribeAudio({ ...base, apiKey: "" })).rejects.toMatchObject({
       code: "no-key",
     });
   });
 
-  it("arquivo acima do teto da API é barrado antes do upload", async () => {
+  it("a file above the API limit is rejected before upload", async () => {
     __setRequestUrl(async () => {
-      throw new Error("não devia chamar");
+      throw new Error("should not be called");
     });
     await expect(
       transcribeAudio({
@@ -131,7 +131,7 @@ describe("transcribeAudio — contrato de erro", () => {
     ).rejects.toBeInstanceOf(ProviderError);
   });
 
-  it("401 vira invalid-key e 429 vira rate-limit", async () => {
+  it("401 becomes invalid-key and 429 becomes rate-limit", async () => {
     __setRequestUrl(async () => ({ status: 401, json: {}, text: "" }));
     await expect(transcribeAudio(base)).rejects.toMatchObject({
       code: "invalid-key",
@@ -142,19 +142,19 @@ describe("transcribeAudio — contrato de erro", () => {
     });
   });
 
-  it("200 devolve o transcript e manda o modelo escolhido no corpo", async () => {
+  it("200 returns the transcript and sends the chosen model in the body", async () => {
     let sent: any = null;
     __setRequestUrl(async (opts: any) => {
       sent = opts;
-      return { status: 200, json: { text: "bom dia" }, text: "" };
+      return { status: 200, json: { text: "good morning" }, text: "" };
     });
-    await expect(transcribeAudio(base)).resolves.toBe("bom dia");
+    await expect(transcribeAudio(base)).resolves.toBe("good morning");
     expect(sent.contentType).toContain("multipart/form-data; boundary=");
     expect(sent.headers.Authorization).toBe("Bearer sk-test");
     expect(dec.decode(sent.body)).toContain("gpt-4o-mini-transcribe");
   });
 
-  it("language opcional só entra quando informado", async () => {
+  it("the optional language is only sent when given", async () => {
     let sent: any = null;
     __setRequestUrl(async (opts: any) => {
       sent = opts;
@@ -166,16 +166,16 @@ describe("transcribeAudio — contrato de erro", () => {
     expect(dec.decode(sent.body)).toContain('name="language"');
   });
 
-  it("200 com corpo vazio não vira transcript fantasma", async () => {
+  it("200 with an empty body does not produce a phantom transcript", async () => {
     __setRequestUrl(async () => ({ status: 200, json: {}, text: "" }));
     await expect(transcribeAudio(base)).rejects.toBeInstanceOf(ProviderError);
   });
 
-  it("suporta OpenRouter com endpoint, headers e modelo prefixado com openai/", async () => {
+  it("supports OpenRouter with its endpoint, headers and an openai/ model prefix", async () => {
     let sent: any = null;
     __setRequestUrl(async (opts: any) => {
       sent = opts;
-      return { status: 200, json: { text: "transcrição via openrouter" }, text: "" };
+      return { status: 200, json: { text: "transcript via openrouter" }, text: "" };
     });
 
     const res = await transcribeAudio({
@@ -184,14 +184,14 @@ describe("transcribeAudio — contrato de erro", () => {
       model: "whisper-1",
     });
 
-    expect(res).toBe("transcrição via openrouter");
+    expect(res).toBe("transcript via openrouter");
     expect(sent.url).toBe("https://openrouter.ai/api/v1/audio/transcriptions");
     expect(sent.headers["HTTP-Referer"]).toBe("https://github.com/QR4X/Corvus");
     expect(sent.headers["X-Title"]).toBe("Corvus");
     expect(dec.decode(sent.body)).toContain("openai/whisper-1");
   });
 
-  it("OpenRouter mantém modelos que já possuem prefixo com barra", async () => {
+  it("OpenRouter keeps models that already have a slash prefix", async () => {
     let sent: any = null;
     __setRequestUrl(async (opts: any) => {
       sent = opts;
@@ -211,17 +211,17 @@ describe("transcribeAudio — contrato de erro", () => {
 });
 
 describe("getTranscriptionCredential", () => {
-  it("devolve OpenAI se apenas ela estiver configurada", () => {
+  it("returns OpenAI when only it is configured", () => {
     const cred = getTranscriptionCredential({ openaiApiKey: "sk-openai" });
     expect(cred).toEqual({ apiKey: "sk-openai", provider: "openai" });
   });
 
-  it("devolve OpenRouter se apenas ela estiver configurada", () => {
+  it("returns OpenRouter when only it is configured", () => {
     const cred = getTranscriptionCredential({ openrouterApiKey: "sk-or-v1-xyz" });
     expect(cred).toEqual({ apiKey: "sk-or-v1-xyz", provider: "openrouter" });
   });
 
-  it("respeita defaultProvider se ambas estiverem configuradas", () => {
+  it("respects defaultProvider when both are configured", () => {
     expect(
       getTranscriptionCredential({
         openaiApiKey: "sk-oai",
@@ -239,7 +239,7 @@ describe("getTranscriptionCredential", () => {
     ).toEqual({ apiKey: "sk-oai", provider: "openai" });
   });
 
-  it("devolve null se nenhuma chave estiver configurada", () => {
+  it("returns null when no key is configured", () => {
     expect(getTranscriptionCredential({})).toBeNull();
     expect(getTranscriptionCredential({ openaiApiKey: "", openrouterApiKey: "   " })).toBeNull();
   });

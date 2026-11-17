@@ -7,19 +7,19 @@ import {
 } from "../src/providers/paramPolicy";
 
 describe("isReasoningModel", () => {
-  it("OpenAI o-series + gpt-5 (não -chat) são reasoning", () => {
+  it("OpenAI o-series and gpt-5 (not -chat) are reasoning models", () => {
     for (const m of ["o1", "o1-mini", "o3", "o3-mini", "o4", "gpt-5", "gpt-5-mini", "openai/o3"]) {
       expect(isReasoningModel(m)).toBe(true);
     }
   });
-  it("gpt-5-chat NÃO é reasoning (aceita temperature)", () => {
+  it("gpt-5-chat is not a reasoning model and accepts temperature", () => {
     expect(isReasoningModel("gpt-5-chat-latest")).toBe(false);
   });
-  it("não confunde claude-opus com o-series", () => {
+  it("does not mistake claude-opus for the o-series", () => {
     expect(isReasoningModel("claude-opus-4-8")).toBe(false);
     expect(isReasoningModel("gpt-4o")).toBe(false);
   });
-  it("DeepSeek R1 / Qwen QwQ / Magistral são reasoning", () => {
+  it("DeepSeek R1, Qwen QwQ and Magistral are reasoning models", () => {
     expect(isReasoningModel("deepseek-r1")).toBe(true);
     expect(isReasoningModel("deepseek/deepseek-r1")).toBe(true);
     expect(isReasoningModel("qwen/qwq-32b")).toBe(true);
@@ -28,67 +28,60 @@ describe("isReasoningModel", () => {
 });
 
 describe("resolveTemperature", () => {
-  it("reasoning model → OMITE temperature (undefined)", () => {
+  it("omits temperature for reasoning models", () => {
     expect(resolveTemperature("openai", "o3-mini", 0.2)).toBeUndefined();
     expect(resolveTemperature("openai", "gpt-5", 0.7)).toBeUndefined();
     expect(resolveTemperature("openrouter", "openai/o3", 0.2)).toBeUndefined();
   });
 
-  it("modelo normal → passa a temperatura", () => {
+  it("passes temperature through for regular models", () => {
     expect(resolveTemperature("openai", "gpt-4o", 0.2)).toBe(0.2);
     expect(resolveTemperature("gemini", "gemini-2.5-flash", 0.7)).toBe(0.7);
   });
 
-  it("Claude que aceita temperatura clampa em 0..1 (não 0..2)", () => {
+  it("clamps Claude temperature to 0..1 instead of 0..2", () => {
     expect(resolveTemperature("anthropic", "claude-sonnet-4-6", 0.7)).toBe(0.7);
     expect(resolveTemperature("anthropic", "claude-sonnet-4-6", 1.5)).toBe(1);
-
     expect(resolveTemperature("openrouter", "anthropic/claude-sonnet-4", 1.8)).toBe(1);
   });
 
-  it("não-Claude clampa em 0..2", () => {
+  it("clamps other models to 0..2", () => {
     expect(resolveTemperature("openai", "gpt-4o", 2.5)).toBe(2);
     expect(paramPolicy("gemini", "gemini-2.5-flash").tempMax).toBe(2);
   });
 
-  it("Effort 'default do provider' (-1) ou undefined → OMITE", () => {
+  it("omits temperature for the provider default (-1) or undefined", () => {
     expect(resolveTemperature("openai", "gpt-4o", -1)).toBeUndefined();
     expect(resolveTemperature("openai", "gpt-4o", undefined)).toBeUndefined();
   });
 });
 
-describe("resolveMaxTokens — teto de OUTPUT (≠ context window)", () => {
-  it("DeepSeek V4 datado recebe o piso sem ultrapassar o teto existente", () => {
+describe("resolveMaxTokens output cap, not context window", () => {
+  it("dated DeepSeek V4 models get the floor without exceeding the existing cap", () => {
     for (const model of ["deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-pro", "deepseek-ai/deepseek-v4.1-flash"]) {
       expect(resolveMaxTokens("openrouter", model, 512, "low")).toBe(8192);
     }
     expect(resolveMaxTokens("openrouter", "deepseek/deepseek-chat", 512, "low")).toBe(512);
   });
-  it("Effort Max (~159k) clampa pro limite real de cada modelo", () => {
-
+  it("max effort (~159k) is clamped to each model's real limit", () => {
     expect(resolveMaxTokens("anthropic", "claude-opus-4-8", 159000)).toBe(128000);
-
     expect(resolveMaxTokens("openai", "gpt-4o", 159000)).toBe(16384);
-
     expect(resolveMaxTokens("openai", "gpt-5", 200000)).toBe(128000);
-
     expect(resolveMaxTokens("openai", "o3-mini", 200000)).toBe(100000);
-
     expect(resolveMaxTokens("gemini", "gemini-2.5-flash", 200000)).toBe(65536);
-
     expect(resolveMaxTokens("anthropic", "claude-3-5-sonnet-latest", 50000)).toBe(8192);
   });
 
-  it("pedido abaixo do teto passa intacto", () => {
+  it("a request below the cap passes unchanged", () => {
     expect(resolveMaxTokens("openai", "gpt-4o", 4000)).toBe(4000);
     expect(resolveMaxTokens("anthropic", "claude-opus-4-8", 8000)).toBe(8000);
   });
 
-  it("modelo desconhecido → default conservador 16k", () => {
-    expect(resolveMaxTokens("ollama", "modelo-aleatorio", 999999)).toBe(16384);
+  it("an unknown model gets the conservative 16k default", () => {
+    expect(resolveMaxTokens("ollama", "random-model", 999999)).toBe(16384);
   });
 
-  it("openrouter/auto recebe piso de modelo que pensa para evitar starvation", () => {
+  it("openrouter/auto gets a reasoning floor to avoid starvation", () => {
     expect(resolveMaxTokens("openrouter", "openrouter/auto", 512, "low")).toBe(16000);
     expect(resolveMaxTokens("openrouter", "openrouter/auto", 2048, "med")).toBe(16000);
     expect(resolveMaxTokens("openrouter", "openrouter/auto", 999999, "max")).toBe(64000);

@@ -2,37 +2,33 @@ import { describe, it, expect } from "vitest";
 import { vaultEnabled, vaultDefault } from "../src/core/vaultContext";
 
 describe("vaultDefault", () => {
-  it("Vault Q&A e Agent nascem ligados", () => {
-
+  it("starts Vault Q&A and Agent with the vault on", () => {
     expect(vaultDefault("vault-qa")).toBe(true);
     expect(vaultDefault("agent")).toBe(true);
   });
 
-  it("Chat nasce desligado", () => {
-
+  it("starts Chat with the vault off", () => {
     expect(vaultDefault("chat")).toBe(false);
   });
 
-  it("modo desconhecido não liga sozinho", () => {
-
+  it("does not turn the vault on for unknown modes", () => {
     expect(vaultDefault("research")).toBe(false);
     expect(vaultDefault("")).toBe(false);
   });
 });
 
-describe("vaultAtivo", () => {
-  it("sem escolha, vale o padrão do modo", () => {
+describe("vaultEnabled", () => {
+  it("uses the mode default when the user has not chosen", () => {
     expect(vaultEnabled("chat", null)).toBe(false);
     expect(vaultEnabled("agent", null)).toBe(true);
   });
 
-  it("a escolha da pessoa vence o padrão, nos dois sentidos", () => {
+  it("lets the user's choice override the default in both directions", () => {
     expect(vaultEnabled("chat", true)).toBe(true);
     expect(vaultEnabled("agent", false)).toBe(false);
   });
 
-  it("desligar NÃO é o mesmo que nunca ter mexido", () => {
-
+  it("treats turning it off differently from never choosing", () => {
     expect(vaultEnabled("vault-qa", null)).toBe(true);
     expect(vaultEnabled("vault-qa", false)).toBe(false);
   });

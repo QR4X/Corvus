@@ -6,85 +6,85 @@ import type { ImageAttachment, NoteAttachment } from "../src/providers/base";
 
 const st = () => useChatStore.getState();
 
-const NOTA: NoteAttachment = {
+const NOTE: NoteAttachment = {
   type: "note",
   path: "PROJECTS/FRAMEWORKS.md",
-  content: "# Frameworks\n\nconteúdo da nota",
+  content: "# Frameworks\n\nnote content",
 };
-const IMAGEM: ImageAttachment = {
+const IMAGE: ImageAttachment = {
   type: "image",
   dataUrl: "data:image/png;base64,AAAA",
   mimeType: "image/png",
   name: "print.png",
 };
 
-describe("anexos pendentes no store", () => {
+describe("pending attachments in the store", () => {
   beforeEach(() => {
     useChatStore.setState({ attachments: [], messages: [] });
   });
 
-  it("acumulam na ordem em que foram escolhidos", () => {
-    st().addAttachment(NOTA);
-    st().addAttachment(IMAGEM);
+  it("accumulate in the order they were picked", () => {
+    st().addAttachment(NOTE);
+    st().addAttachment(IMAGE);
     expect(st().attachments.map((a) => a.type)).toEqual(["note", "image"]);
   });
 
-  it("o X remove só aquele", () => {
-    st().addAttachment(NOTA);
-    st().addAttachment(IMAGEM);
+  it("removing one leaves the others", () => {
+    st().addAttachment(NOTE);
+    st().addAttachment(IMAGE);
     st().removeAttachment(0);
-    expect(st().attachments).toEqual([IMAGEM]);
+    expect(st().attachments).toEqual([IMAGE]);
   });
 
-  it("conversa nova não herda anexo da anterior", () => {
-    st().addAttachment(IMAGEM);
+  it("a new chat does not inherit attachments from the previous one", () => {
+    st().addAttachment(IMAGE);
     st().newChat();
     expect(st().attachments).toEqual([]);
   });
 });
 
-describe("do store até o payload", () => {
-  it("imagem vira content part image_url na ÚLTIMA mensagem do usuário", () => {
+describe("from the store to the payload", () => {
+  it("an image becomes an image_url content part on the last user message", () => {
     const msgs = [
-      { type: "user" as const, content: "antiga" },
-      { type: "ai-response" as const, content: "resposta" },
-      { type: "user" as const, content: "olha esse print" },
+      { type: "user" as const, content: "old" },
+      { type: "ai-response" as const, content: "answer" },
+      { type: "user" as const, content: "look at this screenshot" },
     ];
-    const provider = storeMessagesToProvider(msgs, [IMAGEM]);
+    const provider = storeMessagesToProvider(msgs, [IMAGE]);
     const payload = toOpenAIMessages(provider) as Array<{
       role: string;
       content: unknown;
     }>;
-    const ultima = payload[payload.length - 1];
-    expect(ultima.role).toBe("user");
-    expect(ultima.content).toEqual([
-      { type: "text", text: "olha esse print" },
+    const last = payload[payload.length - 1];
+    expect(last.role).toBe("user");
+    expect(last.content).toEqual([
+      { type: "text", text: "look at this screenshot" },
       { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
     ]);
 
-    expect(payload[0].content).toBe("antiga");
+    expect(payload[0].content).toBe("old");
   });
 
-  it("nota não vira content part — ela entra como contexto de texto", () => {
+  it("a note is not a content part; it travels as text context", () => {
     const provider = storeMessagesToProvider(
-      [{ type: "user" as const, content: "resume" }],
-      [NOTA]
+      [{ type: "user" as const, content: "summarize" }],
+      [NOTE]
     );
 
-    expect(provider[0].attachments).toEqual([NOTA]);
+    expect(provider[0].attachments).toEqual([NOTE]);
 
     const payload = toOpenAIMessages(provider) as Array<{ content: unknown }>;
-    expect(payload[0].content).toBe("resume");
+    expect(payload[0].content).toBe("summarize");
   });
 
-  it("imagem + nota juntas: a imagem vai como parte, a nota não atrapalha", () => {
+  it("with an image and a note, only the image becomes a content part", () => {
     const provider = storeMessagesToProvider(
-      [{ type: "user" as const, content: "compara" }],
-      [NOTA, IMAGEM]
+      [{ type: "user" as const, content: "compare" }],
+      [NOTE, IMAGE]
     );
     const payload = toOpenAIMessages(provider) as Array<{ content: unknown }>;
     expect(payload[0].content).toEqual([
-      { type: "text", text: "compara" },
+      { type: "text", text: "compare" },
       { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
     ]);
   });

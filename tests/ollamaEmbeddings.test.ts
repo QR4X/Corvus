@@ -11,8 +11,8 @@ afterEach(() => {
   registerDiscoveredEmbeddings([]);
 });
 
-describe("os modelos de embedding do Ollama", () => {
-  it("as famílias comuns se reconhecem pelo nome", () => {
+describe("Ollama embedding models", () => {
+  it("recognizes common families by name", () => {
     for (const m of ["nomic-embed-text:latest", "mxbai-embed-large", "bge-m3", "all-minilm:l6-v2", "snowflake-arctic-embed:m", "granite-embedding:278m", "embeddinggemma", "qwen3-embedding:0.6b"]) {
       expect(looksLikeOllamaEmbedding(m), m).toBe(true);
     }
@@ -21,7 +21,7 @@ describe("os modelos de embedding do Ollama", () => {
     }
   });
 
-  it("o spec é local, sem preço, e a dimensão é palpite pela família", () => {
+  it("infers a free local spec with a family-based dimension", () => {
     const nomic = inferEmbeddingSpec("ollama", "nomic-embed-text:latest");
     expect(nomic).toMatchObject({ provider: "ollama", local: true, free: true, pricePerMillion: 0, dim: 768 });
     expect(inferEmbeddingSpec("ollama", "mxbai-embed-large").dim).toBe(1024);
@@ -29,40 +29,40 @@ describe("os modelos de embedding do Ollama", () => {
     expect(EMBEDDING_PROVIDERS).toContain("ollama");
   });
 
-  it("a lista junta o nome e o que o /api/show diz que é embedding", async () => {
-    const pedidos: string[] = [];
+  it("lists models by name or by /api/show embedding capability", async () => {
+    const requests: string[] = [];
     __setRequestUrl(async (o) => {
       const { url, body } = o as { url: string; body?: string };
-      pedidos.push(url);
+      requests.push(url);
       if (url.endsWith("/api/tags")) {
-        return { status: 200, json: { models: [{ name: "llama3.2" }, { name: "nomic-embed-text:latest" }, { name: "meu-embed-custom" }, { name: "x-encoder" }] } };
+        return { status: 200, json: { models: [{ name: "llama3.2" }, { name: "nomic-embed-text:latest" }, { name: "my-embed-custom" }, { name: "x-encoder" }] } };
       }
       const model = JSON.parse(body ?? "{}").model;
       return { status: 200, json: { capabilities: model === "x-encoder" ? ["embedding"] : ["completion"] } };
     });
-    const lista = await ollamaProvider.listEmbeddingModels("http://localhost:11434");
-    expect(lista).toEqual(["meu-embed-custom", "nomic-embed-text:latest", "x-encoder"]);
+    const list = await ollamaProvider.listEmbeddingModels("http://localhost:11434");
+    expect(list).toEqual(["my-embed-custom", "nomic-embed-text:latest", "x-encoder"]);
 
-    expect(pedidos.filter((u) => u.endsWith("/api/show"))).toHaveLength(2);
+    expect(requests.filter((u) => u.endsWith("/api/show"))).toHaveLength(2);
   });
 });
 
-describe("embedar no Ollama", () => {
-  it("/api/embed com a lista inteira", async () => {
+describe("embedding with Ollama", () => {
+  it("sends the whole batch to /api/embed", async () => {
     vi.stubGlobal("window", { setTimeout, clearTimeout });
-    let corpo: Record<string, unknown> = {};
+    let sent: Record<string, unknown> = {};
     __setRequestUrl(async (o) => {
       const { url, body } = o as { url: string; body: string };
       expect(url).toBe("http://localhost:11434/api/embed");
-      corpo = JSON.parse(body);
+      sent = JSON.parse(body);
       return { status: 200, json: { embeddings: [[0.1, 0.2], [0.3, 0.4]] } };
     });
     const v = await embedOllama(["a", "b"], "http://localhost:11434/", "nomic-embed-text");
     expect(v).toEqual([[0.1, 0.2], [0.3, 0.4]]);
-    expect(corpo).toMatchObject({ model: "nomic-embed-text", input: ["a", "b"], truncate: true });
+    expect(sent).toMatchObject({ model: "nomic-embed-text", input: ["a", "b"], truncate: true });
   });
 
-  it("Ollama antigo (404 no /api/embed): um por vez no /api/embeddings", async () => {
+  it("falls back to one-by-one /api/embeddings when /api/embed returns 404", async () => {
     vi.stubGlobal("window", { setTimeout, clearTimeout });
     __setRequestUrl(async (o) => {
       const { url, body } = o as { url: string; body: string };
@@ -70,10 +70,10 @@ describe("embedar no Ollama", () => {
       const prompt = JSON.parse(body).prompt as string;
       return { status: 200, json: { embedding: [prompt.length, 1] } };
     });
-    expect(await embedOllama(["um", "três"], "http://h:11434", "m")).toEqual([[2, 1], [4, 1]]);
+    expect(await embedOllama(["hi", "four"], "http://h:11434", "m")).toEqual([[2, 1], [4, 1]]);
   });
 
-  it("vetores faltando e servidor fora viram erro claro", async () => {
+  it("reports missing vectors and an unreachable server clearly", async () => {
     vi.stubGlobal("window", { setTimeout, clearTimeout });
     __setRequestUrl(async () => ({ status: 200, json: { embeddings: [[1]] } }));
     await expect(embedOllama(["a", "b"], "", "m")).rejects.toThrow(/1 vectors for 2 inputs/);
@@ -83,7 +83,7 @@ describe("embedar no Ollama", () => {
     await expect(embedOllama(["a"], "", "m")).rejects.toThrow(/Couldn't reach Ollama at http:\/\/localhost:11434.*is it running/);
   });
 
-  it("o despacho do RAG manda o modelo local pro Ollama, com o endereço das settings", async () => {
+  it("routes a local model to Ollama at the configured endpoint", async () => {
     vi.stubGlobal("window", { setTimeout, clearTimeout });
     registerDiscoveredEmbeddings([inferEmbeddingSpec("ollama", "nomic-embed-text")]);
     let url = "";
@@ -91,7 +91,7 @@ describe("embedar no Ollama", () => {
       url = (o as { url: string }).url;
       return { status: 200, json: { embeddings: [[1, 0]] } };
     });
-    await embedItems([{ kind: "text", text: "oi" }], { openaiApiKey: "", openrouterApiKey: "", ollamaEndpoint: "http://192.168.0.9:11434" }, "nomic-embed-text");
+    await embedItems([{ kind: "text", text: "hi" }], { openaiApiKey: "", openrouterApiKey: "", ollamaEndpoint: "http://192.168.0.9:11434" }, "nomic-embed-text");
     expect(url).toBe("http://192.168.0.9:11434/api/embed");
   });
 });

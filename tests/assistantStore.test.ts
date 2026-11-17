@@ -8,113 +8,106 @@ import {
 } from "../src/assistant/store";
 import { parseOptions } from "../src/assistant/parse";
 
-const espera = () => new Promise((r) => setTimeout(r, 0));
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => _resetRuns());
 
-describe("a rodada sobrevive a quem pediu", () => {
-  it("segue até o fim mesmo sem ninguém olhando", async () => {
-
-    let resolver!: (r: { draft: unknown }) => void;
+describe("a run outlives the caller that started it", () => {
+  it("finishes even when nobody is watching", async () => {
+    let resolveRun!: (r: { draft: unknown }) => void;
     startRun(
       "skill",
-      [{ role: "user", text: "um resumo semanal" }],
-      () => new Promise((r) => (resolver = r))
+      [{ role: "user", text: "a weekly summary" }],
+      () => new Promise((r) => (resolveRun = r))
     );
     expect(getRun("skill").phase).toBe("running");
-    resolver({ draft: { name: "Weekly review" } });
-    await espera();
+    resolveRun({ draft: { name: "Weekly review" } });
+    await flush();
     expect(getRun("skill").phase).toBe("done");
     expect(getRun("skill").result).toEqual({ name: "Weekly review" });
   });
 
-  it("o resultado ESPERA ser consumido", async () => {
-
-    startRun("project", [], async () => ({ draft: { name: "Tese" } }));
-    await espera();
-    expect(getRun("project").result).toEqual({ name: "Tese" });
+  it("keeps the result until it is consumed", async () => {
+    startRun("project", [], async () => ({ draft: { name: "Thesis" } }));
+    await flush();
+    expect(getRun("project").result).toEqual({ name: "Thesis" });
     clearRun("project");
     expect(getRun("project").phase).toBe("idle");
   });
 
-  it("avisa quem estiver assinando", async () => {
-    const vistos: string[] = [];
-    const sair = subscribe("skill", () => vistos.push(getRun("skill").phase));
+  it("notifies subscribers", async () => {
+    const seen: string[] = [];
+    const unsubscribe = subscribe("skill", () => seen.push(getRun("skill").phase));
     startRun("skill", [], async () => ({ draft: 1 }));
-    await espera();
-    sair();
-    expect(vistos).toEqual(["running", "done"]);
+    await flush();
+    unsubscribe();
+    expect(seen).toEqual(["running", "done"]);
   });
 
-  it("um throw solto não deixa a rodada travada em 'running'", async () => {
-
+  it("does not leave the run stuck in running after a throw", async () => {
     startRun("skill", [], async () => {
-      throw new Error("caiu a rede");
+      throw new Error("network dropped");
     });
-    await espera();
+    await flush();
     expect(getRun("skill").phase).toBe("error");
-    expect(getRun("skill").error).toContain("caiu a rede");
+    expect(getRun("skill").error).toContain("network dropped");
   });
 
-  it("uma rodada nova substitui a anterior do mesmo tipo", async () => {
-
-    startRun("skill", [], async () => ({ draft: "velho" }));
-    await espera();
-    startRun("skill", [], async () => ({ draft: "novo" }));
-    await espera();
-    expect(getRun("skill").result).toBe("novo");
+  it("replaces the previous run of the same kind", async () => {
+    startRun("skill", [], async () => ({ draft: "old" }));
+    await flush();
+    startRun("skill", [], async () => ({ draft: "new" }));
+    await flush();
+    expect(getRun("skill").result).toBe("new");
   });
 
-  it("tipos diferentes não se atropelam", async () => {
+  it("keeps runs of different kinds independent", async () => {
     startRun("skill", [], async () => ({ draft: "s" }));
     startRun("description", [], async () => ({ draft: "d" }));
-    await espera();
+    await flush();
     expect(getRun("skill").result).toBe("s");
     expect(getRun("description").result).toBe("d");
   });
 });
 
-describe("o interrogatório", () => {
-  it("a pergunta entra na conversa", async () => {
-
+describe("follow-up questions", () => {
+  it("adds the question to the conversation", async () => {
     startRun(
       "skill",
-      [{ role: "user", text: "um resumo" }],
-      async () => ({ question: "Pra quê?", options: ["Estudo", "Trabalho"] })
+      [{ role: "user", text: "a summary" }],
+      async () => ({ question: "What for?", options: ["Study", "Work"] })
     );
-    await espera();
+    await flush();
     const r = getRun("skill");
     expect(r.phase).toBe("asking");
-    expect(r.options).toEqual(["Estudo", "Trabalho"]);
-    expect(r.turns.at(-1)).toEqual({ role: "assistant", text: "Pra quê?" });
+    expect(r.options).toEqual(["Study", "Work"]);
+    expect(r.turns.at(-1)).toEqual({ role: "assistant", text: "What for?" });
   });
 });
 
-describe("lerOpcoes", () => {
-  it("passa as pastilhas", () => {
-    expect(parseOptions({ options: ["Estudo", "Trabalho"] })).toEqual([
-      "Estudo",
-      "Trabalho",
+describe("parseOptions", () => {
+  it("passes the option chips through", () => {
+    expect(parseOptions({ options: ["Study", "Work"] })).toEqual([
+      "Study",
+      "Work",
     ]);
   });
 
-  it("corta em TRÊS — a quarta pastilha é nossa", () => {
-
+  it("keeps at most three options because the fourth chip is reserved", () => {
     const r = parseOptions({ options: ["a", "b", "c", "d", "e"] });
     expect(r).toEqual(["a", "b", "c"]);
   });
 
-  it("pastilha com frase dentro é cortada", () => {
-
+  it("truncates an option that holds a whole sentence", () => {
     expect(parseOptions({ options: ["x".repeat(80)] })[0]).toHaveLength(30);
   });
 
-  it("ignora o que não é texto, o vazio e o repetido", () => {
+  it("ignores non-strings, blanks and duplicates", () => {
     expect(parseOptions({ options: [1, "ok", "  ", "ok", null] })).toEqual(["ok"]);
   });
 
-  it("sem opções, lista vazia — a pergunta pode ser aberta", () => {
-    expect(parseOptions({ ask: "e aí?" })).toEqual([]);
+  it("returns an empty list without options so the question can be open", () => {
+    expect(parseOptions({ ask: "so?" })).toEqual([]);
     expect(parseOptions(null)).toEqual([]);
   });
 });

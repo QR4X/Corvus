@@ -7,41 +7,41 @@ import {
 } from "../src/agent/conversation";
 
 describe("buildChatSystemPrompt", () => {
-  it("sem persona → usa o base", () => {
+  it("uses the base prompt without a persona", () => {
     expect(buildChatSystemPrompt({ base: "BASE" })).toBe("BASE");
   });
-  it("persona SUBSTITUI o base", () => {
-    expect(buildChatSystemPrompt({ persona: "PIRATA", base: "BASE" })).toBe("PIRATA");
+  it("replaces the base prompt with the persona", () => {
+    expect(buildChatSystemPrompt({ persona: "PIRATE", base: "BASE" })).toBe("PIRATE");
   });
-  it("vaultBlock não-vazio adiciona o sufixo + bloco", () => {
+  it("appends the suffix and block for a non-empty vaultBlock", () => {
     const r = buildChatSystemPrompt({
       base: "BASE",
-      vaultSuffix: "\n\nNOTAS:\n",
-      vaultBlock: "trecho relevante",
+      vaultSuffix: "\n\nNOTES:\n",
+      vaultBlock: "relevant excerpt",
     });
-    expect(r).toBe("BASE\n\nNOTAS:\ntrecho relevante");
+    expect(r).toBe("BASE\n\nNOTES:\nrelevant excerpt");
   });
-  it("vaultBlock vazio NÃO adiciona o sufixo", () => {
+  it("skips the suffix for an empty vaultBlock", () => {
     expect(
       buildChatSystemPrompt({ base: "BASE", vaultSuffix: "SUF", vaultBlock: "" })
     ).toBe("BASE");
   });
-  it("noteBlock é anexado no fim", () => {
-    expect(buildChatSystemPrompt({ base: "BASE", noteBlock: "\n\n[notas]" })).toBe(
-      "BASE\n\n[notas]"
+  it("appends noteBlock at the end", () => {
+    expect(buildChatSystemPrompt({ base: "BASE", noteBlock: "\n\n[notes]" })).toBe(
+      "BASE\n\n[notes]"
     );
   });
-  it("styleInstruction entra após o head (antes do vault) — v0.1.189", () => {
+  it("places styleInstruction after the head and before the vault", () => {
     expect(
-      buildChatSystemPrompt({ base: "BASE", styleInstruction: "Seja conciso." })
-    ).toBe("BASE\n\nSeja conciso.");
+      buildChatSystemPrompt({ base: "BASE", styleInstruction: "Be concise." })
+    ).toBe("BASE\n\nBe concise.");
   });
-  it("styleInstruction vazio/espacos não muda nada", () => {
+  it("ignores a blank styleInstruction", () => {
     expect(buildChatSystemPrompt({ base: "BASE", styleInstruction: "   " })).toBe(
       "BASE"
     );
   });
-  it("ordem completa: persona + style + vault + notes", () => {
+  it("orders persona, style, vault and notes", () => {
     const r = buildChatSystemPrompt({
       persona: "P",
       base: "BASE",
@@ -52,10 +52,10 @@ describe("buildChatSystemPrompt", () => {
     });
     expect(r).toBe("P\n\nS\n\nV:\nctx\n\nN");
   });
-  it("persona só com espaços cai pro base", () => {
+  it("falls back to the base for a whitespace-only persona", () => {
     expect(buildChatSystemPrompt({ persona: "   ", base: "BASE" })).toBe("BASE");
   });
-  it("style aplica mesmo sem persona (head = base)", () => {
+  it("applies the style without a persona", () => {
     expect(
       buildChatSystemPrompt({ base: "BASE", styleInstruction: "S" })
     ).toBe("BASE\n\nS");
@@ -63,24 +63,23 @@ describe("buildChatSystemPrompt", () => {
 });
 
 describe("buildAgentSystemPrompt", () => {
-  it("sem persona → só o prompt do agent", () => {
+  it("returns only the agent prompt without a persona", () => {
     expect(buildAgentSystemPrompt(undefined, "AGENT")).toBe("AGENT");
     expect(buildAgentSystemPrompt("  ", "AGENT")).toBe("AGENT");
   });
-  it("persona é PREPENDIDA (não substitui)", () => {
-    expect(buildAgentSystemPrompt("PIRATA", "AGENT")).toBe("PIRATA\n\nAGENT");
+  it("prepends the persona instead of replacing the prompt", () => {
+    expect(buildAgentSystemPrompt("PIRATE", "AGENT")).toBe("PIRATE\n\nAGENT");
   });
-  it("as notas entram no FIM, com o mesmo sufixo que o chat usa", () => {
-
+  it("appends notes at the end with the same suffix chat uses", () => {
     const r = buildAgentSystemPrompt(undefined, "AGENT", {
-      suffix: "SUFIXO",
-      block: "BLOCO",
+      suffix: "SUFFIX",
+      block: "BLOCK",
     });
-    expect(r).toBe("AGENTSUFIXOBLOCO");
+    expect(r).toBe("AGENTSUFFIXBLOCK");
   });
-  it("bloco vazio não deixa rastro — nem o sufixo entra", () => {
+  it("leaves no trace, not even the suffix, for an empty block", () => {
     expect(
-      buildAgentSystemPrompt(undefined, "AGENT", { suffix: "SUFIXO", block: "" })
+      buildAgentSystemPrompt(undefined, "AGENT", { suffix: "SUFFIX", block: "" })
     ).toBe("AGENT");
     expect(buildAgentSystemPrompt(undefined, "AGENT", {})).toBe("AGENT");
   });
@@ -101,81 +100,80 @@ describe("storeMessagesToProvider", () => {
     expect(text).not.toContain("[Error]");
   });
   const msgs = [
-    { type: "user", content: "oi" },
-    { type: "ai-comment", content: "pensando…" }, 
-    { type: "ai-response", content: "olá" },
-    { type: "ai-response", content: "[Erro] x", isError: true }, 
-    { type: "user", content: "de novo" },
+    { type: "user", content: "hi" },
+    { type: "ai-comment", content: "thinking…" },
+    { type: "ai-response", content: "hello" },
+    { type: "ai-response", content: "[Error] x", isError: true },
+    { type: "user", content: "again" },
   ];
 
-  it("filtra ai-comment e ai-response com erro; mapeia roles", () => {
+  it("drops ai-comment and failed ai-response messages and maps roles", () => {
     const out = storeMessagesToProvider(msgs);
     expect(out).toEqual([
-      { role: "user", content: "oi" },
-      { role: "assistant", content: "olá" },
-      { role: "user", content: "de novo" },
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "hello" },
+      { role: "user", content: "again" },
     ]);
   });
 
-  it("anexa attachments só na ÚLTIMA user-msg", () => {
+  it("attaches attachments only to the last user message", () => {
     const att = [{ type: "image" as const, dataUrl: "data:..." }];
     const out = storeMessagesToProvider(msgs, att);
     expect(out[out.length - 1]).toMatchObject({
       role: "user",
-      content: "de novo",
+      content: "again",
       attachments: att,
     });
-
     expect(out[0]).not.toHaveProperty("attachments");
   });
 
-  it("sem attachments → nenhuma msg ganha o campo", () => {
+  it("adds no attachments field without attachments", () => {
     const out = storeMessagesToProvider(msgs);
     expect(out.some((m) => "attachments" in m)).toBe(false);
   });
 
-  it("array vazio → []", () => {
+  it("returns an empty list for no messages", () => {
     expect(storeMessagesToProvider([])).toEqual([]);
   });
 
-  it("só comentários/erros → [] (nada usável)", () => {
+  it("returns an empty list when only comments and errors exist", () => {
     const out = storeMessagesToProvider([
       { type: "ai-comment", content: "..." },
-      { type: "ai-response", content: "[Erro]", isError: true },
+      { type: "ai-response", content: "[Error]", isError: true },
     ]);
     expect(out).toEqual([]);
   });
 
-  it("attachments com array VAZIO não adiciona o campo", () => {
+  it("adds no attachments field for an empty attachments array", () => {
     const out = storeMessagesToProvider(msgs, []);
     expect(out.some((m) => "attachments" in m)).toBe(false);
   });
 
-  it("se a última msg usável é assistant, attachments NÃO são aplicados", () => {
+  it("does not apply attachments when the last usable message is from the assistant", () => {
     const out = storeMessagesToProvider(
       [
-        { type: "user", content: "oi" },
-        { type: "ai-response", content: "resposta" },
+        { type: "user", content: "hi" },
+        { type: "ai-response", content: "answer" },
       ],
       [{ type: "image" as const, dataUrl: "data:..." }]
     );
     expect(out.some((m) => "attachments" in m)).toBe(false);
   });
 
-  it("content ausente vira string vazia", () => {
+  it("turns missing content into an empty string", () => {
     const out = storeMessagesToProvider([{ type: "user" }]);
     expect(out).toEqual([{ role: "user", content: "" }]);
   });
 
-  it("agentSteps VAZIO → assistant comum (sem bloco de memória)", () => {
+  it("treats empty agentSteps as a plain assistant message", () => {
     const out = storeMessagesToProvider([
-      { type: "user", content: "oi" },
+      { type: "user", content: "hi" },
       { type: "ai-response", content: "ok", agentSteps: [] },
     ]);
     expect(out[1]).toEqual({ role: "assistant", content: "ok" });
   });
 
-  it("toolMode=true com content vazio → não emite assistant de texto final", () => {
+  it("emits no final text assistant message in tool mode when content is empty", () => {
     const out = storeMessagesToProvider(
       [{ type: "ai-response", content: "", agentSteps: [
         { id: "c1", name: "vault_read", arguments: { path: "a.md" }, result: "x", ok: true },
@@ -183,27 +181,26 @@ describe("storeMessagesToProvider", () => {
       undefined,
       true
     );
-
     expect(out.filter((m) => m.role === "assistant")).toHaveLength(1);
     expect(out.some((m) => m.role === "tool")).toBe(true);
   });
 
   const stepsFixture = [
-    { id: "c1", name: "vault_create", arguments: { path: "a.md" }, result: "criado", ok: true },
+    { id: "c1", name: "vault_create", arguments: { path: "a.md" }, result: "created", ok: true },
     { id: "c2", name: "vault_search", arguments: { query: "x" }, result: "2 hits", ok: true },
   ];
 
-  it("AGENT (toolMode=true): agentSteps vira assistant(tool_calls)+tool(result)+assistant(texto)", () => {
+  it("expands agentSteps into tool calls, tool results and final text in tool mode", () => {
     const out = storeMessagesToProvider(
       [
-        { type: "user", content: "cria a.md" },
-        { type: "ai-response", content: "Feito!", agentSteps: stepsFixture },
+        { type: "user", content: "create a.md" },
+        { type: "ai-response", content: "Done!", agentSteps: stepsFixture },
       ],
       undefined,
       true
     );
     expect(out).toEqual([
-      { role: "user", content: "cria a.md" },
+      { role: "user", content: "create a.md" },
       {
         role: "assistant",
         content: "",
@@ -212,25 +209,23 @@ describe("storeMessagesToProvider", () => {
           { id: "c2", name: "vault_search", arguments: { query: "x" } },
         ],
       },
-      { role: "tool", toolCallId: "c1", content: "criado" },
+      { role: "tool", toolCallId: "c1", content: "created" },
       { role: "tool", toolCallId: "c2", content: "2 hits" },
-      { role: "assistant", content: "Feito!" },
+      { role: "assistant", content: "Done!" },
     ]);
   });
 
-  it("CHAT (toolMode=false, default): agentSteps ACHATA num assistant de texto — SEM tool_calls/tool", () => {
+  it("flattens agentSteps into one text assistant message without tool calls in chat mode", () => {
     const out = storeMessagesToProvider([
-      { type: "user", content: "cria a.md" },
-      { type: "ai-response", content: "Feito!", agentSteps: stepsFixture },
+      { type: "user", content: "create a.md" },
+      { type: "ai-response", content: "Done!", agentSteps: stepsFixture },
     ]);
-
     expect(out.some((m) => m.role === "tool")).toBe(false);
     expect(out.some((m) => "toolCalls" in m)).toBe(false);
-    expect(out[0]).toEqual({ role: "user", content: "cria a.md" });
-
+    expect(out[0]).toEqual({ role: "user", content: "create a.md" });
     expect(out).toHaveLength(2);
     expect(out[1].role).toBe("assistant");
-    expect(out[1].content).toContain("Feito!");
+    expect(out[1].content).toContain("Done!");
     expect(out[1].content).toContain("agent memory");
     expect(out[1].content).toContain("vault_create(a.md)");
     expect(out[1].content).toContain("vault_search(x)");
@@ -238,31 +233,31 @@ describe("storeMessagesToProvider", () => {
 });
 
 describe("flattenAgentResponse", () => {
-  it("inclui o texto final + uma linha por ação com status", () => {
-    const r = flattenAgentResponse("Pronto.", [
-      { id: "1", name: "vault_read", arguments: { path: "n.md" }, result: "conteúdo", ok: true },
+  it("includes the final text and one status line per action", () => {
+    const r = flattenAgentResponse("Ready.", [
+      { id: "1", name: "vault_read", arguments: { path: "n.md" }, result: "content", ok: true },
       { id: "2", name: "vault_delete", arguments: { path: "x.md" }, result: "boom", ok: false },
     ]);
-    expect(r.startsWith("Pronto.")).toBe(true);
-    expect(r).toContain("1. vault_read(n.md) → ok — conteúdo");
+    expect(r.startsWith("Ready.")).toBe(true);
+    expect(r).toContain("1. vault_read(n.md) → ok — content");
     expect(r).toContain("2. vault_delete(x.md) → ERROR — boom");
   });
 
-  it("sem texto final → só o bloco de memória", () => {
+  it("returns only the memory block without final text", () => {
     const r = flattenAgentResponse("", [
-      { id: "1", name: "vault_list", arguments: { folder: "f" }, result: "3 itens", ok: true },
+      { id: "1", name: "vault_list", arguments: { folder: "f" }, result: "3 items", ok: true },
     ]);
     expect(r.startsWith("〔agent memory")).toBe(true);
-    expect(r).toContain("vault_list(f) → ok — 3 itens");
+    expect(r).toContain("vault_list(f) → ok — 3 items");
   });
 
-  it("steps vazios → bloco de memória sem linhas de ação", () => {
+  it("returns a memory block without action lines for empty steps", () => {
     const r = flattenAgentResponse("ok", []);
     expect(r.startsWith("ok\n\n")).toBe(true);
     expect(r).toContain("agent memory");
   });
 
-  it("trunca args e results longos inline (sem quebrar linha)", () => {
+  it("truncates long args and results inline without breaking lines", () => {
     const longArg = "p/".padEnd(200, "a");
     const longRes = "r".padEnd(500, "z");
     const r = flattenAgentResponse("ok", [

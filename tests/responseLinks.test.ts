@@ -1,105 +1,101 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Platform, __avisos } from "obsidian";
+import { Platform, __notices } from "obsidian";
 import type { App } from "obsidian";
-import { HOVER_SOURCE, openResponseLink } from "../src/ui/responseLinks";
+import { openResponseLink } from "../src/ui/responseLinks";
 import { VIEW_TYPE_CORVUS } from "../src/ui/CorvusView";
 
-interface Gaveta {
-  fechada: boolean;
+interface Drawer {
+  collapsed: boolean;
   collapse(): void;
 }
-const gaveta = (): Gaveta => ({
-  fechada: false,
+const drawer = (): Drawer => ({
+  collapsed: false,
   collapse() {
-    this.fechada = true;
+    this.collapsed = true;
   },
 });
 
-function montar(notas: string[], onde: "direita" | "esquerda" | "centro") {
-  const rightSplit = gaveta();
-  const leftSplit = gaveta();
-  const centro = {};
-  const abertos: Array<[string, string, unknown]> = [];
-  const dentro = { id: "resposta" };
-  const folha = {
-    view: { containerEl: { contains: (n: unknown) => n === dentro } },
-    getRoot: () => (onde === "direita" ? rightSplit : onde === "esquerda" ? leftSplit : centro),
+function setup(notes: string[], where: "right" | "left" | "center") {
+  const rightSplit = drawer();
+  const leftSplit = drawer();
+  const center = {};
+  const opened: Array<[string, string, unknown]> = [];
+  const inside = { id: "response" };
+  const leaf = {
+    view: { containerEl: { contains: (n: unknown) => n === inside } },
+    getRoot: () => (where === "right" ? rightSplit : where === "left" ? leftSplit : center),
   };
   const app = {
     metadataCache: {
-      getFirstLinkpathDest: (caminho: string, origem: string) =>
-        origem === "" && notas.includes(caminho) ? { path: caminho + ".md" } : null,
+      getFirstLinkpathDest: (path: string, source: string) =>
+        source === "" && notes.includes(path) ? { path: path + ".md" } : null,
     },
     workspace: {
       rightSplit,
       leftSplit,
-      openLinkText: async (texto: string, origem: string, aba: unknown) => {
-        abertos.push([texto, origem, aba]);
+      openLinkText: async (text: string, source: string, newLeaf: unknown) => {
+        opened.push([text, source, newLeaf]);
       },
-      getLeavesOfType: (tipo: string) => (tipo === HOVER_SOURCE ? [folha] : []),
+      getLeavesOfType: (type: string) => (type === VIEW_TYPE_CORVUS ? [leaf] : []),
     },
   } as unknown as App;
-  return { app, abertos, rightSplit, leftSplit, dentro: dentro as unknown as Element };
+  return { app, opened, rightSplit, leftSplit, inside: inside as unknown as Element };
 }
 
-describe("os links da resposta", () => {
+describe("openResponseLink", () => {
   beforeEach(() => {
-    __avisos.length = 0;
+    __notices.length = 0;
   });
   afterEach(() => {
     Platform.isMobile = false;
   });
 
-  it("a fonte do hover é o tipo da view", () => {
-    expect(HOVER_SOURCE).toBe(VIEW_TYPE_CORVUS);
-  });
-
-  it("abre a nota citada, com a seção, e repassa o pedido de aba nova", () => {
-    const m = montar(["2026-09-24 Northwind kickoff"], "direita");
-    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff", false, m.dentro)).toBe(true);
-    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff#Decisões", "tab", m.dentro)).toBe(true);
-    expect(m.abertos).toEqual([
+  it("opens the cited note with its heading and passes the new tab request", () => {
+    const m = setup(["2026-09-24 Northwind kickoff"], "right");
+    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff", false, m.inside)).toBe(true);
+    expect(openResponseLink(m.app, "2026-09-24 Northwind kickoff#Decisions", "tab", m.inside)).toBe(true);
+    expect(m.opened).toEqual([
       ["2026-09-24 Northwind kickoff", "", false],
-      ["2026-09-24 Northwind kickoff#Decisões", "", "tab"],
+      ["2026-09-24 Northwind kickoff#Decisions", "", "tab"],
     ]);
-    expect(__avisos).toEqual([]);
+    expect(__notices).toEqual([]);
   });
 
-  it("citação que não leva a nota nenhuma avisa e não cria nota", () => {
-    const m = montar([], "direita");
-    expect(openResponseLink(m.app, "Nota inventada#Seção", false, m.dentro)).toBe(false);
-    expect(m.abertos).toEqual([]);
-    expect(__avisos).toEqual(["Not found: Nota inventada"]);
+  it("shows a notice and creates nothing when the citation leads nowhere", () => {
+    const m = setup([], "right");
+    expect(openResponseLink(m.app, "Made up note#Section", false, m.inside)).toBe(false);
+    expect(m.opened).toEqual([]);
+    expect(__notices).toEqual(["Not found: Made up note"]);
   });
 
-  it("no desktop a barra lateral fica aberta", () => {
-    const m = montar(["Nota"], "direita");
-    openResponseLink(m.app, "Nota", false, m.dentro);
-    expect(m.rightSplit.fechada).toBe(false);
+  it("keeps the sidebar open on desktop", () => {
+    const m = setup(["Note"], "right");
+    openResponseLink(m.app, "Note", false, m.inside);
+    expect(m.rightSplit.collapsed).toBe(false);
   });
 
-  it("no celular fecha a gaveta onde a conversa está", () => {
+  it("closes the drawer holding the chat on mobile", () => {
     Platform.isMobile = true;
-    const d = montar(["Nota"], "direita");
-    openResponseLink(d.app, "Nota", false, d.dentro);
-    expect([d.rightSplit.fechada, d.leftSplit.fechada]).toEqual([true, false]);
+    const r = setup(["Note"], "right");
+    openResponseLink(r.app, "Note", false, r.inside);
+    expect([r.rightSplit.collapsed, r.leftSplit.collapsed]).toEqual([true, false]);
 
-    const e = montar(["Nota"], "esquerda");
-    openResponseLink(e.app, "Nota", false, e.dentro);
-    expect([e.rightSplit.fechada, e.leftSplit.fechada]).toEqual([false, true]);
+    const l = setup(["Note"], "left");
+    openResponseLink(l.app, "Note", false, l.inside);
+    expect([l.rightSplit.collapsed, l.leftSplit.collapsed]).toEqual([false, true]);
   });
 
-  it("no celular, com a conversa na área principal, nenhuma gaveta mexe", () => {
+  it("leaves both drawers alone on mobile when the chat is in the main area", () => {
     Platform.isMobile = true;
-    const m = montar(["Nota"], "centro");
-    openResponseLink(m.app, "Nota", false, m.dentro);
-    expect([m.rightSplit.fechada, m.leftSplit.fechada]).toEqual([false, false]);
+    const m = setup(["Note"], "center");
+    openResponseLink(m.app, "Note", false, m.inside);
+    expect([m.rightSplit.collapsed, m.leftSplit.collapsed]).toEqual([false, false]);
   });
 
-  it("no celular, link sem destino não fecha a gaveta", () => {
+  it("keeps the drawer open on mobile when the link has no target", () => {
     Platform.isMobile = true;
-    const m = montar([], "direita");
-    openResponseLink(m.app, "Sumiu", false, m.dentro);
-    expect(m.rightSplit.fechada).toBe(false);
+    const m = setup([], "right");
+    openResponseLink(m.app, "Gone", false, m.inside);
+    expect(m.rightSplit.collapsed).toBe(false);
   });
 });

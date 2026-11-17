@@ -5,87 +5,79 @@ import { PROJECT_STEPS } from "../src/ui/ProjectSheet";
 import { EMPTY_SKILL_DRAFT } from "../src/skills/skillFile";
 
 const TOTAL = SKILL_STEPS.length;
-const ULTIMO = TOTAL - 1;
+const LAST = TOTAL - 1;
 
-const pe = (atual: number, problema: string | null = null, total = TOTAL) =>
-  wizardFoot({ current: atual, total, problem: problema });
+const foot = (current: number, problem: string | null = null, total = TOTAL) =>
+  wizardFoot({ current, total, problem });
 
-describe("os botões da fila", () => {
-  it("a seta de cima RECUA um passo, e só sai quando não há passo atrás", () => {
-
-    expect(pe(0).back).toBe("exit");
-    expect(pe(1).back).toBe("step");
-    expect(pe(ULTIMO).back).toBe("step");
+describe("the wizard buttons", () => {
+  it("the top arrow goes back one step and only exits when there is no previous step", () => {
+    expect(foot(0).back).toBe("exit");
+    expect(foot(1).back).toBe("step");
+    expect(foot(LAST).back).toBe("step");
   });
 
-  it("o do meio avança, o último conclui", () => {
-    expect(pe(0).primary).toBe("next");
-    expect(pe(ULTIMO - 1).primary).toBe("next");
-    expect(pe(ULTIMO).primary).toBe("submit");
-    expect(pe(ULTIMO).isLast).toBe(true);
+  it("middle steps advance and the last one submits", () => {
+    expect(foot(0).primary).toBe("next");
+    expect(foot(LAST - 1).primary).toBe("next");
+    expect(foot(LAST).primary).toBe("submit");
+    expect(foot(LAST).isLast).toBe(true);
   });
 
-  it("uma fila de UM passo é um formulário comum: conclui e não volta", () => {
-    const p = pe(0, null, 1);
+  it("a single-step wizard is a plain form that submits and exits", () => {
+    const p = foot(0, null, 1);
     expect(p.primary).toBe("submit");
     expect(p.back).toBe("exit");
   });
 
-  it("um índice além do fim não inventa um passo que não existe", () => {
-
-    expect(pe(TOTAL + 4).primary).toBe("submit");
+  it("an index past the end does not invent a missing step", () => {
+    expect(foot(TOTAL + 4).primary).toBe("submit");
   });
 });
 
-describe("a linha de status", () => {
-  it("o que FALTA só aparece onde há o que salvar", () => {
-
-    expect(pe(0, "Give it a name.").status).toBe(null);
-    expect(pe(ULTIMO, "Give it a name.").status).toBe("problem");
+describe("the status line", () => {
+  it("a missing field only shows where saving is possible", () => {
+    expect(foot(0, "Give it a name.").status).toBe(null);
+    expect(foot(LAST, "Give it a name.").status).toBe("problem");
   });
 
-  it("pronto no meio do caminho vira ATALHO de concluir", () => {
-
-    expect(pe(0).status).toBe("shortcut");
-    expect(pe(ULTIMO - 1).status).toBe("shortcut");
+  it("a ready draft midway offers a shortcut to finish", () => {
+    expect(foot(0).status).toBe("shortcut");
+    expect(foot(LAST - 1).status).toBe("shortcut");
   });
 
-  it("no último passo, pronto, a linha some — não há o que dizer", () => {
-    expect(pe(ULTIMO).status).toBe(null);
+  it("on the last step with a ready draft the line is hidden", () => {
+    expect(foot(LAST).status).toBe(null);
   });
 
-  it("problema e atalho nunca aparecem juntos", () => {
-
+  it("problem and shortcut never show together", () => {
     for (let i = 0; i <= TOTAL; i++)
-      for (const prob of [null, "falta algo"]) {
+      for (const prob of [null, "something is missing"]) {
         const s = wizardFoot({ current: i, total: TOTAL, problem: prob }).status;
         expect(s === "problem" && prob === null).toBe(false);
         expect(s === "shortcut" && prob !== null).toBe(false);
       }
   });
 
-  it("o botão de concluir só se oferece quando dá", () => {
-
-    expect(pe(ULTIMO, "falta").ready).toBe(false);
-    expect(pe(ULTIMO).ready).toBe(true);
+  it("the submit button is only ready when the draft is valid", () => {
+    expect(foot(LAST, "missing").ready).toBe(false);
+    expect(foot(LAST).ready).toBe(true);
   });
 });
 
-describe("os passos cobrem o skill", () => {
-  it("uma pergunta por tela: um passo por campo, nem mais nem menos", () => {
-
+describe("the skill steps", () => {
+  it("have exactly one step per draft field", () => {
     const ids = SKILL_STEPS.map((p) => p.id as string).sort();
     expect(ids).toEqual([...Object.keys(EMPTY_SKILL_DRAFT)].sort());
   });
 
-  it("nenhum passo repetido, e o prompt vem primeiro", () => {
+  it("have no repeated step and start with the prompt", () => {
     const ids = SKILL_STEPS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
-
     expect(ids[0]).toBe("body");
   });
 
-  it("todo passo tem um rótulo curto — ele vai no TÍTULO da folha", () => {
+  it("every step has a short label because it becomes the sheet title", () => {
     for (const p of SKILL_STEPS) {
       expect(p.label.trim()).not.toBe("");
       expect(p.label.length).toBeLessThanOrEqual(14);
@@ -93,9 +85,8 @@ describe("os passos cobrem o skill", () => {
   });
 });
 
-describe("o wizard de PROJETO", () => {
-
-  it("uma pergunta por tela: nome, notas, instruções, cor e ícone", () => {
+describe("the project wizard", () => {
+  it("asks for name, notes, instructions, color and icon in that order", () => {
     expect(PROJECT_STEPS.map((p) => p.id)).toEqual([
       "name",
       "notes",
@@ -105,18 +96,7 @@ describe("o wizard de PROJETO", () => {
     ]);
   });
 
-  it("o nome vem primeiro — é nele que o ✨ monta o projeto inteiro", () => {
-
-    expect(PROJECT_STEPS[0].id).toBe("name");
-  });
-
-  it("as notas vêm ANTES das instruções", () => {
-
-    const ids = PROJECT_STEPS.map((p) => p.id as string);
-    expect(ids.indexOf("notes")).toBeLessThan(ids.indexOf("instructions"));
-  });
-
-  it("todo passo tem um rótulo curto — ele vai no TÍTULO da folha", () => {
+  it("every step has a short label because it becomes the sheet title", () => {
     for (const p of PROJECT_STEPS) {
       expect(p.label.trim()).not.toBe("");
       expect(p.label.length).toBeLessThanOrEqual(14);

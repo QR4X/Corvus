@@ -6,35 +6,34 @@ import {
 import { buildModelCatalog, byVendor } from "../src/ui/modelCatalog";
 
 describe("getFreeDailyTokens", () => {
-  it("as duas cotas do programa de tráfego compartilhado", () => {
+  it("returns both shared-traffic program quotas", () => {
     expect(getFreeDailyTokens("openai", "gpt-5.4")).toBe(250_000);
     expect(getFreeDailyTokens("openai", "o3")).toBe(250_000);
     expect(getFreeDailyTokens("openai", "gpt-5.4-mini")).toBe(2_500_000);
     expect(getFreeDailyTokens("openai", "o4-mini")).toBe(2_500_000);
   });
 
-  it("aceita o id datado que a API devolve", () => {
+  it("accepts the dated id the API returns", () => {
     expect(getFreeDailyTokens("openai", "gpt-4o-2024-08-06")).toBe(250_000);
     expect(getFreeDailyTokens("openai", "gpt-4o-mini-2024-07-18")).toBe(
       2_500_000
     );
   });
 
-  it("match é EXATO, não por prefixo — mini e nano têm cota própria", () => {
-
+  it("matches exactly, not by prefix, so mini and nano have their own quota", () => {
     expect(getFreeDailyTokens("openai", "gpt-5.2")).toBe(250_000);
     expect(getFreeDailyTokens("openai", "gpt-5.2-mini")).toBeNull();
     expect(getFreeDailyTokens("openai", "gpt-4o-audio-preview")).toBeNull();
     expect(getFreeDailyTokens("openai", "dall-e-3")).toBeNull();
   });
 
-  it("só vale pra OpenAI", () => {
+  it("applies to OpenAI only", () => {
     expect(getFreeDailyTokens("openrouter", "gpt-4o")).toBeNull();
     expect(getFreeDailyTokens("nim", "o3")).toBeNull();
     expect(getFreeDailyTokens("openai", "")).toBeNull();
   });
 
-  it("quem tem cota diária sai marcado como free nas capabilities", () => {
+  it("marks models with a daily quota as free in capabilities", () => {
     expect(getModelCapabilities("openai", "gpt-5-mini").free).toBe(true);
     expect(getModelCapabilities("openai", "o1").free).toBe(true);
     expect(getModelCapabilities("openai", "tts-1").free).toBeUndefined();
@@ -53,7 +52,7 @@ describe("buildModelCatalog", () => {
     "tts-1",
   ];
 
-  it("separa por papel e só devolve papel que tem modelo", () => {
+  it("groups by role and returns only roles that have models", () => {
     const roles = buildModelCatalog("openai", models).map((r) => r.id);
     expect(roles).toContain("chat");
     expect(roles).toContain("reasoning");
@@ -63,7 +62,7 @@ describe("buildModelCatalog", () => {
     expect(roles).not.toContain("embedding");
   });
 
-  it("dentro do papel, famílias na ordem canônica (linhagem nova primeiro)", () => {
+  it("orders families within a role canonically, newest lineage first", () => {
     const chat = buildModelCatalog("openai", models).find(
       (r) => r.id === "chat"
     );
@@ -71,14 +70,14 @@ describe("buildModelCatalog", () => {
     expect(chat?.count).toBe(4);
   });
 
-  it("modelos ordenados dentro da família", () => {
+  it("sorts models within a family", () => {
     const chat = buildModelCatalog("openai", models).find(
       (r) => r.id === "chat"
     );
     expect(chat?.families[0].models).toEqual(["gpt-5", "gpt-5-mini"]);
   });
 
-  it("cada família carrega rótulo e ícone pra seção", () => {
+  it("gives each family a label and an icon for its section", () => {
     const reasoning = buildModelCatalog("openai", models).find(
       (r) => r.id === "reasoning"
     );
@@ -86,7 +85,7 @@ describe("buildModelCatalog", () => {
     expect(reasoning?.families[0].icon).toBeTruthy();
   });
 
-  it("embedding não cai no chat", () => {
+  it("keeps embedding models out of chat", () => {
     const roles = buildModelCatalog("openai", [
       "gpt-4o",
       "text-embedding-3-small",
@@ -97,30 +96,30 @@ describe("buildModelCatalog", () => {
     expect(roles.find((r) => r.id === "chat")?.count).toBe(1);
   });
 
-  it("lista vazia não inventa papel", () => {
+  it("returns no roles for an empty list", () => {
     expect(buildModelCatalog("openai", [])).toEqual([]);
   });
 
-  it("funciona com ids de vendor do OpenRouter", () => {
+  it("works with OpenRouter vendor ids", () => {
     const roles = buildModelCatalog("openrouter", [
       "meta/llama-3.3-70b-instruct:free",
       "qwen/qwen-2.5-7b:free",
       "deepseek/deepseek-r1",
     ]);
-    const familias = roles.flatMap((r) => r.families.map((f) => f.id));
-    expect(familias).toContain("llama");
-    expect(familias).toContain("qwen");
-    expect(familias).toContain("deepseek");
+    const families = roles.flatMap((r) => r.families.map((f) => f.id));
+    expect(families).toContain("llama");
+    expect(families).toContain("qwen");
+    expect(families).toContain("deepseek");
   });
 
-  it("openrouter/auto é classificado como chat com família router", () => {
+  it("classifies openrouter/auto as chat in the router family", () => {
     const roles = buildModelCatalog("openrouter", ["openrouter/auto"]);
     expect(roles).toHaveLength(1);
     expect(roles[0].id).toBe("chat");
     expect(roles[0].families[0].id).toBe("router");
     expect(roles[0].families[0].label).toBe("Auto Router");
 
-    const porFab = byVendor(roles);
-    expect(porFab[0].vendor.name).toBe("OpenRouter");
+    const byMaker = byVendor(roles);
+    expect(byMaker[0].vendor.name).toBe("OpenRouter");
   });
 });

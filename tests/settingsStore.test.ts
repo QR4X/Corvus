@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { __avisos } from "obsidian";
+import { __notices } from "obsidian";
 import { SettingsStore } from "../src/settingsStore";
 import { OLLAMA_DEFAULTS_UNTIL_0923, OLLAMA_LOCAL } from "../src/core/ollamaDefault";
 import type { CorvusSettings } from "../src/settings";
@@ -33,7 +33,7 @@ function setup(opts: { saved?: unknown; file?: string; secrets?: boolean; failSa
 }
 
 beforeEach(() => {
-  __avisos.length = 0;
+  __notices.length = 0;
 });
 
 describe("SettingsStore.load", () => {
@@ -43,14 +43,14 @@ describe("SettingsStore.load", () => {
     expect(s.chatsPath).toBe("corvus/chats");
     await store.save();
     expect(saveData).toHaveBeenCalledTimes(1);
-    expect(__avisos).toEqual([]);
+    expect(__notices).toEqual([]);
   });
 
   it("an unreadable data.json makes the store read-only so nothing is overwritten", async () => {
     const { store, saveData } = setup({ saved: null, file: '{"openaiTier": 3, broken' });
     await store.load();
     expect(store.isReadOnly).toBe(true);
-    expect(__avisos).toHaveLength(1);
+    expect(__notices).toHaveLength(1);
     await store.save();
     expect(saveData).not.toHaveBeenCalled();
   });
@@ -134,7 +134,7 @@ describe("SettingsStore.save", () => {
     await store.load();
     await expect(store.save()).resolves.toBeUndefined();
     await store.save();
-    expect(__avisos.filter((m) => /lost when you reopen/.test(m))).toHaveLength(1);
+    expect(__notices.filter((m) => /lost when you reopen/.test(m))).toHaveLength(1);
   });
 
   it("notifies listeners only after a successful save", async () => {

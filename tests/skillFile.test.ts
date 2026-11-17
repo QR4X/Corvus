@@ -15,30 +15,28 @@ const draft = (over: Partial<SkillDraft> = {}): SkillDraft => ({
 });
 
 describe("skillFileName", () => {
-  it("usa o nome como nome de arquivo", () => {
+  it("uses the name as the file name", () => {
     expect(skillFileName("Weekly review")).toBe("Weekly review.md");
   });
 
-  it("troca o que o Obsidian não aceita em vez de recusar", () => {
-
-    expect(skillFileName("Resumo: TL;DR")).toBe("Resumo- TL;DR.md");
+  it("replaces characters Obsidian rejects instead of refusing", () => {
+    expect(skillFileName("Summary: TL;DR")).toBe("Summary- TL;DR.md");
     expect(skillFileName("a/b*c?d")).toBe("a-b-c-d.md");
   });
 
-  it("não deixa o arquivo terminar em ponto nem espaço", () => {
-
-    expect(skillFileName("Rascunho...")).toBe("Rascunho.md");
-    expect(skillFileName("  espaço  ")).toBe("espaço.md");
+  it("does not let the file name end in a dot or space", () => {
+    expect(skillFileName("Draft...")).toBe("Draft.md");
+    expect(skillFileName("  space  ")).toBe("space.md");
   });
 
-  it("nome que vira nada ainda dá um arquivo", () => {
+  it("falls back to a file name when nothing is left", () => {
     expect(skillFileName("///")).toBe("Skill.md");
     expect(skillFileName("")).toBe("Skill.md");
   });
 });
 
 describe("skillMarkdown", () => {
-  it("escreve frontmatter e corpo", () => {
+  it("writes frontmatter and body", () => {
     const md = skillMarkdown(draft({ description: "d", icon: "list" }));
     expect(md.startsWith("---\n")).toBe(true);
     expect(md).toContain('name: "Weekly review"');
@@ -47,42 +45,40 @@ describe("skillMarkdown", () => {
     expect(md.trimEnd().endsWith("Go through this week's notes.")).toBe(true);
   });
 
-  it("sempre entre aspas — dois-pontos no nome quebraria o YAML", () => {
-    const md = skillMarkdown(draft({ name: "Resumo: TL;DR" }));
-    expect(md).toContain('name: "Resumo: TL;DR"');
+  it("always quotes the name so a colon cannot break YAML", () => {
+    const md = skillMarkdown(draft({ name: "Summary: TL;DR" }));
+    expect(md).toContain('name: "Summary: TL;DR"');
   });
 
-  it("aspas e contrabarra no nome saem escapadas", () => {
-    const md = skillMarkdown(draft({ name: 'O "bom" \\ ruim' }));
-    expect(md).toContain('name: "O \\"bom\\" \\\\ ruim"');
+  it("escapes quotes and backslashes in the name", () => {
+    const md = skillMarkdown(draft({ name: 'The "good" \\ bad' }));
+    expect(md).toContain('name: "The \\"good\\" \\\\ bad"');
   });
 
-  it("sem modo, a linha nem existe", () => {
-
+  it("omits the mode line when there is no mode", () => {
     expect(skillMarkdown(draft({ mode: "" }))).not.toContain("mode:");
     expect(skillMarkdown(draft({ mode: "agent" }))).toContain('mode: "agent"');
   });
 });
 
-describe("skillProblema", () => {
-  it("pronto é null", () => {
+describe("skillProblem", () => {
+  it("returns null for a complete draft", () => {
     expect(skillProblem(draft(), [])).toBeNull();
   });
 
-  it("cobra o nome e cobra o prompt", () => {
+  it("requires a name and a prompt", () => {
     expect(skillProblem(draft({ name: "  " }), [])).toMatch(/name/i);
-
     expect(skillProblem(draft({ body: "" }), [])).toMatch(/prompt/i);
   });
 
-  it("não pisa num skill que já existe", () => {
-    const existentes = ["corvus-ai/skills/Weekly review.md"];
-    expect(skillProblem(draft(), existentes)).toMatch(/already/i);
+  it("does not overwrite an existing skill", () => {
+    const existing = ["corvus-ai/skills/Weekly review.md"];
+    expect(skillProblem(draft(), existing)).toMatch(/already/i);
 
-    expect(skillProblem(draft(), existentes, existentes[0])).toBeNull();
+    expect(skillProblem(draft(), existing, existing[0])).toBeNull();
   });
 
-  it("colisão ignora maiúsculas — o disco também ignora", () => {
+  it("detects collisions case-insensitively like the disk does", () => {
     expect(
       skillProblem(draft({ name: "WEEKLY REVIEW" }), [
         "corvus-ai/skills/Weekly review.md",

@@ -1,103 +1,88 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SHEET_OPEN_CLASS } from "../src/ui/sheetStrip";
 
 const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
-const SEM_COMENTARIO = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+const CSS_NO_COMMENTS = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 
-function bloco(agulha: string): string {
-  const i = SEM_COMENTARIO.indexOf(agulha);
-  expect(i, `seletor sumiu do CSS: ${agulha}`).toBeGreaterThan(-1);
-  const abre = SEM_COMENTARIO.indexOf("{", i);
-  const fecha = SEM_COMENTARIO.indexOf("}", abre);
-  return SEM_COMENTARIO.slice(abre + 1, fecha);
+function block(needle: string): string {
+  const i = CSS_NO_COMMENTS.indexOf(needle);
+  expect(i, `selector missing from CSS: ${needle}`).toBeGreaterThan(-1);
+  const open = CSS_NO_COMMENTS.indexOf("{", i);
+  const close = CSS_NO_COMMENTS.indexOf("}", open);
+  return CSS_NO_COMMENTS.slice(open + 1, close);
 }
 
-describe("a faixa da barra de gestos tem a cor da folha", () => {
+describe("the gesture bar strip matches the sheet color", () => {
+  const strip = () => block(`.workspace-drawer-inner.${SHEET_OPEN_CLASS} {`);
 
-  const faixa = () => bloco(".workspace-drawer-inner.corvus-sheet-open {");
-
-  it("a folha e a faixa usam o MESMO token de cor", () => {
-
-    expect(bloco(".corvus-root .corvus-sheet {")).toContain(
+  it("uses the same color token for the sheet and the strip", () => {
+    expect(block(".corvus-root .corvus-sheet {")).toContain(
       "background-color: var(--corvus-sheet-bg)"
     );
-    expect(faixa()).toContain("var(--corvus-sheet-bg)");
+    expect(strip()).toContain("var(--corvus-sheet-bg)");
     expect(CSS).toMatch(/--corvus-sheet-bg:\s*color-mix\(/);
   });
 
-  it("pinta SÓ a faixa de baixo — a de cima é da barra de status", () => {
-
-    expect(faixa()).not.toMatch(/background-color\s*:/);
-    expect(faixa()).toMatch(/background-image:\s*linear-gradient\(\s*to top/);
-
-    expect(faixa()).toContain(
+  it("paints only the bottom strip and leaves the top to the status bar", () => {
+    expect(strip()).not.toMatch(/background-color\s*:/);
+    expect(strip()).toMatch(/background-image:\s*linear-gradient\(\s*to top/);
+    expect(strip()).toContain(
       "max(var(--safe-area-inset-bottom), var(--size-4-4))"
     );
   });
 
-  it("só enquanto há folha aberta, e só na tela cheia", () => {
-
-    expect(SEM_COMENTARIO).toContain(
-      "body.is-mobile .workspace-drawer.corvus-fullscreen .workspace-drawer-inner.corvus-sheet-open {"
+  it("styles the strip only for the class the sheet toggles, in fullscreen", () => {
+    expect(CSS_NO_COMMENTS).toContain(
+      `body.is-mobile .workspace-drawer.corvus-fullscreen .workspace-drawer-inner.${SHEET_OPEN_CLASS} {`
     );
-    const js = readFileSync(resolve(__dirname, "../src/ui/sheetStrip.ts"), "utf8");
-
-    expect(js).toContain('SHEET_OPEN_CLASS = "corvus-sheet-open"');
-    expect(js).toContain('".corvus-root .corvus-sheet-layer.is-open"');
   });
 });
 
-describe("o CSS passa no linter da revisão do Obsidian", () => {
-
-  it("nenhum `:has(`", () => {
-    expect(SEM_COMENTARIO).not.toContain(":has(");
+describe("the CSS passes the Obsidian review linter", () => {
+  it("uses no :has(", () => {
+    expect(CSS_NO_COMMENTS).not.toContain(":has(");
   });
 
-  it("nenhum `!important`", () => {
-    expect(SEM_COMENTARIO).not.toContain("!important");
+  it("uses no !important", () => {
+    expect(CSS_NO_COMMENTS).not.toContain("!important");
   });
 });
 
-describe("o tamanho FIT: a folha encolhe quando o teclado fecha", () => {
-  it("do tamanho do conteúdo, com o teto do grande", () => {
-    const b = bloco(".corvus-root .corvus-sheet.is-fit {");
-
+describe("the fit size shrinks the sheet when the keyboard closes", () => {
+  it("sizes to content with the same cap as the full size", () => {
+    const b = block(".corvus-root .corvus-sheet.is-fit {");
     expect(b).toContain("min-height: 0");
     expect(b).toContain("max-height: 94%");
-
-    expect(bloco(".corvus-root .corvus-sheet.is-full {")).toContain("max-height: 94%");
+    expect(block(".corvus-root .corvus-sheet.is-full {")).toContain("max-height: 94%");
   });
 });
 
-describe("os cartões de skill têm todos o mesmo tamanho", () => {
-
-  it("a prévia do prompt tem altura FIXA, não um intervalo", () => {
-    const b = bloco(".corvus-root .corvus-tile-paper {");
+describe("skill cards all have the same size", () => {
+  it("gives the prompt preview a fixed height instead of a range", () => {
+    const b = block(".corvus-root .corvus-tile-paper {");
     expect(b).toMatch(/(^|\s)height:\s*\d+px/);
     expect(b).not.toMatch(/min-height|max-height/);
   });
 
-  it("as colunas são metades exatas — o conteúdo não estica nenhuma", () => {
-
-    expect(bloco(".corvus-root .corvus-tiles {")).toContain(
+  it("uses exact half columns that content cannot stretch", () => {
+    expect(block(".corvus-root .corvus-tiles {")).toContain(
       "grid-template-columns: repeat(2, minmax(0, 1fr))"
     );
-    expect(bloco(".corvus-root .corvus-tile-wrap {")).toContain("min-width: 0");
+    expect(block(".corvus-root .corvus-tile-wrap {")).toContain("min-width: 0");
   });
 
-  it("o cartão ocupa a célula inteira, e o nome corta em vez de quebrar", () => {
-    expect(bloco(".corvus-root button.corvus-tile {")).toContain("height: 100%");
-    const nome = bloco(".corvus-root .corvus-tile-head .corvus-tile-name {");
-    expect(nome).toContain("white-space: nowrap");
-    expect(nome).toContain("text-overflow: ellipsis");
+  it("fills the whole cell and truncates the name instead of wrapping", () => {
+    expect(block(".corvus-root button.corvus-tile {")).toContain("height: 100%");
+    const name = block(".corvus-root .corvus-tile-head .corvus-tile-name {");
+    expect(name).toContain("white-space: nowrap");
+    expect(name).toContain("text-overflow: ellipsis");
   });
 });
 
-describe("contraste dentro das folhas — medido, e preso aqui", () => {
-
-  it("informação em cima de um cartão é muted, nunca faint", () => {
-
+describe("contrast inside sheets", () => {
+  it("uses muted, never faint, text for information on a card", () => {
     for (const sel of [
       ".corvus-root .corvus-proj-card-when {",
       ".corvus-root .corvus-proj-card-about.is-empty {",
@@ -106,36 +91,35 @@ describe("contraste dentro das folhas — medido, e preso aqui", () => {
       ".corvus-root button.corvus-tile-more {",
       ".corvus-root .corvus-field-hint {",
     ]) {
-      const b = bloco(sel);
+      const b = block(sel);
       expect(b, sel).toContain("var(--text-muted)");
       expect(b, sel).not.toContain("var(--text-faint)");
     }
   });
 
-  it("no tema claro, o cartão é o papel do tema — mais CLARO que a folha", () => {
-    const claro = bloco("body.theme-light .corvus-root .corvus-sheet {");
-    expect(claro).toContain("--corvus-s1: var(--background-primary)");
+  it("uses the theme paper for cards in light theme so they are lighter than the sheet", () => {
+    const light = block("body.theme-light .corvus-root .corvus-sheet {");
+    expect(light).toContain("--corvus-s1: var(--background-primary)");
   });
 
-  it("os degraus da folha saem só do tema — nenhuma cor escrita à mão", () => {
-
-    const i = SEM_COMENTARIO.indexOf(
+  it("derives sheet surface steps only from the theme with no hardcoded colors", () => {
+    const i = CSS_NO_COMMENTS.indexOf(
       "--corvus-s1: color-mix(in srgb, var(--text-normal) 12%"
     );
-    expect(i, "o degrau do escuro dentro da folha sumiu").toBeGreaterThan(-1);
-    const escuro = SEM_COMENTARIO.slice(
-      SEM_COMENTARIO.lastIndexOf("{", i),
-      SEM_COMENTARIO.indexOf("}", i)
+    expect(i, "the dark surface step inside the sheet is missing").toBeGreaterThan(-1);
+    const dark = CSS_NO_COMMENTS.slice(
+      CSS_NO_COMMENTS.lastIndexOf("{", i),
+      CSS_NO_COMMENTS.indexOf("}", i)
     );
-    const claro = bloco("body.theme-light .corvus-root .corvus-sheet {");
-    for (const b of [escuro, claro]) {
+    const light = block("body.theme-light .corvus-root .corvus-sheet {");
+    for (const b of [dark, light]) {
       expect(b).toContain("--corvus-s1:");
       expect(b).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
     }
   });
 
-  it("campos, grupos, prévia e busca usam a MESMA superfície dos cartões", () => {
-    const b = bloco(".corvus-root .corvus-sheet .corvus-sheet-group,");
+  it("uses the card surface for fields, groups, preview and search", () => {
+    const b = block(".corvus-root .corvus-sheet .corvus-sheet-group,");
     expect(b).toContain("background-color: var(--corvus-s1)");
     for (const sel of [
       ".corvus-root .corvus-sheet .corvus-form-preview",
@@ -146,15 +130,14 @@ describe("contraste dentro das folhas — medido, e preso aqui", () => {
       expect(CSS).toContain(sel);
   });
 
-  it("o ícone de um projeto se mistura com o texto do TEMA pra ler na placa", () => {
-
-    expect(bloco(".corvus-root .corvus-thing-mark svg {")).toMatch(
+  it("mixes the project icon with the theme text color so it reads on the badge", () => {
+    expect(block(".corvus-root .corvus-thing-mark svg {")).toMatch(
       /color-mix\(in srgb, currentColor \d+%, var\(--text-normal\)\)/
     );
   });
 
-  it("o véu parte do véu do tema, só mais fundo", () => {
-    const b = bloco(".corvus-root .corvus-scrim {");
+  it("derives the scrim from the theme cover color", () => {
+    const b = block(".corvus-root .corvus-scrim {");
     expect(b).toContain("var(--background-modifier-cover");
     expect(b).toContain("color-mix(");
   });

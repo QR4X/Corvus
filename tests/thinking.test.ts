@@ -37,19 +37,19 @@ describe("thinkingStatus", () => {
 });
 
 describe("elapsedLabel", () => {
-  it("segundos enquanto cabem", () => {
+  it("shows seconds below one minute", () => {
     expect(elapsedLabel(0)).toBe("0s");
     expect(elapsedLabel(7_400)).toBe("7s");
     expect(elapsedLabel(59_900)).toBe("59s");
   });
 
-  it("vira minuto com os segundos em duas casas", () => {
+  it("switches to minutes with two-digit seconds", () => {
     expect(elapsedLabel(60_000)).toBe("1m 00s");
     expect(elapsedLabel(72_000)).toBe("1m 12s");
     expect(elapsedLabel(605_000)).toBe("10m 05s");
   });
 
-  it("nunca mostra negativo", () => {
+  it("never shows a negative duration", () => {
     expect(elapsedLabel(-3000)).toBe("0s");
   });
 });

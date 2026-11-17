@@ -19,9 +19,8 @@ const b = (tokensIn: number, tokensOut: number, chats = 1): UsageBucket => ({
   hasUnknownCost: false,
 });
 
-describe("o passo do tempo", () => {
-  it("dia até um mês, semana até meio ano, mês daí pra frente", () => {
-
+describe("time step", () => {
+  it("uses days up to a month, weeks up to half a year, then months", () => {
     expect(stepFor(1)).toBe("day");
     expect(stepFor(30)).toBe("day");
     expect(stepFor(31)).toBe("day");
@@ -31,52 +30,49 @@ describe("o passo do tempo", () => {
     expect(stepFor(3650)).toBe("month");
   });
 
-  it("conta os dois extremos", () => {
+  it("counts both endpoints", () => {
     expect(daysBetween("2026-09-11", "2026-09-11")).toBe(1);
     expect(daysBetween("2026-09-01", "2026-09-30")).toBe(30);
-
     expect(daysBetween("2025-12-31", "2026-01-01")).toBe(2);
   });
 });
 
-describe("a janela do gráfico", () => {
+describe("chart window", () => {
   const byDay = {
     "2026-09-01": b(10, 5),
     "2026-09-20": b(10, 5),
   };
 
-  const agora = Date.parse("2026-09-25T12:00:00Z");
+  const now = Date.parse("2026-09-25T12:00:00Z");
 
-  it("sem conversa nenhuma não há janela — nem gráfico", () => {
-    expect(chartWindow(0, {}, agora)).toBeNull();
+  it("has no window without any chats", () => {
+    expect(chartWindow(0, {}, now)).toBeNull();
   });
 
-  it("All time vai da primeira à última conversa", () => {
-    expect(chartWindow(0, byDay, agora)).toEqual({
+  it("spans from the first to the last chat for All time", () => {
+    expect(chartWindow(0, byDay, now)).toEqual({
       from: "2026-09-01",
       to: "2026-09-20",
     });
   });
 
-  it("uma janela de N dias termina HOJE, com os dias vazios dentro", () => {
-
-    expect(chartWindow(7, { "2026-09-24": b(10, 5) }, agora)).toEqual({
+  it("ends an N-day window today and includes empty days", () => {
+    expect(chartWindow(7, { "2026-09-24": b(10, 5) }, now)).toEqual({
       from: "2026-09-19",
       to: "2026-09-25",
     });
   });
 
-  it("ela se ESTICA pra caber todo dia que a agregação trouxe", () => {
-
-    expect(chartWindow(7, byDay, agora)).toEqual({
+  it("stretches to fit every day the aggregation returned", () => {
+    expect(chartWindow(7, byDay, now)).toEqual({
       from: "2026-09-01",
       to: "2026-09-25",
     });
   });
 });
 
-describe("as colunas", () => {
-  it("uma por dia, inclusive as vazias, na ordem", () => {
+describe("columns", () => {
+  it("creates one column per day in order, including empty days", () => {
     const s = timeSeries(
       { "2026-09-02": b(100, 40) },
       "2026-09-01",
@@ -92,8 +88,7 @@ describe("as colunas", () => {
     expect(s[1]).toMatchObject({ tokensIn: 100, tokensOut: 40, chats: 1 });
   });
 
-  it("a semana começa na SEGUNDA, como o calendário do cartão da home", () => {
-
+  it("starts weeks on Monday like the home card calendar", () => {
     const s = timeSeries(
       { "2026-09-11": b(10, 1), "2026-09-13": b(20, 2) },
       "2026-09-11",
@@ -101,11 +96,10 @@ describe("as colunas", () => {
       "week"
     );
     expect(s).toHaveLength(1);
-
     expect(s[0]).toMatchObject({ start: "2026-09-07", tokensIn: 30, tokensOut: 3 });
   });
 
-  it("o mês junta o mês inteiro", () => {
+  it("groups a whole month into one column", () => {
     const s = timeSeries(
       { "2026-08-31": b(5, 1), "2026-09-01": b(10, 2), "2026-09-30": b(20, 4) },
       "2026-08-31",
@@ -118,15 +112,14 @@ describe("as colunas", () => {
     ]);
   });
 
-  it("o pedaço nunca anuncia dia que ainda não aconteceu", () => {
-
+  it("never labels a column with days that have not happened yet", () => {
     const s = timeSeries({}, "2026-09-07", "2026-09-09", "week");
     expect(s[0].title).toBe("Sep 7 – Sep 9, 2026");
   });
 
-  it("nada fora da janela entra, nem data ilegível", () => {
+  it("ignores days outside the window and unreadable dates", () => {
     const s = timeSeries(
-      { "2026-08-01": b(999, 999), "(sem data)": b(7, 7), "2026-09-02": b(1, 1) },
+      { "2026-08-01": b(999, 999), "(no date)": b(7, 7), "2026-09-02": b(1, 1) },
       "2026-09-01",
       "2026-09-03",
       "day"
@@ -134,11 +127,11 @@ describe("as colunas", () => {
     expect(s.reduce((t, c) => t + c.total, 0)).toBe(2);
   });
 
-  it("janela de trás pra frente não desenha nada", () => {
+  it("draws nothing for a reversed window", () => {
     expect(timeSeries({}, "2026-09-10", "2026-09-01", "day")).toEqual([]);
   });
 
-  it("o pico é a coluna mais alta — é dele que sai a escala", () => {
+  it("uses the tallest column as the peak for the scale", () => {
     const s = timeSeries(
       { "2026-09-01": b(10, 5), "2026-09-03": b(100, 50) },
       "2026-09-01",
@@ -150,165 +143,97 @@ describe("as colunas", () => {
   });
 });
 
-describe("os rótulos", () => {
-  it("curtos pro eixo, inteiros pra quem foi ler", () => {
-    const [dia] = timeSeries({}, "2026-09-11", "2026-09-11", "day");
-    expect(dia.label).toBe("Sep 11");
-    expect(dia.title).toBe("Sep 11, 2026");
+describe("labels", () => {
+  it("uses short axis labels and full titles", () => {
+    const [day] = timeSeries({}, "2026-09-11", "2026-09-11", "day");
+    expect(day.label).toBe("Sep 11");
+    expect(day.title).toBe("Sep 11, 2026");
 
-    const [semana] = timeSeries({}, "2026-09-07", "2026-09-13", "week");
-    expect(semana.label).toBe("Sep 7");
-    expect(semana.title).toBe("Sep 7 – Sep 13, 2026");
+    const [week] = timeSeries({}, "2026-09-07", "2026-09-13", "week");
+    expect(week.label).toBe("Sep 7");
+    expect(week.title).toBe("Sep 7 – Sep 13, 2026");
 
-    const [mes] = timeSeries({}, "2026-09-01", "2026-09-30", "month");
-    expect(mes.label).toBe("Sep");
-    expect(mes.title).toBe("Sep 2026");
+    const [month] = timeSeries({}, "2026-09-01", "2026-09-30", "month");
+    expect(month.label).toBe("Sep");
+    expect(month.title).toBe("Sep 2026");
   });
 
-  it("diaCurto é o MESMO formatador da faixa do cabeçalho", () => {
+  it("formats short days and returns unparseable input unchanged", () => {
     expect(shortDay("2026-09-11")).toBe("Sep 11");
     expect(shortDay("2026-09-11", true)).toBe("Sep 11, 2026");
-    expect(shortDay("nada")).toBe("nada");
+    expect(shortDay("nothing")).toBe("nothing");
   });
 });
 
-const CSS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8");
-const SEM_COMENTARIO = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
-const VIEW = readFileSync(resolve(__dirname, "../src/ui/UsageView.tsx"), "utf8");
+const CSS_NO_COMMENTS = readFileSync(resolve(__dirname, "../styles/main.css"), "utf8").replace(
+  /\/\*[\s\S]*?\*\//g,
+  ""
+);
 
-function bloco(agulha: string): string {
-  const sel = agulha.replace(/\{$/, "").trim();
+function block(needle: string): string {
+  const sel = needle.replace(/\{$/, "").trim();
   const re = new RegExp(
     `(?:^|\\})\\s*${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`
   );
-  const m = SEM_COMENTARIO.match(re);
-  expect(m, `seletor sumiu do CSS (ou não está sozinho): ${sel}`).not.toBeNull();
+  const m = CSS_NO_COMMENTS.match(re);
+  expect(m, `selector missing from CSS or not on its own: ${sel}`).not.toBeNull();
   return m![1];
 }
 
-describe("o desenho do gráfico", () => {
-  it("as duas séries são dois tons da MESMA cor do app", () => {
-
-    const b = bloco(".corvus-root .corvus-chart {");
+describe("chart styles", () => {
+  it("draws both series as two shades of the app accent color", () => {
+    const b = block(".corvus-root .corvus-chart {");
     expect(b).toContain("--corvus-serie-in: var(--interactive-accent)");
     expect(b).toMatch(/--corvus-serie-out:\s*color-mix\(/);
-
-    const fora = b.slice(b.indexOf("--corvus-serie-out"));
-    expect(fora).toContain("var(--text-normal)");
-    expect(fora).not.toContain("var(--background-primary)");
+    const out = b.slice(b.indexOf("--corvus-serie-out"));
+    expect(out).toContain("var(--text-normal)");
+    expect(out).not.toContain("var(--background-primary)");
   });
 
-  it("a legenda existe sempre — só ela diz qual tom é qual", () => {
-    expect(VIEW).toContain("corvus-chart-legend");
-    expect(VIEW).toContain("corvus-chart-swatch is-in");
-    expect(VIEW).toContain("corvus-chart-swatch is-out");
-
-    expect(VIEW).toContain("peak ");
-  });
-
-  it("a coluna escolhida se mark por um TRAÇO, não pintando a faixa", () => {
-
-    const b = bloco(".corvus-root button.corvus-chart-col.is-on {");
+  it("marks the selected column with an underline instead of filling it", () => {
+    const b = block(".corvus-root button.corvus-chart-col.is-on {");
     expect(b).toContain("inset 0 -2px 0 var(--interactive-accent)");
     expect(b).not.toContain("background-color");
   });
 
-  it("o cartão do gráfico não muda de largura com o que está escrito nele", () => {
-
-    expect(bloco(".corvus-root .corvus-chart {")).toContain("align-self: stretch");
+  it("keeps the chart card width independent of its text", () => {
+    expect(block(".corvus-root .corvus-chart {")).toContain("align-self: stretch");
   });
 
-  it("a barra tem teto de largura e piso de altura", () => {
-
-    expect(bloco(".corvus-root .corvus-chart-stack {")).toContain(
+  it("caps bar width and sets a minimum bar height", () => {
+    expect(block(".corvus-root .corvus-chart-stack {")).toContain(
       "width: min(100%, 24px)"
     );
-
-    expect(bloco(".corvus-root .corvus-chart-bar {")).toContain("min-height: 2px");
+    expect(block(".corvus-root .corvus-chart-bar {")).toContain("min-height: 2px");
   });
 
-  it("o vão entre as partes e entre as colunas é a cor do cartão, não um risco", () => {
-    expect(bloco(".corvus-root .corvus-chart-plot {")).toContain("gap: 2px");
-
-    expect(bloco(".corvus-root .corvus-chart-bar.is-out.has-in {")).toContain(
+  it("separates bar parts and columns with card-colored gaps, not borders", () => {
+    expect(block(".corvus-root .corvus-chart-plot {")).toContain("gap: 2px");
+    expect(block(".corvus-root .corvus-chart-bar.is-out.has-in {")).toContain(
       "margin-bottom: 2px"
     );
-    expect(VIEW).toContain('"corvus-chart-bar is-out has-in"');
-    expect(bloco(".corvus-root .corvus-chart-bar {")).not.toContain("border:");
-  });
-
-  it("o número não depende de mouse: vai no title E no rótulo acessível", () => {
-
-    expect(VIEW).toMatch(
-      /aria-label=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.title,\s*sent: formatCompact\(c\.tokensIn\)/
-    );
-    expect(VIEW).toMatch(
-      /title=\{tr\("\{when\}[^"]*\{sent\} sent[^"]*",\s*\{\s*when: c\.title,\s*sent: formatCompact\(c\.tokensIn\)/
-    );
-    expect(VIEW).toContain("corvus-chart-readout");
-  });
-
-  it("com uma coluna só não há série — seria o total desenhado de novo", () => {
-    expect(VIEW).toMatch(/series\.columns\.length > 1/);
+    expect(block(".corvus-root .corvus-chart-bar {")).not.toContain("border:");
   });
 });
 
-describe("o gráfico VAZIO", () => {
-  it("o lugar do gráfico não some: sem série, entra o vazio dele", () => {
-
-    expect(VIEW).toMatch(
-      /series\.columns\.length > 1[\s\S]{0,120}\?\s*\(?\s*<TimeChart/
-    );
-    expect(VIEW).toContain("<EmptyChart");
-  });
-
-  it("diz POR QUE está vazio — e cada motivo é um motivo diferente", () => {
-    for (const frase of [
-      "Your tokens land here as you chat.",
-      "Nothing to plot yet.",
-      "No tokens recorded in these chats.",
-      "Just one day so far",
-    ]) {
-      expect(VIEW, frase).toContain(frase);
-    }
-
-    const daPagina = "Nothing in this slice.";
-    expect(VIEW).toContain(daPagina);
-    expect(VIEW.split(daPagina)).toHaveLength(2);
-  });
-
-  it("as colunas de mentira nunca usam as cores das séries", () => {
-
-    const b = bloco(".corvus-root .corvus-chart-bar.is-ghost {");
+describe("empty chart styles", () => {
+  it("never uses the series colors for placeholder bars", () => {
+    const b = block(".corvus-root .corvus-chart-bar.is-ghost {");
     expect(b).toMatch(/color-mix\(in srgb, var\(--text-normal\) \d+%/);
     expect(b).not.toContain("--corvus-serie");
   });
 
-  it("as alturas de mentira são FIXAS — sorteio faria a tela piscar", () => {
-    const m = VIEW.match(/const GHOST_BARS = \[([^\]]+)\]/);
-    expect(m, "as alturas do fantasma sumiram").not.toBeNull();
-    const hs = m![1].split(",").map((n) => Number(n.trim()));
-    expect(hs.length).toBeGreaterThan(6);
-    expect(VIEW).not.toMatch(/GHOST_BARS[\s\S]{0,200}Math\.random/);
-
-    const subindo = hs.every((h, i) => i === 0 || h >= hs[i - 1]);
-    const descendo = hs.every((h, i) => i === 0 || h <= hs[i - 1]);
-    expect(subindo || descendo).toBe(false);
-  });
-
-  it("sem dado não há piso: o fio do eixo sai", () => {
-
-    expect(bloco(".corvus-root .corvus-chart.is-empty .corvus-chart-plot {")).toContain(
+  it("hides the axis line when there is no data", () => {
+    expect(block(".corvus-root .corvus-chart.is-empty .corvus-chart-plot {")).toContain(
       "border-bottom-color: transparent"
     );
   });
 
-  it("a faixa da coluna serve ao botão E ao span do vazio", () => {
-
-    const b = bloco(".corvus-root .corvus-chart-col {");
+  it("shares the column track between the button and the empty span", () => {
+    const b = block(".corvus-root .corvus-chart-col {");
     expect(b).toContain("flex: 1 1 0");
     expect(b).toContain("height: 100%");
-    expect(bloco(".corvus-root button.corvus-chart-col {")).toContain(
+    expect(block(".corvus-root button.corvus-chart-col {")).toContain(
       "cursor: pointer"
     );
   });

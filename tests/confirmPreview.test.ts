@@ -6,19 +6,19 @@ import {
 } from "../src/agent/ConfirmationModal";
 
 describe("previewFor", () => {
-  it("nota do vault vira markdown", () => {
+  it("previews a vault note as markdown", () => {
     expect(previewFor("PROJECTS/CREATIVE SYSTEMS.md")).toEqual({
       kind: "markdown",
     });
-    expect(previewFor("Inbox/ideia.markdown")).toEqual({ kind: "markdown" });
+    expect(previewFor("Inbox/idea.markdown")).toEqual({ kind: "markdown" });
   });
 
-  it("caminho sem extensão também é nota — é o caso comum aqui", () => {
-    expect(previewFor("Inbox/sem extensao")).toEqual({ kind: "markdown" });
+  it("treats a path without extension as a note", () => {
+    expect(previewFor("Inbox/no extension")).toEqual({ kind: "markdown" });
     expect(previewFor("")).toEqual({ kind: "markdown" });
   });
 
-  it("arquivo de código vira bloco com a linguagem do Prism", () => {
+  it("previews a code file as a block with its Prism language", () => {
     expect(previewFor("corvus-ai/review.ts")).toEqual({
       kind: "code",
       lang: "typescript",
@@ -30,64 +30,64 @@ describe("previewFor", () => {
     });
   });
 
-  it("extensão desconhecida continua texto cru — melhor que colorir errado", () => {
+  it("keeps an unknown extension as plain text", () => {
     expect(previewFor("Inbox/dump.txt")).toEqual({ kind: "plain" });
-    expect(previewFor("assets/foto.heic")).toEqual({ kind: "plain" });
+    expect(previewFor("assets/photo.heic")).toEqual({ kind: "plain" });
   });
 
-  it("ponto na PASTA não vira extensão do arquivo", () => {
-    expect(previewFor("NUTRITION 1.0/plano")).toEqual({ kind: "markdown" });
-    expect(previewFor("NUTRITION 1.0/plano.ts")).toEqual({
+  it("ignores a dot in the folder name", () => {
+    expect(previewFor("NUTRITION 1.0/plan")).toEqual({ kind: "markdown" });
+    expect(previewFor("NUTRITION 1.0/plan.ts")).toEqual({
       kind: "code",
       lang: "typescript",
     });
   });
 
-  it("arquivo oculto sem extensão (.gitignore) não vira 'gitignore'", () => {
+  it("does not treat a dotfile like .gitignore as an extension", () => {
     expect(previewFor(".gitignore")).toEqual({ kind: "markdown" });
   });
 });
 
 describe("fence", () => {
-  it("abre e fecha com a linguagem", () => {
+  it("opens and closes with the language", () => {
     expect(fence("const a = 1;", "typescript")).toBe(
       "```typescript\nconst a = 1;\n```"
     );
   });
 
-  it("cresce pra passar de uma cerca de DENTRO do conteúdo", () => {
-    const out = fence("antes\n```\ninterno\n```\ndepois", "markdown");
+  it("grows longer than a fence inside the content", () => {
+    const out = fence("before\n```\ninner\n```\nafter", "markdown");
     expect(out.startsWith("````markdown\n")).toBe(true);
     expect(out.endsWith("\n````")).toBe(true);
 
-    expect(out).toContain("interno");
-    expect(out).toContain("depois");
+    expect(out).toContain("inner");
+    expect(out).toContain("after");
   });
 
-  it("conta a MAIOR sequência de crases, não a primeira", () => {
+  it("counts the longest backtick run, not the first", () => {
     const out = fence("a ````` b", "text");
     expect(out.startsWith("``````text\n")).toBe(true);
   });
 });
 
 describe("closeOpenFence", () => {
-  it("não mexe no markdown equilibrado", () => {
+  it("leaves balanced markdown alone", () => {
     const md = "# t\n\n```ts\nconst a = 1;\n```\n";
     expect(closeOpenFence(md)).toBe(md);
   });
 
-  it("fecha a cerca que o truncamento deixou aberta", () => {
+  it("closes a fence left open by truncation", () => {
     const md = "# t\n\n```ts\nconst a = 1;";
     expect(closeOpenFence(md)).toBe(md + "\n```");
   });
 
-  it("fecha com a MESMA mark (til continua til)", () => {
+  it("closes with the same marker (tilde stays tilde)", () => {
     const md = "~~~python\nprint(1)";
     expect(closeOpenFence(md)).toBe(md + "\n~~~");
   });
 
-  it("cerca dentro de citação/indentação de 4 não conta como cerca", () => {
-    const md = "texto\n\n    ```nao-e-cerca\n\ntexto";
+  it("ignores a fence indented by four spaces", () => {
+    const md = "text\n\n    ```not-a-fence\n\ntext";
     expect(closeOpenFence(md)).toBe(md);
   });
 });

@@ -16,19 +16,19 @@ const chat = (over: Partial<ChatSummary> = {}): ChatSummary => ({
   toolCount: 3,
   filePath: "p",
   starred: false,
-  preview: "moveu 18 notas",
+  preview: "moved 18 notes",
   ...over,
 });
 
 describe("chatIndexSignature", () => {
-  it("lista igual, assinatura igual", () => {
+  it("gives equal lists the same signature", () => {
     expect(chatIndexSignature([chat()])).toBe(chatIndexSignature([chat()]));
   });
 
-  it("tudo que o cartão mostra muda a assinatura", () => {
+  it("changes when anything the card shows changes", () => {
     const base = chatIndexSignature([chat()]);
-    const mudancas: Array<Partial<ChatSummary>> = [
-      { title: "outro" },
+    const changes: Array<Partial<ChatSummary>> = [
+      { title: "other" },
       { date: "2026-09-17T10:00:00.000Z" },
       { model: "gpt-5-mini" },
       { messageCount: 3 },
@@ -36,26 +36,25 @@ describe("chatIndexSignature", () => {
       { tokensOut: 10 },
       { toolCount: 4 },
       { starred: true },
-
-      { preview: "outra coisa" },
+      { preview: "something else" },
     ];
-    for (const m of mudancas) {
+    for (const m of changes) {
       expect(chatIndexSignature([chat(m)])).not.toBe(base);
     }
   });
 
-  it("índice antigo (sem o campo) não passa por igual ao novo", () => {
-    const antigo = { ...chat(), preview: undefined } as unknown as ChatSummary;
-    expect(chatIndexSignature([antigo])).not.toBe(chatIndexSignature([chat()]));
+  it("does not treat an old index without the preview field as current", () => {
+    const old = { ...chat(), preview: undefined } as unknown as ChatSummary;
+    expect(chatIndexSignature([old])).not.toBe(chatIndexSignature([chat()]));
   });
 
-  it("quantidade diferente muda a assinatura", () => {
+  it("changes when the number of chats changes", () => {
     expect(chatIndexSignature([chat(), chat({ id: "b" })])).not.toBe(
       chatIndexSignature([chat()])
     );
   });
 
-  it("lista vazia tem assinatura própria", () => {
+  it("gives an empty list its own signature", () => {
     expect(chatIndexSignature([])).toBe("0:");
   });
 });

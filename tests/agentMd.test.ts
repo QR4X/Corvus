@@ -14,39 +14,39 @@ import {
 import type { App, TFile } from "obsidian";
 
 describe("parseAgentMd", () => {
-  it("devolve vazio quando recebe nulo, indefinido ou em branco", () => {
+  it("returns empty for blank input", () => {
     expect(parseAgentMd("")).toBe("");
     expect(parseAgentMd("   \n\t  ")).toBe("");
   });
 
-  it("mantém markdown puro sem frontmatter", () => {
-    const raw = "# Minhas Regras\n\n- Sempre responda em alemão\n- Não invente bibliotecas";
+  it("keeps plain markdown without frontmatter", () => {
+    const raw = "# My Rules\n\n- Always answer in German\n- Do not invent libraries";
     expect(parseAgentMd(raw)).toBe(raw);
   });
 
-  it("remove frontmatter YAML e retorna o corpo", () => {
-    const raw = "---\ntitle: Regras\nversion: 1.0\n---\n\n# Instruções\n\nSeja direto.";
-    expect(parseAgentMd(raw)).toBe("# Instruções\n\nSeja direto.");
+  it("strips YAML frontmatter and returns the body", () => {
+    const raw = "---\ntitle: Rules\nversion: 1.0\n---\n\n# Instructions\n\nBe direct.";
+    expect(parseAgentMd(raw)).toBe("# Instructions\n\nBe direct.");
   });
 
-  it("suporta quebras de linha CRLF no frontmatter", () => {
-    const raw = "---\r\ntitle: Windows\r\n---\r\n\r\nRegra Windows";
-    expect(parseAgentMd(raw)).toBe("Regra Windows");
+  it("supports CRLF line breaks in frontmatter", () => {
+    const raw = "---\r\ntitle: Windows\r\n---\r\n\r\nWindows rule";
+    expect(parseAgentMd(raw)).toBe("Windows rule");
   });
 
-  it("devolve vazio se o arquivo só contiver frontmatter", () => {
+  it("returns empty when the file only has frontmatter", () => {
     const raw = "---\ntags: [config]\n---";
     expect(parseAgentMd(raw)).toBe("");
   });
 
-  it("trata frontmatter não finalizado como texto normal", () => {
-    const raw = "---\nsem fechamento aqui";
+  it("treats unterminated frontmatter as plain text", () => {
+    const raw = "---\nno closing fence here";
     expect(parseAgentMd(raw)).toBe(raw);
   });
 });
 
 describe("candidatePaths", () => {
-  it("inclui os candidatos padrão por padrão", () => {
+  it("includes the default candidates", () => {
     const paths = candidatePaths();
     expect(paths).toContain("AGENT.md");
     expect(paths).toContain("agent.md");
@@ -55,9 +55,9 @@ describe("candidatePaths", () => {
     expect(paths).toContain(".corvus/AGENT.md");
   });
 
-  it("coloca o caminho customizado em primeiro lugar e evita duplicatas", () => {
-    const paths = candidatePaths("custom/regras.md");
-    expect(paths[0]).toBe("custom/regras.md");
+  it("puts the custom path first and avoids duplicates", () => {
+    const paths = candidatePaths("custom/rules.md");
+    expect(paths[0]).toBe("custom/rules.md");
     expect(paths).toContain("AGENT.md");
 
     const pathsDefault = candidatePaths("AGENT.md");
@@ -67,12 +67,12 @@ describe("candidatePaths", () => {
 });
 
 describe("loadAgentMd", () => {
-  it("devolve vazio se app ou vault não existirem", async () => {
+  it("returns empty when app or vault is missing", async () => {
     expect(await loadAgentMd(null as unknown as App)).toBe("");
     expect(await loadAgentMd({} as unknown as App)).toBe("");
   });
 
-  it("lê arquivo via cachedRead quando TFile existe no vault", async () => {
+  it("reads the file through cachedRead when a TFile exists", async () => {
     const mockFile = { path: "AGENT.md" } as TFile;
     const app = {
       vault: {
@@ -80,74 +80,74 @@ describe("loadAgentMd", () => {
           if (path === "AGENT.md") return mockFile;
           return null;
         }),
-        cachedRead: vi.fn(async () => "---\ntitle: X\n---\n\nRegra 1: Seja breve."),
+        cachedRead: vi.fn(async () => "---\ntitle: X\n---\n\nRule 1: Be brief."),
       },
     } as unknown as App;
 
     const content = await loadAgentMd(app);
-    expect(content).toBe("Regra 1: Seja breve.");
+    expect(content).toBe("Rule 1: Be brief.");
     expect(app.vault.cachedRead).toHaveBeenCalledWith(mockFile);
   });
 
-  it("recarrega dinamicamente a cada chamada com conteúdo atualizado", async () => {
+  it("reloads fresh content on every call", async () => {
     const mockFile = { path: "AGENT.md" } as TFile;
     let turn = 1;
     const app = {
       vault: {
         getAbstractFileByPath: vi.fn((path: string) => (path === "AGENT.md" ? mockFile : null)),
-        cachedRead: vi.fn(async () => `Turno ${turn++}: Instrução dinâmica`),
+        cachedRead: vi.fn(async () => `Turn ${turn++}: dynamic instruction`),
       },
     } as unknown as App;
 
     const read1 = await loadAgentMd(app);
-    expect(read1).toBe("Turno 1: Instrução dinâmica");
+    expect(read1).toBe("Turn 1: dynamic instruction");
 
     const read2 = await loadAgentMd(app);
-    expect(read2).toBe("Turno 2: Instrução dinâmica");
+    expect(read2).toBe("Turn 2: dynamic instruction");
   });
 
-  it("cai pro adapter.read para arquivos não indexados (como .agent.md)", async () => {
+  it("falls back to adapter.read for unindexed files like .agent.md", async () => {
     const app = {
       vault: {
         getAbstractFileByPath: vi.fn(() => null),
         adapter: {
           exists: vi.fn(async (path: string) => path === ".agent.md"),
-          read: vi.fn(async () => "Regra no dotfile"),
+          read: vi.fn(async () => "Rule in the dotfile"),
         },
       },
     } as unknown as App;
 
     const content = await loadAgentMd(app);
-    expect(content).toBe("Regra no dotfile");
+    expect(content).toBe("Rule in the dotfile");
   });
 
-  it("encontra CLAUDE.md como fallback se AGENT.md não existir", async () => {
+  it("falls back to CLAUDE.md when AGENT.md is missing", async () => {
     const mockClaude = { path: "CLAUDE.md" } as TFile;
     const app = {
       vault: {
         getAbstractFileByPath: vi.fn((path: string) => (path === "CLAUDE.md" ? mockClaude : null)),
-        cachedRead: vi.fn(async () => "Regras herdadas do Claude"),
+        cachedRead: vi.fn(async () => "Rules inherited from Claude"),
       },
     } as unknown as App;
 
     const content = await loadAgentMd(app);
-    expect(content).toBe("Regras herdadas do Claude");
+    expect(content).toBe("Rules inherited from Claude");
   });
 
-  it("respeita caminho customizado configurado", async () => {
+  it("honors a configured custom path", async () => {
     const mockCustom = { path: "configs/rules.md" } as TFile;
     const app = {
       vault: {
         getAbstractFileByPath: vi.fn((path: string) => (path === "configs/rules.md" ? mockCustom : null)),
-        cachedRead: vi.fn(async () => "Regras personalizadas"),
+        cachedRead: vi.fn(async () => "Custom rules"),
       },
     } as unknown as App;
 
     const content = await loadAgentMd(app, "configs/rules.md");
-    expect(content).toBe("Regras personalizadas");
+    expect(content).toBe("Custom rules");
   });
 
-  it("retorna vazio se nenhum candidato existir", async () => {
+  it("returns empty when no candidate exists", async () => {
     const app = {
       vault: {
         getAbstractFileByPath: vi.fn(() => null),
@@ -164,7 +164,7 @@ describe("loadAgentMd", () => {
 });
 
 describe("openOrCreateAgentMd", () => {
-  it("abre arquivo existente na workspace", async () => {
+  it("opens an existing file in the workspace", async () => {
     const mockFile = { path: "AGENT.md" } as TFile;
     const leaf = { openFile: vi.fn(async () => {}) };
     const app = {
@@ -180,7 +180,7 @@ describe("openOrCreateAgentMd", () => {
     expect(leaf.openFile).toHaveBeenCalledWith(mockFile);
   });
 
-  it("cria arquivo com template quando não existe e o abre", async () => {
+  it("creates the file from the template when missing and opens it", async () => {
     const newFile = { path: "AGENT.md" } as TFile;
     const leaf = { openFile: vi.fn(async () => {}) };
     const app = {
@@ -204,33 +204,33 @@ describe("openOrCreateAgentMd", () => {
   });
 });
 
-describe("Injeção nos System Prompts", () => {
-  it("blocoAgentMd formata o bloco com cabeçalho [AGENT.md]", () => {
-    expect(agentMdSection("Regras do projeto")).toBe("\n\n[AGENT.md]\nRegras do projeto");
+describe("system prompt injection", () => {
+  it("agentMdSection wraps the text under an [AGENT.md] header", () => {
+    expect(agentMdSection("Project rules")).toBe("\n\n[AGENT.md]\nProject rules");
     expect(agentMdSection("")).toBe("");
     expect(agentMdSection(undefined)).toBe("");
   });
 
-  it("buildChatSystemPrompt injeta [AGENT.md] logo após head/persona", () => {
+  it("buildChatSystemPrompt injects [AGENT.md] right after the base persona", () => {
     const prompt = buildChatSystemPrompt({
       base: "BASE",
-      agentMd: "Minha regra global",
-      instructions: "Instrução do projeto",
-      styleInstruction: "Estilo conciso",
+      agentMd: "My global rule",
+      instructions: "Project instruction",
+      styleInstruction: "Concise style",
     });
 
-    expect(prompt).toContain("BASE\n\n[AGENT.md]\nMinha regra global\n\nInstrução do projeto\n\nEstilo conciso");
+    expect(prompt).toContain("BASE\n\n[AGENT.md]\nMy global rule\n\nProject instruction\n\nConcise style");
   });
 
-  it("buildAgentSystemPrompt injeta [AGENT.md] após o agentPrompt", () => {
+  it("buildAgentSystemPrompt injects [AGENT.md] after the agent prompt", () => {
     const prompt = buildAgentSystemPrompt(
       "PERSONA",
       "AGENT_PROMPT",
       undefined,
       "PROJ_INSTR",
-      "REGRA_AGENT_MD"
+      "AGENT_MD_RULE"
     );
 
-    expect(prompt).toBe("PERSONA\n\nAGENT_PROMPT\n\n[AGENT.md]\nREGRA_AGENT_MD\n\nPROJ_INSTR");
+    expect(prompt).toBe("PERSONA\n\nAGENT_PROMPT\n\n[AGENT.md]\nAGENT_MD_RULE\n\nPROJ_INSTR");
   });
 });

@@ -15,35 +15,35 @@ const gate = (
   t: ToolDefinition,
   level: PermissionLevel,
   approveAll: boolean,
-  apagarVaiPraLixeira = false
-) => decideToolGate(t, level, { approveAll, deleteGoesToTrash: apagarVaiPraLixeira });
+  deleteGoesToTrash = false
+) => decideToolGate(t, level, { approveAll, deleteGoesToTrash });
 
 describe("decideToolGate", () => {
-  it("não-destrutivo (read/list) → sempre auto", () => {
+  it("always runs non-destructive tools automatically", () => {
     expect(gate(tool(false), "ask", false)).toBe("auto");
     expect(gate(tool(false), "yolo", false)).toBe("auto");
   });
 
-  it("destrutivo em 'ask' → confirm", () => {
+  it("confirms destructive tools at the ask level", () => {
     expect(gate(tool(true), "ask", false)).toBe("confirm");
   });
 
-  it("destrutivo em 'yolo'/'vault' → auto (como o label promete)", () => {
+  it("runs destructive tools automatically at yolo and vault levels", () => {
     expect(gate(tool(true), "yolo", false)).toBe("auto");
     expect(gate(tool(true), "vault", false)).toBe("auto");
   });
 
-  it("'aprovar todas' vale também no nível ask (P1-04)", () => {
+  it("honors approve-all at the ask level too", () => {
     expect(gate(tool(true), "ask", true)).toBe("auto");
   });
 
-  it("SEGURANÇA: apagar sem lixeira SEMPRE confirma — nem yolo, nem 'aprovar todas'", () => {
+  it("always confirms deletes without trash, even with yolo or approve-all", () => {
     expect(gate(tool(true, true), "yolo", true)).toBe("confirm");
     expect(gate(tool(true, true), "yolo", false)).toBe("confirm");
     expect(gate(tool(true, true), "ask", true)).toBe("confirm");
   });
 
-  it("o que separa vault de yolo: com lixeira, só o yolo apaga sem perguntar", () => {
+  it("with trash enabled, only yolo deletes without asking", () => {
     expect(gate(tool(true, true), "yolo", false, true)).toBe("auto");
     expect(gate(tool(true, true), "vault", false, true)).toBe("confirm");
     expect(gate(tool(true, true), "ask", false, true)).toBe("confirm");

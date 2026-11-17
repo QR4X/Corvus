@@ -1,34 +1,34 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { __avisos, __setRequestUrl } from "obsidian";
+import { __notices, __setRequestUrl } from "obsidian";
 import { speak, stopSpeaking } from "../src/ui/readAloud";
 
-class AudioDeMentira {
-  static todos: AudioDeMentira[] = [];
+class FakeAudio {
+  static all: FakeAudio[] = [];
 
-  static segurar = false;
-  static rejeitar: ((e: Error) => void) | null = null;
+  static hold = false;
+  static reject: ((e: Error) => void) | null = null;
   src = "";
   onended: (() => void) | null = null;
   onerror: (() => void) | null = null;
-  pausado = false;
+  paused = false;
   constructor() {
-    AudioDeMentira.todos.push(this);
+    FakeAudio.all.push(this);
   }
   play(): Promise<void> {
-    this.pausado = false;
-    if (AudioDeMentira.segurar && this.src.startsWith("blob:")) {
-      return new Promise((_, rejeita) => {
-        AudioDeMentira.rejeitar = rejeita;
+    this.paused = false;
+    if (FakeAudio.hold && this.src.startsWith("blob:")) {
+      return new Promise((_, reject) => {
+        FakeAudio.reject = reject;
       });
     }
     return Promise.resolve();
   }
   pause(): void {
-    this.pausado = true;
+    this.paused = true;
   }
 }
 
-const pedidos: { voice?: string; input?: string }[] = [];
+const requests: { voice?: string; input?: string }[] = [];
 const plugin = {
   settings: {
     ttsProvider: "openai",
@@ -37,25 +37,25 @@ const plugin = {
     elevenApiKey: "",
     elevenVoice: "",
     elevenModel: "",
-    openaiApiKey: "sk-teste",
+    openaiApiKey: "sk-test",
   },
 } as unknown as Parameters<typeof speak>[0];
 
-const assentou = (p: Promise<unknown>) =>
+const settled = (p: Promise<unknown>) =>
   Promise.race([
-    p.then(() => "soltou"),
-    new Promise((r) => setTimeout(() => r("presa"), 300)),
+    p.then(() => "released"),
+    new Promise((r) => setTimeout(() => r("stuck"), 300)),
   ]);
 
 beforeEach(() => {
-  AudioDeMentira.todos = [];
-  AudioDeMentira.segurar = false;
-  AudioDeMentira.rejeitar = null;
-  pedidos.length = 0;
-  __avisos.length = 0;
-  vi.stubGlobal("Audio", AudioDeMentira);
+  FakeAudio.all = [];
+  FakeAudio.hold = false;
+  FakeAudio.reject = null;
+  requests.length = 0;
+  __notices.length = 0;
+  vi.stubGlobal("Audio", FakeAudio);
   __setRequestUrl(async (o) => {
-    pedidos.push(JSON.parse((o as { body: string }).body));
+    requests.push(JSON.parse((o as { body: string }).body));
     return { status: 200, arrayBuffer: new Uint8Array([1, 2, 3]).buffer, json: undefined };
   });
 });
@@ -66,39 +66,39 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function falando(texto: string, opts: Parameters<typeof speak>[2] = {}) {
-  const tocando = vi.fn();
-  const fala = speak(plugin, texto, { ...opts, onPlaying: tocando });
-  await vi.waitFor(() => expect(tocando).toHaveBeenCalled());
-  return { fala };
+async function speaking(text: string, opts: Parameters<typeof speak>[2] = {}) {
+  const playing = vi.fn();
+  const speech = speak(plugin, text, { ...opts, onPlaying: playing });
+  await vi.waitFor(() => expect(playing).toHaveBeenCalled());
+  return { speech };
 }
 
 describe("speak", () => {
-  it("parar SOLTA quem espera — o ■ não deixa o botão preso em Stop", async () => {
-    const { fala } = await falando("Oi");
+  it("releases the waiting caller on stop so the button does not stay on Stop", async () => {
+    const { speech } = await speaking("Hi");
     stopSpeaking();
-    expect(await assentou(fala)).toBe("soltou");
+    expect(await settled(speech)).toBe("released");
   });
 
-  it("outra fala começando solta a de antes (o Listen da mensagem anterior volta ao normal)", async () => {
-    const { fala: primeira } = await falando("Primeira");
-    const segunda = speak(plugin, "Segunda");
-    expect(await assentou(primeira)).toBe("soltou");
-    expect(AudioDeMentira.todos[0].pausado).toBe(true);
+  it("releases the previous speech when another one starts", async () => {
+    const { speech: first } = await speaking("First");
+    const second = speak(plugin, "Second");
+    expect(await settled(first)).toBe("released");
+    expect(FakeAudio.all[0].paused).toBe(true);
     stopSpeaking();
-    await segunda;
+    await second;
   });
 
-  it("a voz da amostra vai pra API — não a das settings", async () => {
-    const { fala } = await falando("Oi! Eu sou Coral", { voice: "coral" });
-    expect(pedidos).toEqual([
-      expect.objectContaining({ voice: "coral", input: "Oi! Eu sou Coral" }),
+  it("sends the sample voice to the API instead of the settings voice", async () => {
+    const { speech } = await speaking("Hi! I am Coral", { voice: "coral" });
+    expect(requests).toEqual([
+      expect.objectContaining({ voice: "coral", input: "Hi! I am Coral" }),
     ]);
     stopSpeaking();
-    await fala;
+    await speech;
   });
 
-  it("ElevenLabs: a voz da amostra (o id dela) vai no endereço — não a das settings", async () => {
+  it("puts the ElevenLabs sample voice id in the URL instead of the settings voice", async () => {
     const urls: string[] = [];
     __setRequestUrl(async (o) => {
       urls.push((o as { url: string }).url);
@@ -109,72 +109,72 @@ describe("speak", () => {
       settings: {
         ...plugin.settings,
         ttsProvider: "eleven",
-        elevenApiKey: "chave-teste",
-        elevenVoice: "voz-das-settings",
+        elevenApiKey: "test-key",
+        elevenVoice: "settings-voice",
         elevenModel: "eleven_multilingual_v2",
       },
     } as unknown as Parameters<typeof speak>[0];
-    const tocando = vi.fn();
-    const fala = speak(eleven, "Oi! Eu sou Rafael", { voice: "id-do-clone", onPlaying: tocando });
-    await vi.waitFor(() => expect(tocando).toHaveBeenCalled());
+    const playing = vi.fn();
+    const speech = speak(eleven, "Hi! I am Rafael", { voice: "clone-id", onPlaying: playing });
+    await vi.waitFor(() => expect(playing).toHaveBeenCalled());
     expect(urls).toHaveLength(1);
-    expect(urls[0]).toMatch(/\/text-to-speech\/id-do-clone$/);
+    expect(urls[0]).toMatch(/\/text-to-speech\/clone-id$/);
     stopSpeaking();
-    await fala;
+    await speech;
   });
 
-  it("a mesma amostra de novo não gasta outra chamada; outra voz, sim", async () => {
-    const tocarAteOFim = async (voz: string) => {
-      const { fala } = await falando("Amostra", { voice: voz, cache: true });
-      AudioDeMentira.todos.at(-1)?.onended?.();
-      await fala;
+  it("reuses a cached sample but calls again for another voice", async () => {
+    const playToEnd = async (voice: string) => {
+      const { speech } = await speaking("Sample", { voice, cache: true });
+      FakeAudio.all.at(-1)?.onended?.();
+      await speech;
     };
-    await tocarAteOFim("sage");
-    await tocarAteOFim("sage");
-    expect(pedidos).toHaveLength(1);
-    await tocarAteOFim("verse");
-    expect(pedidos).toHaveLength(2);
+    await playToEnd("sage");
+    await playToEnd("sage");
+    expect(requests).toHaveLength(1);
+    await playToEnd("verse");
+    expect(requests).toHaveLength(2);
   });
 
-  it("guarda poucas: passou de 16, a mais antiga sai e volta a custar uma chamada", async () => {
-    const tocarAteOFim = async (voz: string) => {
-      const { fala } = await falando("Amostra de despejo", { voice: voz, cache: true });
-      AudioDeMentira.todos.at(-1)?.onended?.();
-      await fala;
+  it("evicts the oldest sample past 16 entries so it costs a call again", async () => {
+    const playToEnd = async (voice: string) => {
+      const { speech } = await speaking("Eviction sample", { voice, cache: true });
+      FakeAudio.all.at(-1)?.onended?.();
+      await speech;
     };
-    for (let i = 0; i <= 16; i++) await tocarAteOFim(`voz-${i}`);
-    expect(pedidos).toHaveLength(17);
-    await tocarAteOFim("voz-16"); 
-    expect(pedidos).toHaveLength(17);
-    await tocarAteOFim("voz-0"); 
-    expect(pedidos).toHaveLength(18);
+    for (let i = 0; i <= 16; i++) await playToEnd(`voice-${i}`);
+    expect(requests).toHaveLength(17);
+    await playToEnd("voice-16");
+    expect(requests).toHaveLength(17);
+    await playToEnd("voice-0");
+    expect(requests).toHaveLength(18);
   });
 
-  it("sem `guardar` (a leitura do chat), cada fala é uma chamada", async () => {
+  it("makes one call per speech without cache, as chat read aloud does", async () => {
     for (let i = 0; i < 2; i++) {
-      const { fala } = await falando("Resposta");
-      AudioDeMentira.todos.at(-1)?.onended?.();
-      await fala;
+      const { speech } = await speaking("Answer");
+      FakeAudio.all.at(-1)?.onended?.();
+      await speech;
     }
-    expect(pedidos).toHaveLength(2);
+    expect(requests).toHaveLength(2);
   });
 
-  it("parada antes de começar a tocar não vira aviso de 'Playback blocked'", async () => {
-    AudioDeMentira.segurar = true;
-    const fala = speak(plugin, "Oi");
-    await vi.waitFor(() => expect(AudioDeMentira.rejeitar).not.toBeNull());
+  it("does not show 'Playback blocked' when stopped before playback starts", async () => {
+    FakeAudio.hold = true;
+    const speech = speak(plugin, "Hi");
+    await vi.waitFor(() => expect(FakeAudio.reject).not.toBeNull());
     stopSpeaking();
-    AudioDeMentira.rejeitar?.(new Error("The play() request was interrupted by a call to pause()."));
-    expect(await assentou(fala)).toBe("soltou");
-    expect(__avisos.filter((a) => a.startsWith("Playback blocked"))).toEqual([]);
+    FakeAudio.reject?.(new Error("The play() request was interrupted by a call to pause()."));
+    expect(await settled(speech)).toBe("released");
+    expect(__notices.filter((a) => a.startsWith("Playback blocked"))).toEqual([]);
   });
 
-  it("recusa de verdade (ninguém parou) continua avisando", async () => {
-    AudioDeMentira.segurar = true;
-    const fala = speak(plugin, "Oi");
-    await vi.waitFor(() => expect(AudioDeMentira.rejeitar).not.toBeNull());
-    AudioDeMentira.rejeitar?.(new Error("NotAllowedError"));
-    await fala;
-    expect(__avisos).toContain("Playback blocked: NotAllowedError");
+  it("still shows a notice for a real refusal nobody caused", async () => {
+    FakeAudio.hold = true;
+    const speech = speak(plugin, "Hi");
+    await vi.waitFor(() => expect(FakeAudio.reject).not.toBeNull());
+    FakeAudio.reject?.(new Error("NotAllowedError"));
+    await speech;
+    expect(__notices).toContain("Playback blocked: NotAllowedError");
   });
 });
