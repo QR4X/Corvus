@@ -16,7 +16,7 @@ registerBrandLogos();
 const params = new URLSearchParams(location.search);
 const scenario = params.get("s") ?? "empty";
 
-const dias = (n: number, h = 10) => {
+const daysAgo = (n: number, h = 10) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
   d.setHours(h, 0, 0, 0);
@@ -28,32 +28,32 @@ const chats = [
   { id: "2", title: "What did I write about spaced repetition?", date: "2026-09-10T21:03:00", mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "3", title: "Outline for the Corvus landing page", date: "2026-09-09T14:44:00", mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 22, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
   { id: "4", title: "Clean up the inbox folder", date: "2026-09-08T08:20:00", mode: "agent", provider: "gemini", model: "gemini-2.5-flash", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Moved 41 notes out of Inbox/ into the folders they belong to. Six had no clear home and stayed put; the list is at the end of this session.", toolCount: 9 },
-  { id: "5", title: "Rewrite the plugin README", date: dias(0, 8), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 11, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "6", title: "Which notes mention the Anki backlog?", date: dias(1, 19), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "7", title: "Move last month's meeting notes", date: dias(2, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 18, filePath: "", tokensIn: 0, tokensOut: 0, preview: "[edit_note] Meetings/2026-08 — moved 18 files, rewrote 9 wikilinks that pointed at the old paths.", toolCount: 18 },
-  { id: "8", title: "Names for the voice feature", date: dias(3, 15), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "9", title: "What did I decide about pricing?", date: dias(4, 9), mode: "vault-qa", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "10", title: "Tag every note from the São Paulo trip", date: dias(5, 20), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 26, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Tagged 26 notes with #trip/sao-paulo. Skipped the three daily notes: they mention the trip but are not about it.", toolCount: 26 },
-  { id: "11", title: "Explain event loops like I'm tired", date: dias(6, 23), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "12", title: "Summarise the reading list", date: dias(9, 12), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 8, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "13", title: "Draft the changelog for 0.5", date: dias(12, 16), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 13, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "14", title: "Split the daily notes by quarter", date: dias(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Split Daily/ into Daily/2026-Q1..Q3. 31 files moved, no links broken — checked every backlink before writing.", toolCount: 31 },
-  { id: "15", title: "Where did I write about sleep debt?", date: dias(21, 7), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 3, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "5", title: "Rewrite the plugin README", date: daysAgo(0, 8), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 11, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "6", title: "Which notes mention the Anki backlog?", date: daysAgo(1, 19), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "7", title: "Move last month's meeting notes", date: daysAgo(2, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 18, filePath: "", tokensIn: 0, tokensOut: 0, preview: "[edit_note] Meetings/2026-08 — moved 18 files, rewrote 9 wikilinks that pointed at the old paths.", toolCount: 18 },
+  { id: "8", title: "Names for the voice feature", date: daysAgo(3, 15), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "9", title: "What did I decide about pricing?", date: daysAgo(4, 9), mode: "vault-qa", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "10", title: "Tag every note from the São Paulo trip", date: daysAgo(5, 20), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 26, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Tagged 26 notes with #trip/sao-paulo. Skipped the three daily notes: they mention the trip but are not about it.", toolCount: 26 },
+  { id: "11", title: "Explain event loops like I'm tired", date: daysAgo(6, 23), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "12", title: "Summarise the reading list", date: daysAgo(9, 12), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 8, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "13", title: "Draft the changelog for 0.5", date: daysAgo(12, 16), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 13, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "14", title: "Split the daily notes by quarter", date: daysAgo(15, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 31, filePath: "", tokensIn: 0, tokensOut: 0, preview: "Split Daily/ into Daily/2026-Q1..Q3. 31 files moved, no links broken — checked every backlink before writing.", toolCount: 31 },
+  { id: "15", title: "Where did I write about sleep debt?", date: daysAgo(21, 7), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 3, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 
-  { id: "17", title: "Regex for the daily note template", date: dias(7, 11), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "18", title: "Ideas for the onboarding screen", date: dias(10, 17), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 15, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "19", title: "Why is my build 300KB?", date: dias(14, 21), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 10, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "20", title: "Translate the README to Portuguese", date: dias(18, 9), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "17", title: "Regex for the daily note template", date: daysAgo(7, 11), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 6, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "18", title: "Ideas for the onboarding screen", date: daysAgo(10, 17), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 15, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "19", title: "Why is my build 300KB?", date: daysAgo(14, 21), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 10, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "20", title: "Translate the README to Portuguese", date: daysAgo(18, 9), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 4, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 
-  { id: "16", title: "Deep research on spaced repetition", date: dias(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "16", title: "Deep research on spaced repetition", date: daysAgo(8, 13), mode: "research", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 
-  { id: "21", title: "Old notes cleanup", date: dias(36, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 20, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 20 },
-  { id: "22", title: "Reading list for June", date: dias(44, 15), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 12, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "23", title: "Where did the Q2 plan go?", date: dias(51, 9), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "24", title: "Rewrite the onboarding copy", date: dias(52, 20), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 30, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "25", title: "Split the archive by year", date: dias(73, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 24, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 24 },
-  { id: "26", title: "Names for the plugin", date: dias(95, 16), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
-  { id: "27", title: "Which notes mention Obsidian sync?", date: dias(120, 8), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "21", title: "Old notes cleanup", date: daysAgo(36, 10), mode: "agent", provider: "openai", model: "gpt-5", messageCount: 20, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 20 },
+  { id: "22", title: "Reading list for June", date: daysAgo(44, 15), mode: "chat", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 12, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "23", title: "Where did the Q2 plan go?", date: daysAgo(51, 9), mode: "vault-qa", provider: "openai", model: "gpt-4o", messageCount: 7, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "24", title: "Rewrite the onboarding copy", date: daysAgo(52, 20), mode: "chat", provider: "openai", model: "gpt-5", messageCount: 30, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "25", title: "Split the archive by year", date: daysAgo(73, 11), mode: "agent", provider: "anthropic", model: "claude-sonnet-4-6", messageCount: 24, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 24 },
+  { id: "26", title: "Names for the plugin", date: daysAgo(95, 16), mode: "chat", provider: "openai", model: "gpt-4o", messageCount: 9, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
+  { id: "27", title: "Which notes mention Obsidian sync?", date: daysAgo(120, 8), mode: "vault-qa", provider: "openai", model: "gpt-5", messageCount: 5, filePath: "", tokensIn: 0, tokensOut: 0 , toolCount: 0 },
 ]
 
   .map((c) => ({
@@ -75,15 +75,15 @@ const plugin = {
     workspace: {
       getLeaf: () => ({
         openFile: async (f: { path: string }) =>
-          console.log("[preview] abriria a nota", f.path),
+          console.log("[preview] would open note", f.path),
       }),
     },
     fileManager: {
-      renameFile: async (f: { path: string }, alvo: string) => {
+      renameFile: async (f: { path: string }, target: string) => {
         const c = SKILL_FILES.get(f.path);
         if (c === undefined) return;
         SKILL_FILES.delete(f.path);
-        SKILL_FILES.set(alvo, c);
+        SKILL_FILES.set(target, c);
       },
     },
     vault: {
@@ -93,17 +93,17 @@ const plugin = {
 
       getAbstractFileByPath: (p: string) => {
         if (SKILL_FILES.has(p)) return fakeFile(p);
-        const nota = FAKE_NOTES.find((f) => f.path === p);
-        if (nota) return fakeFile(p, nota.stat.mtime);
+        const note = FAKE_NOTES.find((f) => f.path === p);
+        if (note) return fakeFile(p, note.stat.mtime);
         return FAKE_ARTIFACTS.find((f) => f.path === p) ?? null;
       },
 
-      create: async (caminho: string, conteudo: string) => {
-        SKILL_FILES.set(caminho, conteudo);
-        return fakeFile(caminho);
+      create: async (filePath: string, content: string) => {
+        SKILL_FILES.set(filePath, content);
+        return fakeFile(filePath);
       },
-      modify: async (f: { path: string }, conteudo: string) => {
-        SKILL_FILES.set(f.path, conteudo);
+      modify: async (f: { path: string }, content: string) => {
+        SKILL_FILES.set(f.path, content);
       },
       trash: async (f: { path: string }) => {
         SKILL_FILES.delete(f.path);
@@ -112,10 +112,10 @@ const plugin = {
         readBinary: async () =>
           Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]).buffer,
 
-        exists: async (caminho: string) => SKILL_FILES.has(caminho) || !caminho.includes("/exports/"),
+        exists: async (filePath: string) => SKILL_FILES.has(filePath) || !filePath.includes("/exports/"),
 
-        read: async (caminho: string) => {
-          const id = (caminho.split("/").pop() ?? "").replace(/\.md$/, "");
+        read: async (filePath: string) => {
+          const id = (filePath.split("/").pop() ?? "").replace(/\.md$/, "");
           const c =
             chats.find((x) => x.id === id) ?? chats[0];
           return [
@@ -139,18 +139,18 @@ const plugin = {
             "## You",
             "",
             "<!-- corvus: ts=1758900000000 -->",
-            "faz um resumo disso pra mim",
+            "summarize this for me",
             "",
             "## Assistant",
             "",
-            "Claro. Em tres pontos: o que mudou, o que ficou de fora e o que",
-            "eu faria a seguir.",
+            "Sure. In three points: what changed, what was left out, and what",
+            "I would do next.",
             "",
           ].join("\n");
         },
         mkdir: async () => undefined,
-        write: async (caminho: string, conteudo: string) => {
-          console.log(`[preview] would write ${caminho}:`, conteudo.slice(0, 400));
+        write: async (filePath: string, content: string) => {
+          console.log(`[preview] would write ${filePath}:`, content.slice(0, 400));
         },
       },
       cachedRead: async (f: { path: string }) =>
@@ -194,7 +194,7 @@ Mock note content, enough to serve as context.`,
 
   rag: {
     index:
-      new URLSearchParams(location.search).get("indice") === "0"
+      new URLSearchParams(location.search).get("index") === "0"
         ? null
         : { size: 18430, fileCount: 1274 },
     indexing: null as AbortController | null,
@@ -256,7 +256,7 @@ Mock note content, enough to serve as context.`,
     },
 
     favoriteModels:
-      new URLSearchParams(location.search).get("favoritos") === "0"
+      new URLSearchParams(location.search).get("favorites") === "0"
         ? {}
         : {
             openai: ["gpt-5", "gpt-4o"],
@@ -296,9 +296,9 @@ Mock note content, enough to serve as context.`,
         chatIds: ["1", "3"],
         createdAt: new Date().toISOString(),
       },
-      ...["Clientes", "Tese", "Casa", "Leituras"].map((nome, i) => ({
+      ...["Clients", "Dissertation", "Home", "Reading"].map((projectName, i) => ({
         id: `proj-extra-${i}`,
-        name: nome,
+        name: projectName,
         icon: ["briefcase", "book", "sprout", "book-open"][i],
         color: ["#e5484d", "#e5b54d", "#a370f7", "#4361ee"][i],
         sources: [],
@@ -310,7 +310,7 @@ Mock note content, enough to serve as context.`,
         name: "NUTRITION 1.0",
         icon: "leaf",
         color: "#46a758",
-        sources: ["NUTRITION 1.0/Plano semanal.md"],
+        sources: ["NUTRITION 1.0/Weekly plan.md"],
         chatIds: [],
         createdAt: new Date().toISOString(),
       },
@@ -351,13 +351,13 @@ Mock note content, enough to serve as context.`,
     settingsListeners.forEach((cb) => cb());
   },
   seedExampleSkills: async () => {
-    const p = "corvus-ai/skills/Resumo TL;DR.md";
+    const p = "corvus-ai/skills/TL;DR Summary.md";
     if (SKILL_FILES.has(p)) return 0;
     SKILL_FILES.set(
       p,
       [
         "---",
-        'name: "Resumo TL;DR"',
+        'name: "TL;DR Summary"',
         'description: "Summarize in 3 bullets + 1 action"',
         'icon: "list"',
         "---",
@@ -388,16 +388,16 @@ let model = "gpt-5";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-let vaultEscolha: boolean | null = null;
-let abortado = false;
+let vaultChoice: boolean | null = null;
+let aborted = false;
 
-const destacarOuNada = () => {
+const detachRunningTurn = () => {
   const st = useChatStore.getState();
   if (!st.isLoading || st.background) return;
-  const dono = st.turnChatId ?? st.currentChatId;
-  if (!dono) return;
+  const owner = st.turnChatId ?? st.currentChatId;
+  if (!owner) return;
   st.detachTurn({
-    chatId: dono,
+    chatId: owner,
 
     scrollTop: st.viewScrollTop,
     title: st.currentChatTitle,
@@ -421,12 +421,12 @@ const session = {
       mode: m,
       effort,
 
-      vault: vaultEnabled(m, vaultEscolha),
+      vault: vaultEnabled(m, vaultChoice),
       locked: st.sessionProvider !== null,
     };
   },
   setVault: (on: boolean) => {
-    vaultEscolha = on;
+    vaultChoice = on;
     emit();
   },
   setMode: (m: string) => {
@@ -479,9 +479,9 @@ const session = {
     emit();
 
     const total = Number(params.get("turn") ?? 1400);
-    abortado = false;
-    const dorme = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const narracao = st.addMessage({
+    aborted = false;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const narration = st.addMessage({
       type: "ai-comment",
       content: "",
       activity: {
@@ -490,19 +490,19 @@ const session = {
         pendingText: "Reading PROJECTS/FRAMEWORKS.md",
       },
     });
-    await dorme(total * 0.35);
-    if (!abortado) {
+    await sleep(total * 0.35);
+    if (!aborted) {
       useChatStore
         .getState()
-        .updateActivity(narracao, { phase: "done", doneText: "Read PROJECTS/FRAMEWORKS.md" });
-      const pedacos = ("Resposta de mentira, em pedaços, pra dar pra ver o " +
-        "texto chegando enquanto a tela continua respondendo ao toque.").split(" ");
+        .updateActivity(narration, { phase: "done", doneText: "Read PROJECTS/FRAMEWORKS.md" });
+      const chunks = ("Fake answer, in chunks, so you can watch the " +
+        "text arrive while the screen keeps responding to touch.").split(" ");
       const id = useChatStore.getState().addMessage({ type: "ai-response", content: "" });
       useChatStore.getState().setStreamingMessageId(id);
-      for (const p of pedacos) {
-        if (abortado) break;
+      for (const p of chunks) {
+        if (aborted) break;
         useChatStore.getState().appendToMessage(id, p + " ");
-        await dorme((total * 0.65) / pedacos.length);
+        await sleep((total * 0.65) / chunks.length);
       }
       useChatStore.getState().setStreamingMessageId(null);
     }
@@ -514,16 +514,16 @@ const session = {
     useChatStore.getState().setTurnChatId(null);
     emit();
 
-    const fila = useChatStore.getState().queued;
-    if (fila.length > 0) {
-      const [proxima, ...resto] = fila;
-      useChatStore.setState({ queued: resto });
-      await session.send(proxima);
+    const queue = useChatStore.getState().queued;
+    if (queue.length > 0) {
+      const [next, ...rest] = queue;
+      useChatStore.setState({ queued: rest });
+      await session.send(next);
     }
     return true;
   },
   stop: () => {
-    abortado = true;
+    aborted = true;
     useChatStore.getState().setLoading(false);
     useChatStore.getState().setStreamingMessageId(null);
     useChatStore.getState().clearQueued();
@@ -531,7 +531,7 @@ const session = {
   },
 
   newChat: (m?: string) => {
-    destacarOuNada();
+    detachRunningTurn();
     useChatStore.getState().newChat();
     if (m) {
       mode = m;
@@ -541,14 +541,14 @@ const session = {
     emit();
   },
   newChatInProject: async (p: { name: string }) => {
-    console.log("[preview] nova conversa no projeto", p.name);
+    console.log("[preview] new chat in project", p.name);
   },
 
   load: async (c: { id: string; title: string; mode: string; provider: string; model: string }) => {
 
     if (useChatStore.getState().currentChatId === c.id) return;
 
-    const eraNaoLida = plugin.settings.unreadChats.includes(c.id);
+    const wasUnread = plugin.settings.unreadChats.includes(c.id);
 
     plugin.chats.clearUnread(c.id);
     const bg = useChatStore.getState().background;
@@ -567,7 +567,7 @@ const session = {
       }
       return;
     }
-    destacarOuNada();
+    detachRunningTurn();
     const st = useChatStore.getState();
     st.newChat();
     st.setMessages([
@@ -582,11 +582,11 @@ const session = {
     st.setCurrentChatId(c.id);
     st.setCurrentChatTitle(c.title);
     st.lockSession(c.provider, c.model, c.mode);
-    if (eraNaoLida) {
-      const nova = [...useChatStore.getState().messages]
+    if (wasUnread) {
+      const newest = [...useChatStore.getState().messages]
         .reverse()
         .find((m) => m.type === "ai-response");
-      if (nova) st.setResume({ messageId: nova.id });
+      if (newest) st.setResume({ messageId: newest.id });
     }
     mode = c.mode;
     provider = c.provider;
@@ -625,7 +625,7 @@ if (scenario === "thread") {
         { id: "t8", name: "vault_search", arguments: { query: "spaced repetition" }, result: ["4 notes matched:", "Learning/Spaced repetition.md"].join("\n"), ok: true },
         { id: "t9", name: "vault_edit", arguments: { path: "PROJECTS/FRAMEWORKS.md" }, result: "edited", ok: true },
         { id: "t10", name: "vault_create", arguments: { path: "PROJECTS/CREATIVE SYSTEMS.md", content: "…" }, result: "created", ok: true },
-        { id: "t11", name: "vault_create", arguments: { path: "Inbox/Decks por dificuldade.md", content: "…" }, result: "Permission denied: destructive action needs confirmation", ok: false },
+        { id: "t11", name: "vault_create", arguments: { path: "Inbox/Decks by difficulty.md", content: "…" }, result: "Permission denied: destructive action needs confirmation", ok: false },
       ] },
   ] as never);
   st.setCurrentChatId("2");
@@ -641,8 +641,8 @@ const FAKE_NOTES = [
   { path: "DAILY/2026-09-14.md", basename: "2026-09-14", extension: "md", stat: { mtime: 99 } },
   { path: "TASKS/Inbox.md", basename: "Inbox", extension: "md", stat: { mtime: 40 } },
   { path: "Learning/Spaced repetition.md", basename: "Spaced repetition", extension: "md", stat: { mtime: 30 } },
-  { path: "Notas/2024/framing-de-produto/rascunho.md", basename: "rascunho", extension: "md", stat: { mtime: 10 } },
-  { path: "NUTRITION 1.0/Plano semanal.md", basename: "Plano semanal", extension: "md", stat: { mtime: 20 } },
+  { path: "Notes/2024/product-framing/draft.md", basename: "draft", extension: "md", stat: { mtime: 10 } },
+  { path: "NUTRITION 1.0/Weekly plan.md", basename: "Weekly plan", extension: "md", stat: { mtime: 20 } },
 ];
 
 const SKILL_FILES = new Map<string, string>([
@@ -694,14 +694,14 @@ function skillFiles() {
 }
 
 const FAKE_ARTIFACTS = [
-  { path: "corvus-ai/generation/images/1731-gato-de-oculos.png", basename: "1731-gato-de-oculos", extension: "png", stat: { mtime: 900 } },
-  { path: "corvus-ai/generation/images/1731-gato-de-oculos.md", basename: "1731-gato-de-oculos", extension: "md", stat: { mtime: 901 } },
-  { path: "corvus-ai/generation/audio/1730-resumo-falado.mp3", basename: "1730-resumo-falado", extension: "mp3", stat: { mtime: 800 } },
-  { path: "corvus-ai/generation/video/1729-clipe.mp4", basename: "1729-clipe", extension: "mp4", stat: { mtime: 700 } },
+  { path: "corvus-ai/generation/images/1731-cat-with-glasses.png", basename: "1731-cat-with-glasses", extension: "png", stat: { mtime: 900 } },
+  { path: "corvus-ai/generation/images/1731-cat-with-glasses.md", basename: "1731-cat-with-glasses", extension: "md", stat: { mtime: 901 } },
+  { path: "corvus-ai/generation/audio/1730-spoken-summary.mp3", basename: "1730-spoken-summary", extension: "mp3", stat: { mtime: 800 } },
+  { path: "corvus-ai/generation/video/1729-clip.mp4", basename: "1729-clip", extension: "mp4", stat: { mtime: 700 } },
 ];
 
-const MD_DEMO = "# CREATIVE SYSTEMS\n\n## Purpose\nA broad, **practical** view of how creative systems work day to day, with enough text to prove that long lines wrap instead of running off the screen.\n\n## Core Principles\n- Treat the work as a *system*, not a mood\n- Capture first, judge later\n- Review on a schedule, not on a feeling\n\nSee [[PROJECTS/FRAMEWORKS]] for the longer version.\n\n```ts\nexport function review(deck: Card[], hoje = Date.now()) {\n  return deck.filter((c) => c.due <= hoje).sort((a, b) => a.due - b.due);\n}\n```\n";
-const TS_DEMO = "import { readFile } from 'node:fs/promises';\n\n/** L\u00ea o deck e devolve o que vence hoje. */\nexport async function due(path: string): Promise<Card[]> {\n  const raw = await readFile(path, 'utf8');\n  const deck = JSON.parse(raw) as Card[];\n  return deck.filter((c) => c.due <= Date.now());\n}\n";
+const MD_DEMO = "# CREATIVE SYSTEMS\n\n## Purpose\nA broad, **practical** view of how creative systems work day to day, with enough text to prove that long lines wrap instead of running off the screen.\n\n## Core Principles\n- Treat the work as a *system*, not a mood\n- Capture first, judge later\n- Review on a schedule, not on a feeling\n\nSee [[PROJECTS/FRAMEWORKS]] for the longer version.\n\n```ts\nexport function review(deck: Card[], today = Date.now()) {\n  return deck.filter((c) => c.due <= today).sort((a, b) => a.due - b.due);\n}\n```\n";
+const TS_DEMO = "import { readFile } from 'node:fs/promises';\n\n/** Reads the deck and returns what is due today. */\nexport async function due(path: string): Promise<Card[]> {\n  const raw = await readFile(path, 'utf8');\n  const deck = JSON.parse(raw) as Card[];\n  return deck.filter((c) => c.due <= Date.now());\n}\n";
 
 const host = document.getElementById("app");
 
@@ -712,25 +712,25 @@ if (scenario === "confirm") {
     const { EN_US } = await import("./src/i18n/en-us");
     const strings = EN_US.agent;
 
-    const tipo = params.get("file") ?? "md";
-    const caso =
-      tipo === "ts"
+    const kind = params.get("file") ?? "md";
+    const sample =
+      kind === "ts"
         ? {
             path: "corvus-ai/review.ts",
             content: TS_DEMO,
           }
-        : tipo === "txt"
-          ? { path: "Inbox/dump.txt", content: "linha 1\nlinha 2\nlinha 3" }
+        : kind === "txt"
+          ? { path: "Inbox/dump.txt", content: "line 1\nline 2\nline 3" }
           : { path: "PROJECTS/CREATIVE SYSTEMS.md", content: MD_DEMO };
 
     const content = params.get("big")
-      ? caso.content.repeat(6)
-      : caso.content;
+      ? sample.content.repeat(6)
+      : sample.content;
     const modal = new ConfirmationModal({} as never, {
       toolCall: {
         id: "call_1",
         name: "vault_create",
-        arguments: { path: caso.path, content },
+        arguments: { path: sample.path, content },
       },
       definition: {
         name: "vault_create",

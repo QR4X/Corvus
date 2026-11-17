@@ -207,18 +207,18 @@
           osc.connect(gain).connect(dest);
           osc.start();
 
-          const falaMs = Number(q.get("falamos") ?? 3000);
-          const pausaMs = Number(q.get("pausa") ?? 700);
-          if (q.get("tom") === "continuo") {
+          const speakMs = Number(q.get("speakms") ?? 3000);
+          const pauseMs = Number(q.get("pause") ?? 700);
+          if (q.get("tone") === "continuous") {
             gain.gain.value = 0.3;
           } else {
             const t0 = fakeCtx.currentTime;
-            const ciclo = (falaMs + pausaMs) / 1000;
+            const cycle = (speakMs + pauseMs) / 1000;
             gain.gain.setValueAtTime(0.3, t0);
             for (let k = 0; k < 120; k++) {
-              const inicio = t0 + k * ciclo;
-              gain.gain.setValueAtTime(0.3, inicio);
-              gain.gain.setValueAtTime(0.0001, inicio + falaMs / 1000);
+              const start = t0 + k * cycle;
+              gain.gain.setValueAtTime(0.3, start);
+              gain.gain.setValueAtTime(0.0001, start + speakMs / 1000);
             }
           }
           window.__fakeTracks.push(...dest.stream.getTracks());
@@ -258,15 +258,15 @@
     <script src="bundle.js"></script>
     <script>
 
-      const hidratar = () =>
+      const hydrate = () =>
         window.lucide?.createIcons({ nameAttr: "data-lucide" });
-      setTimeout(hidratar, 60);
-      let agendado = null;
+      setTimeout(hydrate, 60);
+      let scheduled = null;
       new MutationObserver(() => {
-        if (agendado !== null) return;
-        agendado = requestAnimationFrame(() => {
-          agendado = null;
-          hidratar();
+        if (scheduled !== null) return;
+        scheduled = requestAnimationFrame(() => {
+          scheduled = null;
+          hydrate();
         });
       }).observe(document.body, { childList: true, subtree: true });
     </script>
