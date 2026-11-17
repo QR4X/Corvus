@@ -21,7 +21,7 @@ export interface CorvusSettings {
 
   ollamaEndpoint: string;
 
-  ollamaPadraoRevisto?: boolean;
+  ollamaDefaultReviewed?: boolean;
 
   defaultProvider: string;
 
@@ -32,7 +32,7 @@ export interface CorvusSettings {
   nimModel: string;
   ollamaModel: string;
 
-  ollamaVistos?: string[];
+  ollamaSeenModels?: string[];
 
   activeModels: Record<string, string[]>;
 
@@ -42,13 +42,13 @@ export interface CorvusSettings {
 
   freeQuota: Record<string, { limit: number; remaining?: number; at: number }>;
 
-  usoDoDia: LivroDoDia;
+  dailyUsage: LivroDoDia;
 
-  limitesDiarios: Record<string, number>;
+  dailyLimits: Record<string, number>;
 
-  limiteGastoDiario: number;
+  dailySpendLimit: number;
 
-  travarNoLimite: boolean;
+  blockAtLimit: boolean;
 
   assistantProvider: string;
   assistantModel: string;
@@ -182,10 +182,10 @@ export const DEFAULT_SETTINGS: CorvusSettings = {
   favoriteModels: {},
   freeModels: {},
   freeQuota: {},
-  usoDoDia: {},
-  limitesDiarios: {},
-  limiteGastoDiario: 0,
-  travarNoLimite: false,
+  dailyUsage: {},
+  dailyLimits: {},
+  dailySpendLimit: 0,
+  blockAtLimit: false,
   assistantProvider: "",
   assistantModel: "",
 

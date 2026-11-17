@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CAMPOS_MORTOS, limparCamposMortos } from "../src/core/legacySettings";
+import { DEAD_FIELDS, migrateLegacyFields } from "../src/core/legacySettings";
 import { DEFAULT_SETTINGS } from "../src/settings";
 
 describe("faxina dos campos que nada lia", () => {
@@ -11,9 +11,9 @@ describe("faxina dos campos que nada lia", () => {
       uiFontSize: "20",
       chatsPath: "corvus/chats",
     };
-    limparCamposMortos(s);
+    migrateLegacyFields(s);
     expect(s).toEqual({ chatsPath: "corvus/chats" });
-    expect([...CAMPOS_MORTOS]).toEqual([
+    expect([...DEAD_FIELDS]).toEqual([
       "roleModels",
       "modelProvider",
       "uiFontFamily",
@@ -23,6 +23,6 @@ describe("faxina dos campos que nada lia", () => {
   });
 
   it("nem o tipo nem o padrão de fábrica têm mais esses campos", () => {
-    for (const key of CAMPOS_MORTOS) expect(DEFAULT_SETTINGS).not.toHaveProperty(key);
+    for (const key of DEAD_FIELDS) expect(DEFAULT_SETTINGS).not.toHaveProperty(key);
   });
 });

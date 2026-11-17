@@ -1270,10 +1270,10 @@ export class CorvusSettingsTab extends PluginSettingTab {
       t.inputEl.step = "0.5";
       t.inputEl.inputMode = "decimal";
       t.setPlaceholder(tr("No limit"))
-        .setValue(s.limiteGastoDiario > 0 ? String(s.limiteGastoDiario) : "")
+        .setValue(s.dailySpendLimit > 0 ? String(s.dailySpendLimit) : "")
         .onChange(async (v) => {
           const n = Number(v.replace(",", "."));
-          s.limiteGastoDiario = Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+          s.dailySpendLimit = Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
           await this.save();
         });
     });

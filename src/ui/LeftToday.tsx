@@ -117,26 +117,26 @@ export function LeftToday({ plugin }: { plugin: CorvusPlugin }) {
 
   const salvarLimite = (chave: string, n: number | null) => {
     if (chave === CHAVE_LIMITE_GASTO) {
-      s.limiteGastoDiario = n ?? 0;
+      s.dailySpendLimit = n ?? 0;
       void plugin.saveSettings();
       return;
     }
-    const limites = (s.limitesDiarios ??= {});
+    const limites = (s.dailyLimits ??= {});
     if (n == null) delete limites[chave];
     else limites[chave] = n;
     void plugin.saveSettings();
   };
 
   const cartoes = remainingToday({
-    livro: s.usoDoDia ?? {},
+    livro: s.dailyUsage ?? {},
     agora,
     comChave: (id) => !!providerCredential(plugin.settings, id).trim(),
     openai: { dataSharing: s.openaiDataSharing === true, tier: s.openaiTier ?? 1 },
-    limites: s.limitesDiarios ?? {},
+    limites: s.dailyLimits ?? {},
     cotaOpenRouter: s.freeQuota?.openrouter,
     chaveOpenRouter: viva,
-    limiteGasto: s.limiteGastoDiario ?? 0,
-    travarNoLimite: s.travarNoLimite === true,
+    limiteGasto: s.dailySpendLimit ?? 0,
+    blockAtLimit: s.blockAtLimit === true,
   });
   if (cartoes.length === 0) return null;
 

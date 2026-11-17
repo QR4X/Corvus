@@ -35,14 +35,14 @@ function montar(extra: Record<string, unknown> = {}) {
         ativos: settings.activeModels.ollama ?? [],
         favoritos: [],
         modelo: settings.ollamaModel,
-        vistos: settings.ollamaVistos ?? null,
+        vistos: settings.ollamaSeenModels ?? null,
       },
       instalados,
       pareceEmbeddingDoOllama
     );
     settings.activeModels = { ...settings.activeModels, ollama: [...d.ativos] };
     settings.ollamaModel = d.modelo;
-    settings.ollamaVistos = [...d.vistos];
+    settings.ollamaSeenModels = [...d.vistos];
     await plugin.saveSettings();
   };
   return { sessao, settings, buscar };
