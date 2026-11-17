@@ -51,10 +51,10 @@ import { commit, screen, warn } from "./haptics";
 import { composerMaxHeight, readKeyboardHeight } from "./composerSize";
 import { decideScroll, shouldShowJump } from "./follow";
 import { pasteIsBig, pastedNote } from "./pasteAttachment";
+import { htmlTitle, htmlToText } from "../core/html";
+import { isImageExt } from "../core/imageStore";
+import { GENERATION_FOLDER } from "../core/vaultPaths";
 import {
-  htmlTitle,
-  htmlToText,
-  isImageExt,
   linkNote,
   normalizeUrl,
   rankArtifacts,
@@ -62,7 +62,6 @@ import {
   attachmentLabel,
   attachmentThumb,
   artifactIcon,
-  GENERATION_DIR,
   type ArtifactLike,
 } from "./attachSources";
 import { getModelCapabilities } from "../providers/modelCapabilities";
@@ -1439,7 +1438,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
               <SheetNote>
                 {tr(
                   "Nothing generated yet — images, audio and video made here land in {folder} and show up in this list.",
-                  { folder: GENERATION_DIR }
+                  { folder: GENERATION_FOLDER }
                 )}
               </SheetNote>
             )}

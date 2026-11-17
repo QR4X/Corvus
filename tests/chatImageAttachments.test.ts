@@ -7,10 +7,8 @@ import {
   toStoredAttachments,
   type ChatData,
 } from "../src/core/chatPersistence";
-import {
-  GENERATION_DIR,
-  persistLocalImage,
-} from "../src/ui/attachSources";
+import { persistLocalImage } from "../src/core/imageStore";
+import { GENERATION_FOLDER } from "../src/core/vaultPaths";
 import type CorvusPlugin from "../src/main";
 
 vi.mock("../src/core/chatEngine", () => ({
@@ -100,7 +98,7 @@ describe("enviar guarda os anexos na mensagem", () => {
       dataUrl: IMAGEM.dataUrl, 
     });
     expect(msg.attachments?.[0].path).toMatch(
-      new RegExp(`^${GENERATION_DIR}/images/.+\\.png$`)
+      new RegExp(`^${GENERATION_FOLDER}/images/.+\\.png$`)
     );
 
     expect(plugin.app.vault.adapter.writeBinary).toHaveBeenCalledTimes(1);
@@ -147,7 +145,7 @@ describe("enviar guarda os anexos na mensagem", () => {
         type: "image",
         name: "print.png",
         mimeType: "image/png",
-        path: expect.stringMatching(new RegExp(`^${GENERATION_DIR}/images/`)),
+        path: expect.stringMatching(new RegExp(`^${GENERATION_FOLDER}/images/`)),
       }),
     ]);
     expect(JSON.stringify(saved)).not.toContain("data:");
@@ -197,12 +195,12 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
   it("toStoredAttachments descarta os bytes, mantém só o descritor", () => {
     expect(
       toStoredAttachments([
-        { ...IMAGEM, dataUrl: "data:image/png;base64,BASE64 GIGANTE", path: `${GENERATION_DIR}/images/1-p.png` },
+        { ...IMAGEM, dataUrl: "data:image/png;base64,BASE64 GIGANTE", path: `${GENERATION_FOLDER}/images/1-p.png` },
         { type: "image", dataUrl: "https://exemplo.com/foto.png", name: "foto.png" },
         { type: "note", path: "PROJECTS/FRAMEWORKS.md", content: "conteúdo longo…" },
       ])
     ).toEqual([
-      { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "print.png", mimeType: "image/png" },
+      { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "print.png", mimeType: "image/png" },
       { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
       { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
     ]);
@@ -217,20 +215,20 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
       },
     } as unknown as CorvusPlugin["app"];
     const out = await fromStoredAttachments(app, [
-      { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
+      { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
       { type: "image", path: "https://exemplo.com/foto.png", name: "foto.png" },
       { type: "note", path: "PROJECTS/FRAMEWORKS.md" },
-      { type: "audio", path: `${GENERATION_DIR}/audio/x.webm`, durationMs: 500 },
+      { type: "audio", path: `${GENERATION_FOLDER}/audio/x.webm`, durationMs: 500 },
     ]);
     expect(out[0]).toMatchObject({
       type: "image",
-      path: `${GENERATION_DIR}/images/1-p.png`,
+      path: `${GENERATION_FOLDER}/images/1-p.png`,
       dataUrl: "data:image/png;base64,WFla",
       name: "p.png",
     });
     expect(out[1]).toEqual({ type: "image", dataUrl: "https://exemplo.com/foto.png", name: "foto.png" });
     expect(out[2]).toEqual({ type: "note", path: "PROJECTS/FRAMEWORKS.md", content: "" });
-    expect(out[3]).toEqual({ type: "audio", path: `${GENERATION_DIR}/audio/x.webm`, durationMs: 500 });
+    expect(out[3]).toEqual({ type: "audio", path: `${GENERATION_FOLDER}/audio/x.webm`, durationMs: 500 });
   });
 
   it("imagem apagada do vault não quebra o load (vira vazio, chip de emoji)", async () => {
@@ -244,13 +242,13 @@ describe("descritores do .md ↔ anexos (persistência)", () => {
       },
     } as unknown as CorvusPlugin["app"];
     const out = await fromStoredAttachments(app, [
-      { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "p.png" },
+      { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "p.png" },
     ]);
     expect(out[0]).toEqual({
       type: "image",
       dataUrl: "",
       name: "p.png",
-      path: `${GENERATION_DIR}/images/1-p.png`,
+      path: `${GENERATION_FOLDER}/images/1-p.png`,
     });
   });
 });
@@ -274,7 +272,7 @@ describe("reload do chat", () => {
           content: "olha",
           timestamp: 1,
           attachments: [
-            { type: "image", path: `${GENERATION_DIR}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
+            { type: "image", path: `${GENERATION_FOLDER}/images/1-p.png`, name: "p.png", mimeType: "image/png" },
           ],
         },
       ],
@@ -291,7 +289,7 @@ describe("reload do chat", () => {
     if (msg?.type !== "user") throw new Error("mensagem do user não existe");
     expect(msg.attachments?.[0]).toMatchObject({
       type: "image",
-      path: `${GENERATION_DIR}/images/1-p.png`,
+      path: `${GENERATION_FOLDER}/images/1-p.png`,
       dataUrl: "data:image/png;base64,WFla",
       name: "p.png",
     });

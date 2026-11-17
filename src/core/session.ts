@@ -22,7 +22,7 @@ import {
   toStoredAttachments,
   type ChatData,
 } from "./chatPersistence";
-import { persistLocalImage } from "../ui/attachSources";
+import { persistLocalImage } from "./imageStore";
 import { makeId, semCredencial } from "./helpers";
 import { streamReply, type EngineCtx } from "./chatEngine";
 import { runAgentTurn } from "./agentTurn";

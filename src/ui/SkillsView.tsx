@@ -9,7 +9,7 @@ import {
   skillProblema,
   type SkillDraft,
 } from "../skills/skillFile";
-import { ensureFolder } from "../core/chatPersistence";
+import { ensureFolder } from "../core/vaultFs";
 import { SKILLS_FOLDER } from "../core/vaultPaths";
 import { ConfirmModal } from "./modals";
 import { Icon } from "./Icon";

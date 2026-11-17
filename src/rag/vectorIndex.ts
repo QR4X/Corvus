@@ -1,5 +1,5 @@
 import { Platform, type App, type DataAdapter } from "obsidian";
-import { ensureFolder } from "../core/chatPersistence";
+import { ensureFolder } from "../core/vaultFs";
 import type {
   IndexFile,
   SearchResult,
