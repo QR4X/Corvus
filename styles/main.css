@@ -342,6 +342,10 @@ body.theme-dark {
   color: var(--text-normal);
 }
 
+body.is-mobile .corvus-root {
+  --corvus-tap: 44px;
+}
+
 .corvus-root button {
   appearance: none;
   -webkit-appearance: none;

@@ -372,7 +372,7 @@ export function SkillsView({
                 {skills.length > 0
                   ? tr("Nothing matches that.")
                   : tr(
-                      "A skill is a prompt you keep. Write it once, use it in one tap — here, in the composer’s +, or by typing / in any chat."
+                      "A skill is a saved prompt. Write once, then use it with + or / in any chat."
                     )}
               </p>
               {skills.length === 0 && (
