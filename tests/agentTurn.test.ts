@@ -84,7 +84,8 @@ describe("real Agent loop", () => {
     await runAgentTurn(context(p), "Research and answer");
     expect(execute).toHaveBeenCalledTimes(1);
     const last = useChatStore.getState().messages.at(-1);
-    expect(last).toMatchObject({ isError: true, content: expect.stringContaining(t.ai.outputLimit), reasoning: "thinking", truncated: true });
+    expect(last).toMatchObject({ isError: true, content: expect.stringContaining(t.ai.outputLimit), truncated: true });
+    expect(useChatStore.getState().messages).toContainEqual(expect.objectContaining({ type: "ai-comment", thought: "thinking" }));
     const history = storeMessagesToProvider(useChatStore.getState().messages, undefined, true);
     expect(history.some((m) => m.role === "tool" && m.content === "already listed")).toBe(true);
     expect(history.some((m) => m.content.includes(t.ai.outputLimit))).toBe(false);
@@ -171,7 +172,8 @@ describe("Chat uses the same response diagnostics", () => {
   it("reasoning-only is an explicit error, not a successful blank reply", async () => {
     await streamReply(context(provider([{ content: "", reasoning: "thinking", finishReason: "stop" }])), "Question");
     const last = useChatStore.getState().messages.at(-1);
-    expect(last).toMatchObject({ isError: true, content: expect.stringContaining(t.ai.emptyResponse), reasoning: "thinking" });
+    expect(last).toMatchObject({ isError: true, content: expect.stringContaining(t.ai.emptyResponse) });
+    expect(useChatStore.getState().messages).toContainEqual(expect.objectContaining({ type: "ai-comment", thought: "thinking" }));
     expect(last).not.toHaveProperty("truncated", true);
   });
 

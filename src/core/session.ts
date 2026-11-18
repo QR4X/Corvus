@@ -1,4 +1,5 @@
 import { Notice, TFile } from "obsidian";
+import { fromStoredTrace, storedTracesByResponse } from "./tracePersist";
 import type CorvusPlugin from "../main";
 import {
   useChatStore,
@@ -367,6 +368,7 @@ export class ChatSession {
       keepConversationMessage
     ) as Array<Extract<ChatMessage, { content: string }>>;
     if (kept.length === 0) return;
+    const traces = storedTracesByResponse(run.messages);
     const chat: ChatData = {
       id: run.chatId,
       title: run.title || generateTitle(kept[0].content),
@@ -378,6 +380,7 @@ export class ChatSession {
       tokensIn: run.tokensIn,
       tokensOut: run.tokensOut,
       messages: kept.map((m) => ({
+        ...(m.type === "ai-response" && traces.get(m.id) ? { trace: traces.get(m.id) } : {}),
         type: m.type as "user" | "ai-response",
         content: m.content,
         timestamp: m.timestamp,
@@ -530,6 +533,9 @@ export class ChatSession {
           ...(m.type === "ai-response" && m.agentSteps
             ? { agentSteps: m.agentSteps }
             : {}),
+          ...(m.type === "ai-response" && m.trace?.length
+            ? { trace: fromStoredTrace(m.trace, "trace") }
+            : {}),
           ...(m.type === "user" && m.attachments?.length
             ? { attachments: await fromStoredAttachments(this.plugin.app, m.attachments) }
             : {}),
@@ -676,6 +682,7 @@ export class ChatSession {
         keepConversationMessage(m)
     );
     if (userOrAi.length === 0) return;
+    const traces = storedTracesByResponse(st.messages);
     const cfg = this.config;
     const chat: ChatData = {
       id: st.currentChatId,
@@ -693,6 +700,7 @@ export class ChatSession {
 
       vault: this.vaultChoice ?? undefined,
       messages: userOrAi.map((m) => ({
+        ...(m.type === "ai-response" && traces.get(m.id) ? { trace: traces.get(m.id) } : {}),
         type: m.type,
         content: m.content,
         timestamp: m.timestamp,
