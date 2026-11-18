@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AIToolStep } from "../agent/types";
+import type { TraceItem } from "../core/trace";
 import type { MessageAttachment } from "../providers/base";
 
 type MessageType = "user" | "ai-response" | "ai-comment" | "ai-options";
@@ -42,6 +43,8 @@ export interface AIResponseMessage extends BaseMessage {
 
   reasoning?: string;
 
+  trace?: TraceItem[];
+
   variants?: string[];
   variantIndex?: number;
 }
@@ -78,6 +81,10 @@ interface AICommentMessage extends BaseMessage {
   content: string;
 
   activity?: ActivityMeta;
+
+  thought?: string;
+
+  steer?: string;
 }
 
 interface AIOptionsMessage extends BaseMessage {
@@ -167,6 +174,7 @@ interface ChatState {
   removeMessage: (id: string) => void;
   appendToMessage: (id: string, text: string) => void;
   appendReasoning: (id: string, text: string) => void;
+  appendThought: (id: string, text: string) => void;
 
   updateActivity: (
     id: string,
@@ -231,6 +239,7 @@ interface ChatState {
   pushQueued: (text: string) => void;
   removeQueued: (index: number) => void;
   clearQueued: () => void;
+  drainQueued: () => string[];
   addAttachment: (att: MessageAttachment) => void;
   removeAttachment: (index: number) => void;
   setAttachments: (atts: MessageAttachment[]) => void;
@@ -333,6 +342,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ms.map((m) =>
           m.id === id && m.type === "ai-response"
             ? { ...m, reasoning: (m.reasoning ?? "") + text }
+            : m
+        )
+      )
+    ),
+  appendThought: (id, text) =>
+    set((state) =>
+      writeToTurn(state, (ms) =>
+        ms.map((m) =>
+          m.id === id && m.type === "ai-comment"
+            ? { ...m, thought: (m.thought ?? "") + text }
             : m
         )
       )
@@ -556,6 +575,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   removeQueued: (index) =>
     set((state) => ({ queued: state.queued.filter((_, i) => i !== index) })),
   clearQueued: () => set({ queued: [] }),
+  drainQueued: () => {
+    let taken: string[] = [];
+    set((state) => {
+      taken = state.queued;
+      return taken.length > 0 ? { queued: [] } : state;
+    });
+    return taken;
+  },
   addAttachment: (att) =>
     set((state) => ({ attachments: [...state.attachments, att] })),
   removeAttachment: (index) =>

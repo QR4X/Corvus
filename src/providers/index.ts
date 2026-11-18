@@ -6,6 +6,7 @@ import { openrouterProvider } from "./openrouter";
 import { nimProvider } from "./nim";
 import { ollamaProvider } from "./ollama";
 import { recordUsage, checkSpend } from "../usage/recorder";
+import { raceAbort } from "./abort";
 
 export const providers: Record<string, Provider> = {
   openai: openaiProvider,
@@ -30,24 +31,30 @@ function withUsageTracking(p: Provider): Provider {
     let accepted = false;
     let lastUsage: Usage | null = null;
     try {
-      const res = await p.streamChat(
-        req,
-        apiKey,
-        (t) => {
-          accepted = true;
-          onToken(t);
-        },
-        (u) => {
-          accepted = true;
-          lastUsage = u;
-          onUsage?.(u);
-        },
-        signal,
-        onReasoning &&
-          ((d) => {
+      const res = await raceAbort(
+        p.streamChat(
+          req,
+          apiKey,
+          (t) => {
+            if (signal?.aborted) return;
             accepted = true;
-            onReasoning(d);
-          })
+            onToken(t);
+          },
+          (u) => {
+            if (signal?.aborted) return;
+            accepted = true;
+            lastUsage = u;
+            onUsage?.(u);
+          },
+          signal,
+          onReasoning &&
+            ((d) => {
+              if (signal?.aborted) return;
+              accepted = true;
+              onReasoning(d);
+            })
+        ),
+        signal
       );
       accepted = true;
       lastUsage ??= res.usage ?? null;

@@ -1,6 +1,8 @@
 import { Notice, TFile } from "obsidian";
+import { fromStoredTrace, storedTracesByResponse } from "./tracePersist";
 import type CorvusPlugin from "../main";
 import {
+  NEW_CHAT_DRAFT,
   useChatStore,
   type AIResponseMessage,
   type ChatMessage,
@@ -166,18 +168,35 @@ export class ChatSession {
   }
 
   setProvider(provider: string): void {
-    if (this.config.locked) return;
     this.provider = provider;
     this.model = this.modelFor(provider);
     this.plugin.settings.defaultProvider = provider;
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }
 
+  selectModel(provider: string, model: string): void {
+    if (!model) return;
+    const before = this.config;
+    if (before.provider === provider && before.model === model) return;
+    if (this.provider !== provider) this.setProvider(provider);
+    this.setModel(model);
+  }
+
+  private syncLockedModel(): void {
+    if (useChatStore.getState().sessionProvider === null) return;
+    useChatStore.setState({
+      sessionProvider: this.provider,
+      sessionModel: this.model,
+    });
+  }
+
   setModel(model: string): void {
-    if (this.config.locked || !model) return;
+    if (!model) return;
     this.model = model;
     this.plugin.settings[providerMeta(this.provider).model] = model;
+    this.syncLockedModel();
     void this.plugin.saveSettings();
     this.emit();
   }
@@ -319,12 +338,7 @@ export class ChatSession {
     const ownerChatId = st.turnChatId ?? st.currentChatId;
     if (!ownerChatId) return false;
     const cfg = this.config;
-    if (st.queued.length > 0) {
-      const draft = st.drafts[ownerChatId] ?? "";
-      const merged = [draft, ...st.queued].filter((t) => t.trim()).join("\n\n");
-      st.setDraft(ownerChatId, merged);
-      st.clearQueued();
-    }
+    this.restoreQueueToDraft(ownerChatId);
     st.detachTurn({
       chatId: ownerChatId,
       scrollTop: st.viewScrollTop,
@@ -350,6 +364,7 @@ export class ChatSession {
       keepConversationMessage
     ) as Array<Extract<ChatMessage, { content: string }>>;
     if (kept.length === 0) return;
+    const traces = storedTracesByResponse(run.messages);
     const chat: ChatData = {
       id: run.chatId,
       title: run.title || generateTitle(kept[0].content),
@@ -361,6 +376,7 @@ export class ChatSession {
       tokensIn: run.tokensIn,
       tokensOut: run.tokensOut,
       messages: kept.map((m) => ({
+        ...(m.type === "ai-response" && traces.get(m.id) ? { trace: traces.get(m.id) } : {}),
         type: m.type as "user" | "ai-response",
         content: m.content,
         timestamp: m.timestamp,
@@ -411,10 +427,18 @@ export class ChatSession {
     }
   }
 
+  private restoreQueueToDraft(chatId: string): void {
+    const st = useChatStore.getState();
+    if (st.queued.length === 0) return;
+    const text = [st.drafts[chatId] ?? "", ...st.queued].filter((t) => t.trim()).join("\n\n");
+    st.setDraft(chatId, text);
+    st.clearQueued();
+  }
+
   stop(): void {
     this.abortRef.current?.abort();
-
-    useChatStore.getState().clearQueued();
+    const st = useChatStore.getState();
+    this.restoreQueueToDraft(st.turnChatId ?? st.currentChatId ?? NEW_CHAT_DRAFT);
   }
 
   private reattachRunningTurn(): void {
@@ -512,6 +536,9 @@ export class ChatSession {
             : {}),
           ...(m.type === "ai-response" && m.agentSteps
             ? { agentSteps: m.agentSteps }
+            : {}),
+          ...(m.type === "ai-response" && m.trace?.length
+            ? { trace: fromStoredTrace(m.trace, "trace") }
             : {}),
           ...(m.type === "user" && m.attachments?.length
             ? { attachments: await fromStoredAttachments(this.plugin.app, m.attachments) }
@@ -659,6 +686,7 @@ export class ChatSession {
         keepConversationMessage(m)
     );
     if (userOrAi.length === 0) return;
+    const traces = storedTracesByResponse(st.messages);
     const cfg = this.config;
     const chat: ChatData = {
       id: st.currentChatId,
@@ -676,6 +704,7 @@ export class ChatSession {
 
       vault: this.vaultChoice ?? undefined,
       messages: userOrAi.map((m) => ({
+        ...(m.type === "ai-response" && traces.get(m.id) ? { trace: traces.get(m.id) } : {}),
         type: m.type,
         content: m.content,
         timestamp: m.timestamp,

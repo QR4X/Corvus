@@ -1,4 +1,6 @@
 import { useChatStore } from "../store/chat";
+import { isAbortError } from "../providers/abort";
+import { createDeltaBatcher } from "./deltaBatcher";
 import type { getProvider } from "../providers";
 import { missingCredentialError, describeProviderError } from "./helpers";
 import { resolveEffortConfig, effortToMaxTokensSmart, isEffortLevel } from "./effort";
@@ -113,7 +115,13 @@ export async function streamReply(
   abortRef.current = controller;
 
   let responseId: string | null = null;
-  let reasoningBuf = "";
+  let thoughtId: string | null = null;
+  const thoughtBatch = createDeltaBatcher((text) => {
+    if (thoughtId) useChatStore.getState().appendThought(thoughtId, text);
+  });
+  const contentBatch = createDeltaBatcher((text) => {
+    if (responseId) appendToMessage(responseId, text);
+  });
 
   try {
 
@@ -168,16 +176,12 @@ export async function streamReply(
       apiKey,
       (token) => {
         if (responseId === null) {
+          thoughtBatch.flush();
           updateActivity(commentId, { phase: "done" });
           responseId = addMessage({ type: "ai-response", content: token });
           setStreamingMessageId(responseId);
-
-          if (reasoningBuf) {
-            useChatStore.getState().appendReasoning(responseId, reasoningBuf);
-            reasoningBuf = "";
-          }
         } else {
-          appendToMessage(responseId, token);
+          contentBatch.push(token);
         }
         tickStreamTokens(token);
       },
@@ -187,14 +191,29 @@ export async function streamReply(
       },
       controller.signal,
       (reasoningDelta) => {
-
         if (responseId !== null) {
           useChatStore.getState().appendReasoning(responseId, reasoningDelta);
-        } else {
-          reasoningBuf += reasoningDelta;
+          return;
         }
+        if (thoughtId === null) {
+          thoughtId = addMessage({ type: "ai-comment", content: "", thought: "" });
+        }
+        thoughtBatch.push(reasoningDelta);
       }
-    );
+    ).catch((err: unknown) => {
+      thoughtBatch.flush();
+      contentBatch.flush();
+      throw err;
+    });
+    thoughtBatch.flush();
+    contentBatch.flush();
+    if (thoughtId === null && responseId === null && response.reasoning) {
+      thoughtId = addMessage({
+        type: "ai-comment",
+        content: "",
+        thought: response.reasoning,
+      });
+    }
     endStreamTimer();
     const issue = responseIssue(response);
     if (issue) {
@@ -204,9 +223,6 @@ export async function streamReply(
         content: `${t.ai.errorPrefix} ${t.ai[issue]}`,
         isError: true,
       });
-      if (reasoningBuf || (responseId === null && response.reasoning)) {
-        useChatStore.getState().appendReasoning(errorId, reasoningBuf || response.reasoning || "");
-      }
       if (response.finishReason === "length" || response.streamCompleted === false) {
         useChatStore.getState().setTruncated(responseId ?? errorId, true);
       }
@@ -215,9 +231,6 @@ export async function streamReply(
     if (responseId === null && response.content.trim()) {
       updateActivity(commentId, { phase: "done" });
       responseId = addMessage({ type: "ai-response", content: response.content });
-      if (reasoningBuf || response.reasoning) {
-        useChatStore.getState().appendReasoning(responseId, reasoningBuf || response.reasoning || "");
-      }
     }
 
     const sentMaxTokens = resolveMaxTokens(
@@ -236,7 +249,7 @@ export async function streamReply(
     }
 
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
+    if (isAbortError(err)) {
       if (responseId === null) {
         updateActivity(commentId, {
           phase: "failed",
@@ -260,15 +273,12 @@ export async function streamReply(
         t,
         activeProvider.name
       );
-      const errorId = addMessage({
+      addMessage({
         type: "ai-response",
         content: `${t.ai.errorPrefix} ${message}`,
         isError: true,
         errorCode: code,
       });
-      if (responseId === null && reasoningBuf) {
-        useChatStore.getState().appendReasoning(errorId, reasoningBuf);
-      }
     }
   } finally {
     setLoading(false);

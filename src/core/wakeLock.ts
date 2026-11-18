@@ -23,9 +23,16 @@ interface WakeLockWatch {
   dispose(): void;
 }
 
+export function browserEnv(
+  nav: { wakeLock?: WakeLockEnv["wakeLock"] } = navigator,
+  doc: WakeLockEnv["document"] = document
+): WakeLockEnv {
+  return { wakeLock: nav.wakeLock, document: doc };
+}
+
 export function watchWakeLock(
   enabled: () => boolean,
-  env: WakeLockEnv = window
+  env: WakeLockEnv = browserEnv()
 ): WakeLockWatch {
   let sentinel: WakeLockSentinel | null = null;
 

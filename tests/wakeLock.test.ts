@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
+  browserEnv,
   watchWakeLock,
   type WakeLockEnv,
   type WakeLockSentinel,
@@ -149,5 +150,15 @@ describe("watchWakeLock", () => {
     useChatStore.setState({ isLoading: true });
     await vi.waitFor(() => expect(requests).toEqual(["screen", "screen"]));
     watcher.dispose();
+  });
+});
+
+describe("browserEnv", () => {
+  it("reads the wake lock from navigator, not from window", () => {
+    const wakeLock = { request: vi.fn() };
+    const doc = fakeEnv().document;
+    const env = browserEnv({ wakeLock }, doc);
+    expect(env.wakeLock).toBe(wakeLock);
+    expect(env.document).toBe(doc);
   });
 });

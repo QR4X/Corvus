@@ -7,6 +7,7 @@ import { EXPORTS_FOLDER } from "./vaultPaths";
 export function stripMarkers(text: string): string {
   return text
     .replace(/<!--\s*corvus-steps:[\s\S]*?-->/g, "")
+    .replace(/<!--\s*corvus-trace:[\s\S]*?-->/g, "")
     .replace(/<!--\s*corvus:[^>]*-->\n?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
