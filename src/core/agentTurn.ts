@@ -1,4 +1,5 @@
 import { useChatStore } from "../store/chat";
+import { isAbortError } from "../providers/abort";
 import {
   describeProviderError,
   agentActivitySpec,
@@ -482,7 +483,7 @@ export async function runAgentTurn(
           } catch (err) {
             lastErr = err;
             const msg = err instanceof Error ? err.message : "";
-            if (!isTransientError(msg) || attempt === maxAttempts) break;
+            if (controller.signal.aborted || !isTransientError(msg) || attempt === maxAttempts) break;
           }
         }
         const msg =
@@ -593,7 +594,7 @@ export async function runAgentTurn(
     }
   } catch (err) {
     if (firstTurn) {
-      if (err instanceof DOMException && err.name === "AbortError") {
+      if (isAbortError(err)) {
         updateActivity(commentId, {
           phase: "failed",
           iconFailed: "circle-stop",
@@ -607,7 +608,7 @@ export async function runAgentTurn(
         });
       }
     }
-    if (err instanceof DOMException && err.name === "AbortError") {
+    if (isAbortError(err)) {
       if (!firstTurn) {
         const stopId = addMessage({
           type: "ai-response",
