@@ -317,7 +317,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         toggle(
           tr("I share API data with OpenAI"),
           tr(
-            "Their switch, in Data controls on platform.openai.com. Turning it on there gives your account a daily quota at no cost; telling us here is what makes this list show the real numbers."
+            "A free daily quota, if you turn it on under Data controls on platform.openai.com."
           ),
           "openaiDataSharing",
 
@@ -329,7 +329,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
           tr("Usage tier"),
           null,
           tr(
-            "Tiers 1–2 get 250k tokens/day on the big models and 2.5M/day on mini and nano. Tier 3 and up get 1M and 10M."
+            "Tier 1–2: 250k tokens/day (2.5M on mini and nano). Tier 3+: 1M (10M)."
           ),
           "openaiTier",
 
@@ -354,7 +354,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
         hintRow(
           ui.hint(
             tr(
-              "The quota counts ALL your OpenAI API use, not just this vault — so anything the app says you have left is optimistic. Image models are never covered. Program terms as of {date}.",
+              "Counts all your OpenAI API use, not just this vault, and no image models. Terms as of {date}.",
               { date: FREE_TOKENS_AS_OF }
             )
           )
@@ -473,7 +473,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Daily limit"),
       null,
       tr(
-        "In dollars, for paid models, counted from public token prices. You get a heads-up at 80% and at 100%. Empty means no limit."
+        "In dollars, for paid models, from public token prices. Warns at 80% and 100%. Empty means no limit."
       ),
       ui.spendLimit,
       { aliases: ["budget", "limit", "spending", "cost"] }
@@ -481,7 +481,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     toggle(
       tr("Stop paid models at the limit"),
       tr(
-        "When today's spending reaches the limit, paid models pause until midnight. Free and local models keep working, and so do models without a public price."
+        "At the limit, paid models pause until midnight. Free, local and unpriced models keep working."
       ),
       "blockAtLimit",
       { aliases: ["budget", "limit", "pause", "block"] }
@@ -495,7 +495,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     toggle(
       tr("Let it see your note names"),
       tr(
-        "So it can suggest which notes to attach to a project. Only the paths are sent — never what is inside them. Off by default."
+        "Lets it suggest notes for a project. Sends only paths, never contents. Off by default."
       ),
       "assistantSeesVault",
       { aliases: ["notes", "privacy"] }
@@ -512,7 +512,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     toggle(
       tr("Talk instead of typing"),
       tr(
-        "Puts a microphone in the composer: you speak, the words land in the box, and you send when you are happy with them."
+        "Adds a microphone to the composer: speak, the words land in the box, send when ready."
       ),
       "voiceEnabled",
 
@@ -534,7 +534,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Ears"),
       null,
       tr(
-        "Mini is quick, cheap and gets normal speech right; the full one is better with names, accents and noise."
+        "Mini is quick and cheap; the full one handles names, accents and noise better."
       ),
       "voiceModel",
       () =>
@@ -574,7 +574,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Who reads"),
       null,
       tr(
-        "OpenAI voices are ready to use. ElevenLabs sounds better and is the only one that can read in YOUR voice — clone it in their app and it shows up in the list below."
+        "OpenAI voices work as is. ElevenLabs sounds better and can read in your own cloned voice."
       ),
       ui.ttsProvider,
       { visible: ttsOn, aliases: ["elevenlabs", "voice", "tts"] }
@@ -603,7 +603,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("OpenAI voice quality"),
       tr("Quality"),
       tr(
-        "gpt-4o-mini-tts reads with intention; tts-1 is the cheap classic; the HD one is the same voice, cleaner."
+        "mini-tts reads with intention; tts-1 is the cheap classic; HD is the same voice, cleaner."
       ),
       "ttsModel",
       () =>
@@ -644,7 +644,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("ElevenLabs voice"),
       tr("Voice"),
       tr(
-        "Cloned ones are marked — that is the one that sounds like you. Tap ▶ in the list to hear any of them."
+        "Cloned ones are marked. Tap ▶ to hear any of them."
       ),
       ui.elevenVoice,
       { visible: () => elevenReads() && s().elevenVoices.length > 0, aliases: ["voice"] }
@@ -680,7 +680,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     text(
       tr("Chats folder"),
       tr(
-        "Each chat is a .md file under <folder>/<mode>/. The default is visible so file-sync plugins (Google Drive, Obsidian Sync…) copy them between devices. A folder starting with a dot stays out of the explorer, search and graph — and out of those syncs."
+        "Each chat is a .md file under <folder>/<mode>/. Visible so sync plugins copy it; a leading dot hides it from explorer, search and graph."
       ),
       "chatsPath",
       { aliases: ["folder", "chats", "path"] }
@@ -695,7 +695,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     text(
       tr("Index folder"),
       tr(
-        "Where the Vault Q&A index lives. Changing it starts a fresh index there — the current one stays in the old folder, and switching back loads it again."
+        "Where the Q&A index lives. Changing it starts fresh there; the old folder keeps its copy."
       ),
       "ragIndexPath",
       { aliases: ["folder", "path", "index", "rag", "embeddings"] }
@@ -708,7 +708,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Embedding model"),
       null,
       tr(
-        "Needs the key of that model's provider. Without an index, Vault Q&A falls back to keyword search. Fetch models on a provider to list the embedding models your account has."
+        "Needs that provider's key. Without an index, Q&A falls back to keyword search."
       ),
       ui.embeddingModel,
       { aliases: ["embeddings", "rag", "model"] }
@@ -719,7 +719,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Index precision"),
       null,
       tr(
-        "How much detail each note keeps in the index. Lighter takes less space and memory; Light and Minimal also shrink the vectors on OpenAI's text-embedding-3. Applies on the next index update, which rebuilds it from scratch."
+        "How much detail each note keeps. Lighter saves space and memory. Applies on the next full rebuild."
       ),
       "ragQuantProfile",
       () => QUANT_ITEMS.map((i) => ({ ...i, label: tr(i.label) })),
@@ -728,7 +728,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     toggle(
       tr("Search the index in pieces"),
       tr(
-        "Reads the index about 4 MB at a time instead of all at once — keeps memory low on big vaults, which matters on the phone. The catch: every index update then rebuilds it whole and re-embeds the vault, which costs tokens."
+        "Reads the index 4 MB at a time, easier on memory on the phone. Every update then rebuilds and re-embeds the whole vault, costing tokens."
       ),
       "ragStreamShards",
       { aliases: ["shards", "pieces", "memory", "streamed"] }
@@ -750,7 +750,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("Permission level"),
       null,
       tr(
-        "When the agent stops to ask before changing the vault. In YOLO, deletes run on their own too when Obsidian sends deleted files to a trash (set to delete permanently, they still ask). Every change can be undone from the chat while Obsidian is open."
+        "When the agent asks before changing the vault. YOLO also lets deletes run, unless Obsidian deletes permanently. Every change can be undone from the chat."
       ),
       "agentPermissionLevel",
       () =>
@@ -770,7 +770,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     text(
       tr("Agent instructions file"),
       tr(
-        "Vault path to an instructions file read fresh on every turn (default: AGENT.md). Falls back to agent.md or CLAUDE.md if empty."
+        "Path to an instructions file, reread every turn. Default AGENT.md, else agent.md or CLAUDE.md."
       ),
       "agentInstructionsPath",
       { aliases: ["agent.md", "claude.md", "instructions", "rules"] }
@@ -778,7 +778,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
     toggle(
       tr("Web access"),
       tr(
-        "Let the agent search the web and open public pages when a task needs it. In Ask and Vault, each request shows you the address or the search first; local addresses are always refused."
+        "Lets the agent search the web and open pages. In Ask and Vault it asks first; local addresses are refused."
       ),
       "agentWeb",
       { aliases: ["web", "internet", "search", "url", "fetch"] }
@@ -787,7 +787,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       tr("{provider} key", { provider: "Tavily" }),
       null,
       tr(
-        "For web search, from tavily.com › API keys: 1,000 free searches a month, no card needed. Without it the agent can still open pages. Stored in the OS keychain (not in data.json)."
+        "From tavily.com › API keys: 1,000 free searches a month. Stored in the OS keychain, not data.json."
       ),
       ui.tavilyKey,
       { visible: () => s().agentWeb !== false, aliases: [...KEY_ALIASES, "tavily", "web search"] }
@@ -799,7 +799,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       toggle(
         tr("Keep screen on while writing"),
         tr(
-          "Keeps the screen awake while the AI is writing a reply, like a video. It may sleep again as soon as the reply is done."
+          "Keeps the screen awake while the AI writes. It may sleep once the reply is done."
         ),
         "keepAwakeWhileWriting",
         { aliases: ["wake lock", "screen on", "stay awake"] }
@@ -807,7 +807,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       toggle(
         tr("Fullscreen"),
         tr(
-          "Fullscreen hides the drawer chrome and the global navbar while Corvus is the active tab. Chats always use it on their own; this switch only changes the other screens. The menu button stays, so you are never stuck."
+          "Hides the drawer chrome and navbar while Corvus is active. Chats use it anyway; this affects the other screens. The menu button stays."
         ),
         "mobileFullscreen",
         { aliases: ["full screen"] }
@@ -815,7 +815,7 @@ export function buildSettingsTree(ui: SettingsUi): SettingsTree {
       toggle(
         tr("Haptics"),
         tr(
-          "A short buzz on every tap. Android only — iPhone doesn't let a plugin touch the Taptic Engine."
+          "A short buzz on every tap. Android only."
         ),
         "hapticsEnabled",
         { aliases: ["vibration", "vibrate"] }
