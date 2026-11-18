@@ -233,7 +233,7 @@ export function ProjectForm({
         <>
           <SheetField
             label={tr("Notes")}
-            hint={tr("What this project should know — they go in as context on every chat started in it.")}
+            hint={tr("Context for every chat in this project.")}
           >
             {}
             <WithAssistant
@@ -333,7 +333,7 @@ export function ProjectForm({
             {noteCount === 0 && (
               <SheetNote>
                 {tr(
-                  "No notes yet. Search above, or tap ✨ to have the assistant find them. You can also skip this and add notes later."
+                  "No notes yet. Search above, tap ✨ for the assistant to find them, or skip for now."
                 )}
               </SheetNote>
             )}

@@ -617,7 +617,7 @@ export function ProjectsView({
           <p className="corvus-boxnote">
             {openProject.sources.length === 0
               ? tr(
-                  "Pick the notes this project is about. They go in as context every time you start a chat here."
+                  "Pick the notes this project is about. They become context for every chat here."
                 )
               : openProject.sources.length === 1
                 ? tr("1 note goes in as context on every new chat here.")
@@ -798,7 +798,7 @@ export function ProjectsView({
               <Icon name="folder-open" size={42} />
               <p>
                 {tr(
-                  "A project keeps notes and chats about the same thing together. Its notes go in as context every time you start a chat there."
+                  "A project groups notes and chats on one topic. Its notes become context for every chat."
                 )}
               </p>
             </div>
