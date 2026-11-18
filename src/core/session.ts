@@ -2,6 +2,7 @@ import { Notice, TFile } from "obsidian";
 import { fromStoredTrace, storedTracesByResponse } from "./tracePersist";
 import type CorvusPlugin from "../main";
 import {
+  NEW_CHAT_DRAFT,
   useChatStore,
   type AIResponseMessage,
   type ChatMessage,
@@ -337,12 +338,7 @@ export class ChatSession {
     const ownerChatId = st.turnChatId ?? st.currentChatId;
     if (!ownerChatId) return false;
     const cfg = this.config;
-    if (st.queued.length > 0) {
-      const draft = st.drafts[ownerChatId] ?? "";
-      const merged = [draft, ...st.queued].filter((t) => t.trim()).join("\n\n");
-      st.setDraft(ownerChatId, merged);
-      st.clearQueued();
-    }
+    this.restoreQueueToDraft(ownerChatId);
     st.detachTurn({
       chatId: ownerChatId,
       scrollTop: st.viewScrollTop,
@@ -431,10 +427,18 @@ export class ChatSession {
     }
   }
 
+  private restoreQueueToDraft(chatId: string): void {
+    const st = useChatStore.getState();
+    if (st.queued.length === 0) return;
+    const text = [st.drafts[chatId] ?? "", ...st.queued].filter((t) => t.trim()).join("\n\n");
+    st.setDraft(chatId, text);
+    st.clearQueued();
+  }
+
   stop(): void {
     this.abortRef.current?.abort();
-
-    useChatStore.getState().clearQueued();
+    const st = useChatStore.getState();
+    this.restoreQueueToDraft(st.turnChatId ?? st.currentChatId ?? NEW_CHAT_DRAFT);
   }
 
   private reattachRunningTurn(): void {

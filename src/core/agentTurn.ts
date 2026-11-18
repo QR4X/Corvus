@@ -157,6 +157,7 @@ export async function runAgentTurn(
   const runSteps: AIToolStep[] = [];
 
   let firstTurn = true;
+  let round = 0;
   const controller = new AbortController();
   abortRef.current = controller;
   let responseId: string | null = null;
@@ -166,6 +167,15 @@ export async function runAgentTurn(
 
       if (controller.signal.aborted) {
         throw new DOMException("Interrupted", "AbortError");
+      }
+
+      if (round++ > 0) {
+        const steer = useChatStore.getState().drainQueued();
+        if (steer.length > 0) {
+          const text = steer.join("\n\n");
+          history.push({ role: "user", content: text });
+          addMessage({ type: "ai-comment", content: "", steer: text });
+        }
       }
 
       responseId = null;

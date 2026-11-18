@@ -6803,3 +6803,22 @@ body.is-mobile .modal-container.corvus-prompt-container .modal {
   }
 }
 
+.corvus-root .corvus-trace-steer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--corvus-2);
+  color: var(--text-normal);
+}
+
+.corvus-root .corvus-trace-steer .corvus-trace-icon {
+  margin-top: 2px;
+}
+
+.corvus-root .corvus-trace-steer-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+

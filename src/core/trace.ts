@@ -29,7 +29,13 @@ export interface TraceTool {
   undone?: boolean;
 }
 
-export type TraceItem = TraceThought | TraceTool;
+export interface TraceSteer {
+  kind: "steer";
+  id: string;
+  text: string;
+}
+
+export type TraceItem = TraceThought | TraceTool | TraceSteer;
 
 export interface TraceGroup {
   items: TraceItem[];
@@ -155,7 +161,9 @@ export function buildTrace(
     if (m.type !== "ai-comment") continue;
     sources.push(m);
     if (startedAt === null) startedAt = m.timestamp;
-    if (m.thought !== undefined) {
+    if (m.steer !== undefined) {
+      items.push({ kind: "steer", id: m.id, text: m.steer });
+    } else if (m.thought !== undefined) {
       items.push({ kind: "thought", id: m.id, text: m.thought });
     } else if (m.activity && !isPlaceholder(m.activity)) {
       hasActivity = true;
@@ -205,7 +213,10 @@ export function buildTurnTraces(
   let bucket: ChatMessage[] = [];
 
   for (const m of messages) {
-    if (m.type === "ai-comment" && (m.activity || m.thought !== undefined)) {
+    if (
+      m.type === "ai-comment" &&
+      (m.activity || m.thought !== undefined || m.steer !== undefined)
+    ) {
       bucket.push(m);
       hidden.add(m.id);
     } else if (m.type === "ai-response") {
