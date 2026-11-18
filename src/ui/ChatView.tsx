@@ -1251,11 +1251,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 <SheetNote>
                   {rest.length > 0
                     ? tr(
-                        "No favorites for this provider yet — star up to {n} in Settings › Providers, or open the full list below.",
+                        "No favorites yet. Star up to {n} models in Settings, or open the full list.",
                         { n: FAVORITE_LIMIT }
                       )
                     : tr(
-                        "Nothing marked to show for this provider yet — pick what appears here in Settings → Providers."
+                        "Nothing marked yet. Pick what shows here in Settings → Providers."
                       )}
                 </SheetNote>
               </SheetGroup>
@@ -1342,7 +1342,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             {plugin.skills.length === 0 && (
               <SheetNote>
                 {tr(
-                  "No skills yet — they live as notes in your vault, and show up here once you create one."
+                  "No skills yet. They live as notes in your vault and appear here once created."
                 )}
               </SheetNote>
             )}
@@ -1365,7 +1365,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             {artifacts.length === 0 && (
               <SheetNote>
                 {tr(
-                  "Nothing generated yet — images, audio and video made here land in {folder} and show up in this list.",
+                  "Nothing yet. Images, audio and video you make land in {folder} and appear here.",
                   { folder: GENERATION_FOLDER }
                 )}
               </SheetNote>
