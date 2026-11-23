@@ -224,6 +224,7 @@ interface ChatState {
   endStreamTimer: () => void;
   lockSession: (provider: string, model: string, mode?: string) => void;
   unlockSession: () => void;
+  setSessionMode: (mode: string) => void;
 
   setSessionPersona: (persona: string) => void;
   setSessionInstructions: (instructions: string) => void;
@@ -563,6 +564,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }),
   unlockSession: () =>
     set({ sessionProvider: null, sessionModel: null, sessionMode: null }),
+  setSessionMode: (mode) => set({ sessionMode: mode }),
   setSessionPersona: (persona) => set({ sessionPersona: persona }),
   setSessionInstructions: (instructions) =>
     set({ sessionInstructions: instructions }),

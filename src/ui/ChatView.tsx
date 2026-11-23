@@ -20,7 +20,7 @@ import {
   useChatStore,
   type ChatMessage,
 } from "../store/chat";
-import type { ChatSession } from "../core/session";
+import { CHAT_MODES, type ChatSession } from "../core/session";
 import {
   PROVIDERS,
   providerCredential,
@@ -90,7 +90,7 @@ import { StarterScreen } from "./StarterScreen";
 import { ThinkingTrace } from "./ThinkingTrace";
 import { buildTurnTraces, type TraceGroup, type TurnTraces } from "../core/trace";
 import type { ComposerInject } from "./App";
-import { moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
+import { MODULES, moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
 
 import { FAVORITE_LIMIT } from "./SettingsTab";
@@ -114,13 +114,14 @@ export function ChatView({
   plugin,
   session,
   inject,
+  onOpenMenu,
   onBackHome,
   onUseSkill,
 }: {
   plugin: CorvusPlugin;
   session: ChatSession;
   inject: ComposerInject | null;
-
+  onOpenMenu?: () => void;
   onBackHome: () => void;
   onUseSkill: (skill: Skill) => void;
 }) {
@@ -834,14 +835,13 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
   return (
     <div className="corvus-chat">
       <header className="corvus-topbar">
-        {}
         <button
           type="button"
           className="corvus-icon-btn"
-          aria-label={tr("Back")}
-          onClick={onBackHome}
+          aria-label={!currentChatId && onOpenMenu ? tr("Open menu") : tr("Back")}
+          onClick={!currentChatId && onOpenMenu ? onOpenMenu : onBackHome}
         >
-          <Icon name="arrow-left" />
+          <Icon name={!currentChatId && onOpenMenu ? "menu" : "arrow-left"} />
         </button>
         <div className="corvus-topbar-title">
           <span className="corvus-topbar-name">
@@ -990,7 +990,42 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
           >
             <div className="corvus-swap-row">
             <div className="corvus-input">
-              {}
+              <div className="corvus-composer-mode">
+                <div
+                  className="corvus-composer-mode-pills"
+                  role="radiogroup"
+                  aria-label={tr("Chat mode")}
+                >
+                  {CHAT_MODES.map((m) => {
+                    const active = cfg.mode === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={
+                          active
+                            ? "corvus-composer-mode-btn is-active"
+                            : "corvus-composer-mode-btn"
+                        }
+                        onClick={() => session.setMode(m)}
+                        title={tr(MODULES[m].tagline)}
+                      >
+                        <Icon name={MODULES[m].icon} size={13} />
+                        <span>{tr(MODULES[m].short)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="corvus-composer-mode-tagline">
+                  {cfg.mode === "vault-qa"
+                    ? tr("Reads vault")
+                    : cfg.mode === "agent"
+                    ? tr("Edits vault")
+                    : tr("Direct chat")}
+                </span>
+              </div>
               <textarea
                 ref={textareaRef}
                 rows={1}

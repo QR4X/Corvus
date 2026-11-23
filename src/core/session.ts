@@ -202,10 +202,25 @@ export class ChatSession {
   }
 
   setMode(mode: ChatMode): void {
-    if (this.config.locked) return;
+    if (this.mode === mode && useChatStore.getState().sessionMode === mode) return;
+    const oldMode = this.config.mode;
     this.mode = mode;
     this.plugin.settings.defaultMode = mode;
     void this.plugin.saveSettings();
+
+    const st = useChatStore.getState();
+    if (st.sessionMode !== null) {
+      st.setSessionMode(mode);
+      if (st.currentChatId && oldMode !== mode) {
+        void deleteChat(
+          this.plugin.app,
+          this.plugin.settings.chatsPath,
+          oldMode,
+          st.currentChatId
+        ).catch(() => {});
+      }
+      this.scheduleSave();
+    }
     this.emit();
   }
 

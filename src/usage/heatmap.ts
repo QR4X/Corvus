@@ -2,25 +2,17 @@ import type { ChatSummary } from "../core/chatPersistence";
 import { uiLocale } from "../i18n/tr";
 
 export interface HeatCell {
-
   day: string | null;
   tokens: number;
-
   level: number;
-
   future?: boolean;
 }
 
 interface Heatmap {
-
   cells: HeatCell[];
-
   rows: number;
-
   peak: number;
-
   total: number;
-
   label: string;
 }
 
@@ -59,45 +51,54 @@ export function monthHeatmap(
 ): Heatmap {
   const sums = tokensByDay(chats);
   const today = new Date(now);
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
-  const first = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const leadingBlanks = (first.getDay() + 6) % 7;
-  const rows = Math.ceil((leadingBlanks + daysInMonth) / 7);
-
+  
+  // To render a gorgeous wide GitHub-like timeline:
+  // We render the last 15 weeks (15 columns x 7 rows = 105 cells)
+  // Align cells starting on Monday of each week.
   const cells: HeatCell[] = [];
   let peak = 0;
   let total = 0;
-  for (let i = 0; i < rows * 7; i++) {
-    const dayOfMonth = i - leadingBlanks + 1;
-    if (dayOfMonth < 1 || dayOfMonth > daysInMonth) {
-      cells.push({ day: null, tokens: 0, level: 0 });
-      continue;
-    }
-    const d = new Date(year, month, dayOfMonth);
-
+  
+  // Calculate Monday of 14 weeks ago
+  const start = new Date(now);
+  start.setDate(start.getDate() - 14 * 7);
+  const leadingBlanks = (start.getDay() + 6) % 7; // Align to Monday
+  start.setDate(start.getDate() - leadingBlanks);
+  
+  const totalDays = 15 * 7; // 15 full weeks
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(start.getTime());
+    d.setDate(d.getDate() + i);
+    
     if (d.getTime() > now) {
       cells.push({ day: null, tokens: 0, level: 0, future: true });
       continue;
     }
+    
     const key = localDay(d.getTime());
     const tokens = sums.get(key) ?? 0;
     if (tokens > peak) peak = tokens;
-    total += tokens;
+    
+    // Only count current month towards the text summary total
+    if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+      total += tokens;
+    }
+    
     cells.push({ day: key, tokens, level: 0 });
   }
-
-  for (const c of cells) c.level = dayLevel(c.tokens, peak);
-
+  
+  for (const c of cells) {
+    if (c.day) c.level = dayLevel(c.tokens, peak);
+  }
+  
+  const currentMonthName = today.toLocaleDateString(uiLocale(), { month: "long" });
+  
   return {
     cells,
-    rows,
+    rows: 7, // Fixed 7 days a week
     peak,
     total,
-    label: first.toLocaleDateString(uiLocale(), { month: "long" }),
+    label: currentMonthName,
   };
 }
 

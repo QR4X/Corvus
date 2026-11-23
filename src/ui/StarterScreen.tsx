@@ -1,10 +1,8 @@
 import type CorvusPlugin from "../main";
-import type { ChatMode, ChatSession } from "../core/session";
-import { CHAT_MODES } from "../core/session";
+import type { ChatSession } from "../core/session";
 import { MODULES } from "./modules";
 import { providerConfigured, PROVIDERS } from "../core/providersMeta";
 import { Icon } from "./Icon";
-import { Segmented } from "./Segmented";
 import { openPluginSettings } from "./modals";
 import { tr } from "../i18n/tr";
 
@@ -31,14 +29,6 @@ export function StarterScreen({
 
   return (
     <div className="corvus-starter">
-      {}
-      <Segmented
-        options={CHAT_MODES.map((m) => ({ id: m, label: tr(MODULES[m].label) }))}
-        value={cfg.mode}
-        label={tr("Chat mode")}
-        onChange={(id) => session.setMode(id as ChatMode)}
-      />
-
       <div className="corvus-starter-hero">
         <Icon name={mode.icon} size={26} className="corvus-starter-mark" />
         <h2 className="corvus-starter-title">{greeting()}.</h2>

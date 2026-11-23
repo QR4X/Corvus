@@ -38,7 +38,9 @@ export function App({
 }) {
 
   const startMode = startupMode(plugin.settings.startupChatMode);
-  const [view, setView] = useState<ViewId>(startMode ? "chat" : "home");
+  const [view, setView] = useState<ViewId>(
+    plugin.settings.startupChatMode === "dashboard" ? "home" : "chat"
+  );
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [moduleId, setModuleId] = useState<string>(
@@ -238,7 +240,7 @@ export function App({
           plugin={plugin}
           session={session}
           inject={inject}
-
+          onOpenMenu={() => setMenuOpen(true)}
           onBackHome={() => {
 
             if (backTo === "projects" || backTo === "skills") {

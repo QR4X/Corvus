@@ -70,7 +70,7 @@ describe("Obsidian Appearance is the only source of plugin typography", () => {
     const families = [...css.matchAll(/font-family:\s*([^;]+);/g)];
     expect(families.length).toBeGreaterThan(10);
     for (const [, value] of families) {
-      expect(["inherit", "var(--font-interface)"]).toContain(value);
+      expect(["inherit", "var(--font-interface)", "var(--font-monospace)"]).toContain(value);
     }
     expect(css).not.toMatch(/font-size:\s*[\d.]+(?:px|rem)\b/);
     expect(css).not.toMatch(/--corvus-(?:read-font|font-family|font-size)/);

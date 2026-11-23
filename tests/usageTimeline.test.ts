@@ -183,7 +183,7 @@ function block(needle: string): string {
 describe("chart styles", () => {
   it("draws both series as two shades of the app accent color", () => {
     const b = block(".corvus-root .corvus-chart {");
-    expect(b).toContain("--corvus-serie-in: var(--interactive-accent)");
+    expect(b).toContain("--corvus-serie-in: var(--corvus-accent)");
     expect(b).toMatch(/--corvus-serie-out:\s*color-mix\(/);
     const out = b.slice(b.indexOf("--corvus-serie-out"));
     expect(out).toContain("var(--text-normal)");
@@ -192,7 +192,7 @@ describe("chart styles", () => {
 
   it("marks the selected column with an underline instead of filling it", () => {
     const b = block(".corvus-root button.corvus-chart-col.is-on {");
-    expect(b).toContain("inset 0 -2px 0 var(--interactive-accent)");
+    expect(b).toContain("inset 0 -2px 0 var(--corvus-accent)");
     expect(b).not.toContain("background-color");
   });
 

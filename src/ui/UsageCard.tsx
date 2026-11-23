@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type CorvusPlugin from "../main";
 import type { ChatSummary } from "../core/chatPersistence";
 import { formatUsdRounded } from "../usage/pricing";
@@ -57,6 +56,11 @@ export function UsageCard({
         }
       }}
     >
+      <div className="corvus-usage-head">
+        <span className="corvus-usage-title">{tr("Usage")}</span>
+        <span className="corvus-usage-month">{heatmap.label}</span>
+      </div>
+
       <div className="corvus-usage-line">
         <span className="corvus-usage-meta">
           <span className="corvus-usage-big">{formatCompact(heatmap.total)}</span>
@@ -78,13 +82,15 @@ export function UsageCard({
             </>
           )}
         </span>
-        {}
-        <span className="corvus-usage-month">{heatmap.label}</span>
       </div>
 
-      {}
-      <div className="corvus-usage-mid">
+      {/* Full-width heatmap on top */}
+      <div className="corvus-usage-top-heatmap">
         <HeatCalendar cells={heatmap.cells} peak={heatmap.peak} />
+      </div>
+
+      {/* Two columns: models on the left, stats on the right */}
+      <div className="corvus-usage-mid">
         {models.length > 0 && (
           <div className="corvus-models">
             {models.map((m) => (
@@ -92,35 +98,36 @@ export function UsageCard({
             ))}
           </div>
         )}
-      </div>
 
-      <div className="corvus-mods">
-        {}
-        <Stat
-          label={tr("Streak")}
-          value={streak > 0 ? String(streak) : "—"}
-          unit={streak === 1 ? tr("day") : tr("days")}
-        />
-        {}
-        <Stat
-          label={tr("Active")}
-          value={String(days.active)}
-          unit={tr("of {n}", { n: days.total })}
-        />
-        {}
-        {work.actions > 0 ? (
+        <div className="corvus-mods">
           <Stat
-            label={tr("Actions")}
-            value={formatCompact(work.actions)}
-            unit={tr("in vault")}
+            icon="flame"
+            label={tr("Streak")}
+            value={streak > 0 ? String(streak) : "—"}
+            unit={streak === 1 ? tr("day") : tr("days")}
           />
-        ) : (
           <Stat
-            label={tr("Messages")}
-            value={formatCompact(work.messages)}
-            unit={tr("sent")}
+            icon="activity"
+            label={tr("Active")}
+            value={String(days.active)}
+            unit={tr("of {n}", { n: days.total })}
           />
-        )}
+          {work.actions > 0 ? (
+            <Stat
+              icon="list-checks"
+              label={tr("Actions")}
+              value={formatCompact(work.actions)}
+              unit={tr("in vault")}
+            />
+          ) : (
+            <Stat
+              icon="send"
+              label={tr("Messages")}
+              value={formatCompact(work.messages)}
+              unit={tr("sent")}
+            />
+          )}
+        </div>
       </div>
 
       {}
@@ -165,31 +172,34 @@ function HeatCalendar({ cells, peak }: { cells: HeatCell[]; peak: number }) {
 function TopModelRow({ m }: { m: ModelUsage }) {
   return (
     <div className="corvus-model-row" title={tr("{n} tokens", { n: formatCompact(m.tokens) })}>
-      <span
-        className="corvus-donut"
-        style={{ "--corvus-pct": m.pct } as CSSProperties}
-        aria-hidden="true"
-      />
       <Icon name={providerIcon(m.provider)} size={14} />
       {}
       <span className="corvus-model-name">{prettyModelName(m.model)}</span>
+      <span className="corvus-model-bar" aria-hidden="true">
+        <span className="corvus-model-bar-fill" style={{ width: `${m.pct}%` }} />
+      </span>
       <span className="corvus-model-pct">{m.pct}%</span>
     </div>
   );
 }
 
 function Stat({
+  icon,
   label,
   value,
   unit,
 }: {
+  icon: string;
   label: string;
   value: string;
   unit: string;
 }) {
   return (
     <div className="corvus-mod">
-      <span className="corvus-mod-title">{label}</span>
+      <span className="corvus-mod-title has-icon">
+        <Icon name={icon} size={12} />
+        <span>{label}</span>
+      </span>
       <span className="corvus-mod-row">
         <span className="corvus-mod-value">{value}</span>
         <span className="corvus-mod-unit">{unit}</span>
