@@ -3404,11 +3404,9 @@ body.theme-light .corvus-root .corvus-sheet {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  
-  overscroll-behavior: none;
-  
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: max(var(--safe-area-inset-bottom, 0px), var(--corvus-3));
-  
   padding-left: 6px;
   padding-right: 6px;
   margin-left: -6px;

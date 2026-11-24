@@ -834,10 +834,10 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         <button
           type="button"
           className="corvus-icon-btn"
-          aria-label={!currentChatId && onOpenMenu ? tr("Open menu") : tr("Back")}
-          onClick={!currentChatId && onOpenMenu ? onOpenMenu : onBackHome}
+          aria-label={tr("Back to dashboard")}
+          onClick={onBackHome}
         >
-          <Icon name={!currentChatId && onOpenMenu ? "menu" : "arrow-left"} />
+          <Icon name="arrow-left" />
         </button>
         <div className="corvus-topbar-title">
           <span className="corvus-topbar-name">
@@ -1317,6 +1317,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         open={sheet === "plus"}
         onClose={closeSheet}
         onBack={plusView === "root" ? undefined : () => setPlusView("root")}
+        fit
       >
         {plusView === "notes" ? (
           <>

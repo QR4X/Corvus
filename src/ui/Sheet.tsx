@@ -77,6 +77,7 @@ export function Sheet({
   onClose,
   onBack,
   startFull,
+  fit: propFit,
   minSize,
   focusOnOpen = true,
   children,
@@ -104,6 +105,8 @@ export function Sheet({
 
   startFull?: boolean;
 
+  fit?: boolean;
+
   minSize?: "mid";
 
   focusOnOpen?: boolean;
@@ -126,7 +129,7 @@ export function Sheet({
   }, [open]);
 
   const [size, setSize] = useState<"peek" | "full" | "fit">(
-    startFull ? "full" : "peek"
+    startFull ? "full" : propFit ? "fit" : "peek"
   );
   const startY = useRef<number | null>(null);
   const dragY = useRef(0);
@@ -137,8 +140,8 @@ export function Sheet({
   const expand = useCallback(() => setSize("full"), []);
   const fit = useCallback(() => setSize("fit"), []);
   const reset = useCallback(
-    () => setSize(startFull ? "full" : "peek"),
-    [startFull]
+    () => setSize(startFull ? "full" : propFit ? "fit" : "peek"),
+    [startFull, propFit]
   );
   const api = useMemo(
     () => ({ expand, fit, reset }),
@@ -193,17 +196,17 @@ export function Sheet({
 
   useEffect(() => {
     const el = bodyRef.current;
-    if (!open || !el) return;
+    if (!open || !el || propFit) return;
     const onScroll = () => {
-      if (el.scrollTop > 8) setSize("full");
+      if (el.scrollTop > 8 && sizeRef.current === "peek") setSize("full");
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [open]);
+  }, [open, propFit]);
 
   useEffect(() => {
-    if (!open) setSize(startFull ? "full" : "peek");
-  }, [open, startFull]);
+    if (!open) setSize(startFull ? "full" : propFit ? "fit" : "peek");
+  }, [open, startFull, propFit]);
 
   const mounted = useRef(false);
   useEffect(() => {
@@ -275,7 +278,7 @@ export function Sheet({
       const atTop = el.scrollTop <= 0;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
 
-      edge = atTop ? "top" : atBottom ? "bottom" : null;
+      edge = atTop ? "top" : atBottom && !propFit ? "bottom" : null;
       y0 = y;
       dy = 0;
     };
@@ -284,7 +287,7 @@ export function Sheet({
       if (y0 === null || edge === null) return false;
       const d = y - y0;
       const pulling =
-        (edge === "top" && d > 0) || (edge === "bottom" && d < 0);
+        (edge === "top" && d > 10) || (edge === "bottom" && d < -10 && !propFit);
       if (!pulling) {
         dy = 0;
         panel.setCssStyles({ transform: "" });
@@ -307,10 +310,10 @@ export function Sheet({
       panel.classList.remove("is-dragging");
 
       if (b === "top" && d > PULL_THRESHOLD) {
-        if (sizeRef.current === "full") setSize("peek");
+        if (sizeRef.current === "full" && !propFit) setSize("peek");
         else onClose();
         tap();
-      } else if (b === "bottom" && d < -PULL_THRESHOLD) {
+      } else if (b === "bottom" && d < -PULL_THRESHOLD && !propFit) {
         setSize("full");
         tap();
       }
