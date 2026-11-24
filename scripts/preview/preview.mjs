@@ -58,6 +58,11 @@ let obsidianVersion = "0.0.0";
 
 function extractAppCss() {
   const target = path.join(OUT, "app.css");
+  const enhanceTarget = path.join(OUT, "enhance.js");
+  if (fs.existsSync(target) && fs.existsSync(enhanceTarget)) {
+    console.log(`[preview] Using cached Obsidian app.css and enhance.js in ${OUT}`);
+    return;
+  }
   const asar = ASAR ?? asarCandidates().find((p) => fs.existsSync(p));
   if (!asar) {
     console.error(

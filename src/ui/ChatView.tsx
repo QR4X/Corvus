@@ -90,7 +90,7 @@ import { StarterScreen } from "./StarterScreen";
 import { ThinkingTrace } from "./ThinkingTrace";
 import { buildTurnTraces, type TraceGroup, type TurnTraces } from "../core/trace";
 import type { ComposerInject } from "./App";
-import { MODULES, moduleFabLabel, moduleLabel, modulePlaceholder } from "./modules";
+import { MODULES, moduleFabLabel, modulePlaceholder } from "./modules";
 import { filterModels, groupModels, mergeModelOptions } from "./modelGroups";
 
 import { FAVORITE_LIMIT } from "./SettingsTab";
@@ -147,7 +147,6 @@ export function ChatView({
   const pushQueued = useChatStore((s) => s.pushQueued);
   const removeQueued = useChatStore((s) => s.removeQueued);
 
-  const locked = useChatStore((s) => s.sessionProvider) !== null;
   const cfg = session.config;
 
   const draftKey = currentChatId ?? NEW_CHAT_DRAFT;
@@ -845,16 +844,17 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
         </button>
         <div className="corvus-topbar-title">
           <span className="corvus-topbar-name">
-            {}
             {currentChatId
               ? currentChatTitle || tr("Untitled")
               : tr(moduleFabLabel(cfg.mode))}
           </span>
-          {locked && (
-            <span className="corvus-topbar-meta">
-              {tr(moduleLabel(cfg.mode))} · {cfg.model}
+          <span className="corvus-topbar-meta">
+            <span className={`corvus-mode-tag is-${cfg.mode}`}>
+              <Icon name={MODULES[cfg.mode].icon} size={11} />
+              <span>{tr(MODULES[cfg.mode].short)}</span>
             </span>
-          )}
+            {cfg.model && <span className="corvus-topbar-model"> · {cfg.model}</span>}
+          </span>
         </div>
         <button
           type="button"
@@ -870,7 +870,11 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       <div className="corvus-messages" ref={scrollRef}>
         {loadingChat && <p className="corvus-empty-line">{tr("Loading…")}</p>}
         {empty ? (
-          <StarterScreen plugin={plugin} session={session} />
+          <StarterScreen
+            plugin={plugin}
+            session={session}
+            onSelectPrompt={(text) => setDraft(text)}
+          />
         ) : (
           messages
             .filter((m) => !hiddenIds.has(m.id))
