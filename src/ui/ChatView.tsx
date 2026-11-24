@@ -74,8 +74,6 @@ import {
   SheetSearch,
   SheetTabs,
   SheetSeg,
-  SheetTile,
-  SheetTiles,
 } from "./Sheet";
 import { modelLogo } from "../providers/modelLogo";
 import {
@@ -1394,97 +1392,112 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
             )}
           </SheetGroup>
         ) : (
-          <>
-            <SheetTiles>
-              <SheetTile
-                icon="file-text"
-                label={tr("Notes")}
-                onClick={() => {
-                  setNoteQuery("");
-                  setPlusView("notes");
-                }}
-              />
-              <SheetTile
-                icon="image"
-                label={tr("Image")}
-                disabled={!modelSeesImages}
-                hint={modelSeesImages ? undefined : tr("unavailable")}
-                onClick={() => {
-                  closeSheet();
-                  imageRef.current?.click();
-                }}
-              />
-            </SheetTiles>
+          <SheetGroup>
+            {(() => {
+              const openNote = sheet === "plus" ? activeNote(plugin.app) : null;
+              if (
+                !openNote ||
+                attachments.some(
+                  (a) => a.type === "note" && a.path === openNote.path
+                )
+              ) {
+                return null;
+              }
+              return (
+                <SheetRow
+                  badge
+                  chevron
+                  icon="file-check"
+                  title={tr("Current note")}
+                  note={openNote.basename}
+                  onClick={() => {
+                    void attachNote(openNote.path);
+                    closeSheet();
+                  }}
+                />
+              );
+            })()}
 
-            <SheetGroup>
-              {}
-              {(() => {
-                const openNote = sheet === "plus" ? activeNote(plugin.app) : null;
-                if (!openNote || attachments.some((a) => a.type === "note" && a.path === openNote.path)) {
-                  return null;
-                }
-                return (
-                  <SheetRow
-                    badge
-                    chevron
-                    icon="file-check"
-                    title={tr("This note")}
-                    note={openNote.basename}
-                    onClick={() => {
-                      void attachNote(openNote.path);
-                      closeSheet();
-                    }}
-                  />
-                );
-              })()}
-              <SheetRow
-                badge
-                chevron
-                icon="file-type-2"
-                title="PDF"
-                note={
-                  modelReadsPdf
-                    ? tr("From this device")
-                    : tr("This model can't read PDFs")
-                }
-                onClick={() => {
-                  closeSheet();
-                  pdfRef.current?.click();
-                }}
-              />
-              <SheetRow
-                badge
-                chevron
-                icon="link"
-                title="Link"
-                note={tr("Fetch a page as context")}
-                onClick={() => {
-                  closeSheet();
-                  void attachLink();
-                }}
-              />
-              <SheetRow
-                badge
-                chevron
-                icon="sparkles"
-                title="Skill"
-                note={
-                  plugin.skills.length > 0
-                    ? tr("{n} in your vault", { n: plugin.skills.length })
-                    : tr("None yet")
-                }
-                onClick={() => setPlusView("skills")}
-              />
-              <SheetRow
-                badge
-                chevron
-                icon="box"
-                title={tr("Artifact")}
-                note={tr("Images, audio and video made here")}
-                onClick={() => setPlusView("artifacts")}
-              />
-            </SheetGroup>
-          </>
+            <SheetRow
+              badge
+              chevron
+              icon="file-text"
+              title={tr("Vault notes")}
+              note={tr("Search and attach notes")}
+              onClick={() => {
+                setNoteQuery("");
+                setPlusView("notes");
+              }}
+            />
+
+            <SheetRow
+              badge
+              chevron
+              icon="image"
+              title={tr("Image")}
+              note={
+                modelSeesImages
+                  ? tr("Photo library or camera")
+                  : tr("This model can't read images")
+              }
+              disabled={!modelSeesImages}
+              onClick={() => {
+                closeSheet();
+                imageRef.current?.click();
+              }}
+            />
+
+            <SheetRow
+              badge
+              chevron
+              icon="file-type-2"
+              title={tr("PDF document")}
+              note={
+                modelReadsPdf
+                  ? tr("From this device")
+                  : tr("This model can't read PDFs")
+              }
+              disabled={!modelReadsPdf}
+              onClick={() => {
+                closeSheet();
+                pdfRef.current?.click();
+              }}
+            />
+
+            <SheetRow
+              badge
+              chevron
+              icon="link"
+              title={tr("Web link")}
+              note={tr("Fetch a web page as context")}
+              onClick={() => {
+                closeSheet();
+                void attachLink();
+              }}
+            />
+
+            <SheetRow
+              badge
+              chevron
+              icon="sparkles"
+              title={tr("Skill")}
+              note={
+                plugin.skills.length > 0
+                  ? tr("{n} in your vault", { n: plugin.skills.length })
+                  : tr("None yet")
+              }
+              onClick={() => setPlusView("skills")}
+            />
+
+            <SheetRow
+              badge
+              chevron
+              icon="box"
+              title={tr("Artifacts")}
+              note={tr("Images, audio and video made here")}
+              onClick={() => setPlusView("artifacts")}
+            />
+          </SheetGroup>
         )}
       </Sheet>
 

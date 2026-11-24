@@ -742,6 +742,7 @@ export function SheetRow({
   badge,
   chevron,
   action,
+  disabled,
   onClick,
 }: {
   title: string;
@@ -767,6 +768,7 @@ export function SheetRow({
     on?: boolean;
     onClick: () => void;
   };
+  disabled?: boolean;
   onClick: () => void;
 }) {
   const row = (
@@ -775,10 +777,12 @@ export function SheetRow({
       className={
         "corvus-sheet-row" +
         (selected ? " is-active" : "") +
-        (dense ? " is-dense" : "")
+        (dense ? " is-dense" : "") +
+        (disabled ? " is-disabled" : "")
       }
+      disabled={disabled}
       aria-pressed={selected === true}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       {icon && (
         <Icon

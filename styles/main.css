@@ -3048,11 +3048,17 @@ body.is-mobile.corvus-keyboard-open .corvus-root .corvus-composer {
 }
 
 .corvus-root .corvus-sheet-row-icon.is-badge {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--corvus-r-pill);
-  background-color: var(--corvus-hover);
+  background-color: var(--corvus-s1);
   color: var(--text-normal);
+  transition: all 140ms ease;
+}
+
+.corvus-root .corvus-sheet-row:hover:not(.is-disabled) .corvus-sheet-row-icon.is-badge {
+  background-color: color-mix(in srgb, var(--corvus-accent) 14%, var(--corvus-hover));
+  color: var(--corvus-accent);
 }
 
 .corvus-root .corvus-sheet-tabs {
@@ -3509,9 +3515,17 @@ body.theme-light .corvus-root .corvus-sheet {
   justify-content: flex-start;
   gap: var(--corvus-3);
   width: 100%;
-  padding: var(--corvus-4);
+  padding: var(--corvus-3) var(--corvus-4);
   text-align: left;
   color: var(--text-normal);
+  transition: background-color 140ms ease;
+  cursor: pointer;
+}
+
+.corvus-root .corvus-sheet-row.is-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 .corvus-root .corvus-sheet-row.is-active {
