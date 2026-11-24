@@ -105,54 +105,19 @@ export function Dashboard({
 
       <div className="corvus-messages corvus-home corvus-dash">
         <div className="corvus-dash-hero">
-          <h1 className="corvus-dash-greeting">{greeting()}.</h1>
-          <p className="corvus-dash-sub">{tr("Choose a capability or continue a conversation.")}</p>
-        </div>
-
-        <div className="corvus-dash-cards">
+          <div className="corvus-dash-hero-text">
+            <h1 className="corvus-dash-greeting">{greeting()}.</h1>
+            <p className="corvus-dash-sub">
+              {tr("Start a conversation or pick up where you left off.")}
+            </p>
+          </div>
           <button
             type="button"
-            className="corvus-dash-card is-chat"
-            onClick={() => onNewChat("chat")}
+            className="corvus-dash-new-btn"
+            onClick={() => onNewChat(activeMode)}
           >
-            <div className="corvus-dash-card-icon">
-              <Icon name="message-square" size={20} />
-            </div>
-            <div className="corvus-dash-card-text">
-              <span className="corvus-dash-card-title">{tr("Direct Chat")}</span>
-              <span className="corvus-dash-card-desc">{tr("Pure reasoning without note search")}</span>
-            </div>
-            <Icon name="arrow-up-right" size={16} className="corvus-dash-card-arrow" />
-          </button>
-
-          <button
-            type="button"
-            className="corvus-dash-card is-vault"
-            onClick={() => onNewChat("vault-qa")}
-          >
-            <div className="corvus-dash-card-icon">
-              <Icon name="library" size={20} />
-            </div>
-            <div className="corvus-dash-card-text">
-              <span className="corvus-dash-card-title">{tr("Vault Q&A")}</span>
-              <span className="corvus-dash-card-desc">{tr("Grounded answers from your notes")}</span>
-            </div>
-            <Icon name="arrow-up-right" size={16} className="corvus-dash-card-arrow" />
-          </button>
-
-          <button
-            type="button"
-            className="corvus-dash-card is-agent"
-            onClick={() => onNewChat("agent")}
-          >
-            <div className="corvus-dash-card-icon">
-              <Icon name="bot" size={20} />
-            </div>
-            <div className="corvus-dash-card-text">
-              <span className="corvus-dash-card-title">{tr("Agent")}</span>
-              <span className="corvus-dash-card-desc">{tr("Reads, edits and organizes vault")}</span>
-            </div>
-            <Icon name="arrow-up-right" size={16} className="corvus-dash-card-arrow" />
+            <Icon name="plus" size={16} />
+            <span>{tr("New conversation")}</span>
           </button>
         </div>
 

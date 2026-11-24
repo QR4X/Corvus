@@ -188,7 +188,6 @@ export function ChatView({
   const [noteQuery, setNoteQuery] = useState("");
 
   const imageRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -870,11 +869,7 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
       <div className="corvus-messages" ref={scrollRef}>
         {loadingChat && <p className="corvus-empty-line">{tr("Loading…")}</p>}
         {empty ? (
-          <StarterScreen
-            plugin={plugin}
-            session={session}
-            onSelectPrompt={(text) => setDraft(text)}
-          />
+          <StarterScreen plugin={plugin} session={session} />
         ) : (
           messages
             .filter((m) => !hiddenIds.has(m.id))
@@ -1087,18 +1082,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                   ref={imageRef}
                   type="file"
                   accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const f = e.currentTarget.files?.[0];
-                    if (f) attachImage(f);
-                    e.currentTarget.value = "";
-                  }}
-                />
-                <input
-                  ref={cameraRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
                   hidden
                   onChange={(e) => {
                     const f = e.currentTarget.files?.[0];
@@ -1419,16 +1402,6 @@ ${tr("Open Settings › Providers to add it, then run the connection test.")}`,
                 onClick={() => {
                   setNoteQuery("");
                   setPlusView("notes");
-                }}
-              />
-              <SheetTile
-                icon="camera"
-                label={tr("Camera")}
-                disabled={!modelSeesImages}
-                hint={modelSeesImages ? undefined : tr("unavailable")}
-                onClick={() => {
-                  closeSheet();
-                  cameraRef.current?.click();
                 }}
               />
               <SheetTile
